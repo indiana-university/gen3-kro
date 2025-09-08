@@ -1,0 +1,36 @@
+"${WORKLOAD_CLUSTER_ID}":
+  managementAccountId: "${HUB_ACCOUNT_ID}"
+  accountId:           "${SPOKE_ACCOUNT_ID}"
+  tenant:              "tenant1"
+  k8sVersion:          "${SPOKE_KUBERNETES_VERSION}"
+  domainName:          "${SPOKE_DOMAIN_NAME}"
+  workloads:           true
+
+  gitops:
+    addonsRepoUrl:        "https://${GITOPS_ADDONS_GITHUB_URL}/${GITOPS_ADDONS_ORG_NAME}/${GITOPS_ADDONS_REPO_NAME}"
+    fleetRepoUrl:         "https://${GITOPS_FLEET_GITHUB_URL}/${GITOPS_FLEET_ORG_NAME}/${GITOPS_FLEET_REPO_NAME}"
+    platformRepoUrl:      "https://${GITOPS_PLATFORM_GITHUB_URL}/${GITOPS_PLATFORM_ORG_NAME}/${GITOPS_PLATFORM_REPO_NAME}"
+    workloadRepoUrl:      "https://${GITOPS_WORKLOAD_GITHUB_URL}/${GITOPS_WORKLOAD_ORG_NAME}/${GITOPS_WORKLOAD_REPO_NAME}"
+    addonsRepoRevision:   "${GITOPS_ADDONS_REPO_REVISION}"
+    fleetRepoRevision:    "${GITOPS_FLEET_REPO_REVISION}"
+    platformRepoRevision: "${GITOPS_PLATFORM_REPO_REVISION}"
+    workloadRepoRevision: "${GITOPS_WORKLOAD_REPO_REVISION}"
+
+  addons:
+    enable_metrics_server:           ${SPOKE_ADDONS_ENABLE_METRICS_SERVER}
+    enable_external_secrets:         ${SPOKE_ADDONS_ENABLE_EXTERNAL_SECRETS}
+    enable_external_dns:             ${SPOKE_ADDONS_ENABLE_EXTERNAL_DNS}
+    enable_adot_collector:           ${SPOKE_ADDONS_ENABLE_ADOT_COLLECTOR}
+    enable_cw_prometheus:            ${SPOKE_ADDONS_ENABLE_CW_PROMETHEUS}
+    enable_kyverno:                  ${SPOKE_ADDONS_ENABLE_KYVERNO}
+    enable_kyverno_policies:         ${SPOKE_ADDONS_ENABLE_KYVERNO_POLICIES}
+    enable_kyverno_policy_reporter:  ${SPOKE_ADDONS_ENABLE_KYVERNO_POLICY_REPORTER}
+    enable_cni_metrics_helper:       ${SPOKE_ADDONS_ENABLE_CNI_METRICS_HELPER}
+    enable_prometheus_node_exporter: ${SPOKE_ADDONS_ENABLE_PROMETHEUS_NODE_EXPORTER}
+    enable_kube_state_metrics:       ${SPOKE_ADDONS_ENABLE_KUBE_STATE_METRICS}
+    enable_opentelemetry_operator:   ${SPOKE_ADDONS_ENABLE_OPENTELEMETRY_OPERATOR}
+    enable_cert_manager:             ${SPOKE_ADDONS_ENABLE_CERT_MANAGER}
+    enable_ack_iam:                  ${SPOKE_ADDONS_ENABLE_ACK_IAM}
+    enable_ack_eks:                  ${SPOKE_ADDONS_ENABLE_ACK_EKS}
+    enable_ack_efs:                  ${SPOKE_ADDONS_ENABLE_ACK_EFS}
+    enable_aws_efs_csi_driver:       ${SPOKE_ADDONS_ENABLE_AWS_EFS_CSI_DRIVER}
