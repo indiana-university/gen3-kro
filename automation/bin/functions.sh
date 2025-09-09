@@ -20,11 +20,11 @@ backup_path() {
     local ts
     local b
     ts="$(date +%Y%m%d%H%M%S)"
-    b="$(dirname "${BASH_SOURCE[0]}")/backups/$(basename "$p")-backup-$ts"
+    b="old/$(basename "$p")-backup-$ts"
     log_debug "file=$(basename "$p") backup=$b path=$p"
-    mkdir -p "$(dirname "${BASH_SOURCE[0]}")/backups" || { log_error "Failed to create backup directory"; return 1; }
-    ensure_dir "$(dirname "${BASH_SOURCE[0]}")/backups" || { log_error "Failed to create backup directory"; return 1; }
-    mv "$p" "$b" || { log_error "Failed to move $p to $b"; return 1; }
+    mkdir -p "old" || { log_error "Failed to create backup directory"; return 1; }
+    cp -r "$p" "$b" || { log_error "Failed to copy $p to $b"; return 1; }
+    log "#------------------------------------------------------------------------------------------------------------#"
   fi
 }
 
@@ -38,16 +38,16 @@ retry_until() {
   until "$@"; do
     rc=$?
 
-    log_trace "#-----------------------------------------------------------------------------------------------------------#"
+    log "#-----------------------------------------------------------------------------------------------------------#"
     log_info "$* failed in attempt #${i}/${max_attempts} (rc=${rc})"
     ((i++))
 
     if (( i <= max_attempts )); then
     log_warn "${warn_msg} (rc=${rc}); retrying in ${sleep_secs}s..."
-    log_trace "#-----------------------------------------------------------------------------------------------------------#"
+    log "#-----------------------------------------------------------------------------------------------------------#"
     sleep "${sleep_secs}"
     validate_and_load_debug_files
-    log_trace "#-----------------------------------------------------------------------------------------------------------#"
+    log "#-----------------------------------------------------------------------------------------------------------#"
     else
       log_error "[retry_until():$*()] ($max_attempts) attempts reached; giving up"
       retry_code=1
@@ -268,8 +268,12 @@ load_modules() {
   local script="${2:-}"
   local path rc
   log_info "[load_modules()=${script:-<unset>}]"
-  log_trace "#############################################################################################################"
-
+  if [[ $step_retry_count == 0 ]]; then
+    RETRY_ID="attempt 1"
+  else
+    RETRY_ID=" retry: $step_retry_count/$max_module_retries"
+  fi
+  log "#--------------------------------------------- $RETRY_ID ---------------------------------------------------------#"
   path="$MODULES_DIR/$script"
   ERR_FILE="${OUTPUTS_DIR}/${script//\//_}.stderr.log"
   # Per-module env reload (debug)
@@ -287,7 +291,7 @@ load_modules() {
   if source "$path" 2> "$ERR_FILE"; then
     LOG_FILE="$CURR_LOG_FILE"
     log_info "[load_modules()=script:$script] completed successfully."
-    log_trace "#############################################################################################################"
+    log "#############################################################################################################"
     LAST_MODULE_RC=0
     rm -f "$ERR_FILE"
     return 0
@@ -296,13 +300,15 @@ load_modules() {
     LAST_MODULE_RC=$rc
     LOG_FILE="$CURR_LOG_FILE"
     log_error "[load_modules()=script:$script] failed: (rc=$rc)"
-    log_trace "#############################################################################################################"
-  if [[ -s "$ERR_FILE" ]]; then
-      log_error "'Error output from $script:'"
-      log_trace "#-----------------------------------------------------------------------------------------------------------#"
-      while IFS= read -r line; do
-        log_warn "$line"
-      done < "$ERR_FILE"
+    log "#############################################################################################################"
+    if [[ -s "$ERR_FILE" ]]; then
+      if [[ $step_retry_count == "$max_module_retries" ]]; then
+        log "'Error output from $script:'"
+        log_trace "#-----------------------------------------------------------------------------------------------------------#"
+        while IFS= read -r line; do
+          log_trace "$line"
+        done < "$ERR_FILE"
+      fi
     fi
     rm -f "$ERR_FILE"
     return 21
@@ -318,8 +324,8 @@ run_module_with_retries() {
   local retry_timeout="${RETRY_PROMPT_TIMEOUT_SECS:-120}"
   local step_retry_count=0
   until load_modules "$debug_mode" "$script"; do
-    log_warn "✖ $script module failed with error code: (rc=${LAST_MODULE_RC:-1})."
-    log_trace "#############################################################################################################"
+    log_trace "$(date +'%Y-%m-%d %H:%M:%S')  [ERROR]  (functions.sh        :320 ) ✖ $script module failed with error code: (rc=${LAST_MODULE_RC:-1})."
+    log "#############################################################################################################"
 
     if (( step_retry_count >= max_module_retries )); then
       log_error "Reached maximum retries ($max_module_retries). Quitting pipeline."
@@ -343,7 +349,7 @@ run_module_with_retries() {
           return 26
           ;;
         *)
-          log_trace "Please answer r, s or q."
+          log "Please answer r, s or q."
           # re-prompt on next failure loop
           ;;
       esac
@@ -360,7 +366,7 @@ run_module_with_retries() {
 primer() {
   local retry_code=0
   log_info "[ENTER:PRIMER]"
-  log_trace "#-----------------------------------------------------------------------------------------------------------#"
+  log "#-----------------------------------------------------------------------------------------------------------#"
 
   # Load defaults once (combined validate+load), retry until success
   if ! retry_until "${MAIN_PROMPT_TIMEOUT_SECS:-120}" \
@@ -368,7 +374,7 @@ primer() {
     validate_and_load_default_files
   then return 1; fi
 
-  log_trace "#-----------------------------------------------------------------------------------------------------------#"
+  log "#-----------------------------------------------------------------------------------------------------------#"
 
   # Build/validate the script_list from STEPS_EXEC_MODE, retry until success
   if ! retry_until "${MODULE_VAL_TIMEOUT_SECS:-10}" \
@@ -376,17 +382,19 @@ primer() {
     validate_steps_exec_mode
   then return 1; fi
 
-  log_trace "#-----------------------------------------------------------------------------------------------------------#"
+  log "#-----------------------------------------------------------------------------------------------------------#"
   log_notice "[SUCCESS=PRIMER]"
-  log_trace "# primer complete ----------------------------------------------------------------------------------------- #"
-  log_trace "#-----------------------------------------------------------------------------------------------------------#"
-  log_trace "#############################################################################################################"
+  log "# primer complete ----------------------------------------------------------------------------------------- #"
+  log "#-----------------------------------------------------------------------------------------------------------#"
+(( ++LOOP_ID ))
+END_LOOP_ID=$MAX_CYCLE_RETRIES
+  log "############################################ LOOP ID: $LOOP_ID/$END_LOOP_ID ###################################################"
 }
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # Main loop over scripts
 main() {
-  log_trace "# primer -------------------------------------------------------------------------------------------------- #"
+  log "# primer -------------------------------------------------------------------------------------------------- #"
   if ! primer; then return 1; fi
 
   local rc 
@@ -401,8 +409,7 @@ main() {
     if (( step >= total )); then
       log_debug "step=$step total=$total"
       log_notice "✔ Loop complete (all $total scripts processed)."
-      log_trace "#-----------------------------------------------------------------------------------------------------------#"
-      log_trace "#############################################################################################################"
+      log "#############################################################################################################"
       
       if (( cycle_retry_count >= max_cycle_retries )); then
         log_info "Reached maximum pipeline cycles ($max_cycle_retries). Exiting normally."
@@ -410,7 +417,7 @@ main() {
       fi
 
       ((++cycle_retry_count))   
-      log_trace "#-----------------------------------------------------------------------------------------------------------#"
+      log "#-----------------------------------------------------------------------------------------------------------#"
       if read -r -t "${STEP_PROMPT_TIMEOUT_SECS:-120}" \
         -p $'   Restart pipeline? [y]es / [q]uit pipeline (Waiting for '"${STEP_PROMPT_TIMEOUT_SECS:-120}"' seconds...): ' choice
         then
@@ -422,19 +429,19 @@ main() {
           y|yes)
 
             log_notice "[RESTART=MAIN]: Attempt #${cycle_retry_count}/${max_cycle_retries}"
-            log_trace "#-----------------------------------------------------------------------------------------------------------#"
-            log_trace "#############################################################################################################"
-            log_trace "#-----------------------------------------------------------------------------------------------------------#"
+            log "#-----------------------------------------------------------------------------------------------------------#"
+            log "#############################################################################################################"
+            log "#-----------------------------------------------------------------------------------------------------------#"
             
             if (( debug_mode == 1 )); then
               if ! retry_until "${MODULE_VAL_TIMEOUT_SECS:-10}" \
                 "[validate_and_load_debug_files(): failed]" \
                 validate_and_load_debug_files
               then return 1; fi
-              log_trace "#-----------------------------------------------------------------------------------------------------------#"
+              log "#-----------------------------------------------------------------------------------------------------------#"
             fi
 
-            log_trace "# primer -------------------------------------------------------------------------------------------------- #"
+            log "# primer -------------------------------------------------------------------------------------------------- #"
             if ! primer; then return 1; fi
             ;;
         esac
