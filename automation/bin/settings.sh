@@ -7,13 +7,13 @@
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # 1) Behavior / Mode
-#-------------------------------------------------------------------------------------------------------------------------------------------------#
-MAIN_PROMPT_TIMEOUT_SECS=1            # start pipeline prompt
-STEP_PROMPT_TIMEOUT_SECS=1           # per-step prompt
-RETRY_PROMPT_TIMEOUT_SECS=1           # retry prompt
-MAX_CYCLE_RETRIES=1                   # max retries on cycle
-MAX_MODULE_RETRIES=1                   # max retries on module
-MAX_VALIDATION_RETRIES=1               # max retries on validation
+#-------------------------------------------------------------------------------------------------------------------------------------------------#MAIN_PROMPT_TIMEOUT_SECS=60            # start pipeline prompt
+MAIN_PROMPT_TIMEOUT_SECS=60            # start pipeline prompt
+STEP_PROMPT_TIMEOUT_SECS=600           # per-step prompt
+RETRY_PROMPT_TIMEOUT_SECS=60           # retry prompt       
+MAX_CYCLE_RETRIES=10                   # max retries on cycle
+MAX_MODULE_RETRIES=5                   # max retries on module
+MAX_VALIDATION_RETRIES=60               # max retries on validation
 # Optional: fine-grained overrides (all optional; apply_mode sets sane defaults)
 # Examples (uncomment to use):
 #   export LOG_LEVEL="ERROR"          # force only errors (even in info/json)
@@ -39,9 +39,9 @@ TERRAFORM_MODE=destroy   # terraform mode: create | destroy | plan | validate
 # - STEPS_EXEC_MODE is an associative array of per-step execution modes (ask|auto).
 #   example: STEPS_EXEC_MODE["01-init-repo.sh"]="ask"
 declare -A -g STEPS_EXEC_MODE=(
-  ["00-validations.sh"]=""
-  ["01-prep-workspace.sh"]=""
-  # ["02-update-repo.sh"]=""
+  ["00-validations.sh"]="auto"
+  ["01-prep-workspace.sh"]="auto"
+  ["03-create-repo-files.sh"]="auto"
   # ["03-validate-vars.sh"]=""
   # ["04-terraform.sh"]=""
   # ["05-bootstrap-backup.sh"]=""

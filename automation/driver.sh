@@ -13,7 +13,7 @@ BIN_DIR="$AUTOMATION_DIR/bin"
 ENV_DIR="$AUTOMATION_DIR/env"
 MODULES_DIR="$AUTOMATION_DIR/modules"
 TEMPLATES_DIR="$AUTOMATION_DIR/templates"
-OUTPUTS_DIR="outputs"
+OUTPUTS_DIR="$AUTOMATION_DIR/outputs"
 CORE_ISSUE=0
 # DEBUG_MODE=1                           # debug mode (1|0); if 1, reload_env() between steps
 
@@ -26,9 +26,8 @@ export LOG_ID LOG_FILE
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 ###################################################################################################################################################
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
-# --- core utility helpers
+# --- core logging helpers
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
-#shellcheck disable=SC2329
 fallback_log() {
   local level="$1"; shift
   local log_file
@@ -40,7 +39,7 @@ fallback_log() {
   # If called via a log_* wrapper, hop two frames up; otherwise one.
   local depth=1
   case "${FUNCNAME[1]}" in
-    log_info|log_debug|log_warn|log_error|log_notice|log_trace|log_fatal)
+    log_info|log_debug|log_warn|log_error|log_notice|log_trace|log_fatal|log)
       depth=2
       ;;
   esac
@@ -51,6 +50,10 @@ fallback_log() {
   line="${BASH_LINENO[$((depth-1))]}"
   case ${FUNCNAME[1]} in
     log_trace) 
+      printf "%s %s\n" \
+        "$level" "$*" \
+        | tee -a "${OUTPUTS_DIR:-outputs}/$log_file" >&2;;
+    log) 
       printf "%s %s\n" \
         "$line" "$*" \
         | tee -a "${OUTPUTS_DIR:-outputs}/$log_file" >&2;;
@@ -64,20 +67,24 @@ fallback_log() {
 
 }
 
-
-log_info()   {  local msg="$*";  fallback_log "[INFO]" "$msg";  }
-log_debug()  {  local msg="$*";  fallback_log "[DEBUG]" "$msg";  }
-log_warn()   {  local msg="$*";  fallback_log "[WARN]" "$msg";  }
-log_error()  {  local msg="$*";  fallback_log "[ERROR]" "$msg";  }
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
+log()        {  local msg="$*";  fallback_log "[TRACE]"  "$msg";  }
+log_info()   {  local msg="$*";  fallback_log "[INFO]"   "$msg";  }
+log_debug()  {  local msg="$*";  fallback_log "[DEBUG]"  "$msg";  }
+log_warn()   {  local msg="$*";  fallback_log "[WARN]"   "$msg";  }
+log_error()  {  local msg="$*";  fallback_log "[ERROR]"  "$msg";  }
+log_notice() {  local msg="$*";  fallback_log "[NOTICE]" "$msg";  }
+log_trace()  {  local msg="$*";  fallback_log "[TRACE]"  "$msg";  }
 log_fatal()  {  
   local msg="$*";  
   fallback_log "[FATAL] " "Exiting due to '$msg' fatal error(s); see prior log entries"
-  log_trace "#############################################################################################################"
+  log "#############################################################################################################"
   exit 1; 
 }
-log_notice() {  local msg="$*";  fallback_log "[NOTICE]" "$msg";  }
-log_trace()  {  local msg="$*";  fallback_log "[TRACE] " "$msg";  }
 
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
+# Core Functions
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
 require_env() {
   local name="$1"
   local var="$*"
@@ -151,14 +158,13 @@ source_or_die() {
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # Execution
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
-# trap errors to provide context
 
 # make sure outputs dir exists
 mkdir -p "$OUTPUTS_DIR"
 # clear log file
 : > "$LOG_FILE"
-# shellcheck disable=SC2129
 echo "" >> "$LOG_FILE"
+# trap errors to provide context
 # shellcheck disable=SC2154
 trap '{
   local rc=$?
@@ -168,9 +174,9 @@ trap '{
   fallback_log "[ERROR]" "Command \"$cmd\" failed with exit code $rc at ${file}:${line}"
 }' ERR
 log_info "[log Init: Iteration=$LOG_ID]"
-log_trace "################################################### START ###################################################"
-log_trace "#-----------------------------------------------------------------------------------------------------------#"
-log_trace "# required dependency check --------------------------------------------------------------------------------#"
+log "################################################### START ###################################################"
+log "#-----------------------------------------------------------------------------------------------------------#"
+log "# required dependency check --------------------------------------------------------------------------------#"
 # check for required dependencies
 for cmd in git rsync aws terraform argocd kubectl helm jq envsubst; do
   if ! command -v "$cmd" >/dev/null 2>&1; then
@@ -180,9 +186,9 @@ for cmd in git rsync aws terraform argocd kubectl helm jq envsubst; do
   fi
 done
 #shellcheck disable=SC2129
-log_trace "# required dependency check complete ---------------------------------------------------------------------- #"
-log_trace "#-----------------------------------------------------------------------------------------------------------#"
-log_trace "# directory checks ---------------------------------------------------------------------------------------- #"
+log "# required dependency check complete ---------------------------------------------------------------------- #"
+log "#-----------------------------------------------------------------------------------------------------------#"
+log "# directory checks ---------------------------------------------------------------------------------------- #"
 for directory in AUTOMATION_DIR \
                  BIN_DIR \
                  ENV_DIR \
@@ -190,26 +196,26 @@ for directory in AUTOMATION_DIR \
                  TEMPLATES_DIR \
                  OUTPUTS_DIR; do
   if ! require_env "$directory"; then ((CORE_ISSUE+=1)); continue; fi
-  log_trace "#-----------------------------------------------------------------------------------------------------------#"
+  log "#-----------------------------------------------------------------------------------------------------------#"
   if ! require_dir "$directory"; then ((CORE_ISSUE+=1)); fi
-  if [[ "$directory" != "OUTPUTS_DIR" ]]; then log_trace "#-----------------------------------------------------------------------------------------------------------#"; fi
+  if [[ "$directory" != "OUTPUTS_DIR" ]]; then log "#-----------------------------------------------------------------------------------------------------------#"; fi
 
 done
 
-log_trace "# directory checks complete ------------------------------------------------------------------------------- #"
-log_trace "#-----------------------------------------------------------------------------------------------------------#"
-log_trace "# preload bin files --------------------------------------------------------------------------------------- #"
+log "# directory checks complete ------------------------------------------------------------------------------- #"
+log "#-----------------------------------------------------------------------------------------------------------#"
+log "# preload bin files --------------------------------------------------------------------------------------- #"
 
 for core_file in "$AUTOMATION_DIR/customize.env" \
                  "$BIN_DIR/settings.sh" \
                  "$BIN_DIR/functions.sh" ; do
   if ! source_or_die "$core_file"; then CORE_ISSUE=$((CORE_ISSUE+1)); fi
-  if [[ "$core_file" != "$BIN_DIR/functions.sh" ]]; then log_trace "#-----------------------------------------------------------------------------------------------------------#"; fi
+  if [[ "$core_file" != "$BIN_DIR/functions.sh" ]]; then log "#-----------------------------------------------------------------------------------------------------------#"; fi
 done
 
-log_trace "# preload bin files complete ------------------------------------------------------------------------------ #"
-log_trace "#-----------------------------------------------------------------------------------------------------------#"
-log_trace "# core environment check ---------------------------------------------------------------------------------- #"
+log "# preload bin files complete ------------------------------------------------------------------------------ #"
+log "#-----------------------------------------------------------------------------------------------------------#"
+log "# core environment check ---------------------------------------------------------------------------------- #"
 log_info "Expected LOCAL_WORKING_DIR: '$LOCAL_WORKING_DIR'"
 if [[ "$AUTOMATION_PARENT_DIR" != "${LOCAL_WORKING_DIR:-eks-cluster-mgmt}" ]]; then ((CORE_ISSUE+=1))
   log_warn "This script is not being run from the 'LOCAL_WORKING_DIR': '$LOCAL_WORKING_DIR' directory."
@@ -218,28 +224,28 @@ log_info "Actual LOCAL_WORKING_DIR: '$AUTOMATION_PARENT_DIR'"
 
 if [[ "$AUTOMATION_PARENT_DIR" != "$LOCAL_WORKING_DIR" ]]; then
   log_warn "It is currently running from '$AUTOMATION_PARENT_DIR' directory."
-  log_trace "Please relocate the '$(basename "$AUTOMATION_DIR")' folder to '$LOCAL_WORKING_DIR' or set the LOCAL_WORKING_DIR variable in customize.env."
+  log "Please relocate the '$(basename "$AUTOMATION_DIR")' folder to '$LOCAL_WORKING_DIR' or set the LOCAL_WORKING_DIR variable in customize.env."
 else
   log_notice "This script is being run from: '$AUTOMATION_DIR'"
 fi
 if ((CORE_ISSUE > 0)); then
   log_fatal "$CORE_ISSUE"
 fi
-log_trace "# core environment check complete ------------------------------------------------------------------------- #"
-log_trace "#-----------------------------------------------------------------------------------------------------------#"
-log_trace "# main ---------------------------------------------------------------------------------------------------- #"
+log "# core environment check complete ------------------------------------------------------------------------- #"
+log "#-----------------------------------------------------------------------------------------------------------#"
+log "# main ---------------------------------------------------------------------------------------------------- #"
 echo "" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
-log_trace "#############################################################################################################"
+log "#############################################################################################################"
 
 main || log_fatal "main() failed (rc=$?)"
 
-log_trace "#############################################################################################################"
+log "#############################################################################################################"
 echo "" >> "$LOG_FILE"
 echo "" >> "$LOG_FILE"
-log_trace "# main complete ------------------------------------------------------------------------------------------- #"
-log_trace "#-----------------------------------------------------------------------------------------------------------#"
-log_trace "#################################################### END ####################################################"
+log "# main complete ------------------------------------------------------------------------------------------- #"
+log "#-----------------------------------------------------------------------------------------------------------#"
+log "#################################################### END ####################################################"
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 ###################################################################################################################################################
 # End of script

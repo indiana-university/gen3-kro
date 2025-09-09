@@ -5,8 +5,12 @@
 # shellcheck disable=SC2154
 # functions for repository file management
 : "${DIFF_LOG:=$OUTPUTS_DIR/diff.log}"
+: "${WORKING_DIR:=$LOCAL_WORKING_DIR}"
+: "${SYNC_DIRS:=$SYNC_DIRS}"
+: "${TF_MODULES_TEMPLATES:=$TF_MODULES_TEMPLATES}"
+: "${TF_MODULES_FILES:=$TF_MODULES_FILES}"
 remove_paths() {
-  [[ -n "${WORKING_DIR:-}" ]] || die 131 "WORKING_DIR is not set"
+  [[ -n "${WORKING_DIR:-}" ]] ||  { log_error "WORKING_DIR is not set"; return 1; }
   local p
   for p in "$@"; do
     rm -rf -- "$WORKING_DIR/${p:?}"
@@ -18,13 +22,13 @@ update_from_template() {
   local reldest="$1"; shift || true
   local no_subst_glob="${1:-README.md}" # default skip for README.md
 
-  [[ -f "$template" ]] || die 130 "Template not found: $template"
-  [[ -n "${WORKING_DIR:-}" ]] || die 131 "WORKING_DIR is not set"
-  local dest="$reldest"
+  [[ -f "$template" ]] || { log_error "Template not found: $template"; return 1; }
+  [[ -n "${WORKING_DIR:-}" ]] || { log_error "WORKING_DIR is not set"; return 1; }
+  local dest="$WORKING_DIR/$reldest"
   mkdir -p "$(dirname -- "$dest")"
 
   local tmp
-  tmp=$(mktemp) || die 132 "mktemp failed"
+  tmp=$(mktemp) || { log_error "mktemp failed"; return 1; }
 
   local do_subst=0
   if [[ ! "$reldest" == "$no_subst_glob" ]]; then
@@ -36,7 +40,7 @@ update_from_template() {
   fi
 
   if (( do_subst )); then
-    envsubst <"$template" >"$tmp" || die 133 "envsubst failed for $template"
+    envsubst <"$template" >"$tmp" || { log_error "envsubst failed for $template"; return 1; }
   else
     cp -- "$template" "$tmp"
   fi
@@ -57,7 +61,7 @@ update_from_template() {
 }
 
 create_dirs() {
-  [[ -n "${WORKING_DIR:-}" ]] || die 131 "WORKING_DIR is not set"
+  [[ -n "${WORKING_DIR:-}" ]] || { log_error "WORKING_DIR is not set"; return 1; }
   local d
   for d in "$@"; do
     mkdir -p -- "$WORKING_DIR/$d"
@@ -72,28 +76,31 @@ _sync_pairs() {
     update_from_template "${src_arr[$i]}" "${dst_arr[$i]}"
   done
 }
-# 1) Ensure directories
-create_dirs "${SYNC_DIRS[@]}"
-
-# 2) Root metadata files
-update_from_template "$gitignore_content"       "$gitignore_file"       "README.md"
-update_from_template "$gitattributes_content"   "$gitattributes_file"   "README.md"
-update_from_template "$readme_content"          "$readme_file"          "README.md" # README is copied as-is
-
-# 3) Bulk sync helper (pairs array1/array2 by index)
-
-
-# 4) Argo content
-_sync_pairs APPSETS_TEMPLATES   APPSETS_FILES
-_sync_pairs ADDONS_TEMPLATES    ADDONS_FILES
-_sync_pairs HUB_KRO_TEMPLATES   HUB_KRO_FILES
-_sync_pairs SPOKE_KRO_TEMPLATES SPOKE_KRO_FILES
-_sync_pairs CLUSTERS_TEMPLATES  CLUSTERS_FILES
-_sync_pairs PROJECTS_TEMPLATES  PROJECTS_FILES
-_sync_pairs VALUES_TEMPLATES    VALUES_FILES
-
+log "#------------------------------------------------------------------------------------------------------------#"
 # 5) Terraform content
 _sync_pairs HUB_TF_TEMPLATES     HUB_TF_FILES
+log "#------------------------------------------------------------------------------------------------------------#"
+
 _sync_pairs TF_MODULES_TEMPLATES TF_MODULES_FILES
+log "#------------------------------------------------------------------------------------------------------------#"
 
 log_info "Sync complete. Diff log: $DIFF_LOG"
+log "#------------------------------------------------------------------------------------------------------------#"
+
+# # 2) Root metadata files
+# update_from_template "$gitignore_content"       "$gitignore_file"       "README.md"
+# update_from_template "$gitattributes_content"   "$gitattributes_file"   "README.md"
+# update_from_template "$readme_content"          "$readme_file"          "README.md" # README is copied as-is
+
+# # 3) Bulk sync helper (pairs array1/array2 by index)
+
+
+# # 4) Argo content
+# _sync_pairs APPSETS_TEMPLATES   APPSETS_FILES
+# _sync_pairs ADDONS_TEMPLATES    ADDONS_FILES
+# _sync_pairs HUB_KRO_TEMPLATES   HUB_KRO_FILES
+# _sync_pairs SPOKE_KRO_TEMPLATES SPOKE_KRO_FILES
+# _sync_pairs CLUSTERS_TEMPLATES  CLUSTERS_FILES
+# _sync_pairs PROJECTS_TEMPLATES  PROJECTS_FILES
+# _sync_pairs VALUES_TEMPLATES    VALUES_FILES
+
