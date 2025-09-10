@@ -71,8 +71,3 @@ collected_files.txt
 # HCL lock/info
 **/*.hcl
 **/*.lock.info
-# ┌─────────────────────────────────────────┐
-# │ 9. Temporary ignore (should be removed) │
-# └─────────────────────────────────────────┘
-**/automation/terraform/*
-**/automation/argocd/*
