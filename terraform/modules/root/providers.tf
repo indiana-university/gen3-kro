@@ -33,3 +33,16 @@ provider "kubernetes" {
     ]
   }
 }
+
+
+provider "aws" {
+ region = var.aws_region
+ profile = var.hub_aws_profile
+  alias   = "hub"
+}
+
+provider "aws" {
+ region = var.aws_region
+ profile = var.spoke_aws_profile
+ alias   = "spoke"
+}
