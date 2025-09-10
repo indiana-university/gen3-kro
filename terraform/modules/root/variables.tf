@@ -2,7 +2,17 @@ variable "vpc_name" {
   description = "VPC name to be used by pipelines for data"
   type        = string
 }
+variable "hub_aws_profile" {
+  description = "AWS CLI profile to use"
+  type        = string
+  default     = "default"
+}
 
+variable "spoke_aws_profile" {
+  description = "AWS CLI profile to use"
+  type        = string
+  default     = "default"
+}
 variable "kubernetes_version" {
   description = "Kubernetes version"
   type        = string

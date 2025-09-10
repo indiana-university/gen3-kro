@@ -49,7 +49,6 @@ module "eks-hub" {
   # tags
   tags = var.tags
 }
-
 ################################################################################
 # AgroCD Module
 ################################################################################
@@ -110,6 +109,10 @@ module "argocd" {
   gitops_workload_repo_revision  = var.gitops_workload_repo_revision
   # tags
   tags = var.tags
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
 }
 ################################################################################
 # Git Secrets Module
@@ -151,4 +154,7 @@ module "git-secrets" {
   gitops_workload_app_installation_id      = var.gitops_workload_app_installation_id
   gitops_workload_app_private_key_ssm_path = var.gitops_workload_app_private_key_ssm_path
   gitops_workload_repo_name                = var.gitops_workload_repo_name
+  providers = {
+    kubernetes = kubernetes
+  }
 }
