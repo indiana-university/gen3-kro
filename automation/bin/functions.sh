@@ -345,7 +345,7 @@ run_module_with_retries() {
           # loop continues
           ;;
         s|skip)
-          return 25
+          return 0
           ;;
         q|quit)
           return 26
