@@ -8,11 +8,12 @@
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # 1) Behavior / Mode
 #-------------------------------------------------------------------------------------------------------------------------------------------------#MAIN_PROMPT_TIMEOUT_SECS=60            # start pipeline prompt
-MAIN_PROMPT_TIMEOUT_SECS=60            # start pipeline prompt
-STEP_PROMPT_TIMEOUT_SECS=600           # per-step prompt
-RETRY_PROMPT_TIMEOUT_SECS=60           # retry prompt       
-MAX_CYCLE_RETRIES=10                   # max retries on cycle
-MAX_MODULE_RETRIES=5                   # max retries on module
+MAIN_LOOP_TIMEOUT_SECS=10               # start pipeline prompt
+STEP_TIMEOUT_SECS=10                  # per-step prompt
+STEP_RETRY_TIMEOUT_SECS=600           # retry prompt
+VAL_TIMEOUT_SECS=10                     # validation retry prompt
+MAX_CYCLE_RETRIES=10                    # max retries on cycle
+MAX_MODULE_RETRIES=50                   # max retries on module
 MAX_VALIDATION_RETRIES=60               # max retries on validation
 # Optional: fine-grained overrides (all optional; apply_mode sets sane defaults)
 # Examples (uncomment to use):
@@ -27,7 +28,7 @@ MAX_VALIDATION_RETRIES=60               # max retries on validation
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # 2) Terraform
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
-TERRAFORM_MODE=destroy   # terraform mode: create | destroy | plan | validate
+TERRAFORM_MODE=validate   # terraform mode: create | destroy | plan | validate
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # 3) Execution
@@ -40,9 +41,9 @@ TERRAFORM_MODE=destroy   # terraform mode: create | destroy | plan | validate
 #   example: STEPS_EXEC_MODE["01-init-repo.sh"]="ask"
 declare -A -g STEPS_EXEC_MODE=(
   ["00-validations.sh"]="auto"
-  ["01-prep-workspace.sh"]="auto"
-  ["03-create-repo-files.sh"]="auto"
-  # ["03-validate-vars.sh"]=""
+  ["01-backups.sh"]="auto"
+  ["02-update-files.sh"]="auto"
+  ["04-terraform.sh"]="auto"
   # ["04-terraform.sh"]=""
   # ["05-bootstrap-backup.sh"]=""
   # ["06-setup-argocd.sh"]=""
@@ -67,12 +68,21 @@ declare -ag DEFAULT_FILES=(
   "07|$ENV_DIR/output.env"
   "08|$ENV_DIR/gitops.env"
 )
+
+# Required by 01-init-repo.sh
+declare -ag CONTROLLERS=(
+  iam
+  eks
+  ec2
+  efs
+)
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # Export key variables for use by other scripts
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
-export MAIN_PROMPT_TIMEOUT_SECS
-export STEP_PROMPT_TIMEOUT_SECS
-export RETRY_PROMPT_TIMEOUT_SECS
+export MAIN_LOOP_TIMEOUT_SECS
+export STEP_TIMEOUT_SECS
+export STEP_RETRY_TIMEOUT_SECS
+export VAL_TIMEOUT_SECS
 export MAX_CYCLE_RETRIES
 export MAX_MODULE_RETRIES
 export MAX_VALIDATION_RETRIES
@@ -80,6 +90,8 @@ export TERRAFORM_MODE
 export STEPS_EXEC_MODE
 export DEBUG_MODE_FILES
 export DEFAULT_FILES
+export CONTROLLERS
+
 ###################################################################################################################################################
 # End of file 
 ###################################################################################################################################################

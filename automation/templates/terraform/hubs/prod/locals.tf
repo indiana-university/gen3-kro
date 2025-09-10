@@ -224,8 +224,28 @@ locals {
   )
 
   argocd_apps = {
-    applicationsets = file("${path.module}/../argocd/applicationsets.yaml")
+    applicationsets = file("${path.module}/../bootstrap/applicationsets.yaml")
   }
+  # role_arns = []
+  # # # Generate dynamic access entries for each admin rolelocals {
+  # admin_access_entries = {
+  #   for role_arn in local.role_arns : role_arn => {
+  #     principal_arn = role_arn
+  #     policy_associations = {
+  #       admins = {
+  #         policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  #         access_scope = {
+  #           type = "cluster"
+  #         }
+  #       }
+  #     }
+  #   }
+  # }
+
+
+  # # Merging dynamic entries with static entries if needed
+  # access_entries = merge({}, local.admin_access_entries)
+
   tags = merge(
     var.tags,
     {
