@@ -5,7 +5,7 @@
 module "root" {
   source  = "../../modules/root"
   # Authentication and authorization
-  aws_region  = var.aws_region
+  hub_aws_region  = var.aws_region
   account_ids = var.account_ids
   # Cluster configuration
   vpc_name           = var.vpc_name

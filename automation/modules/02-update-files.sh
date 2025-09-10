@@ -28,7 +28,7 @@ update_from_template() {
   mkdir -p "$(dirname -- "$dest")"
 
   local tmp
-  tmp=$(mktemp) || { log_error "mktemp failed"; return 1; }
+  tmp=$(mktemp "$(basename "$template").XXXXXX") || { log_error "mktemp failed"; return 1; }
 
   local do_subst=0
   if [[ ! "$reldest" == "$no_subst_glob" ]]; then

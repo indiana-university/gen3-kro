@@ -42,7 +42,6 @@ TERRAFORM_MODE=validate   # terraform mode: create | destroy | plan | validate
 declare -A -g STEPS_EXEC_MODE=(
   ["00-validations.sh"]="auto"
   ["01-backups.sh"]="auto"
-  ["02-update-files.sh"]="auto"
   ["04-terraform.sh"]="auto"
   # ["04-terraform.sh"]=""
   # ["05-bootstrap-backup.sh"]=""
@@ -54,7 +53,9 @@ declare -A -g STEPS_EXEC_MODE=(
 declare -ag DEBUG_MODE_FILES=(
   "00|$AUTOMATION_DIR/customize.env"
   "01|$BIN_DIR/functions.sh"
-  "03|$BIN_DIR/settings.sh"
+  "02|$BIN_DIR/settings.sh"
+  "03|$MODULES_DIR/02-update-files.sh"
+
 )
 
 # Default environment files to load in all modes, in order.
