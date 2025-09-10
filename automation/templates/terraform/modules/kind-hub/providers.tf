@@ -6,7 +6,7 @@ provider "kubernetes" {
 }
 
 provider "helm" {
-  kubernetes {
+  kubernetes = {
     config_path = kind_cluster.dev.kubeconfig_path
   }
 }

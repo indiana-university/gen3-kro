@@ -10,25 +10,19 @@
 prep_workspace() {
 
   # Move .git folder to designated location (as per your prior design)
+  log "#-----------------------------------------------------------------------------------------------------------#"
+  log_info "[prep_workspace():.git LOCAL_WORKING_DIR=$LOCAL_WORKING_DIR AUTOMATION_DIR=$AUTOMATION_DIR]"
   if [[ -d "$LOCAL_WORKING_DIR/.git" ]]; then
     if ! backup_path ".git"; then return 1; fi
-    backup="$(backup_path "$LOCAL_WORKING_DIR")" || true
-    if [[ -n "${backup:-}" ]]; then
-      log_warn "Backup created at: $backup"
-    fi
     rm -rf ".git" || { log_error "Failed to remove existing .git in automation dir"; return 1; }
     mv "$LOCAL_WORKING_DIR/.git" "." || { log_error "Failed to move .git to automation dir"; return 1; }
     sed -i.bak "/\[core\]/a\\"$'\n\t'"worktree = ../$LOCAL_WORKING_DIR" .git/config || { log_error "Failed to update core.worktree in .git/config"; return 1; }
-    log_notice "[prep_workspace] completed"
+    log_notice "[Moved .git to automation dir; worktree set to $LOCAL_WORKING_DIR]"
   fi
 
   if ! backup_path "$AUTOMATION_DIR"; then return 1; fi
-  backup_bootstrap="$(backup_path "$AUTOMATION_DIR")" || true
-  if [[ -n "${backup_bootstrap:-}" ]]; then
-    log_notice "Backup created at: $backup_bootstrap"
-  fi
-
-  log "#------------------------------------------------------------------------------------------------------------#"
+  log_notice "[prep_workspace()] completed successfully"
+  log "#-----------------------------------------------------------------------------------------------------------#"
   }
 
 #-------------------------------------------------------------------------------------------------------------------------------------------------#

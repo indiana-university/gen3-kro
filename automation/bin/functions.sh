@@ -4,11 +4,12 @@
 ###################################################################################################################################################
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # Variables:
-: "${MAIN_PROMPT_TIMEOUT_SECS:=120}"   # start pipeline prompt
-: "${STEP_PROMPT_TIMEOUT_SECS:=120}"   # per-step prompt
-: "${RETRY_PROMPT_TIMEOUT_SECS:=120}"  # retry prompt
+: "${MAIN_LOOP_TIMEOUT_SECS:=120}"   # start pipeline prompt
+: "${STEP_TIMEOUT_SECS:=120}"   # per-step prompt
+: "${STEP_RETRY_TIMEOUT_SECS:=120}"  # retry prompt
+: "${VAL_TIMEOUT_SECS:=10}"       # validation retry prompt
 : "${MAX_CYCLE_RETRIES:=2}"
-: "${MAX_MODULE_RETRIES:=3}"  # max retries on failure
+: "${MAX_STEP_RETRIES:=3}"  # max retries on failure
 : "${MAX_VALIDATION_RETRIES:=1}"  # max retries on validation
 : "${OUTPUTS_DIR:=outputs}"
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
@@ -21,10 +22,11 @@ backup_path() {
     local b
     ts="$(date +%Y%m%d%H%M%S)"
     b="old/$(basename "$p")-backup-$ts"
+    log_info "[backup_path():source=$(basename "$p") dest=$b]"
     log_debug "file=$(basename "$p") backup=$b path=$p"
     mkdir -p "old" || { log_error "Failed to create backup directory"; return 1; }
     cp -r "$p" "$b" || { log_error "Failed to copy $p to $b"; return 1; }
-    log "#------------------------------------------------------------------------------------------------------------#"
+    log_notice "[backup_path()] completed successfully"
   fi
 }
 
@@ -271,7 +273,7 @@ load_modules() {
   if [[ $step_retry_count == 0 ]]; then
     RETRY_ID="attempt 1"
   else
-    RETRY_ID=" retry: $step_retry_count/$max_module_retries"
+    RETRY_ID=" retry: $step_retry_count/$max_step_retries"
   fi
   log "#--------------------------------------------- $RETRY_ID ---------------------------------------------------------#"
   path="$MODULES_DIR/$script"
@@ -302,7 +304,7 @@ load_modules() {
     log_error "[load_modules()=script:$script] failed: (rc=$rc)"
     log "#############################################################################################################"
     if [[ -s "$ERR_FILE" ]]; then
-      if [[ $step_retry_count == "$max_module_retries" ]]; then
+      if [[ $step_retry_count == "$max_step_retries" ]]; then
         log "'Error output from $script:'"
         log_trace "#-----------------------------------------------------------------------------------------------------------#"
         while IFS= read -r line; do
@@ -320,15 +322,15 @@ load_modules() {
 run_module_with_retries() {
   local debug_mode="${1:-1}"
   local script="${2:-}"
-  local max_module_retries="${MAX_MODULE_RETRIES:-3}"
-  local retry_timeout="${RETRY_PROMPT_TIMEOUT_SECS:-120}"
+  local max_step_retries="${MAX_STEP_RETRIES:-3}"
+  local retry_timeout="${STEP_RETRY_TIMEOUT_SECS:-120}"
   local step_retry_count=0
   until load_modules "$debug_mode" "$script"; do
-    log_trace "$(date +'%Y-%m-%d %H:%M:%S')  [ERROR]  (functions.sh        :320 ) ✖ $script module failed with error code: (rc=${LAST_MODULE_RC:-1})."
+    log_trace "$(date +'%Y-%m-%d %H:%M:%S')  [ERROR]  (functions.sh        :320 ) ✖ retry:$step_retry_count] $script module failed with error code: (rc=${LAST_MODULE_RC:-1})."
     log "#############################################################################################################"
 
-    if (( step_retry_count >= max_module_retries )); then
-      log_error "Reached maximum retries ($max_module_retries). Quitting pipeline."
+    if (( step_retry_count >= max_step_retries )); then
+      log_error "Reached maximum retries ($max_step_retries). Quitting pipeline."
       return 23
     fi
 
@@ -339,7 +341,7 @@ run_module_with_retries() {
       case "${choice,,}" in
         r|retry)
           ((step_retry_count++))
-          log_info "Retrying: step $step_retry_count/$max_module_retries"
+          log_info "Retrying: step $step_retry_count/$max_step_retries"
           # loop continues
           ;;
         s|skip)
@@ -355,7 +357,7 @@ run_module_with_retries() {
       esac
     else
       ((step_retry_count++))
-      log_warn "No input after ${retry_timeout}s — retrying ($step_retry_count/$max_module_retries)..."
+      log_warn "No input after ${retry_timeout}s — retrying ($step_retry_count/$max_step_retries)..."
     fi
   done
 
@@ -369,7 +371,7 @@ primer() {
   log "#-----------------------------------------------------------------------------------------------------------#"
 
   # Load defaults once (combined validate+load), retry until success
-  if ! retry_until "${MAIN_PROMPT_TIMEOUT_SECS:-120}" \
+  if ! retry_until "${VAL_TIMEOUT_SECS:-120}" \
     "[validate_and_load_default_files(): failed]" \
     validate_and_load_default_files
   then return 1; fi
@@ -377,7 +379,7 @@ primer() {
   log "#-----------------------------------------------------------------------------------------------------------#"
 
   # Build/validate the script_list from STEPS_EXEC_MODE, retry until success
-  if ! retry_until "${MODULE_VAL_TIMEOUT_SECS:-10}" \
+  if ! retry_until "${VAL_TIMEOUT_SECS:-10}" \
     "[validate_steps_exec_mode(): failed]" \
     validate_steps_exec_mode
   then return 1; fi
@@ -390,140 +392,168 @@ primer() {
 END_LOOP_ID=$MAX_CYCLE_RETRIES
   log "############################################ LOOP ID: $LOOP_ID/$END_LOOP_ID ###################################################"
 }
-
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # Main loop over scripts
 main() {
+  read -r -t "${MAIN_LOOP_TIMEOUT_SECS:-120}" \
+    -p $'   Start pipeline? [y]es / [q]uit pipeline (Waiting for '"${MAIN_LOOP_TIMEOUT_SECS:-120}"' seconds...): ' choice
+
+  if [[ -z "$choice" || "${choice,,}" == "y" || "${choice,,}" == "yes" ]]; then
+
   log "# primer -------------------------------------------------------------------------------------------------- #"
   if ! primer; then return 1; fi
 
-  local rc 
-  local step=0
-  local cycle_retry_count=0
-  local max_cycle_retries=$MAX_CYCLE_RETRIES
-  local total="${#script_list[@]}"
-  local debug_mode="${DEBUG_MODE:-1}"  # refresh in case it changed
-  while :; do
-    
-    # Completed a full pass?
-    if (( step >= total )); then
-      log_debug "step=$step total=$total"
-      log_notice "✔ Loop complete (all $total scripts processed)."
-      log "#############################################################################################################"
+    local rc 
+    local step=0
+    local cycle_retry_count=0
+    local max_cycle_retries=$MAX_CYCLE_RETRIES
+    local total="${#script_list[@]}"
+    local debug_mode="${DEBUG_MODE:-1}"  # refresh in case it changed
+
+    while :; do
       
-      if (( cycle_retry_count >= max_cycle_retries )); then
-        log_info "Reached maximum pipeline cycles ($max_cycle_retries). Exiting normally."
-        return 0
-      fi
+      # Completed a full pass?
+      if (( step >= total )); then
+        log_debug "step=$step total=$total"
+        log_notice "✔ Loop complete (all $total scripts processed)."
+        log "#############################################################################################################"
+        
+        if (( cycle_retry_count >= max_cycle_retries )); then
+          log_info "Reached maximum pipeline cycles ($max_cycle_retries). Exiting normally."
+          return 0
+        fi
 
-      ((++cycle_retry_count))   
-      log "#-----------------------------------------------------------------------------------------------------------#"
-      if read -r -t "${STEP_PROMPT_TIMEOUT_SECS:-120}" \
-        -p $'   Restart pipeline? [y]es / [q]uit pipeline (Waiting for '"${STEP_PROMPT_TIMEOUT_SECS:-120}"' seconds...): ' choice
-        then
-        case "${choice,,}" in
-          q|quit)
-            log_info "Exiting pipeline as requested."
-            return 0
-            ;;
-          y|yes)
+        ((++cycle_retry_count))   
+        log "#-----------------------------------------------------------------------------------------------------------#"
+        if read -r -t "${MAIN_LOOP_TIMEOUT_SECS:-120}" \
+          -p $'   Restart pipeline? [y]es / [q]uit pipeline (Waiting for '"${MAIN_LOOP_TIMEOUT_SECS:-120}"' seconds...): ' choice
+          then
+          case "${choice,,}" in
+            q|quit)
+              log_info "Exiting pipeline as requested."
+              return 0
+              ;;
+            y|yes)
 
-            log_notice "[RESTART=MAIN]: Attempt #${cycle_retry_count}/${max_cycle_retries}"
-            log "#-----------------------------------------------------------------------------------------------------------#"
-            log "#############################################################################################################"
-            log "#-----------------------------------------------------------------------------------------------------------#"
-            
-            if (( debug_mode == 1 )); then
-              if ! retry_until "${MODULE_VAL_TIMEOUT_SECS:-10}" \
-                "[validate_and_load_debug_files(): failed]" \
-                validate_and_load_debug_files
-              then return 1; fi
+              log_notice "[RESTART=MAIN]: Attempt #${cycle_retry_count}/${max_cycle_retries}"
               log "#-----------------------------------------------------------------------------------------------------------#"
-            fi
+              log "#############################################################################################################"
+              log "#-----------------------------------------------------------------------------------------------------------#"
+              
+              if (( debug_mode == 1 )); then
+                if ! retry_until "${VAL_TIMEOUT_SECS:-10}" \
+                  "[validate_and_load_debug_files(): failed]" \
+                  validate_and_load_debug_files
+                then return 1; fi
+                log "#-----------------------------------------------------------------------------------------------------------#"
+              fi
 
-            log "# primer -------------------------------------------------------------------------------------------------- #"
-            if ! primer; then return 1; fi
-            ;;
-        esac
-      else
-        log_info "No input after ${STEP_PROMPT_TIMEOUT_SECS:-120}s — restarting pipeline."
+              log "# primer -------------------------------------------------------------------------------------------------- #"
+              if ! primer; then return 1; fi
+              ;;
+          esac
+        else
+          log_info "No input after ${STEP_TIMEOUT_SECS:-120}s — restarting pipeline."
+        fi
+        step=0
+        total="${#script_list[@]}"  # refresh in case it changed
       fi
-      step=0
-      total="${#script_list[@]}"  # refresh in case it changed
-    fi
-    # Pull the next script and its mode (EXEC_MODE is optional; defaults to ask)
-    local script="${script_list[$step]}"
-    local mode="${STEPS_EXEC_MODE[$script]:-${EXEC_MODE_DEFAULT:-ask}}"
+      # Pull the next script and its mode (EXEC_MODE is optional; defaults to ask)
+      local script="${script_list[$step]}"
+      local mode="${STEPS_EXEC_MODE[$script]:-${EXEC_MODE_DEFAULT:-ask}}"
 
-    printf "→ (%d/%d) %s  [mode: %s]\n" "$((step + 1))" "$total" "$script" "$mode"
-    log_debug "step=$step script=$script mode=$mode DEBUG_MODE=${debug_mode}"
-    # Per-module prompt/flow
-    case "$mode" in
-      ask)
-        if (( ${debug_mode:-1} )); then
-          local choice=""
-          if read -r -t "${STEP_PROMPT_TIMEOUT_SECS:-120}" \
-            -p $'   Run this step? [y]es / [s]kip / [e]nd pipeline (Waiting for '"${STEP_PROMPT_TIMEOUT_SECS:-120}"' seconds...): ' choice
-          then
-            case "${choice,,}" in
-              y|yes) : ;;                                   # proceed
-              s|skip) ((++step)); continue ;;               # skip to next
-              e|end) step=$total;       continue ;;        # end pipeline
-              *) echo "   Please answer y, s, or e."; continue ;;
-            esac
-          else
-            echo "   No input after ${STEP_PROMPT_TIMEOUT_SECS:-120}s — proceeding with this step."
+      printf "→ (%d/%d) %s  [mode: %s]\n" "$((step + 1))" "$total" "$script" "$mode"
+      log_debug "step=$step script=$script mode=$mode DEBUG_MODE=${debug_mode}"
+      # Per-module prompt/flow
+      case "$mode" in
+        ask)
+          if (( ${debug_mode:-1} )); then
+            local choice=""
+            if read -r -t "${STEP_TIMEOUT_SECS:-120}" \
+              -p $'   Run this step? [y]es / [s]kip / [e]nd pipeline (Waiting for '"${STEP_TIMEOUT_SECS:-120}"' seconds...): ' choice
+            then
+              case "${choice,,}" in
+                y|yes) : ;;                                   # proceed
+                s|skip) ((++step)); continue ;;               # skip to next
+                e|end) step=$total;       continue ;;        # end pipeline
+                *) echo "   Please answer y, s, or e."; continue ;;
+              esac
+            else
+              echo "   No input after ${STEP_TIMEOUT_SECS:-120}s — proceeding with this step."
+            fi
           fi
-        fi
-        ;;
-      auto)
-        echo "   Running step automatically (no delay)..."
-        ;;
-      *)
-        log_warn "Unknown EXEC_MODE '$mode' for $script"
-        if (( ${debug_mode:-1} )); then
-          local choice=""
-          if read -r -t "${STEP_PROMPT_TIMEOUT_SECS:-120}" \
-            -p $'   Run this step? [y]es / [s]kip / [e]xit pipeline (Waiting for '"${STEP_PROMPT_TIMEOUT_SECS:-120}"' seconds...): ' choice
-          then
-            case "${choice,,}" in
-              y|yes) : ;;                                   # proceed
-              s|skip) ((++step)); continue ;;               # skip
-              e|exit) step=$total;       continue ;;        # end
-              *) echo "   Please answer y, s, or e."; continue ;;
-            esac
-          else
-            echo "   No input after ${STEP_PROMPT_TIMEOUT_SECS:-120}s — proceeding with this step."
+          ;;
+        auto)
+          echo "   Running step automatically (no delay)..."
+          ;;
+        *)
+          log_warn "Unknown EXEC_MODE '$mode' for $script"
+          if (( ${debug_mode:-1} )); then
+            local choice=""
+            if read -r -t "${STEP_TIMEOUT_SECS:-120}" \
+              -p $'   Run this step? [y]es / [s]kip / [e]xit pipeline (Waiting for '"${STEP_TIMEOUT_SECS:-120}"' seconds...): ' choice
+            then
+              case "${choice,,}" in
+                y|yes) : ;;                                   # proceed
+                s|skip) ((++step)); continue ;;               # skip
+                e|exit) step=$total;       continue ;;        # end
+                *) echo "   Please answer y, s, or e."; continue ;;
+              esac
+            else
+              echo "   No input after ${STEP_TIMEOUT_SECS:-120}s — proceeding with this step."
+            fi
           fi
-        fi
-        ;;
-    esac
+          ;;
+      esac
 
-    if ! run_module_with_retries "$debug_mode" "$script"; then
-      log_error "main(): run_module_with_retries() failed(rc=$LAST_MODULE_RC)"
-      return 1
-    fi
-    ((++step))
+      if ! run_module_with_retries "$debug_mode" "$script"; then
+        log_error "main(): run_module_with_retries() failed(rc=$LAST_MODULE_RC)"
+        return 1
+      fi
+      ((++step))
 
-  done
+    done
+  elif [[ "${choice,,}" == "q" || "${choice,,}" == "quit" ]]; then
+    log_notice "Pipeline aborted by user"
+
+  else
+    log_warn "Invalid choice: $choice (expected y/yes or q/quit)"
+    return 1
+  fi
 }
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 # Module Functions
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 run() {
   local start end dur rc
-  log_debug "$(printf "run(): argv=%q count=%q PWD=%q" "$*" "$#" "$PWD")"
-  log_info "+ $*"
+  local cmd_str cmd_name logfile
+
+  cmd_str=$(printf '%q ' "$@")   # full command for logging
+  cmd_name=$(basename "$1")      # just the command (e.g., terraform, docker, ls)
+  logfile="$OUTPUTS_DIR/${cmd_name}.log"
+
+  log_info "[run()=argv:'$cmd_str' argc:'$#' PWD:'$PWD']"
   start=$SECONDS
-  "$@"; rc=$?
-  end=$SECONDS; dur=$(( end - start ))
-  if (( rc == 0 )); then
-    log_info "Command SUCCESS $rc (duration=${dur}s): $*"
+
+  # Redirect stdout/stderr to logfile + console
+  if [[ $cmd_name == "terraform" ]]; then
+    "$@" 2>&1 | tee >(sed -r "s/\x1B\[[0-9;]*[mK]//g" >> "$logfile")
   else
-    log_error "Command FAILED $rc (duration=${dur}s): $*"
+    "$@" 2>&1 | tee -a "$logfile"
   fi
+  rc=${PIPESTATUS[0]}
+
+  end=$SECONDS; dur=$(( end - start ))
+
+  if (( rc == 0 )); then
+    log_info "[run()=Command SUCCESS $rc (duration=${dur}s): $cmd_str]"
+  else
+    log_error "[run()=Command FAILED $rc (duration=${dur}s): $cmd_str]"
+  fi
+
   return "$rc"
 }
+
 ###################################################################################################################################################
 # End of file
 ###################################################################################################################################################
