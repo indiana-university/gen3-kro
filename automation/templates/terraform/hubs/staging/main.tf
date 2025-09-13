@@ -13,6 +13,7 @@ module "root" {
   # Cluster configuration
   vpc_name           = var.vpc_name
   kubernetes_version = var.kubernetes_version
+  kubeconfig_dir     = var.kubeconfig_dir
   cluster_name       = var.cluster_name
   enable_automode    = var.enable_automode
   tenant             = var.tenant
@@ -70,4 +71,9 @@ module "root" {
   tags = var.tags
   # Configuration outputs
   outputs_dir  = var.outputs_dir
+  providers = {
+    kind.dev       = kind.dev
+    kubernetes.dev = kubernetes.dev
+    helm.dev       = helm.dev
+  }
 }

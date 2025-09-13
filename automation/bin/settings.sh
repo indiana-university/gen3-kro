@@ -13,7 +13,7 @@ STEP_TIMEOUT_SECS=10                  # per-step prompt
 STEP_RETRY_TIMEOUT_SECS=600           # retry prompt
 VAL_TIMEOUT_SECS=10                     # validation retry prompt
 MAX_CYCLE_RETRIES=10                    # max retries on cycle
-MAX_MODULE_RETRIES=50                   # max retries on module
+MAX_STEP_RETRIES=100                   # max retries on module
 MAX_VALIDATION_RETRIES=60               # max retries on validation
 # Optional: fine-grained overrides (all optional; apply_mode sets sane defaults)
 # Examples (uncomment to use):
@@ -85,7 +85,7 @@ export STEP_TIMEOUT_SECS
 export STEP_RETRY_TIMEOUT_SECS
 export VAL_TIMEOUT_SECS
 export MAX_CYCLE_RETRIES
-export MAX_MODULE_RETRIES
+export MAX_STEP_RETRIES
 export MAX_VALIDATION_RETRIES
 export TERRAFORM_MODE
 export STEPS_EXEC_MODE

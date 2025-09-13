@@ -1,20 +1,17 @@
-output "endpoint" {
-  description = "API endpoint for the Kind cluster."
-  value       = kind_cluster.default.endpoint
+variable "cluster_name" {
+  description = "Name of the Kind cluster"
+  type        = string
+  default     = "kftray-cluster"
 }
 
-output "kubeconfig" {
-  description = "Kubeconfig file for the Kind cluster."
-  value       = kind_cluster.default.kubeconfig
-  sensitive   = true
+variable "kubernetes_version" {
+  description = "Version of the Kind node image"
+  type        = string
+  default     = "v1.30.4"
 }
 
-output "credentials" {
-  description = "Credentials for authenticating with the Kind cluster."
-  value = {
-    client_certificate     = kind_cluster.default.client_certificate
-    client_key             = kind_cluster.default.client_key
-    cluster_ca_certificate = kind_cluster.default.cluster_ca_certificate
-  }
-  sensitive = true
+variable "kubeconfig_dir" {
+  description = "Directory to store the kubeconfig file"
+  type        = string
+  default     = "~/.kube"
 }

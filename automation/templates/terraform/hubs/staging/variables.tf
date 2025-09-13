@@ -9,6 +9,12 @@ variable "kubernetes_version" {
   default     = "1.31"
 }
 
+variable "kubeconfig_dir" {
+  description = "Directory to store the kubeconfig file"
+  type        = string
+  default     = "~/.kube"
+}
+
 variable "addons" {
   description = "Kubernetes addons"
   type        = any
