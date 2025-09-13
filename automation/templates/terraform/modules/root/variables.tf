@@ -13,10 +13,17 @@ variable "spoke_aws_profile" {
   type        = string
   default     = "default"
 }
+
 variable "kubernetes_version" {
   description = "Kubernetes version"
   type        = string
   default     = "1.31"
+}
+
+variable "kubeconfig_dir" {
+  description = "Directory to store the kubeconfig file"
+  type        = string
+  default     = "~/.kube"
 }
 
 variable "addons" {

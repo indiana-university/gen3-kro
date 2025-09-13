@@ -48,5 +48,19 @@ provider "aws" {
 }
 
 
+provider "kind" {
+  alias = "dev"
+}
+provider "kubernetes" {
+  config_path = pathexpand("${var.kubeconfig_dir}/kind-config-${var.cluster_name}")
+  alias       = "dev"
+  
+}
 
+provider "helm" {
+  kubernetes = {
+    config_path = pathexpand("${var.kubeconfig_dir}/kind-config-${var.cluster_name}")
+  }
+  alias = "dev" 
+}
 

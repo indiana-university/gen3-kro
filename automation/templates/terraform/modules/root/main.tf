@@ -9,6 +9,12 @@ module "kind-hub" {
   # Cluster configuration
   cluster_name = var.cluster_name
   kubernetes_version   = var.kubernetes_version
+  kubeconfig_dir       = var.kubeconfig_dir
+  providers = {
+    kind       = kind.dev
+    kubernetes = kubernetes.dev
+    helm       = helm.dev
+  }
 
 }
 
