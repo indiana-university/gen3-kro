@@ -2,11 +2,6 @@ variable "vpc_name" {
   description = "VPC name to be used by pipelines for data"
   type        = string
 }
-variable "hub_aws_profile" {
-  description = "AWS CLI profile to use"
-  type        = string
-  default     = "default"
-}
 
 variable "kubernetes_version" {
   description = "Kubernetes version"
@@ -18,6 +13,12 @@ variable "kubeconfig_dir" {
   description = "Directory to store the kubeconfig file"
   type        = string
   default     = "~/.kube"
+}
+
+variable "ack_services" {
+  type        = set(string)
+  description = "Set of ACK services to provision roles/policies for"
+  default     = ["iam", "ec2", "eks"]
 }
 
 variable "addons" {
@@ -186,9 +187,15 @@ variable "environment" {
 }
 
 variable "hub_aws_region" {
-  description = "AWS region for the Hub Cluster"
+  description = "AWS region where the cluster is deployed"
   type        = string
   default     = "us-east-1"
+}
+
+variable "hub_aws_profile" {
+  description = "AWS profile for the Hub Cluster"
+  type        = string
+  default     = "default"
 }
 
 variable "gitops_addons_github_url" {
@@ -303,11 +310,6 @@ variable "gitops_platform_app_installation_id" {
   default     = ""
 }
 
-variable "ack_services" {
-  type        = set(string)
-  description = "Set of ACK services to provision roles/policies for"
-  default     = ["iam", "ec2", "eks"]
-}
 
 variable "tags" {
   description = "Tags to be applied to all resources"
@@ -322,7 +324,7 @@ variable "outputs_dir" {
 }
 
 variable "argocd_chart_version" {
-  description = "Version of the ArgoCD Helm chart to use"
+  description = "The version of the ArgoCD Helm chart to be used"
   type        = string
-  default     = "5.46.0"
+  default     = "7.7.8"
 }

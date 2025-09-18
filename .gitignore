@@ -33,7 +33,7 @@ crash.log
 **/secrets.yaml
 **/*.pem
 **/*.ppk
-**/secrets.tfvars
+**/customize.env
 **/variables.env
 collected_files.txt
 # ┌─────────────────────────────────────────┐
@@ -45,6 +45,8 @@ collected_files.txt
 **/*.backup
 **/*.tfplan
 **/*.tfplan.*
+terraform/**/*.tfvars
+
 **/tfplan.*
 **/plan.json
 **/*.tfworkspace
@@ -71,8 +73,8 @@ collected_files.txt
 # HCL lock/info
 **/*.hcl
 **/*.lock.info
-# ┌─────────────────────────────────────────┐
-# │ 9. Temporary ignore (should be removed) │
-# └─────────────────────────────────────────┘
-# terraform/*
-# argocd/*
+**/addons/**
+**/apps/**
+**/fleet/**
+**/charts/**
+**/platform/**
