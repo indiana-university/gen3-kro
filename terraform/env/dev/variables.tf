@@ -9,12 +9,6 @@ variable "kubernetes_version" {
   default     = "1.31"
 }
 
-variable "enable_eks_hub" {
-  description = "Enable EKS Hub cluster"
-  type        = bool
-  default     = true
-}
-
 variable "ack_services" {
   type        = set(string)
   description = "Set of ACK services to provision roles/policies for"
@@ -61,6 +55,95 @@ variable "route53_zone_name" {
   description = "The route53 zone for external dns"
   default     = ""
 }
+# Github Repos Variables
+
+variable "git_org_name" {
+  description = "The name of Github organisation"
+  default     = "kro-run"
+}
+
+variable "gitops_addons_repo_name" {
+  description = "The name of git repo"
+  default     = "kro"
+}
+
+variable "gitops_addons_repo_path" {
+  description = "The path of addons bootstraps in the repo"
+  default     = "bootstrap"
+}
+
+variable "gitops_addons_repo_base_path" {
+  description = "The base path of addons in the repon"
+  default     = "examples/aws/eks-cluster-mgmt/addons/"
+}
+
+variable "gitops_addons_repo_revision" {
+  description = "The name of branch or tag"
+  default     = "main"
+}
+# Fleet
+variable "gitops_fleet_repo_name" {
+  description = "The name of Git repo"
+  default     = "kro"
+}
+
+variable "gitops_fleet_repo_path" {
+  description = "The path of fleet bootstraps in the repo"
+  default     = "bootstrap"
+}
+
+variable "gitops_fleet_repo_base_path" {
+  description = "The base path of fleet in the repon"
+  default     = "examples/aws/eks-cluster-mgmt/fleet/"
+}
+
+variable "gitops_fleet_repo_revision" {
+  description = "The name of branch or tag"
+  default     = "main"
+}
+
+# workload
+variable "gitops_workload_repo_name" {
+  description = "The name of Git repo"
+  default     = "kro"
+}
+
+variable "gitops_workload_repo_path" {
+  description = "The path of workload bootstraps in the repo"
+  default     = "examples/aws/eks-cluster-mgmt/apps/"
+}
+
+variable "gitops_workload_repo_base_path" {
+  description = "The base path of workloads in the repo"
+  default     = ""
+}
+
+variable "gitops_workload_repo_revision" {
+  description = "The name of branch or tag"
+  default     = "main"
+}
+
+# Platform
+variable "gitops_platform_repo_name" {
+  description = "The name of Git repo"
+  default     = "kro"
+}
+
+variable "gitops_platform_repo_path" {
+  description = "The path of platform bootstraps in the repo"
+  default     = "bootstrap"
+}
+
+variable "gitops_platform_repo_base_path" {
+  description = "The base path of platform in the repo"
+  default     = "examples/aws/eks-cluster-mgmt/platform/"
+}
+
+variable "gitops_platform_repo_revision" {
+  description = "The name of branch or tag"
+  default     = "main"
+}
+
 
 variable "ackCreate" {
   description = "Creating PodIdentity and addons relevant resources with ACK"
@@ -109,6 +192,46 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "gitops_addons_github_url" {
+  description = "The GitHub URL for GitOps Addons"
+  default     = "github.com"
+}
+
+variable "gitops_fleet_github_url" {
+  description = "The GitHub URL for GitOps Fleet"
+  default     = "github.com"
+}
+
+variable "gitops_workload_github_url" {
+  description = "The GitHub URL for GitOps Workload"
+  default     = "github.com"
+}
+
+variable "gitops_platform_github_url" {
+  description = "The GitHub URL for GitOps Platform"
+  default     = "github.com"
+}
+
+variable "gitops_addons_org_name" {
+  description = "The organization name for GitOps Addons"
+  default     = "kro"
+}
+
+variable "gitops_fleet_org_name" {
+  description = "The organization name for GitOps Fleet"
+  default     = "kro"
+}
+
+variable "gitops_workload_org_name" {
+  description = "The organization name for GitOps Workload"
+  default     = "kro"
+}
+
+variable "gitops_platform_org_name" {
+  description = "The organization name for GitOps Platform"
+  default     = "kro"
+}
+
 variable "gitops_addons_app_private_key_ssm_path" {
   description = "SSM path for the GitOps Addons app private key"
   type        = string
@@ -133,6 +256,54 @@ variable "gitops_platform_app_private_key_ssm_path" {
   default     = "/kro/gitops/platform/app-private-key"
 }
 
+variable "gitops_addons_app_id" {
+  description = "GitOps Addons app ID"
+  type        = string
+  default     = ""
+}
+
+variable "gitops_fleet_app_id" {
+  description = "GitOps Fleet app ID"
+  type        = string
+  default     = ""
+}
+
+variable "gitops_workload_app_id" {
+  description = "GitOps Workload app ID"
+  type        = string
+  default     = ""
+}
+
+variable "gitops_platform_app_id" {
+  description = "GitOps Platform app ID"
+  type        = string
+  default     = ""
+}
+
+variable "gitops_addons_app_installation_id" {
+  description = "GitOps Addons app installation ID"
+  type        = string
+  default     = ""
+}
+
+variable "gitops_fleet_app_installation_id" {
+  description = "GitOps Fleet app installation ID"
+  type        = string
+  default     = ""
+}
+
+variable "gitops_workload_app_installation_id" {
+  description = "GitOps Workload app installation ID"
+  type        = string
+  default     = ""
+}
+
+variable "gitops_platform_app_installation_id" {
+  description = "GitOps Platform app installation ID"
+  type        = string
+  default     = ""
+}
+
 # Define variables for the policy URLs
 variable "policy_arn_urls" {
   type    = map(string)
@@ -151,62 +322,21 @@ variable "inline_policy_urls" {
     eks = "https://raw.githubusercontent.com/aws-controllers-k8s/eks-controller/main/config/iam/recommended-inline-policy"
   }
 }
+
 variable "tags" {
   description = "Tags to be applied to all resources"
   type        = map(string)
   default     = {}
 }
 
-variable "cluster_info" {
-  description = "Cluster information to be used by the module"
-  type        = any
-  default     = {}
-}
-
-variable "private_key_paths" {
-  description = "List of SSM parameter paths for private keys"
-  type        = list(string)
-  default     = []
-}
-
-variable "vpc_cidr" {
-  description = "CIDR block for the VPC"
+variable "outputs_dir" {
+  description = "Directory to store generated output files"
   type        = string
-  default     = "10.0.0.0/16"
+  default     = "../../../../../outputs"
 }
 
-variable "azs" {
-  description = "List of availability zones"
-  type        = list(string)
-  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
-}
-
-variable "cluster_version" {
-  description = "Kubernetes version for the EKS cluster"
+variable "argocd_chart_version" {
+  description = "Version of the ArgoCD Helm chart to use"
   type        = string
-  default     = "1.21"
-}
-
-variable "valid_policies" {
-  description = "Map of valid policy ARNs"
-  type        = any
-  default     = {}
-}
-
-variable "aws_addons" {
-  description = "AWS Addons configuration"
-  type = any
-  default = {}
-}
-
-variable "external_secrets" {
-  description = "External Secrets configuration"
-  type = any
-  default = {}
-}
-
-variable "aws_load_balancer_controller" {
-  description = "AWS Load Balancer Controller configuration"
-  type = any
-  default = {}
+  default     = "5.46.0"
 }

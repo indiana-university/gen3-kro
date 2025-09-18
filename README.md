@@ -1,8 +1,7 @@
-# gen3-kro
-Kro deployment scripts for the Gen3 data commons.
+# eks-cluster-mgmt
 This repository contains the necessary files and configurations to set up a GitOps-based EKS cluster management solution using Argo CD and KRO (Kubernetes Resource Operator). The structure is designed to support multiple environments (dev, staging, prod) and accounts, ensuring modularity and reusability. 
 # Overview
-The bootstrap process is initiated by the `driver.sh` script, which sets up the necessary environment variables and configurations for the EKS clusters. 
+The bootstrap process is initiated by the `boot.sh` script, which sets up the necessary environment variables and configurations for the EKS clusters. 
 Below is an overview of the directory structure and a brief description of desired repository structure.
 # Desired Repository Structure
 
@@ -119,53 +118,9 @@ bootstrap/
            └─ argocd-validate.yml   # kubeconform, argocd app lint
 
 
----
 
-### `$DESTINATION_REPO/automation/driver.sh`
-- Main entry point for the bootstrap process.  
-- Orchestrates the various steps required to set up:
-  - EKS cluster management
-  - Application spoke environments  
-- Runs the process in loops for dynamic configuration.
+# 
 
----
-### `$DESTINATION_REPO/automation/customize.env`
-- Used to override the default configuration files.  
-- Useful for **everyday deployments** of the template.
+- Git hosting (GitHub/GitLab/Bitbucket).
 
----
-
-### `$DESTINATION_REPO/automation/config/`
-- Contains default configuration files.  
-- Can be customized to modify the templated bootstrap process.
-
----
-
-### `$DESTINATION_REPO/automation/bin/`
-- Contains scripts that are **reloaded on every loop**.
-- Key scripts:
-  - `functions.sh` → utility functions used across bootstrap.
-  - `logger.sh` → provides logging functions.
-  - `settings.sh` → contains configuration settings.
-
----
-
-### `$DESTINATION_REPO/automation/modules/`
-- Contains **reusable modules** used throughout the bootstrap process.  
-- Step scripts follow the format: `##-<step>.sh` → represents individual steps in the bootstrap sequence.
-    - `##-01-init-repo.sh` → initializes the repository.
-    - `##-02-update-repo.sh` → creates the necessary branches and populates with files.
-    - `##-03-validate-vars.sh` → exports environment variables to your local for validation.
-    - `##-04-terraform.sh` → applies and destroys Terraform configurations.
-    - `##-05-bootstrap-backup.sh` → creates a backup of the current automation directory on your local machine.
-    - `##-06-setup-argocd.sh` → sets up ArgoCD access on your local machine.
-    - `##-07-delete-repo.sh` → deletes the repository.
-
----
-
-### `$DESTINATION_REPO/automation/templates/`
-- Stores template files used to generate the repository files.
-
-
-
-source ./eks-cluster-mgmt/automation/driver.sh dev/boadeyem_tf/refactor/template
+1. Setup
