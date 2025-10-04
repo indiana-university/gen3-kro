@@ -1,3 +1,9 @@
+variable "create" {
+  description = "Whether to create the EKS Hub cluster"
+  type        = bool
+  default     = true
+}
+
 variable "vpc_name" {
   description = "VPC name to be used by pipelines for data"
   type        = string
@@ -197,6 +203,14 @@ variable "aws_addons" {
   description = "AWS Addons configuration"
   type = any
   default = {}
+}
+
+variable "oss_addons" {
+  description = "Open Source Software Addons"
+  type = any
+  default = {
+    enable_argocd = true
+  }
 }
 
 variable "external_secrets" {

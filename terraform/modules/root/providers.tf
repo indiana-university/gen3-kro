@@ -1,63 +1,25 @@
-provider "helm" {
-  kubernetes = {
-    host                   = local.cluster_info.cluster_endpoint
-    cluster_ca_certificate = base64decode(local.cluster_info.cluster_certificate_authority_data)
-
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      # This requires the awscli to be installed locally where Terraform is executed
-      args = [
-        "eks",
-        "get-token",
-        "--cluster-name", local.cluster_info.cluster_name,
-        "--region", local.hub_region
-      ]
-    }
-  }
-  alias = "remote"
+provider "kubernetes" {
+  host                   = local.cluster_info == null ? module.kind-hub.endpoint                                         : local.cluster_info.cluster_endpoint
+  cluster_ca_certificate = local.cluster_info == null ? base64decode(module.kind-hub.credentials.cluster_ca_certificate) : base64decode(local.cluster_info.cluster_certificate_authority_data)
+  client_certificate     = local.cluster_info == null ? base64decode(module.kind-hub.credentials.client_certificate)     : null
+  client_key             = local.cluster_info == null ? base64decode(module.kind-hub.credentials.client_key)             : null
+  token                  = local.cluster_info == null ? null                                                             : module.eks-hub.token
 }
 
+provider "helm" {
+  kubernetes = {
+    host                   = local.cluster_info == null ? module.kind-hub.endpoint                           : local.cluster_info.cluster_endpoint
+    cluster_ca_certificate = local.cluster_info == null ? module.kind-hub.credentials.cluster_ca_certificate : base64decode(local.cluster_info.cluster_certificate_authority_data)
+    client_certificate     = local.cluster_info == null ? module.kind-hub.credentials.client_certificate     : null
+    client_key             = local.cluster_info == null ? module.kind-hub.credentials.client_key             : null
+    token                  = local.cluster_info == null ? null                                               : module.eks-hub.token
 
-provider "kubernetes" {
-  host                   = local.cluster_info.cluster_endpoint
-  cluster_ca_certificate = base64decode(local.cluster_info.cluster_certificate_authority_data)
-  # insecure = true
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    # This requires the awscli to be installed locally where Terraform is executed
-    args = [
-      "eks",
-      "get-token",
-      "--cluster-name", local.cluster_info.cluster_name,
-      "--region", local.hub_region
-    ]
   }
-  alias = "remote"
 }
 
 provider "aws" {
- region   = local.hub_region
- profile  = local.hub_profile
+#  region   = local.hub_region
+ profile  = "boadeyem_tf"
+
   alias   = "hub"
 }
-
-
-
-# provider "kind" {
-#   alias = "dev"
-# }
-provider "kubernetes" {
-  config_path = pathexpand("${var.kubeconfig_dir}/kind-config-${var.cluster_name}")
-  alias       = "local"
-  
-}
-
-provider "helm" {
-  kubernetes = {
-    config_path = pathexpand("${var.kubeconfig_dir}/kind-config-${var.cluster_name}")
-  }
-  alias = "local"
-}
-

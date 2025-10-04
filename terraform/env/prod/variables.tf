@@ -3,6 +3,12 @@ variable "vpc_name" {
   type        = string
 }
 
+variable "hub_aws_profile" {
+  description = "AWS profile for the Hub Cluster"
+  type        = string
+  default     = "default"
+}
+
 variable "kubernetes_version" {
   description = "Kubernetes version"
   type        = string

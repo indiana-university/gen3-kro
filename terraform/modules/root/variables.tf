@@ -17,7 +17,7 @@ variable "kubernetes_version" {
 variable "kubeconfig_dir" {
   description = "Directory to store the kubeconfig file"
   type        = string
-  default     = "~/.kube"
+  default     = "../../modules/root"
 }
 
 variable "addons" {
@@ -74,12 +74,12 @@ variable "gitops_addons_repo_name" {
 
 variable "gitops_addons_repo_path" {
   description = "The path of addons bootstraps in the repo"
-  default     = "bootstrap"
+  default     = ""
 }
 
 variable "gitops_addons_repo_base_path" {
   description = "The base path of addons in the repon"
-  default     = "examples/aws/eks-cluster-mgmt/addons/"
+  default     = ""
 }
 
 variable "gitops_addons_repo_revision" {
@@ -94,12 +94,12 @@ variable "gitops_fleet_repo_name" {
 
 variable "gitops_fleet_repo_path" {
   description = "The path of fleet bootstraps in the repo"
-  default     = "bootstrap"
+  default     = ""
 }
 
 variable "gitops_fleet_repo_base_path" {
   description = "The base path of fleet in the repon"
-  default     = "examples/aws/eks-cluster-mgmt/fleet/"
+  default     = ""
 }
 
 variable "gitops_fleet_repo_revision" {
@@ -115,7 +115,7 @@ variable "gitops_workload_repo_name" {
 
 variable "gitops_workload_repo_path" {
   description = "The path of workload bootstraps in the repo"
-  default     = "examples/aws/eks-cluster-mgmt/apps/"
+  default     = ""
 }
 
 variable "gitops_workload_repo_base_path" {
@@ -136,12 +136,12 @@ variable "gitops_platform_repo_name" {
 
 variable "gitops_platform_repo_path" {
   description = "The path of platform bootstraps in the repo"
-  default     = "bootstrap"
+  default     = ""
 }
 
 variable "gitops_platform_repo_base_path" {
   description = "The base path of platform in the repo"
-  default     = "examples/aws/eks-cluster-mgmt/platform/"
+  default     = ""
 }
 
 variable "gitops_platform_repo_revision" {

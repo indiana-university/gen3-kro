@@ -40,8 +40,8 @@ provider "kubernetes" {
 }
 
 provider "aws" {
- region   = local.hub_region
- profile  = local.hub_profile
+#  region   = local.hub_region
+ profile  = "$HUB_AWS_PROFILE"
 
   alias   = "hub"
 }

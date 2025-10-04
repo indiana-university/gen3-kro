@@ -1,6 +1,6 @@
 locals {
-  cluster_info              = module.eks-hub.cluster_info
-  vpc_id                    = module.eks-hub.vpc_id
+  cluster_info              = try(module.eks-hub.cluster_info, null)
+  vpc_id                    = try(module.eks-hub.vpc_id, null)
   vpc_cidr                  = "10.0.0.0/16"
   use_ack                   = var.use_ack
   enable_efs                = var.enable_efs
@@ -14,13 +14,15 @@ locals {
   cluster_version           = var.kubernetes_version
   hub_profile               = var.hub_aws_profile
   hub_region                = var.hub_aws_region
+      # automode/aws_load_balancer_controller will activate aws_lb_controller_pod_identity
+
   enable_automode           = var.enable_automode
   enable_eks_hub            = var.environment == "prod" ? true : false
 
   #compute
-  azs                       = slice(module.eks-hub.azs, 0, 2)
-  hub_account_id            = module.eks-hub.account_id
-  argocd_hub_pod_identity_iam_role_arn = module.eks-hub.argocd_hub_pod_identity_iam_role_arn
+  azs                       = try(slice(module.eks-hub.azs, 0, 2), [])
+  hub_account_id            = try(module.eks-hub.account_id, null)
+  argocd_hub_pod_identity_iam_role_arn = try(module.eks-hub.argocd_hub_pod_identity_iam_role_arn, null)
 
   external_secrets = {
     namespace       = "external-secrets"
@@ -40,12 +42,22 @@ locals {
     }
   }
 
+
+  gitops_addons_base_path   = length(trimspace(var.gitops_addons_repo_base_path))   > 0 ? regexreplace(trimspace(var.gitops_addons_repo_base_path), "/?$", "/")   : "argocd/apps/addons/"
+  gitops_addons_path        = length(trimspace(var.gitops_addons_repo_path))        > 0 ?              trimspace(var.gitops_addons_repo_path)                     : ""
+  gitops_fleet_base_path    = length(trimspace(var.gitops_fleet_repo_base_path))    > 0 ? regexreplace(trimspace(var.gitops_fleet_repo_base_path), "/?$", "/")    : "argocd/appsets/"
+  gitops_fleet_path         = length(trimspace(var.gitops_fleet_repo_path))         > 0 ?              trimspace(var.gitops_fleet_repo_path)                      : "kro-hub"
+  gitops_platform_base_path = length(trimspace(var.gitops_platform_repo_base_path)) > 0 ? regexreplace(trimspace(var.gitops_platform_repo_base_path), "/?$", "/") : "argocd/apps/platform/"
+  gitops_platform_path      = length(trimspace(var.gitops_platform_repo_path))      > 0 ?              trimspace(var.gitops_platform_repo_path)                   : ""
+  gitops_workload_base_path = length(trimspace(var.gitops_workload_repo_base_path)) > 0 ? regexreplace(trimspace(var.gitops_workload_repo_base_path), "/?$", "/") : "argocd/apps/workloads/"
+  gitops_workload_path      = length(trimspace(var.gitops_workload_repo_path))      > 0 ?              trimspace(var.gitops_workload_repo_path)                   : "sample-web"
+
   gitops_repos = {
     addons = {
       url                  = "https://${var.gitops_addons_github_url}/${var.gitops_addons_org_name}/${var.gitops_addons_repo_name}.git"
       enterprise_base_url  = "https://${var.gitops_addons_github_url}/api/v3" 
-      path                 = var.gitops_addons_repo_path
-      base_path            = var.gitops_addons_repo_base_path
+      path                 = local.gitops_addons_path
+      base_path            = local.gitops_addons_base_path
       revision             = var.gitops_addons_repo_revision
       app_id               = var.gitops_addons_app_id
       installation_id      = var.gitops_addons_app_installation_id
@@ -54,8 +66,8 @@ locals {
     fleet = {
       url                  = "https://${var.gitops_fleet_github_url}/${var.gitops_fleet_org_name}/${var.gitops_fleet_repo_name}.git"
       enterprise_base_url  = "https://${var.gitops_fleet_github_url}/api/v3"
-      path                 = var.gitops_fleet_repo_path
-      base_path            = var.gitops_fleet_repo_base_path
+      path                 = local.gitops_fleet_path
+      base_path            = local.gitops_fleet_base_path
       revision             = var.gitops_fleet_repo_revision
       app_id               = var.gitops_fleet_app_id
       installation_id      = var.gitops_fleet_app_installation_id
@@ -64,8 +76,8 @@ locals {
     platform = {
       url                  = "https://${var.gitops_platform_github_url}/${var.gitops_platform_org_name}/${var.gitops_platform_repo_name}.git"
       enterprise_base_url  = "https://${var.gitops_platform_github_url}/api/v3"
-      path                 = var.gitops_platform_repo_path
-      base_path            = var.gitops_platform_repo_base_path
+      path                 = local.gitops_platform_path
+      base_path            = local.gitops_platform_base_path
       revision             = var.gitops_platform_repo_revision
       app_id               = var.gitops_platform_app_id
       installation_id      = var.gitops_platform_app_installation_id
@@ -74,8 +86,8 @@ locals {
     workload = {
       url                  = "https://${var.gitops_workload_github_url}/${var.gitops_workload_org_name}/${var.gitops_workload_repo_name}.git"
       enterprise_base_url  = "https://${var.gitops_workload_github_url}/api/v3"
-      path                 = var.gitops_workload_repo_path
-      base_path            = var.gitops_workload_repo_base_path
+      path                 = local.gitops_workload_path
+      base_path            = local.gitops_workload_base_path
       revision             = var.gitops_workload_repo_revision
       app_id               = var.gitops_workload_app_id
       installation_id      = var.gitops_workload_app_installation_id
@@ -87,12 +99,16 @@ locals {
   # These will use the ESO to fetch the private key from SSM using the ssm_path provided
   gitops_private_repos = {
     for k, v in local.gitops_repos :
-    k => v if !(v.ssm_path == null || v.ssm_path == "")
+    k => v     if
+      (
+        try(v.url, "")               != "" &&
+        try(v.ssm_path, "")          != "" &&
+        try(v.app_id, null)          != null &&
+        try(v.installation_id, null) != null
+      )
   }
 
   aws_addons = {
-    # automode/aws_load_balancer_controller will activate aws_lb_controller_pod_identity
-    enable_automode                              = try(var.addons.enable_automode, false)
     # enable_aws_cloudwatch_metrics                = try(var.addons.enable_aws_cloudwatch_metrics, false)
     # enable_aws_cloudwatch_observability          = try(var.addons.enable_aws_cloudwatch_observability, false)
     enable_aws_ebs_csi_resources                 = try(var.addons.enable_aws_ebs_csi_resources, false)
@@ -121,14 +137,14 @@ locals {
     local.oss_addons,
     { fleet_member = local.fleet_member },
     { kubernetes_version = local.cluster_version },
-    { aws_cluster_name = local.cluster_info.cluster_name },
+    { aws_cluster_name = try(local.cluster_info.cluster_name, null) },
   )
 
   addons_metadata = merge(
     {
-      aws_cluster_name = local.cluster_info.cluster_name
+      aws_cluster_name = try(local.cluster_info.cluster_name, null)
       aws_region       = local.hub_region
-      aws_account_id   = module.eks-hub.account_id
+      aws_account_id   = try(module.eks-hub.account_id, null)
       aws_vpc_id       = local.vpc_id
       use_ack          = local.use_ack
     },
@@ -183,7 +199,7 @@ locals {
     applicationsets = file("${path.module}/applicationsets.yaml")
   }
   argocd_cluster_data = {
-    cluster_name = local.cluster_info.cluster_name
+    cluster_name = try(local.cluster_info.cluster_name, null)
     environment  = local.environment
     metadata     = local.addons_metadata
     addons       = local.addons
@@ -203,7 +219,7 @@ locals {
     {
       Blueprint  = local.cluster_name
       Environment = local.environment
-      ManagedBy  = "Terraform-AgroCD-ESO"
+      ManagedBy  = "Terraform-AgroCD"
     }
   )
 }

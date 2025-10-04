@@ -1,8 +1,4 @@
-# ┌─────────────────────────────────────────┐
-# │ 1. Git                                  │
-# └─────────────────────────────────────────┘
-.git/
-**/.git/
+
 # ┌─────────────────────────────────────────┐
 # │ 2. IDE & Editor                         │
 # └─────────────────────────────────────────┘
@@ -29,7 +25,7 @@ crash.log
 # ┌─────────────────────────────────────────┐
 # │ 5. Secrets & Credentials                │
 # └─────────────────────────────────────────┘
-**/secrets/*
+**/secrets
 **/secrets.yaml
 **/*.pem
 **/*.ppk
@@ -63,18 +59,23 @@ terraform/**/*.tfvars
 # ┌─────────────────────────────────────────┐
 # │ 7. Application & Build Artifacts        │
 # └─────────────────────────────────────────┘
-**/outputs/*
-**/output/*
+**/outputs
+**/output
 # old files
-**/old*/*
+**/old*
 # ┌─────────────────────────────────────────┐
 # │ 8. Miscellaneous                        │
 # └─────────────────────────────────────────┘
 # HCL lock/info
 **/*.hcl
 **/*.lock.info
-**/addons/**
-**/apps/**
-**/fleet/**
-**/charts/**
-**/platform/**
+**/addons
+**/apps
+**/fleet
+**/charts
+**/platform
+**/kro
+/cheat sheet - helm.md
+/cheat sheet - kubectl.md
+/gen3-kro-agg.ipynb
+/gen3-kro.code-workspace
