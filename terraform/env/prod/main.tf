@@ -6,6 +6,7 @@ module "root" {
   source  = "../../modules/root"
   # Authentication and authorization
   hub_aws_region  = var.aws_region
+  hub_aws_profile = var.hub_aws_profile
   # Cluster configuration
   vpc_name           = var.vpc_name
   kubernetes_version = var.kubernetes_version

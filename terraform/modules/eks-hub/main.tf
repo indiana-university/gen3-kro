@@ -4,7 +4,7 @@
 # VPC Module
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 module "vpc" {
-  count  = var.enable_eks_hub ? 1 : 0
+  count  = var.create ? 1 : 0
 
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.21.0"
@@ -35,7 +35,7 @@ module "vpc" {
 # EKS Cluster Module
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 module "eks" {
-  count = var.enable_eks_hub ? 1 : 0
+  count = var.create ? 1 : 0
 
   source  = "terraform-aws-modules/eks/aws"
   version = "20.37.1"
@@ -66,7 +66,7 @@ module "eks" {
 # EBS CSI EKS Access
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 module "aws_ebs_csi_pod_identity" {
-  count = (var.enable_eks_hub && var.aws_addons.enable_aws_ebs_csi_resources) ? 1 : 0
+  count = (var.create && var.aws_addons.enable_aws_ebs_csi_resources) ? 1 : 0
 
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "~> 1.4.0"
@@ -91,7 +91,7 @@ module "aws_ebs_csi_pod_identity" {
 # External Secrets EKS Access
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 module "external_secrets_pod_identity" {
-  count = (var.enable_eks_hub && var.aws_addons.enable_external_secrets) ? 1 : 0
+  count = (var.create && var.aws_addons.enable_external_secrets) ? 1 : 0
 
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "~> 1.4.0"
@@ -126,7 +126,7 @@ module "external_secrets_pod_identity" {
 # AWS ALB Ingress Controller EKS Access
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 module "aws_lb_controller_pod_identity" {
-count = (var.enable_eks_hub && (var.aws_addons.enable_aws_load_balancer_controller || var.enable_automode)) ? 1 : 0
+  count = (var.create && (var.aws_addons.enable_aws_load_balancer_controller || var.enable_automode)) ? 1 : 0
 
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "~> 1.4.0"
@@ -152,7 +152,7 @@ count = (var.enable_eks_hub && (var.aws_addons.enable_aws_load_balancer_controll
 # Karpenter EKS Access
 #-------------------------------------------------------------------------------------------------------------------------------------------------#
 module "argocd_hub_pod_identity"{
-  count   = (var.enable_eks_hub && var.aws_addons.enable_argocd ? 1 : 0)
+  count   = (var.create && var.oss_addons.enable_argocd ? 1 : 0)
 
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "~> 1.4.0"
@@ -196,17 +196,20 @@ module "argocd_hub_pod_identity"{
 # Data Sources
 ###################################################################################################################################################
 data "aws_caller_identity" "current" {
-  count = var.enable_eks_hub ? 1 : 0
+  count = var.create ? 1 : 0
 }
 
 data "aws_availability_zones" "available" {
-  count = var.enable_eks_hub ? 1 : 0
+  count = var.create ? 1 : 0
   filter {
     name   = "opt-in-status"
     values = ["opt-in-not-required"]
   }
 }
-
+data "aws_eks_cluster_auth" "this" {
+  name = module.eks[0].cluster_name
+  count = var.create ? 1 : 0
+}
 ###################################################################################################################################################
 # End of File
 ###################################################################################################################################################

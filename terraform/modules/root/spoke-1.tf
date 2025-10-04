@@ -1,6 +1,6 @@
 provider "aws" {
   alias   = "spoke1"
-  region  = "us-east-1"
+  # region  = "us-east-1"
   profile = "boadeyem_tf"
 }
 
