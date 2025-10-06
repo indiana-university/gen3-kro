@@ -6,7 +6,6 @@
   },
   "workspaceFolder": "/workspaces/gen3-kro",
   "mounts": [
-    "source=${localWorkspaceFolder},target=/workspaces/gen3-kro,type=bind,consistency=cached",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
     "source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
     "source=/var/run/docker.sock,target=/var/run/docker.sock,type=bind"
