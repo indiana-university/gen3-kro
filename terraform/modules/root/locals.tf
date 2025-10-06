@@ -3,7 +3,7 @@ locals {
   vpc_id                    = try(module.eks-hub.vpc_id, null)
   vpc_cidr                  = "10.0.0.0/16"
   use_ack                   = var.use_ack
-  enable_efs                = var.enable_efs
+  # removed: enable_efs (unused)
   cluster_name              = var.cluster_name
   vpc_name                  = "${var.vpc_name}-vpc"
   environment               = var.environment
@@ -16,7 +16,7 @@ locals {
   hub_region                = var.hub_aws_region
       # automode/aws_load_balancer_controller will activate aws_lb_controller_pod_identity
 
-  enable_automode           = var.enable_automode
+  # removed: enable_automode (unused)
   enable_eks_hub            = var.environment == "prod" ? true : false
 
   #compute

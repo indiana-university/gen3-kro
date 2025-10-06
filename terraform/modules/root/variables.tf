@@ -15,9 +15,9 @@ variable "kubernetes_version" {
 }
 
 variable "kubeconfig_dir" {
-  description = "Directory to store the kubeconfig file"
+  description = "Relative directory (from env root) for kubeconfig"
   type        = string
-  default     = "../../modules/root"
+  default     = "../../outputs/kube"
 }
 
 variable "addons" {
@@ -44,22 +44,7 @@ variable "addons" {
   }
 }
 
-variable "manifests" {
-  description = "Kubernetes manifests"
-  type        = any
-  default     = {}
-}
-
-variable "enable_addon_selector" {
-  description = "select addons using cluster selector"
-  type        = bool
-  default     = false
-}
-
-variable "route53_zone_name" {
-  description = "The route53 zone for external dns"
-  default     = ""
-}
+// Removed unused variables: manifests, enable_addon_selector, route53_zone_name
 # Github Repos Variables
 
 variable "git_org_name" {
@@ -150,22 +135,7 @@ variable "gitops_platform_repo_revision" {
 }
 
 
-variable "ackCreate" {
-  description = "Creating PodIdentity and addons relevant resources with ACK"
-  default     = false
-}
-
-variable "enable_efs" {
-  description = "Enabling EFS file system"
-  type        = bool
-  default     = false
-}
-
-variable "enable_automode" {
-  description = "Enabling Automode Cluster"
-  type        = bool
-  default     = true
-}
+// Removed unused variables: ackCreate, enable_efs, enable_automode
 
 variable "cluster_name" {
   description = "Name of the cluster"
@@ -318,7 +288,7 @@ variable "tags" {
 variable "outputs_dir" {
   description = "Directory to store generated output files"
   type        = string
-  default     = "../../../../../outputs"
+  default     = "../../../outputs"
 }
 
 variable "argocd_chart_version" {
