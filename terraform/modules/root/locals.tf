@@ -43,19 +43,19 @@ locals {
   }
 
 
-  gitops_addons_base_path   = length(trimspace(var.gitops_addons_repo_base_path))   > 0 ? regexreplace(trimspace(var.gitops_addons_repo_base_path), "/?$", "/")   : "argocd/apps/addons/"
+  gitops_addons_base_path   = length(trimspace(var.gitops_addons_repo_base_path))   > 0 ? "${trimspace(var.gitops_addons_repo_base_path)}/"   : "argocd/apps/addons/"
   gitops_addons_path        = length(trimspace(var.gitops_addons_repo_path))        > 0 ?              trimspace(var.gitops_addons_repo_path)                     : ""
-  gitops_fleet_base_path    = length(trimspace(var.gitops_fleet_repo_base_path))    > 0 ? regexreplace(trimspace(var.gitops_fleet_repo_base_path), "/?$", "/")    : "argocd/appsets/"
+  gitops_fleet_base_path    = length(trimspace(var.gitops_fleet_repo_base_path))    > 0 ? "${trimspace(var.gitops_fleet_repo_base_path)}/"    : "argocd/appsets/"
   gitops_fleet_path         = length(trimspace(var.gitops_fleet_repo_path))         > 0 ?              trimspace(var.gitops_fleet_repo_path)                      : "kro-hub"
-  gitops_platform_base_path = length(trimspace(var.gitops_platform_repo_base_path)) > 0 ? regexreplace(trimspace(var.gitops_platform_repo_base_path), "/?$", "/") : "argocd/apps/platform/"
+  gitops_platform_base_path = length(trimspace(var.gitops_platform_repo_base_path)) > 0 ? "${trimspace(var.gitops_platform_repo_base_path)}/" : "argocd/apps/platform/"
   gitops_platform_path      = length(trimspace(var.gitops_platform_repo_path))      > 0 ?              trimspace(var.gitops_platform_repo_path)                   : ""
-  gitops_workload_base_path = length(trimspace(var.gitops_workload_repo_base_path)) > 0 ? regexreplace(trimspace(var.gitops_workload_repo_base_path), "/?$", "/") : "argocd/apps/workloads/"
+  gitops_workload_base_path = length(trimspace(var.gitops_workload_repo_base_path)) > 0 ? "${trimspace(var.gitops_workload_repo_base_path)}/" : "argocd/apps/workloads/"
   gitops_workload_path      = length(trimspace(var.gitops_workload_repo_path))      > 0 ?              trimspace(var.gitops_workload_repo_path)                   : "sample-web"
 
   gitops_repos = {
     addons = {
       url                  = "https://${var.gitops_addons_github_url}/${var.gitops_addons_org_name}/${var.gitops_addons_repo_name}.git"
-      enterprise_base_url  = "https://${var.gitops_addons_github_url}/api/v3" 
+      enterprise_base_url  = "https://${var.gitops_addons_github_url}/api/v3"
       path                 = local.gitops_addons_path
       base_path            = local.gitops_addons_base_path
       revision             = var.gitops_addons_repo_revision
@@ -164,7 +164,7 @@ locals {
       workload_repo_path     = local.gitops_repos["workload"].path
       workload_repo_basepath = local.gitops_repos["workload"].base_path
       workload_repo_revision = local.gitops_repos["workload"].revision
-    },  
+    },
     {
       fleet_repo_url      = local.gitops_repos["fleet"].url
       fleet_repo_path     = local.gitops_repos["fleet"].path
