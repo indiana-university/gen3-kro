@@ -83,6 +83,20 @@ RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/
     && mv kustomize /usr/local/bin/kustomize \
     && chmod +x /usr/local/bin/kustomize
 
+# Add additional tools for gen3-kro project
+# These tools were used during ad-hoc installation in the container
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3 \
+    python3-pip \
+    python3-yaml \
+    tree \
+    htop \
+    net-tools \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install additional Python packages for YAML processing (fallback when yq not available)
+RUN python3 -m pip install --no-cache-dir pyyaml
+
 # Set up bash completion for kubectl and helm
 RUN kubectl completion bash > /etc/bash_completion.d/kubectl \
     && helm completion bash > /etc/bash_completion.d/helm
