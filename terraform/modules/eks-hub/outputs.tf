@@ -22,3 +22,9 @@ output "cluster_info" {
   description = "EKS cluster information"
   value       = var.create ? module.eks[0] : null
 }
+
+output "token" {
+  description = "Authentication token for the EKS cluster"
+  value       = var.create ? data.aws_eks_cluster_auth.this[0].token : null
+  sensitive   = true
+}

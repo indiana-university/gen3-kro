@@ -21,8 +21,8 @@ locals {
   spoke_account_id      = data.aws_caller_identity.spoke.account_id 
   enable_external_spoke = var.hub_account_id != local.spoke_account_id && var.environment == "prod" ? true : false
   enable_internal_spoke = var.hub_account_id == local.spoke_account_id && var.environment == "prod" ? true : false
-  policy_arn_urls       = { for service in var.ack_services : service => "https://raw.githubusercontent.com/aws-controllers-k8s/-controller/main/config/iam/recommended-policy-arn"}
-  inline_policy_urls    = { for service in var.ack_services : service => "https://raw.githubusercontent.com/aws-controllers-k8s/-controller/main/config/iam/recommended-inline-policy"}
+  policy_arn_urls       = { for service in var.ack_services : service => "https://raw.githubusercontent.com/aws-controllers-k8s/${service}-controller/main/config/iam/recommended-policy-arn"}
+  inline_policy_urls    = { for service in var.ack_services : service => "https://raw.githubusercontent.com/aws-controllers-k8s/${service}-controller/main/config/iam/recommended-inline-policy"}
   valid_policies        = {
     for k, v in data.http.policy_arn : k => v.status_code == 200 ? trimspace(v.body) : null
   }

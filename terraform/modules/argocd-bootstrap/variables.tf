@@ -25,3 +25,8 @@ variable "apps" {
   type        = any
   default     = {}
 }
+
+variable "outputs_dir" {
+  description = "Directory to store generated output files"
+  type        = string
+}

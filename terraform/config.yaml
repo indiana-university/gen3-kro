@@ -1,0 +1,94 @@
+# terraform/config.yaml
+# Centralized configuration for gen3-kro multi-account EKS platform
+# This file replaces all .env files (controller-list.env, spokes-list.env, kro/core.env, kro/mods.env)
+---
+hub:
+  aws_profile: "boadeyem_tf"  # AWS CLI profile for hub account (has access to S3 backend)
+  aws_region: "us-east-1"     # Primary region for hub cluster
+  cluster_name: "gen3-kro-hub"     # EKS cluster name
+  kubernetes_version: "1.31"       # Kubernetes version
+  vpc_name: "gen3-kro-vpc"         # VPC name for hub cluster
+
+# ACK (AWS Controllers for Kubernetes) configuration
+ack:
+  namespace: "ack-system"
+  controllers:
+    - rds
+    - eks
+    - s3
+    - ec2
+
+# Spoke accounts for cross-account resource provisioning
+spokes:
+  - alias: "spoke1"
+    region: "us-east-1"
+    profile: "boadeyem_tf"  # Same account as hub for demo/testing
+    account_id: ""  # Will be determined at runtime if empty
+    tags:
+      Environment: "prod"
+      Team: "platform"
+      Purpose: "multi-account-demo"
+
+# KRO (Kubernetes Resource Operator) configuration
+kro:
+  version: "0.4.1"
+  namespace: "kro"
+  max_iterations: 1000
+  sleep_seconds: 5000
+
+# GitOps repository configuration
+gitops:
+  org_name: "indiana-university"
+  repo_name: "gen3-kro"
+  
+  addons:
+    base_path: "gitops/"
+    path: "addons/bootstrap"
+    revision: "main"
+  
+  fleet:
+    base_path: "gitops/"
+    path: "fleet/bootstrap"
+    revision: "main"
+  
+  platform:
+    base_path: "gitops/"
+    path: "platform/bootstrap"
+    revision: "main"
+  
+  workload:
+    base_path: "gitops/"
+    path: "apps/"
+    revision: "main"
+
+# Output and state paths
+paths:
+  outputs_dir: "outputs"
+  kubeconfig_dir: "outputs/kube"
+  terraform_state_bucket: "gen3-kro-envs-4852"
+  terraform_locks_table: "gen3-kro-terraform-locks"
+
+# Deployment configuration
+deployment:
+  stage: "prod"  # dev, staging, prod - used for resource tagging only
+  enable_cross_account_iam: true  # Enable cross-account IAM roles for spokes
+
+# Kubernetes addons configuration
+addons:
+  enable_metrics_server: true
+  enable_kyverno: true
+  enable_kyverno_policies: true
+  enable_kyverno_policy_reporter: true
+  enable_argocd: true
+  enable_cni_metrics_helper: false
+  enable_kube_state_metrics: true
+  enable_cert_manager: false
+  enable_external_dns: false
+  enable_external_secrets: true
+  enable_ack_iam: true
+  enable_ack_eks: true
+  enable_ack_ec2: true
+  enable_ack_efs: true
+  enable_kro: true
+  enable_kro_eks_rgs: true
+  enable_multi_acct: true
