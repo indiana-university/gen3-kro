@@ -1,7 +1,7 @@
-# gen3-kro Development Container
-# Based on Ubuntu 24.04 with tools for Terraform, Kubernetes, AWS, and GitOps
+# gen3-kro Multi-Account EKS Platform Image
+# This image contains all tools for managing the gen3-kro infrastructure
 
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+FROM ubuntu:24.04
 
 # Avoid prompts from apt
 ENV DEBIAN_FRONTEND=noninteractive
@@ -11,8 +11,11 @@ ARG TERRAFORM_VERSION=1.5.7
 ARG TERRAGRUNT_VERSION=0.55.1
 ARG KUBECTL_VERSION=1.31.0
 ARG HELM_VERSION=3.14.0
-ARG AWS_CLI_VERSION=2.15.17
 ARG YQ_VERSION=4.44.3
+
+LABEL org.opencontainers.image.source="https://github.com/indiana-university/gen3-kro"
+LABEL org.opencontainers.image.description="Multi-account EKS platform with Terragrunt, ArgoCD, KRO, and AWS ACK"
+LABEL org.opencontainers.image.licenses="MIT"
 
 # Install base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -27,6 +30,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     less \
     groff \
+    python3 \
+    python3-pip \
+    python3-yaml \
+    tree \
+    htop \
+    net-tools \
     && rm -rf /var/lib/apt/lists/*
 
 # Install yq (YAML processor)
@@ -59,8 +68,8 @@ RUN curl -L "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
     && rm -rf /tmp/helm.tar.gz /tmp/linux-amd64 \
     && chmod +x /usr/local/bin/helm
 
-# Install AWS CLI v2
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
+# Install AWS CLI v2 (latest)
+RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
     -o /tmp/awscliv2.zip \
     && unzip /tmp/awscliv2.zip -d /tmp \
     && /tmp/aws/install \
@@ -83,42 +92,30 @@ RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/
     && mv kustomize /usr/local/bin/kustomize \
     && chmod +x /usr/local/bin/kustomize
 
+# Install Python packages for YAML processing
+RUN python3 -m pip install --no-cache-dir pyyaml
 
-# Set up bash completion for kubectl and helm
-RUN kubectl completion bash > /etc/bash_completion.d/kubectl \
-    && helm completion bash > /etc/bash_completion.d/helm
+# Create working directory
+WORKDIR /workspace
 
-# Create workspace directory
-RUN mkdir -p /workspaces/gen3-kro
+# Copy project files
+COPY . /workspace/
 
-# Set permissions for vscode user
-RUN chown -R vscode:vscode /workspaces
+# Set up bash completion and aliases
+RUN echo 'alias k=kubectl' >> /root/.bashrc \
+    && echo 'alias tf=terraform' >> /root/.bashrc \
+    && echo 'alias tg=terragrunt' >> /root/.bashrc \
+    && echo 'export PS1="\[\033[01;32m\]\u@gen3-kro\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /root/.bashrc
 
-# Switch to vscode user
-USER vscode
-
-# Set working directory
-WORKDIR /workspaces/gen3-kro
-
-# Add helpful aliases to .bashrc
-RUN echo 'alias k=kubectl' >> /home/vscode/.bashrc \
-    && echo 'alias tf=terraform' >> /home/vscode/.bashrc \
-    && echo 'alias tg=terragrunt' >> /home/vscode/.bashrc \
-    && echo 'complete -F __start_kubectl k' >> /home/vscode/.bashrc \
-    && echo 'export PS1="\[\033[01;32m\]\u@devcontainer\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/vscode/.bashrc
-
-# Display installed versions on container start
-RUN echo 'echo "=== Development Environment ===" && \
+# Display versions
+RUN echo "=== Installed Tools ===" && \
     echo "Terraform: $(terraform version | head -n1)" && \
     echo "Terragrunt: $(terragrunt --version)" && \
-    echo "kubectl: $(kubectl version --client --short 2>/dev/null || echo "Not configured")" && \
+    echo "kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client)" && \
     echo "Helm: $(helm version --short)" && \
     echo "AWS CLI: $(aws --version)" && \
     echo "yq: $(yq --version)" && \
-    echo "==============================="' >> /home/vscode/.bashrc
+    echo "======================="
 
-# Reset to root for any final setup
-USER root
-
-# Set the default command
+# Default command
 CMD ["/bin/bash"]

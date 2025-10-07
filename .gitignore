@@ -84,13 +84,11 @@ terraform/live/**/kube_providers.tf
 **/backend-override.hcl
 
 # Project-specific ignores
-**/addons
-**/apps
-**/fleet
-**/charts
-**/platform
+**/argocd
 **/kro
 /cheat sheet - helm.md
 /cheat sheet - kubectl.md
+**/.github/*.md
 /gen3-kro-agg.ipynb
 /gen3-kro.code-workspace
+copilot-instructions.md

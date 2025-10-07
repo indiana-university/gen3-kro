@@ -10,7 +10,7 @@ locals {
   # Load root configuration
   root_config = read_terragrunt_config(find_in_parent_folders("root.hcl"))
   config      = local.root_config.locals.config
-  
+
   # Extract configuration sections
   hub        = local.config.hub
   ack        = local.config.ack
@@ -18,15 +18,15 @@ locals {
   gitops     = local.config.gitops
   addons     = local.config.addons
   common_tags = local.root_config.locals.common_tags
-  
+
   # Staging-specific settings
   deployment_stage         = "staging"
   enable_cross_account_iam = false  # Same account for staging
-  
+
   # Modify cluster name for staging
   cluster_name = "${local.hub.cluster_name}-staging"
   vpc_name     = "${local.hub.vpc_name}-staging"
-  
+
   # Output directory
   repo_root   = get_repo_root()
   outputs_dir = "${local.repo_root}/${local.config.paths.outputs_dir}/staging"
@@ -42,31 +42,33 @@ generate "kube_providers" {
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
     provider "kubernetes" {
-      host                   = try(module.eks-hub.cluster_endpoint, "")
-      cluster_ca_certificate = try(base64decode(module.eks-hub.cluster_certificate_authority_data), "")
-      
+      host                   = module.eks-hub.cluster_info.cluster_endpoint
+      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
         args = [
-          "eks", "get-token",
+          "eks",
+          "get-token",
           "--cluster-name", "${local.cluster_name}",
           "--region", "${local.hub.aws_region}",
           "--profile", "${local.hub.aws_profile}"
         ]
       }
     }
-    
+
     provider "helm" {
       kubernetes = {
-        host                   = try(module.eks-hub.cluster_endpoint, "")
-        cluster_ca_certificate = try(base64decode(module.eks-hub.cluster_certificate_authority_data), "")
-        
+        host                   = module.eks-hub.cluster_info.cluster_endpoint
+        cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+
         exec = {
           api_version = "client.authentication.k8s.io/v1beta1"
           command     = "aws"
           args = [
-            "eks", "get-token",
+            "eks",
+            "get-token",
             "--cluster-name", "${local.cluster_name}",
             "--region", "${local.hub.aws_region}",
             "--profile", "${local.hub.aws_profile}"
@@ -74,12 +76,12 @@ generate "kube_providers" {
         }
       }
     }
-    
+
     provider "kubectl" {
-      host                   = try(module.eks-hub.cluster_endpoint, "")
-      cluster_ca_certificate = try(base64decode(module.eks-hub.cluster_certificate_authority_data), "")
+      host                   = module.eks-hub.cluster_info.cluster_endpoint
+      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
       load_config_file       = false
-      
+
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
@@ -100,13 +102,13 @@ inputs = {
   cluster_name       = local.cluster_name
   kubernetes_version = local.hub.kubernetes_version
   vpc_name           = local.vpc_name
-  
+
   deployment_stage         = local.deployment_stage
   enable_cross_account_iam = local.enable_cross_account_iam
-  
+
   ack_services = local.ack.controllers
   use_ack      = true
-  
+
   spokes = [
     for spoke in local.spokes : {
       alias      = spoke.alias
@@ -116,9 +118,9 @@ inputs = {
       tags       = merge(try(spoke.tags, {}), { Environment = "staging" })
     }
   ]
-  
+
   addons = local.addons
-  
+
   # GitOps configurations with staging branch
   gitops_addons_github_url     = "github.com"
   gitops_addons_org_name       = local.gitops.org_name
@@ -129,7 +131,7 @@ inputs = {
   gitops_addons_app_id                   = ""
   gitops_addons_app_installation_id      = ""
   gitops_addons_app_private_key_ssm_path = ""
-  
+
   gitops_fleet_github_url     = "github.com"
   gitops_fleet_org_name       = local.gitops.org_name
   gitops_fleet_repo_name      = local.gitops.repo_name
@@ -139,7 +141,7 @@ inputs = {
   gitops_fleet_app_id                   = ""
   gitops_fleet_app_installation_id      = ""
   gitops_fleet_app_private_key_ssm_path = ""
-  
+
   gitops_platform_github_url     = "github.com"
   gitops_platform_org_name       = local.gitops.org_name
   gitops_platform_repo_name      = local.gitops.repo_name
@@ -149,7 +151,7 @@ inputs = {
   gitops_platform_app_id                   = ""
   gitops_platform_app_installation_id      = ""
   gitops_platform_app_private_key_ssm_path = ""
-  
+
   gitops_workload_github_url     = "github.com"
   gitops_workload_org_name       = local.gitops.org_name
   gitops_workload_repo_name      = local.gitops.repo_name
@@ -159,9 +161,9 @@ inputs = {
   gitops_workload_app_id                   = ""
   gitops_workload_app_installation_id      = ""
   gitops_workload_app_private_key_ssm_path = ""
-  
+
   outputs_dir = local.outputs_dir
-  
+
   tags = merge(
     local.common_tags,
     {
