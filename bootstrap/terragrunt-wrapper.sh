@@ -11,8 +11,8 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 # Source logging library
-# shellcheck source=./bootstrap/lib-logging.sh
-source "${SCRIPT_DIR}/lib-logging.sh"
+# shellcheck source=./bootstrap/scripts/lib-logging.sh
+source "${SCRIPT_DIR}/scripts/lib-logging.sh"
 
 # Configuration
 CONFIG_FILE="${REPO_ROOT}/terraform/config.yaml"

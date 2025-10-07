@@ -43,13 +43,13 @@ locals {
   }
 
 
-  gitops_addons_base_path   = length(trimspace(var.gitops_addons_repo_base_path))   > 0 ? "${trimspace(var.gitops_addons_repo_base_path)}/"   : "argocd/apps/addons/"
+  gitops_addons_base_path   = length(trimspace(var.gitops_addons_repo_base_path))   > 0 ? "${trimspace(var.gitops_addons_repo_base_path)}/"   : "argocd/addons/"
   gitops_addons_path        = length(trimspace(var.gitops_addons_repo_path))        > 0 ?              trimspace(var.gitops_addons_repo_path)                     : ""
-  gitops_fleet_base_path    = length(trimspace(var.gitops_fleet_repo_base_path))    > 0 ? "${trimspace(var.gitops_fleet_repo_base_path)}/"    : "argocd/appsets/"
+  gitops_fleet_base_path    = length(trimspace(var.gitops_fleet_repo_base_path))    > 0 ? "${trimspace(var.gitops_fleet_repo_base_path)}/"    : "argocd/fleet/"
   gitops_fleet_path         = length(trimspace(var.gitops_fleet_repo_path))         > 0 ?              trimspace(var.gitops_fleet_repo_path)                      : "kro-hub"
-  gitops_platform_base_path = length(trimspace(var.gitops_platform_repo_base_path)) > 0 ? "${trimspace(var.gitops_platform_repo_base_path)}/" : "argocd/apps/platform/"
+  gitops_platform_base_path = length(trimspace(var.gitops_platform_repo_base_path)) > 0 ? "${trimspace(var.gitops_platform_repo_base_path)}/" : "argocd/platform/"
   gitops_platform_path      = length(trimspace(var.gitops_platform_repo_path))      > 0 ?              trimspace(var.gitops_platform_repo_path)                   : ""
-  gitops_workload_base_path = length(trimspace(var.gitops_workload_repo_base_path)) > 0 ? "${trimspace(var.gitops_workload_repo_base_path)}/" : "argocd/apps/workloads/"
+  gitops_workload_base_path = length(trimspace(var.gitops_workload_repo_base_path)) > 0 ? "${trimspace(var.gitops_workload_repo_base_path)}/" : "argocd/apps/"
   gitops_workload_path      = length(trimspace(var.gitops_workload_repo_path))      > 0 ?              trimspace(var.gitops_workload_repo_path)                   : "sample-web"
 
   gitops_repos = {

@@ -40,25 +40,25 @@ kro:
 gitops:
   org_name: "indiana-university"
   repo_name: "gen3-kro"
-  
+
   addons:
     base_path: "gitops/"
-    path: "addons/bootstrap"
+    path: "argocd/addons/bootstrap"
     revision: "main"
-  
+
   fleet:
     base_path: "gitops/"
-    path: "fleet/bootstrap"
+    path: "argocd/fleet/bootstrap"
     revision: "main"
-  
+
   platform:
     base_path: "gitops/"
-    path: "platform/bootstrap"
+    path: "argocd/platform/bootstrap"
     revision: "main"
-  
+
   workload:
     base_path: "gitops/"
-    path: "apps/"
+    path: "argocd/apps/"
     revision: "main"
 
 # Output and state paths

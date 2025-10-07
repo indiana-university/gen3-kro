@@ -10,7 +10,7 @@ locals {
   # Load root configuration
   root_config = read_terragrunt_config(find_in_parent_folders("root.hcl"))
   config      = local.root_config.locals.config
-  
+
   # Extract configuration sections
   hub        = local.config.hub
   ack        = local.config.ack
@@ -20,11 +20,11 @@ locals {
   deployment = local.config.deployment
   addons     = local.config.addons
   common_tags = local.root_config.locals.common_tags
-  
+
   # Production-specific settings
   deployment_stage         = "prod"
   enable_cross_account_iam = true
-  
+
   # Output directory
   repo_root   = get_repo_root()
   outputs_dir = "${local.repo_root}/${local.config.paths.outputs_dir}/prod"
@@ -42,9 +42,9 @@ generate "kube_providers" {
   contents  = <<-EOF
     # Kubernetes provider - EKS authentication
     provider "kubernetes" {
-      host                   = try(module.eks-hub.cluster_endpoint, "")
-      cluster_ca_certificate = try(base64decode(module.eks-hub.cluster_certificate_authority_data), "")
-      
+      host                   = module.eks-hub.cluster_info.cluster_endpoint
+      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
@@ -56,13 +56,13 @@ generate "kube_providers" {
         ]
       }
     }
-    
+
     # Helm provider
     provider "helm" {
       kubernetes = {
-        host                   = try(module.eks-hub.cluster_endpoint, "")
-        cluster_ca_certificate = try(base64decode(module.eks-hub.cluster_certificate_authority_data), "")
-        
+        host                   = module.eks-hub.cluster_info.cluster_endpoint
+        cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+
         exec = {
           api_version = "client.authentication.k8s.io/v1beta1"
           command     = "aws"
@@ -75,13 +75,13 @@ generate "kube_providers" {
         }
       }
     }
-    
+
     # Kubectl provider
     provider "kubectl" {
-      host                   = try(module.eks-hub.cluster_endpoint, "")
-      cluster_ca_certificate = try(base64decode(module.eks-hub.cluster_certificate_authority_data), "")
+      host                   = module.eks-hub.cluster_info.cluster_endpoint
+      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
       load_config_file       = false
-      
+
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
@@ -104,15 +104,15 @@ inputs = {
   cluster_name       = local.hub.cluster_name
   kubernetes_version = local.hub.kubernetes_version
   vpc_name           = local.hub.vpc_name
-  
+
   # Deployment configuration
   deployment_stage         = local.deployment_stage
   enable_cross_account_iam = local.enable_cross_account_iam
-  
+
   # ACK configuration
   ack_services = local.ack.controllers
   use_ack      = true
-  
+
   # Spokes configuration
   spokes = [
     for spoke in local.spokes : {
@@ -123,10 +123,10 @@ inputs = {
       tags       = try(spoke.tags, {})
     }
   ]
-  
+
   # Addons configuration
   addons = local.addons
-  
+
   # GitOps Addons configuration
   gitops_addons_github_url               = "github.com"
   gitops_addons_org_name                 = local.gitops.org_name
@@ -137,7 +137,7 @@ inputs = {
   gitops_addons_app_id                   = ""
   gitops_addons_app_installation_id      = ""
   gitops_addons_app_private_key_ssm_path = ""
-  
+
   # GitOps Fleet configuration
   gitops_fleet_github_url               = "github.com"
   gitops_fleet_org_name                 = local.gitops.org_name
@@ -148,7 +148,7 @@ inputs = {
   gitops_fleet_app_id                   = ""
   gitops_fleet_app_installation_id      = ""
   gitops_fleet_app_private_key_ssm_path = ""
-  
+
   # GitOps Platform configuration
   gitops_platform_github_url               = "github.com"
   gitops_platform_org_name                 = local.gitops.org_name
@@ -159,7 +159,7 @@ inputs = {
   gitops_platform_app_id                   = ""
   gitops_platform_app_installation_id      = ""
   gitops_platform_app_private_key_ssm_path = ""
-  
+
   # GitOps Workload configuration
   gitops_workload_github_url               = "github.com"
   gitops_workload_org_name                 = local.gitops.org_name
@@ -170,10 +170,10 @@ inputs = {
   gitops_workload_app_id                   = ""
   gitops_workload_app_installation_id      = ""
   gitops_workload_app_private_key_ssm_path = ""
-  
+
   # Output paths
   outputs_dir = local.outputs_dir
-  
+
   # Tags
   tags = merge(
     local.common_tags,
