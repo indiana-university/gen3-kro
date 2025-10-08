@@ -150,18 +150,103 @@ main() {
   #-------------------------------------------------------------------------------------------------------------------------------------------------#
   # 3. Connect to the cluster and update kubeconfig
   #-------------------------------------------------------------------------------------------------------------------------------------------------#
-  log_info "Updating kubeconfig..."
+  log_info "Attempting to load kubeconfig (if provided in outputs)..."
 
-  if aws eks update-kubeconfig \
-    --name "$cluster_name" \
-    --alias "$cluster_name" \
-    --region "$hub_region" \
-    --profile "$hub_profile"; then
-    log_success "✓ Kubeconfig updated successfully"
-    log_info "Context name: $cluster_name"
+  # Allow the repository configuration to point to a kubeconfig directory
+  local kube_dir
+  local kube_dir_abs
+  local kube_file
+  local skip_aws_update=false
+
+  # Prefer deployment.kubeconfig_dir, fall back to paths.kubeconfig_dir, then default
+  kube_dir=$(get_config_value '.deployment.kubeconfig_dir' 2>/dev/null || true)
+  if [[ -z "$kube_dir" ]]; then
+    kube_dir=$(get_config_value '.paths.kubeconfig_dir' 2>/dev/null || true)
+  fi
+  if [[ -z "$kube_dir" ]]; then
+    kube_dir="outputs/kube"
+  fi
+
+  # Make absolute path if relative
+  if [[ "$kube_dir" = /* ]]; then
+    kube_dir_abs="$kube_dir"
   else
-    log_error "Failed to update kubeconfig"
-    exit 1
+    kube_dir_abs="$REPO_ROOT/$kube_dir"
+  fi
+
+  if [[ -d "$kube_dir_abs" ]]; then
+    # Try to find a kubeconfig file matching the cluster name first (case-insensitive), otherwise pick the first file
+    kube_file=""
+    # Use find to safely enumerate files (handles special chars and spaces)
+    # Check if there is at least one regular file inside the directory
+    if IFS= read -r -d '' _ < <(find "$kube_dir_abs" -maxdepth 1 -type f -print0 2>/dev/null); then
+      shopt -s nocasematch || true
+      first=""
+      while IFS= read -r -d '' f; do
+        if [[ -z "$first" ]]; then
+          first="$f"
+        fi
+        filename=$(basename "$f")
+        if [[ "$filename" == *"$cluster_name"* ]]; then
+          kube_file="$f"
+          break
+        fi
+      done < <(find "$kube_dir_abs" -maxdepth 1 -type f -print0 2>/dev/null)
+      shopt -u nocasematch || true
+
+      # Fallback to first file found if no match
+      if [[ -z "$kube_file" ]]; then
+        kube_file="$first"
+      fi
+    fi
+
+    if [[ -n "$kube_file" && -f "$kube_file" ]]; then
+      log_info "Found kubeconfig file: $kube_file"
+
+      # Export KUBECONFIG so kubectl uses this file (merged with existing config)
+      export KUBECONFIG="$kube_file:$HOME/.kube/config"
+
+      # Try to detect a context matching the cluster name inside the kubeconfig
+      local candidate_context
+      candidate_context=$(kubectl --kubeconfig="$kube_file" config get-contexts -o name 2>/dev/null | grep -i "${cluster_name}" || true)
+      candidate_context=$(echo "$candidate_context" | head -n1 || true)
+
+      if [[ -n "$candidate_context" ]]; then
+        log_success "✓ Loaded kubeconfig and found context: $candidate_context"
+
+        # Verify connectivity using the kubeconfig/context we found
+        if kubectl cluster-info --context "$candidate_context" >/dev/null 2>&1; then
+          log_success "✓ Cluster connectivity verified using provided kubeconfig"
+          # Use the context name as the cluster context going forward
+          cluster_name="$candidate_context"
+          skip_aws_update=true
+        else
+          log_warn "Provided kubeconfig contains a context ($candidate_context) but cluster is not reachable; will fall back to aws eks update-kubeconfig"
+        fi
+      else
+        log_warn "Kubeconfig found but no context matching '$cluster_name' inside; will run aws eks update-kubeconfig to ensure auth is configured"
+      fi
+    fi
+  else
+    log_info "No kubeconfig directory found at: $kube_dir_abs"
+  fi
+
+  if [[ "$skip_aws_update" != true ]]; then
+    log_info "Updating kubeconfig using AWS EKS..."
+
+    if aws eks update-kubeconfig \
+      --name "$cluster_name" \
+      --alias "$cluster_name" \
+      --region "$hub_region" \
+      --profile "$hub_profile"; then
+      log_success "✓ Kubeconfig updated successfully"
+      log_info "Context name: $cluster_name"
+    else
+      log_error "Failed to update kubeconfig"
+      exit 1
+    fi
+  else
+    log_info "Skipping aws eks update-kubeconfig because a working kubeconfig was loaded from: $kube_file"
   fi
 
   #-------------------------------------------------------------------------------------------------------------------------------------------------#
