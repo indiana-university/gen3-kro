@@ -6,8 +6,8 @@
   },
   "workspaceFolder": "/workspaces/gen3-kro",
   "mounts": [
-    "source=${localEnv:HOME}/${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
-    "source=${localEnv:HOME}/${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached"
+    "source=${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached"
   ],
   "remoteUser": "vscode",
   "containerEnv": {
