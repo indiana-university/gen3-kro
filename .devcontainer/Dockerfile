@@ -7,10 +7,10 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Set versions for consistency
-ARG TERRAFORM_VERSION=1.5.7
-ARG TERRAGRUNT_VERSION=0.55.1
-ARG KUBECTL_VERSION=1.31.0
-ARG HELM_VERSION=3.14.0
+ARG TERRAFORM_VERSION=1.13.3
+ARG TERRAGRUNT_VERSION=0.89.3
+ARG KUBECTL_VERSION=1.34.1
+ARG HELM_VERSION=3.16.1
 ARG AWS_CLI_VERSION=2.15.17
 ARG YQ_VERSION=4.44.3
 
@@ -27,6 +27,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     vim \
     less \
     groff \
+    python3 \
+    python3-pip \
     && rm -rf /var/lib/apt/lists/*
 
 # Install yq (YAML processor)
@@ -35,16 +37,24 @@ RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq
     && chmod +x /usr/local/bin/yq
 
 # Install Terraform
-RUN curl -L "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_linux_amd64.zip" \
-    -o /tmp/terraform.zip \
-    && unzip /tmp/terraform.zip -d /usr/local/bin \
-    && rm /tmp/terraform.zip \
-    && chmod +x /usr/local/bin/terraform
+RUN set -eux; \
+    TF_ZIP="terraform_${TERRAFORM_VERSION}_linux_amd64.zip"; \
+    TF_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/${TF_ZIP}"; \
+    curl -fsSLo /tmp/${TF_ZIP} "${TF_URL}"; \
+    curl -fsSLo /tmp/terraform_SHA256SUMS "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS"; \
+    grep " ${TF_ZIP}$" /tmp/terraform_SHA256SUMS | sha256sum -c - && \
+    unzip /tmp/${TF_ZIP} -d /usr/local/bin && rm -f /tmp/${TF_ZIP} /tmp/terraform_SHA256SUMS && chmod +x /usr/local/bin/terraform
 
 # Install Terragrunt
-RUN curl -L "https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}/terragrunt_linux_amd64" \
-    -o /usr/local/bin/terragrunt \
-    && chmod +x /usr/local/bin/terragrunt
+RUN set -eux; \
+        TG_BIN="terragrunt_linux_amd64"; \
+        TG_URL_BASE="https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}"; \
+        curl -fsSLo /tmp/${TG_BIN} "${TG_URL_BASE}/${TG_BIN}"; \
+        curl -fsSLo /tmp/terragrunt_SHA256SUMS "${TG_URL_BASE}/SHA256SUMS" || true; \
+        if [ -s /tmp/terragrunt_SHA256SUMS ]; then \
+            grep "${TG_BIN}$" /tmp/terragrunt_SHA256SUMS | sha256sum -c -; \
+        fi; \
+        mv /tmp/${TG_BIN} /usr/local/bin/terragrunt && chmod +x /usr/local/bin/terragrunt && rm -f /tmp/terragrunt_SHA256SUMS
 
 # Install kubectl
 RUN curl -L "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
@@ -77,11 +87,10 @@ RUN curl -sSL -o /usr/local/bin/argocd \
     https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
     && chmod +x /usr/local/bin/argocd
 
-# Install kustomize
-RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/hack/install_kustomize.sh" \
-    | bash \
-    && mv kustomize /usr/local/bin/kustomize \
-    && chmod +x /usr/local/bin/kustomize
+# Install kustomize (release binary)
+RUN KUSTOMIZE_VERSION="5.0.1" && \
+        curl -sL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+            | tar xz -C /tmp && mv /tmp/kustomize /usr/local/bin/kustomize && chmod +x /usr/local/bin/kustomize
 
 
 # Set up bash completion for kubectl and helm
