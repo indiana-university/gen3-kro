@@ -96,24 +96,68 @@ generate "kube_providers" {
   EOF
 }
 
+# Generate IAM Access module calls dynamically for each spoke
+generate "iam_access_modules" {
+  path      = "iam-access-modules.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-EOF
+    %{for spoke in local.spokes~}
+    module "iam-access-${spoke.alias}" {
+      source = "../iam-access"
+
+      ack_services_config   = local.ack_services_config
+      ack_services          = var.ack_services
+      environment           = local.environment
+      user_provided_inline_policy_link = var.user_provided_inline_policy_link
+      hub_account_id        = local.hub_account_id
+      cluster_info          = local.cluster_info
+      tags                  = local.tags
+      alias_tag             = "${spoke.alias}"
+      spoke_alias           = "${spoke.alias}"
+      spoke_account_id      = "${try(spoke.account_id, "")}"
+      # For prod: if spoke has account_id specified and different, it's external
+      # Otherwise it's internal (same account as hub)
+      enable_external_spoke = ${try(spoke.account_id, "") != "" ? "true" : "false"}
+      enable_internal_spoke = ${try(spoke.account_id, "") == "" ? "true" : "false"}
+
+      providers = {
+        aws.spoke = aws.${spoke.alias}
+      }
+
+      depends_on = [module.eks-hub]
+    }
+    %{endfor~}
+
+    # Collect outputs from all IAM access modules
+    locals {
+      ack_spoke_role_arns_by_spoke = {
+        %{for spoke in local.spokes~}
+        "${spoke.alias}" = module.iam-access-${spoke.alias}.ack_spoke_role_arns
+        %{endfor~}
+      }
+    }
+  EOF
+}
 # Input variables for root module
 inputs = {
-  # Hub configuration
+  # Hub configuration from config.yaml
   hub_aws_profile    = local.hub.aws_profile
   hub_aws_region     = local.hub.aws_region
   cluster_name       = local.hub.cluster_name
   kubernetes_version = local.hub.kubernetes_version
   vpc_name           = local.hub.vpc_name
+  kubeconfig_dir     = local.deployment.kubeconfig_dir
 
-  # Deployment configuration
+  # Deployment configuration from config.yaml
   deployment_stage         = local.deployment_stage
   enable_cross_account_iam = local.enable_cross_account_iam
-
-  # ACK configuration
+  argocd_chart_version     = local.deployment.argocd_chart_version
+  user_provided_inline_policy_link = local.ack.user_provided_inline_policy_link
+  # ACK configuration from config.yaml
   ack_services = local.ack.controllers
   use_ack      = true
 
-  # Spokes configuration
+  # Spokes configuration from config.yaml
   spokes = [
     for spoke in local.spokes : {
       alias      = spoke.alias
@@ -124,22 +168,23 @@ inputs = {
     }
   ]
 
-  # Addons configuration
+  # Addons configuration from config.yaml
   addons = local.addons
 
-  # GitOps Addons configuration
-  gitops_addons_github_url               = "github.com"
+  # GitOps Addons configuration from config.yaml
+  gitops_addons_github_url               = local.gitops.github_url
   gitops_addons_org_name                 = local.gitops.org_name
   gitops_addons_repo_name                = local.gitops.repo_name
   gitops_addons_repo_base_path           = local.gitops.addons.base_path
   gitops_addons_repo_path                = local.gitops.addons.path
   gitops_addons_repo_revision            = local.gitops.addons.revision
+  gitops_iam_config_raw_file_base_url               = try(local.gitops.iam_config_raw_file_base_url, "")
   gitops_addons_app_id                   = ""
   gitops_addons_app_installation_id      = ""
   gitops_addons_app_private_key_ssm_path = ""
 
-  # GitOps Fleet configuration
-  gitops_fleet_github_url               = "github.com"
+  # GitOps Fleet configuration from config.yaml
+  gitops_fleet_github_url               = local.gitops.github_url
   gitops_fleet_org_name                 = local.gitops.org_name
   gitops_fleet_repo_name                = local.gitops.repo_name
   gitops_fleet_repo_base_path           = local.gitops.fleet.base_path
@@ -149,8 +194,8 @@ inputs = {
   gitops_fleet_app_installation_id      = ""
   gitops_fleet_app_private_key_ssm_path = ""
 
-  # GitOps Platform configuration
-  gitops_platform_github_url               = "github.com"
+  # GitOps Platform configuration from config.yaml
+  gitops_platform_github_url               = local.gitops.github_url
   gitops_platform_org_name                 = local.gitops.org_name
   gitops_platform_repo_name                = local.gitops.repo_name
   gitops_platform_repo_base_path           = local.gitops.platform.base_path
@@ -160,8 +205,8 @@ inputs = {
   gitops_platform_app_installation_id      = ""
   gitops_platform_app_private_key_ssm_path = ""
 
-  # GitOps Workload configuration
-  gitops_workload_github_url               = "github.com"
+  # GitOps Workload configuration from config.yaml
+  gitops_workload_github_url               = local.gitops.github_url
   gitops_workload_org_name                 = local.gitops.org_name
   gitops_workload_repo_name                = local.gitops.repo_name
   gitops_workload_repo_base_path           = local.gitops.workload.base_path
