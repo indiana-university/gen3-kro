@@ -105,8 +105,8 @@ RUN echo "Downloading ArgoCD CLI..."; \
 
 # Install kustomize (release binary)
 RUN echo "Downloading kustomize..."; \
-    KUSTOMIZE_VERSION="5.0.1" && \
-    curl -fsSL --retry 3 --retry-delay 2 "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+    KUSTOMIZE_VERSION="5.7.1" && \
+    curl -fsSL --retry 3 --retry-delay 2 "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize/v${KUSTOMIZE_VERSION}/kustomize_v${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
     | tar xz -C /tmp && mv /tmp/kustomize /usr/local/bin/kustomize && chmod +x /usr/local/bin/kustomize \
     && kustomize version
 
