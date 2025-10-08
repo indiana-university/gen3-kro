@@ -13,14 +13,14 @@ hub:
   cluster_name: string             # EKS cluster name
   kubernetes_version: string       # K8s version (e.g., "1.33")
   vpc_name: string                 # VPC name prefix
-  
+
 paths:
   # Storage and repository paths
   terraform_state_bucket: string   # S3 bucket for Terraform state
   terraform_state_key: string      # S3 key prefix (optional)
   terraform_state_region: string   # S3 bucket region (optional, defaults to hub region)
   argocd_repo_url: string          # Git repository URL for ArgoCD
-  
+
 addons:
   # Hub cluster add-ons (boolean flags)
   enable_metrics_server: bool      # Kubernetes metrics server
@@ -123,7 +123,7 @@ node_groups:
       - key: CriticalAddonsOnly
         value: "true"
         effect: NoSchedule
-        
+
   - name: general
     instance_types:
       - t3.xlarge
@@ -197,7 +197,7 @@ node_groups:
     desired_size: 3
     min_size: 3
     max_size: 5
-    
+
   - name: general
     instance_types:
       - t3.xlarge
@@ -294,7 +294,7 @@ node_groups:
     disk_size: 50
     labels:
       role: system
-      
+
   - name: data-processing
     instance_types:
       - r5.2xlarge
@@ -388,7 +388,7 @@ Configuration can reference environment variables:
 ```yaml
 hub:
   aws_profile: ${AWS_PROFILE:-default}
-  
+
 paths:
   terraform_state_bucket: ${TF_STATE_BUCKET}
 ```
@@ -426,12 +426,12 @@ Configurations are merged in order (last wins):
 
 ### Security
 
-- **Production**: 
+- **Production**:
   - `endpoint_public_access: false` or restricted CIDRs
   - `enable_cluster_encryption: true`
   - `enable_audit_logs: true`
-  
-- **Staging**: 
+
+- **Staging**:
   - `endpoint_public_access: true` with CIDR restrictions
   - `enable_cluster_encryption: true`
   - `enable_audit_logs: false` (cost savings)

@@ -463,7 +463,7 @@ Spoke Account
 
 ### Hub Cluster Failure
 
-**RTO (Recovery Time Objective)**: 30-60 minutes  
+**RTO (Recovery Time Objective)**: 30-60 minutes
 **RPO (Recovery Point Objective)**: 0 (GitOps)
 
 **Recovery Steps**:

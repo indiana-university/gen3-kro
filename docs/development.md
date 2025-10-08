@@ -141,7 +141,7 @@ spec:
     kind: MyResource
     spec:
       resourceName: string
-      
+
   resources:
     - id: example-resource
       template:
@@ -649,7 +649,7 @@ jobs:
       - uses: actions/checkout@v3
       - name: Terraform Validate
         run: ./bootstrap/terragrunt-wrapper.sh staging validate
-      
+
   kustomize:
     runs-on: ubuntu-latest
     steps:

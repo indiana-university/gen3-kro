@@ -66,14 +66,14 @@ environment: staging
 cluster:
   name: my-spoke-cluster
   version: "1.33"
-  
+
 network:
   vpc_cidr: "10.1.0.0/16"
   availability_zones:
     - us-west-2a
     - us-west-2b
     - us-west-2c
-    
+
 node_groups:
   - name: general
     instance_types:

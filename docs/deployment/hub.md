@@ -27,7 +27,7 @@ hub:
 
 paths:
   terraform_state_bucket: "my-terraform-state-bucket"
-  
+
 addons:
   enable_metrics_server: true
   enable_kyverno: true
