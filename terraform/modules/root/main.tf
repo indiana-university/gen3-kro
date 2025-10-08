@@ -9,10 +9,13 @@ module "eks-hub" {
 
   create                       = true  # Always create EKS cluster
   aws_region                   = var.hub_aws_region
+  ack_services                 = var.ack_services
+  ack_services_config          = local.ack_services_config
   vpc_name                     = local.vpc_name
   cluster_name                 = local.cluster_name
   cluster_info                 = local.cluster_info
   vpc_cidr                     = local.vpc_cidr
+  hub_alias                    = var.hub_alias
   azs                          = local.azs
   cluster_version              = local.cluster_version
   aws_addons                   = local.aws_addons
@@ -40,6 +43,11 @@ module "gitops-bridge-bootstrap" {
 
   depends_on = [module.eks-hub]
 }
+
+###################################################################################################################################################
+# IAM Access is now defined in iam-access.tf (inline in root module for dynamic provider support)
+###################################################################################################################################################
+
 ###################################################################################################################################################
 # End of File
 ###################################################################################################################################################

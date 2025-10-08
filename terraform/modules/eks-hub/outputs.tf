@@ -28,3 +28,8 @@ output "token" {
   value       = var.create ? data.aws_eks_cluster_auth.this[0].token : null
   sensitive   = true
 }
+
+output "ack_hub_roles" {
+  description = "Map of ACK Hub Role ARNs by service"
+  value       = var.create ? aws_iam_role.hub_ack : {}
+}

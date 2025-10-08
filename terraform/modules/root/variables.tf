@@ -135,7 +135,11 @@ variable "gitops_platform_repo_revision" {
 }
 
 
-// Removed unused variables: ackCreate, enable_efs, enable_automode
+variable "user_provided_inline_policy_link" {
+  description = "Base URL for user-provided inline policies, with service name appended (e.g., https://example.com/policies/)"
+  type        = string
+  default     = ""
+}
 
 variable "cluster_name" {
   description = "Name of the cluster"
@@ -164,6 +168,12 @@ variable "hub_aws_region" {
 variable "gitops_addons_github_url" {
   description = "The GitHub URL for GitOps Addons"
   default     = "github.com"
+}
+
+variable "iam_config_raw_file_base_url" {
+  description = "Base URL for raw file access for IAM config (e.g., for charts). Leave empty to use default GitHub raw URL"
+  type        = string
+  default     = ""
 }
 
 variable "gitops_fleet_github_url" {
@@ -295,4 +305,34 @@ variable "argocd_chart_version" {
   description = "Version of the ArgoCD Helm chart to use"
   type        = string
   default     = "5.46.0"
+}
+
+variable "spokes" {
+  description = "List of spoke accounts for cross-account resource provisioning"
+  type = list(object({
+    alias      = string
+    region     = string
+    profile    = string
+    account_id = string
+    tags       = map(string)
+  }))
+  default = []
+}
+
+variable "deployment_stage" {
+  description = "Deployment stage (dev, staging, prod)"
+  type        = string
+  default     = "prod"
+}
+
+variable "enable_cross_account_iam" {
+  description = "Enable cross-account IAM roles for spokes"
+  type        = bool
+  default     = false
+}
+
+variable "hub_alias" {
+  description = "Hub account alias for deterministic unique naming"
+  type        = string
+  default     = "hub"
 }

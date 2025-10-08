@@ -3,20 +3,31 @@
 # This file replaces all .env files (controller-list.env, spokes-list.env, kro/core.env, kro/mods.env)
 ---
 hub:
+  alias: "gen3-csoc"                  # Alias for hub account
   aws_profile: "boadeyem_tf"  # AWS CLI profile for hub account (has access to S3 backend)
   aws_region: "us-east-1"     # Primary region for hub cluster
   cluster_name: "gen3-kro-hub"     # EKS cluster name
-  kubernetes_version: "1.31"       # Kubernetes version
+  kubernetes_version: "1.33"       # Kubernetes version
   vpc_name: "gen3-kro-vpc"         # VPC name for hub cluster
 
 # ACK (AWS Controllers for Kubernetes) configuration
 ack:
   namespace: "ack-system"
+  user_provided_inline_policy_link: ""
   controllers:
-    - rds
-    - eks
-    - s3
+    - cloudtrail
+    - cloudwatchlogs
     - ec2
+    - iam
+    - kms
+    - opensearchservice
+    - rds
+    - route53
+    - s3
+    - secretsmanager
+    - sns
+    - sqs
+    - wafv2
 
 # Spoke accounts for cross-account resource provisioning
 spokes:
@@ -25,40 +36,34 @@ spokes:
     profile: "boadeyem_tf"  # Same account as hub for demo/testing
     account_id: ""  # Will be determined at runtime if empty
     tags:
-      Environment: "prod"
       Team: "platform"
       Purpose: "multi-account-demo"
-
-# KRO (Kubernetes Resource Operator) configuration
-kro:
-  version: "0.4.1"
-  namespace: "kro"
-  max_iterations: 1000
-  sleep_seconds: 5000
 
 # GitOps repository configuration
 gitops:
   org_name: "indiana-university"
   repo_name: "gen3-kro"
+  github_url: "github.com"
+  iam_config_raw_file_base_url: ""  # Leave empty to use default: "https://raw.githubusercontent.com/<org>/<repo>/<branch>"
 
   addons:
-    base_path: "gitops/"
-    path: "argocd/addons/bootstrap"
+    base_path: "argocd/addons"
+    path: "bootstrap"
     revision: "main"
 
   fleet:
-    base_path: "gitops/"
-    path: "argocd/fleet/bootstrap"
+    base_path: "argocd/fleet"
+    path: "bootstrap"
     revision: "main"
 
   platform:
-    base_path: "gitops/"
-    path: "argocd/platform/bootstrap"
+    base_path: "argocd/platform"
+    path: "bootstrap"
     revision: "main"
 
   workload:
-    base_path: "gitops/"
-    path: "argocd/apps/"
+    base_path: "argocd/apps"
+    path: "bootstrap"
     revision: "main"
 
 # Output and state paths
@@ -66,12 +71,13 @@ paths:
   outputs_dir: "outputs"
   kubeconfig_dir: "outputs/kube"
   terraform_state_bucket: "gen3-kro-envs-4852"
-  terraform_locks_table: "gen3-kro-terraform-locks"
+  terraform_locks_table: "gen3-kro-terraform-locks" # Unused
 
 # Deployment configuration
 deployment:
-  stage: "prod"  # dev, staging, prod - used for resource tagging only
   enable_cross_account_iam: true  # Enable cross-account IAM roles for spokes
+  argocd_chart_version: "5.46.0"  # ArgoCD Helm chart version
+  kubeconfig_dir: "outputs/kube"  # Directory for kubeconfig files
 
 # Kubernetes addons configuration
 addons:
@@ -92,3 +98,9 @@ addons:
   enable_kro: true
   enable_kro_eks_rgs: true
   enable_multi_acct: true
+  enable_aws_efs_csi_driver: false
+  enable_aws_for_fluentbit: false
+  enable_cw_prometheus: false
+  enable_opentelemetry_operator: false
+  enable_prometheus_node_exporter: false
+
