@@ -4,7 +4,9 @@
 
 ![Docker CI](https://github.com/indiana-university/gen3-kro/workflows/Docker%20CI/badge.svg)
 
-## 🎯 Overview
+This project includes Terraform code derived from the [`terraform-aws-modules`](https://github.com/terraform-aws-modules) organization, notably the [`vpc`](https://github.com/terraform-aws-modules/terraform-aws-vpc), [`eks`](https://github.com/terraform-aws-modules/terraform-aws-eks), and [`eks-pod-identity`](https://github.com/terraform-aws-modules/terraform-aws-eks-pod-identity) modules, all licensed under the Apache License 2.0.
+
+## 🎯 Overviews
 
 gen3-kro is a production-ready platform for managing multiple EKS clusters across AWS accounts using GitOps principles. It implements a hub-and-spoke model where a central hub cluster manages resources across multiple spoke accounts.
 
@@ -70,10 +72,10 @@ gen3-kro is a production-ready platform for managing multiple EKS clusters acros
    ```bash
    # Validate configuration
    ./bootstrap/terragrunt-wrapper.sh staging validate
-   
+
    # Plan infrastructure changes
    ./bootstrap/terragrunt-wrapper.sh staging plan
-   
+
    # Apply infrastructure
    ./bootstrap/terragrunt-wrapper.sh staging apply
    ```
@@ -83,7 +85,7 @@ gen3-kro is a production-ready platform for managing multiple EKS clusters acros
    # Get ArgoCD admin password
    kubectl get secret argocd-initial-admin-secret \
      -n argocd -o jsonpath="{.data.password}" | base64 -d
-   
+
    # Port forward to ArgoCD UI
    kubectl port-forward svc/argocd-server -n argocd 8080:443
    ```
@@ -92,7 +94,7 @@ gen3-kro is a production-ready platform for managing multiple EKS clusters acros
    ```bash
    # Watch ApplicationSets
    kubectl get applicationsets -n argocd
-   
+
    # Watch Applications
    kubectl get applications -n argocd
    ```
@@ -300,6 +302,6 @@ See [LICENSE](LICENSE) file for details.
 
 ---
 
-**Version**: 0.0.1  
-**Last Updated**: October 7, 2025  
+**Version**: 0.0.1
+**Last Updated**: October 7, 2025
 **Maintained By**: Indiana University
