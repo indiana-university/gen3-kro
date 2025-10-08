@@ -29,7 +29,7 @@ module "vpc" {
     "karpenter.sh/discovery" = var.cluster_name
   }
 
-  tags = var.tags
+  tags = local.resource_tags
 }
 
 # EKS Cluster Module
@@ -54,10 +54,7 @@ module "eks" {
     node_pools = ["general-purpose", "system"]
   }
 
-  tags = {
-    Blueprint  = var.cluster_name
-    GithubRepo = "https://registry.terraform.io/modules/terraform-aws-modules/eks/aws/latest"
-  }
+  tags = local.resource_tags
 }
 
 ###################################################################################################################################################
@@ -85,7 +82,7 @@ module "aws_ebs_csi_pod_identity" {
     }
   }
 
-  tags = var.tags
+  tags = local.resource_tags
 }
 
 # External Secrets EKS Access
@@ -120,7 +117,7 @@ module "external_secrets_pod_identity" {
     }
   }
 
-  tags = var.tags
+  tags = local.resource_tags
 }
 
 # AWS ALB Ingress Controller EKS Access
@@ -145,7 +142,7 @@ module "aws_lb_controller_pod_identity" {
     }
   }
 
-  tags = var.tags
+  tags = local.resource_tags
 }
 
 
@@ -188,9 +185,8 @@ module "argocd_hub_pod_identity"{
     }
   }
 
-  tags = var.tags
+  tags = local.resource_tags
 }
-
 
 ###################################################################################################################################################
 # Data Sources
@@ -210,6 +206,123 @@ data "aws_eks_cluster_auth" "this" {
   name = module.eks[0].cluster_name
   count = var.create ? 1 : 0
 }
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
+# ACK Controllers' Pod Identity Association
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
+resource "aws_eks_pod_identity_association" "ack" {
+  for_each = var.create ? var.ack_services_config : {}
+
+  cluster_name    = var.cluster_info.cluster_name
+  namespace       = each.value.namespace
+  service_account = each.value.service_account
+  role_arn        = aws_iam_role.hub_ack[each.key].arn
+}
+
+# Hub account ACK roles
+resource "aws_iam_role" "hub_ack" {
+  for_each = var.create ? toset(var.ack_services) : []
+  name     = "${var.hub_alias}-ack-${each.key}-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid = "AllowEksAuthToAssumeRoleForPodIdentity"
+        Effect = "Allow"
+        Principal = {
+          Service = "pods.eks.amazonaws.com"
+        }
+        Action = ["sts:AssumeRole", "sts:TagSession"]
+      }
+    ]
+  })
+  description = "Hub role for ${var.cluster_info.cluster_name} ${each.key}-ack-controller - for all Spokes"
+  tags        = local.resource_tags
+}
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
+# IAM Policies for ACK Controllers
+#-------------------------------------------------------------------------------------------------------------------------------------------------#
+resource "aws_iam_role_policy" "ack" {
+  for_each = var.create ? local.services_with_inline : {}
+
+  role   = aws_iam_role.hub_ack[each.key].name
+  policy = trimspace(local.chosen_inline_policies[each.key])
+
+}
+
+resource "aws_iam_role_policy_attachment" "ack" {
+  for_each = var.create ? local.services_with_arn : {}
+
+  role       = aws_iam_role.hub_ack[each.key].name
+  policy_arn = local.chosen_policy_arns[each.key]
+}
+
+###################################################################################################################################################
+# Locals
+###################################################################################################################################################
+locals {
+  resource_tags = merge(
+    var.tags,
+    {
+      ClusterAlias   = var.hub_alias
+      ClusterName = var.cluster_name
+    }
+  )
+  /// Determininistic policy selection logic
+  /// Priority: User-provided inline policy >
+  ///           Recommended policy ARN >
+  ///           Recommended inline policy >
+  ///           Default to AWS ReadOnlyAccess
+
+  chosen_inline_policies = {
+    for service in var.ack_services :
+      service =>
+      try(data.http.user_inline_policy[service].status_code == 200 ? data.http.user_inline_policy[service].body : null, null) != null ? try(data.http.user_inline_policy[service].body, null) :
+      data.http.recommended_policy_arn[service].status_code    == 200 ? null                                              :
+      data.http.recommended_inline_policy[service].status_code == 200 ? data.http.recommended_inline_policy[service].body :
+                                                                        null
+  }
+
+  chosen_policy_arns = {
+    for service in var.ack_services :
+      service =>
+      local.chosen_inline_policies[service]                 != null ? null                                                      :
+      data.http.recommended_policy_arn[service].status_code == 200  ? trimspace(data.http.recommended_policy_arn[service].body) :
+                                                                      "arn:aws:iam::aws:policy/ReadOnlyAccess"
+  }
+
+  # Services that have a valid JSON inline policy
+  services_with_inline = {
+    for s in var.ack_services :
+    s => s
+    if local.chosen_inline_policies[s] != null && can(jsondecode(local.chosen_inline_policies[s]))
+  }
+
+  # Services that should attach a managed policy ARN
+  services_with_arn = {
+    for s in var.ack_services :
+    s => s
+    if local.chosen_policy_arns[s] != null
+  }
+}
+
+data "http" "user_inline_policy" {
+  for_each = var.user_provided_inline_policy_link != "" ? toset(var.ack_services) : []
+  url      = "${var.user_provided_inline_policy_link}/${each.key}.json"
+}
+
+# Fetch the recommended policy ARNs
+data "http" "recommended_policy_arn" {
+  for_each = toset(var.ack_services)
+  url      = "https://raw.githubusercontent.com/aws-controllers-k8s/${each.key}-controller/main/config/iam/recommended-policy-arn"
+}
+
+# Fetch the recommended inline policies
+data "http" "recommended_inline_policy" {
+  for_each = toset(var.ack_services)
+  url      = "https://raw.githubusercontent.com/aws-controllers-k8s/${each.key}-controller/main/config/iam/recommended-inline-policy"
+}
+
 ###################################################################################################################################################
 # End of File
 ###################################################################################################################################################

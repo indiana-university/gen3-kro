@@ -13,6 +13,7 @@ bootstrap/
 ├── terragrunt-wrapper.sh    # Main CLI for infrastructure operations
 └── scripts/
     ├── lib-logging.sh        # Logging library (sourced by other scripts)
+    ├── connect-cluster.sh    # Connect kubectl and retrieve ArgoCD credentials
     ├── docker-build-push.sh  # Docker image build and push
     ├── version-bump.sh       # Semantic version management
     └── install-git-hooks.sh  # Git hooks installation
@@ -238,6 +239,89 @@ export DOCKER_PASSWORD=<your-token>
 ```bash
 ./bootstrap/scripts/install-git-hooks.sh
 # [SUCCESS] Git hooks installed successfully
+```
+
+### connect-cluster.sh
+
+**Purpose**: Connect kubectl to EKS cluster and retrieve ArgoCD credentials
+
+**Location**: `bootstrap/scripts/connect-cluster.sh`
+
+**Usage**:
+```bash
+./bootstrap/scripts/connect-cluster.sh <environment>
+```
+
+**Environments**:
+- `staging` - Connect to staging cluster (gen3-kro-hub-staging)
+- `prod` - Connect to production cluster (gen3-kro-hub)
+
+**What it does**:
+1. Updates `~/.kube/config` with EKS cluster context
+2. Sets proper context alias (cluster name)
+3. Retrieves ArgoCD server hostname (LoadBalancer)
+4. Retrieves ArgoCD admin password
+5. Saves credentials to `outputs/argo/argocd-credentials-<env>.txt`
+6. Optionally logs in with ArgoCD CLI
+
+**Examples**:
+```bash
+# Connect to staging cluster
+./bootstrap/scripts/connect-cluster.sh staging
+
+# Connect to production cluster
+./bootstrap/scripts/connect-cluster.sh prod
+```
+
+**Outputs**:
+```
+========================================
+✓ Connection Complete!
+========================================
+
+ArgoCD Server Details:
+---------------------
+Host:     k8s-argocd-argocdse-xxx.elb.us-east-1.amazonaws.com
+Username: admin
+Password: Wc6nZRSipmyRv4hX
+
+Access ArgoCD UI:
+  https://k8s-argocd-argocdse-xxx.elb.us-east-1.amazonaws.com
+
+Kubectl context:
+  kubectl config use-context gen3-kro-hub-staging
+
+Credentials file:
+  outputs/argo/argocd-credentials-staging.txt
+```
+
+**Requirements**:
+- EKS cluster already deployed
+- AWS CLI configured with appropriate profile
+- kubectl installed
+- argocd CLI installed (optional, for automatic login)
+
+**Features**:
+- ✅ Automatic kubeconfig update
+- ✅ Proper context naming (uses cluster name as alias)
+- ✅ Waits for ArgoCD to be ready
+- ✅ Waits for LoadBalancer provisioning
+- ✅ Saves credentials to file
+- ✅ Optional ArgoCD CLI login
+- ✅ Comprehensive error handling
+- ✅ Detailed logging
+
+**Post-deployment workflow**:
+```bash
+# 1. Deploy infrastructure
+./bootstrap/terragrunt-wrapper.sh staging apply
+
+# 2. Connect to cluster and get ArgoCD credentials
+./bootstrap/scripts/connect-cluster.sh staging
+
+# 3. Access ArgoCD UI or use CLI
+argocd app list
+# or open browser to ArgoCD URL
 ```
 
 ## Shell Scripting Conventions

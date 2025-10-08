@@ -92,8 +92,10 @@ RUN curl -s "https://raw.githubusercontent.com/kubernetes-sigs/kustomize/master/
     && mv kustomize /usr/local/bin/kustomize \
     && chmod +x /usr/local/bin/kustomize
 
-# Install Python packages for YAML processing
-RUN python3 -m pip install --no-cache-dir pyyaml
+# Install Python packages for YAML processing (using apt for Ubuntu 24.04)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    python3-yaml \
+    && rm -rf /var/lib/apt/lists/*
 
 # Create working directory
 WORKDIR /workspace

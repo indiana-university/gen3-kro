@@ -224,3 +224,22 @@ variable "aws_load_balancer_controller" {
   type = any
   default = {}
 }
+
+variable "ack_services_config" {
+  description = "Configuration for ACK services"
+  type        = map(any)
+  default     = {}
+}
+
+
+variable "user_provided_inline_policy_link" {
+  description = "Base URL for user-provided inline policies, with service name appended (e.g., https://example.com/policies/)"
+  type        = string
+  default     = ""
+}
+
+variable "hub_alias" {
+  description = "Alias for the hub account"
+  type        = string
+  default     = "hub"
+}

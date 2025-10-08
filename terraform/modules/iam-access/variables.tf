@@ -1,30 +1,46 @@
 variable "ack_services" {
   type    = list(string)
-  default = ["s3", "ec2", "vpc"]
-}
-
-variable "hub_account_id" {
-  type = string
 }
 
 variable "tags" {
   type    = map(string)
-  default = {}
 }
+
+variable "alias_tag" {
+  description = "Alias tag to identify the spoke account for unique resource naming"
+  type        = string
+}
+
+variable "spoke_alias" {
+  description = "Spoke account alias for deterministic unique naming"
+  type        = string
+}
+
+variable "enable_external_spoke" {
+  description = "Whether this is an external spoke (different account from hub)"
+  type        = bool
+  default     = false
+}
+
+variable "enable_internal_spoke" {
+  description = "Whether this is an internal spoke (same account as hub)"
+  type        = bool
+  default     = true
+}
+
 variable "environment" {
   description = "The environment where the cluster is deployed (e.g., dev, staging, prod)"
   type        = string
-  default     = "dev"
 }
 
 variable "cluster_info" {
   description = "Cluster information to be used by the module"
   type        = any
-  default     = {}
 }
 
-variable "ack_services_config" {
-  description = "Configuration for each ACK service including namespace and service account"
+variable "ack_hub_roles" {
+  description = "Map of ACK Hub Role resources by service"
   type        = any
   default     = {}
 }
+
