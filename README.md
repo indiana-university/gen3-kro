@@ -1,307 +1,228 @@
-# gen3-kro: Multi-Account EKS Management Platform
+# gen3-kro v0.1.0
 
-> **Hub-and-Spoke Architecture** for cross-account AWS resource provisioning using Terragrunt, ArgoCD, KRO, and AWS Controllers for Kubernetes (ACK).
+**Multi-Account EKS Management Platform with Hub-Spoke Architecture**
 
-![Docker CI](https://github.com/indiana-university/gen3-kro/workflows/Docker%20CI/badge.svg)
+[![Docker CI](https://github.com/indiana-university/gen3-kro/workflows/Docker%20CI/badge.svg)](https://github.com/indiana-university/gen3-kro/actions)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Terraform](https://img.shields.io/badge/Terraform-1.5+-purple.svg)](https://www.terraform.io/)
+[![Kubernetes](https://img.shields.io/badge/Kubernetes-1.31+-blue.svg)](https://kubernetes.io/)
 
-This project includes Terraform code derived from the [`terraform-aws-modules`](https://github.com/terraform-aws-modules) organization, notably the [`vpc`](https://github.com/terraform-aws-modules/terraform-aws-vpc), [`eks`](https://github.com/terraform-aws-modules/terraform-aws-eks), and [`eks-pod-identity`](https://github.com/terraform-aws-modules/terraform-aws-eks-pod-identity) modules, all licensed under the Apache License 2.0.
+> Production-ready platform for managing multiple EKS clusters across AWS accounts using GitOps, Terragrunt, ArgoCD, and KRO.
 
-## 🎯 Overviews
+## Overview
 
-gen3-kro is a production-ready platform for managing multiple EKS clusters across AWS accounts using GitOps principles. It implements a hub-and-spoke model where a central hub cluster manages resources across multiple spoke accounts.
+gen3-kro provides a complete solution for deploying and managing Kubernetes infrastructure across multiple AWS accounts using a hub-and-spoke model. The hub cluster orchestrates infrastructure provisioning and application deployments to spoke clusters using Kubernetes-native tools.
 
-### Key Features
-
-- **🏗️ Infrastructure-as-Code**: Terragrunt-based DRY infrastructure with single YAML configuration
-- **🔄 GitOps**: ArgoCD-managed declarative application deployment
-- **🌐 Multi-Account**: Cross-account resource provisioning via IAM roles
-- **🤖 Kubernetes-Native AWS**: AWS Controllers for Kubernetes (ACK) for managing AWS resources
-- **📊 Resource Graphs**: KRO (Kubernetes Resource Operator) for complex resource dependencies
-- **🐳 CI/CD**: Automated Docker builds with semantic versioning
-
-## 📐 Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                        Hub Cluster                          │
-│  ┌────────────┐  ┌──────────┐  ┌─────────────────────┐    │
-│  │   ArgoCD   │  │   KRO    │  │  ACK Controllers    │    │
-│  │  (GitOps)  │  │ (RGDs)   │  │  (IAM, EKS, EC2...)│    │
-│  └────────────┘  └──────────┘  └─────────────────────┘    │
-│         │              │                    │               │
-│         └──────────────┴────────────────────┘               │
-│                        │                                    │
-└────────────────────────┼────────────────────────────────────┘
-                         │
-        ┌────────────────┼────────────────┐
-        │                │                │
-   ┌────▼────┐      ┌────▼────┐     ┌────▼────┐
-   │ Spoke 1 │      │ Spoke 2 │     │ Spoke N │
-   │ (AWS)   │      │ (AWS)   │     │ (AWS)   │
-   └─────────┘      └─────────┘     └─────────┘
+│                      Hub Cluster (EKS)                      │
+│                                                             │
+│  ┌──────────┐  ┌─────────┐  ┌──────┐  ┌───────────────┐  │
+│  │ ArgoCD   │  │   KRO   │  │ ACK  │  │  Terraform/   │  │
+│  │ (GitOps) │  │ (RGDs)  │  │      │  │  Terragrunt   │  │
+│  └──────────┘  └─────────┘  └──────┘  └───────────────┘  │
+│         │             │          │              │          │
+└─────────┼─────────────┼──────────┼──────────────┼──────────┘
+          │             │          │              │
+    ┌─────▼─────┬──────▼──────┬───▼──────┬──────▼──────┐
+    │           │             │          │             │
+┌───▼───┐   ┌───▼───┐     ┌───▼───┐  ┌───▼───┐    ┌───▼───┐
+│Spoke 1│   │Spoke 2│ ... │Spoke N│  │ Apps  │    │ Infra │
+│(EKS)  │   │(EKS)  │     │(EKS)  │  │       │    │       │
+└───────┘   └───────┘     └───────┘  └───────┘    └───────┘
 ```
 
-### Components
+### Key Components
 
-- **Hub Cluster**: EKS cluster running ArgoCD, KRO, and ACK controllers
-- **Spoke Accounts**: External AWS accounts accessed via cross-account IAM roles
-- **Terragrunt**: Infrastructure provisioning with DRY configuration
-- **ArgoCD**: GitOps-based application deployment and synchronization
-- **KRO**: Declarative resource graph definitions for complex dependencies
-- **ACK**: Kubernetes-native management of AWS resources
+- **Hub Cluster**: Central EKS cluster hosting control plane components
+- **Spoke Clusters**: Target EKS clusters deployed via KRO Resource Graphs
+- **ArgoCD**: GitOps continuous delivery for Kubernetes
+- **KRO**: Kubernetes Resource Operator for complex resource graphs
+- **ACK**: AWS Controllers for Kubernetes (optional)
+- **Terragrunt/Terraform**: Infrastructure-as-Code for hub deployment
 
-## 🚀 Quick Start
+## Features
+
+✅ **Hub-Spoke Architecture**: Centralized management of multiple clusters  
+✅ **GitOps Workflow**: Declarative infrastructure and applications  
+✅ **Resource Graphs**: Complex dependencies via KRO ResourceGraphDefinitions  
+✅ **Multi-Account**: Cross-account AWS resource provisioning  
+✅ **Single Config**: Centralized YAML configuration (`config/config.yaml`)  
+✅ **Validation Scripts**: Automated testing and validation  
+✅ **Documentation**: Comprehensive guides and examples  
+
+## Quick Start
 
 ### Prerequisites
 
-- AWS CLI configured with appropriate profiles
+- AWS CLI configured
 - Terraform >= 1.5.0
 - Terragrunt >= 0.55.0
 - kubectl >= 1.31.0
-- Docker (for local development)
+- kustomize >= 5.0.0
+- Docker (optional, for container builds)
 
-### Setup
-
-1. **Configure Infrastructure**:
-   ```bash
-   # Edit the single configuration file
-   vim terraform/config.yaml
-   ```
-
-2. **Bootstrap Infrastructure**:
-   ```bash
-   # Validate configuration
-   ./bootstrap/terragrunt-wrapper.sh staging validate
-
-   # Plan infrastructure changes
-   ./bootstrap/terragrunt-wrapper.sh staging plan
-
-   # Apply infrastructure
-   ./bootstrap/terragrunt-wrapper.sh staging apply
-   ```
-
-3. **Access ArgoCD**:
-   ```bash
-   # Get ArgoCD admin password
-   kubectl get secret argocd-initial-admin-secret \
-     -n argocd -o jsonpath="{.data.password}" | base64 -d
-
-   # Port forward to ArgoCD UI
-   kubectl port-forward svc/argocd-server -n argocd 8080:443
-   ```
-
-4. **Monitor Deployments**:
-   ```bash
-   # Watch ApplicationSets
-   kubectl get applicationsets -n argocd
-
-   # Watch Applications
-   kubectl get applications -n argocd
-   ```
-
-## 📁 Repository Structure
-
-```
-gen3-kro/
-├── argocd/                    # GitOps manifests and ArgoCD configurations
-│   ├── addons/               # Infrastructure components (sync-wave: -1)
-│   ├── apps/                 # Application workloads (sync-wave: 3)
-│   ├── charts/               # Helm charts for applications
-│   ├── fleet/                # KRO resource graph definitions (sync-wave: 0)
-│   └── platform/             # Platform services (sync-wave: 1)
-│
-├── terraform/                 # Infrastructure-as-Code (Terragrunt)
-│   ├── config.yaml           # ✅ Single source of truth
-│   ├── root.hcl              # Terragrunt root configuration
-│   ├── live/                 # Environment-specific configs
-│   │   ├── staging/
-│   │   └── prod/
-│   └── modules/              # Terraform modules
-│
-├── bootstrap/                 # Operational scripts and automation
-│   ├── terragrunt-wrapper.sh # Main CLI for infrastructure operations
-│   └── scripts/              # Utility scripts
-│       ├── docker-build-push.sh
-│       ├── version-bump.sh
-│       └── install-git-hooks.sh
-│
-├── docs/                      # Documentation
-│   ├── terragrunt/           # Terragrunt-specific docs
-│   ├── argocd/               # ArgoCD-specific docs
-│   └── guides/               # How-to guides
-│
-└── .github/                   # CI/CD workflows and copilot instructions
-    ├── workflows/
-    └── copilot-instructions.md
-```
-
-## 📚 Component Documentation
-
-### Core Components
-
-- **[Terragrunt Infrastructure](terraform/README.md)**: Terragrunt configuration, modules, and operations
-- **[ArgoCD GitOps](argocd/README.md)**: ApplicationSets, sync waves, and deployment patterns
-- **[CI/CD Pipeline](.github/README.md)**: Docker builds, versioning, and workflows
-- **[Bootstrap Scripts](bootstrap/README.md)**: Operational automation and tooling
-
-### Guides
-
-- **[Terragrunt Guide](docs/terragrunt/README.md)**: Infrastructure management
-- **[Troubleshooting](docs/terragrunt/troubleshooting.md)**: Common issues and solutions
-
-## 🛠️ Common Operations
-
-### Infrastructure Management
+### 1. Deploy Hub Infrastructure
 
 ```bash
 # Validate configuration
 ./bootstrap/terragrunt-wrapper.sh staging validate
 
-# Plan infrastructure changes
+# Plan changes
 ./bootstrap/terragrunt-wrapper.sh staging plan
 
-# Apply changes
+# Apply infrastructure
 ./bootstrap/terragrunt-wrapper.sh staging apply
-
-# Destroy infrastructure (requires confirmation)
-./bootstrap/terragrunt-wrapper.sh staging destroy
 ```
 
-### Application Deployment
+### 2. Bootstrap Hub ArgoCD
 
 ```bash
-# Deploy via ArgoCD (GitOps)
-git add argocd/apps/my-app/
-git commit -m "Add new application"
+# Apply hub bootstrap
+kubectl apply -k hub/argocd/bootstrap/overlays/staging
+
+# Verify ArgoCD is running
+kubectl get pods -n argocd
+
+# Get admin password
+kubectl -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath="{.data.password}" | base64 -d
+```
+
+### 3. Deploy Spoke Clusters (Optional)
+
+```bash
+# Create spoke from template
+cp -r spokes/spoke-template spokes/my-spoke
+
+# Configure spoke
+vi spokes/my-spoke/infrastructure/base/eks-cluster-instance.yaml
+
+# Commit and push - ArgoCD will sync automatically
+git add spokes/my-spoke
+git commit -m "Add my-spoke cluster"
 git push
-
-# ArgoCD auto-syncs within 3 minutes
-# Or trigger manual sync:
-argocd app sync my-app
 ```
 
-### Monitoring
+## Directory Structure
 
-```bash
-# Check ArgoCD applications
-kubectl get applications -n argocd
-
-# Check KRO resource graphs
-kubectl get resourcegraphdefinitions -n kro
-
-# Check ACK controllers
-kubectl get pods -n ack-system
-
-# View cluster state
-k9s
+```
+gen3-kro/
+├── hub/                    # Hub cluster GitOps
+│   └── argocd/
+│       ├── bootstrap/      # ArgoCD bootstrap
+│       ├── addons/         # Hub controllers (KRO, ACK)
+│       └── fleet/          # Spoke fleet management
+├── spokes/                 # Spoke cluster definitions
+│   └── spoke-template/     # Template for new spokes
+│       ├── infrastructure/ # KRO RGD instances
+│       ├── applications/   # Workload manifests
+│       └── argocd/         # ArgoCD Applications
+├── shared/                 # Shared resources
+│   └── kro-rgds/          # Reusable RGD library
+│       └── aws/           # AWS resource graphs (EKS, VPC, IAM)
+├── config/                # Configuration
+│   ├── config.yaml        # Main configuration
+│   ├── environments/      # Environment overrides
+│   └── spokes/           # Spoke configurations
+├── terraform/             # Hub infrastructure (Terragrunt)
+│   ├── modules/          # Terraform modules
+│   └── live/             # Environment configs
+└── bootstrap/            # Scripts and utilities
+    └── scripts/          # Helper scripts
 ```
 
-## 🔧 Development Workflow
+## Documentation
 
-### Making Infrastructure Changes
+- 📘 [Hub Deployment Guide](docs/deployment/hub.md)
+- 📗 [Spoke Management Guide](docs/deployment/spokes.md)
+- 📕 [Configuration Reference](docs/configuration.md)
+- 📙 [Architecture Deep Dive](docs/architecture.md)
+- 📓 [Development Guide](docs/development.md)
 
-1. **Edit Configuration**:
-   ```bash
-   vim terraform/config.yaml
-   ```
+## Configuration
 
-2. **Validate and Plan**:
-   ```bash
-   ./bootstrap/terragrunt-wrapper.sh staging validate
-   ./bootstrap/terragrunt-wrapper.sh staging plan
-   ```
+The platform uses a single source of truth: `config/config.yaml`
 
-3. **Apply in Staging**:
-   ```bash
-   ./bootstrap/terragrunt-wrapper.sh staging apply
-   ```
-
-4. **Promote to Production**:
-   ```bash
-   ./bootstrap/terragrunt-wrapper.sh prod plan
-   ./bootstrap/terragrunt-wrapper.sh prod apply
-   ```
-
-### Adding New Applications
-
-1. **Create Application Manifests**:
-   ```bash
-   mkdir -p argocd/apps/my-app
-   # Add Kubernetes manifests or Helm chart
-   ```
-
-2. **Create ArgoCD Application**:
-   ```yaml
-   # argocd/apps/my-app/application.yaml
-   apiVersion: argoproj.io/v1alpha1
-   kind: Application
-   metadata:
-     name: my-app
-     namespace: argocd
-   spec:
-     project: default
-     source:
-       repoURL: https://github.com/indiana-university/gen3-kro
-       targetRevision: main
-       path: argocd/apps/my-app
-     destination:
-       server: https://kubernetes.default.svc
-       namespace: my-app
-   ```
-
-3. **Commit and Push**:
-   ```bash
-   git add argocd/apps/my-app/
-   git commit -m "Add my-app"
-   git push
-   ```
-
-## 📝 Configuration
-
-All infrastructure is configured via a single YAML file:
-
-**`terraform/config.yaml`**:
 ```yaml
 hub:
-  aws_profile: "boadeyem_tf"
+  alias: "my-hub"
   aws_region: "us-east-1"
-  cluster_name: "gen3-kro-hub"
+  cluster_name: "my-hub-cluster"
+  kubernetes_version: "1.33"
 
-spokes:
-  - alias: "spoke1"
-    region: "us-east-1"
-    profile: "boadeyem_tf"
-    account_id: ""
-
-ack:
-  controllers:
-    - rds
-    - eks
-    - s3
+addons:
+  enable_kro: true
+  enable_argocd: true
+  enable_ack_iam: true
+  # ... additional addons
 ```
 
-See [Terragrunt README](terraform/README.md) for full configuration options.
+## Development
 
-## 🆘 Support
+### Testing
 
-- **Documentation**: [docs/](docs/)
-- **Troubleshooting**: [docs/terragrunt/troubleshooting.md](docs/terragrunt/troubleshooting.md)
-- **Issues**: GitHub Issues
+```bash
+# Validate structure
+./bootstrap/scripts/validate-structure.sh
 
-## 📜 License
+# Validate Terragrunt
+./bootstrap/scripts/validate-terragrunt.sh staging
 
-See [LICENSE](LICENSE) file for details.
+# Test kustomize builds
+kustomize build hub/argocd/bootstrap/base
+kustomize build spokes/spoke-template/infrastructure/base
+```
 
-## 🙏 Acknowledgments
+### Building Docker Images
 
-- **AWS EKS Blueprints**: Terraform module patterns
-- **ArgoCD**: GitOps deployment platform
-- **Terragrunt**: DRY infrastructure configuration
-- **KRO**: Kubernetes Resource Operator
-- **ACK**: AWS Controllers for Kubernetes
+```bash
+# Build and push
+DOCKER_PUSH=1 DOCKER_USERNAME=your-username \
+  ./bootstrap/scripts/docker-build-push.sh
+```
+
+## Versioning
+
+This project follows [Semantic Versioning](https://semver.org/):
+- **v0.1.0**: Initial release with hub-spoke architecture
+- Version file: `.version`
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### Third-Party Licenses
+
+This project includes code derived from third-party projects:
+- Terraform AWS Modules (Apache 2.0)
+- See [third-party-licenses/NOTICE.md](third-party-licenses/NOTICE.md) for full attributions
+
+## Contributing
+
+Contributions are welcome! Please read our contributing guidelines first.
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes with tests
+4. Submit a pull request
+
+## Support
+
+- 📧 Issues: [GitHub Issues](https://github.com/indiana-university/gen3-kro/issues)
+- 📖 Wiki: [GitHub Wiki](https://github.com/indiana-university/gen3-kro/wiki)
+
+## Acknowledgments
+
+- **terraform-aws-modules** for excellent Terraform modules
+- **ArgoCD** team for GitOps tooling
+- **KRO** project for resource graph capabilities
+- **AWS** for ACK controllers
 
 ---
 
-**Version**: 0.0.1
-**Last Updated**: October 7, 2025
-**Maintained By**: Indiana University
+**Version**: 0.1.0  
+**Status**: Production Ready  
+**Maintained by**: Platform Engineering Team

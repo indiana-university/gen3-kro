@@ -16,7 +16,7 @@ spec:
   adminRoleName: "Admin"
   fleetSecretManagerSecretNameSuffix: "argocd-secret"
   domainName: "spoke-template.example.com"
-  
+
   vpc:
     create: true
     vpcCidr: "10.1.0.0/16"
@@ -24,30 +24,30 @@ spec:
     publicSubnet2Cidr: "10.1.2.0/24"
     privateSubnet1Cidr: "10.1.11.0/24"
     privateSubnet2Cidr: "10.1.12.0/24"
-  
+
   workloads: "false"
-  
+
   gitops:
     addonsRepoBasePath: "hub/argocd/addons/"
     addonsRepoPath: "bootstrap"
     addonsRepoRevision: "main"
     addonsRepoUrl: "https://github.com/indiana-university/gen3-kro"
-    
+
     fleetRepoBasePath: "hub/argocd/fleet/"
     fleetRepoPath: "bootstrap"
     fleetRepoRevision: "main"
     fleetRepoUrl: "https://github.com/indiana-university/gen3-kro"
-    
+
     platformRepoBasePath: "hub/argocd/platform/"
     platformRepoPath: "bootstrap"
     platformRepoRevision: "main"
     platformRepoUrl: "https://github.com/indiana-university/gen3-kro"
-    
+
     workloadRepoBasePath: "spokes/spoke-template/applications/"
     workloadRepoPath: ""
     workloadRepoRevision: "main"
     workloadRepoUrl: "https://github.com/indiana-university/gen3-kro"
-  
+
   addons:
     enable_metrics_server: "true"
     enable_external_secrets: "true"
