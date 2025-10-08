@@ -32,6 +32,11 @@ crash.log
 **/customize.env
 **/variables.env
 collected_files.txt
+# ArgoCD credentials
+**/argocd-credentials*.txt
+# Agent instruction files (not end-user docs)
+agent.md
+*-agent.md
 # ┌─────────────────────────────────────────┐
 # │ 6. Terraform                            │
 # └─────────────────────────────────────────┘
@@ -84,7 +89,6 @@ terraform/live/**/kube_providers.tf
 **/backend-override.hcl
 
 # Project-specific ignores
-**/argocd
 **/kro
 /cheat sheet - helm.md
 /cheat sheet - kubectl.md

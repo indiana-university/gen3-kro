@@ -1,0 +1,26 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: spoke-template-infrastructure
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+  labels:
+    spoke: spoke-template
+    type: infrastructure
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/indiana-university/gen3-kro
+    targetRevision: HEAD
+    path: spokes/spoke-template/infrastructure/base
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: default
+  syncPolicy:
+    automated:
+      prune: false  # Don't auto-delete infrastructure
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
