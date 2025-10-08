@@ -13,14 +13,14 @@ log_info "=== Validating Repository Structure ==="
 log_info "Checking hub directory structure..."
 if [[ -d "hub" ]]; then
     log_info "✓ hub/ directory exists"
-    
+
     # Check terraform structure
     if [[ -d "hub/terraform/live" ]]; then
         log_info "✓ hub/terraform/live/ exists"
     else
         log_warn "✗ hub/terraform/live/ missing"
     fi
-    
+
     # Check argocd structure
     if [[ -d "hub/argocd" ]]; then
         log_info "✓ hub/argocd/ exists"
@@ -35,18 +35,18 @@ fi
 log_info "Checking spokes directory structure..."
 if [[ -d "spokes" ]]; then
     log_info "✓ spokes/ directory exists"
-    
+
     for spoke in spokes/*/; do
         if [[ -d "$spoke" ]]; then
             spoke_name=$(basename "$spoke")
             log_info "  Checking spoke: $spoke_name"
-            
+
             if [[ -d "${spoke}infrastructure/base" ]]; then
                 log_info "    ✓ infrastructure/base exists"
             else
                 log_warn "    ✗ infrastructure/base missing"
             fi
-            
+
             if [[ -d "${spoke}argocd/base" ]]; then
                 log_info "    ✓ argocd/base exists"
             else
@@ -70,7 +70,7 @@ fi
 log_info "Checking config directory structure..."
 if [[ -d "config" ]]; then
     log_info "✓ config/ directory exists"
-    
+
     if [[ -f "config/config.yaml" ]]; then
         log_info "✓ config/config.yaml exists"
     else
@@ -83,7 +83,7 @@ fi
 # Validate kustomize builds if hub structure exists
 if [[ -d "hub/argocd" ]]; then
     log_info "Validating kustomize builds..."
-    
+
     if command -v kustomize &> /dev/null; then
         # Hub bootstrap
         if [[ -f "hub/argocd/bootstrap/base/kustomization.yaml" ]]; then
@@ -93,7 +93,7 @@ if [[ -d "hub/argocd" ]]; then
                 log_error "✗ hub/argocd/bootstrap/base build failed"
             fi
         fi
-        
+
         # Hub addons
         for addon in hub/argocd/addons/*/base; do
             if [[ -f "$addon/kustomization.yaml" ]]; then
@@ -113,7 +113,7 @@ fi
 # Validate helm charts if they exist
 if [[ -d "hub/argocd/charts" ]]; then
     log_info "Validating helm charts..."
-    
+
     if command -v helm &> /dev/null; then
         for chart in hub/argocd/charts/*/; do
             if [[ -f "$chart/Chart.yaml" ]]; then
