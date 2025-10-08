@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: argocd
+
+resources:
+  # KRO controller - must be deployed first
+  - kro-controller/base
+  
+  # KRO Resource Graph Definitions - deployed after controller
+  - kro-rgds/base
+
+# Note: Fleet management (spoke-fleet-appset.yaml) is in hub/argocd/fleet/
+# and should be applied separately or included in the bootstrap app-of-apps
+
+# Note: ACK controllers and other addons from the original
+# argocd/addons/bootstrap/default/addons.yaml are deployed
+# via the existing ApplicationSet mechanism for now.
+# They can be migrated incrementally.
