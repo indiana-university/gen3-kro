@@ -40,57 +40,75 @@ RUN curl -L "https://github.com/mikefarah/yq/releases/download/v${YQ_VERSION}/yq
 RUN set -eux; \
     TF_ZIP="terraform_${TERRAFORM_VERSION}_linux_amd64.zip"; \
     TF_URL="https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/${TF_ZIP}"; \
-    curl -fsSLo /tmp/${TF_ZIP} "${TF_URL}"; \
-    curl -fsSLo /tmp/terraform_SHA256SUMS "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS"; \
-    grep " ${TF_ZIP}$" /tmp/terraform_SHA256SUMS | sha256sum -c - && \
-    unzip /tmp/${TF_ZIP} -d /usr/local/bin && rm -f /tmp/${TF_ZIP} /tmp/terraform_SHA256SUMS && chmod +x /usr/local/bin/terraform
+    echo "Downloading Terraform ${TERRAFORM_VERSION}..."; \
+    curl -fsSL --retry 3 --retry-delay 2 -o /tmp/${TF_ZIP} "${TF_URL}"; \
+    curl -fsSL --retry 3 --retry-delay 2 -o /tmp/terraform_SHA256SUMS "https://releases.hashicorp.com/terraform/${TERRAFORM_VERSION}/terraform_${TERRAFORM_VERSION}_SHA256SUMS"; \
+    echo "Verifying download..."; \
+    cd /tmp && grep " ${TF_ZIP}$" terraform_SHA256SUMS | sha256sum -c -; \
+    echo "Installing Terraform..."; \
+    unzip /tmp/${TF_ZIP} -d /usr/local/bin && \
+    rm -f /tmp/${TF_ZIP} /tmp/terraform_SHA256SUMS && \
+    chmod +x /usr/local/bin/terraform && \
+    terraform version
 
 # Install Terragrunt
 RUN set -eux; \
-        TG_BIN="terragrunt_linux_amd64"; \
-        TG_URL_BASE="https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}"; \
-        curl -fsSLo /tmp/${TG_BIN} "${TG_URL_BASE}/${TG_BIN}"; \
-        curl -fsSLo /tmp/terragrunt_SHA256SUMS "${TG_URL_BASE}/SHA256SUMS" || true; \
-        if [ -s /tmp/terragrunt_SHA256SUMS ]; then \
-            grep "${TG_BIN}$" /tmp/terragrunt_SHA256SUMS | sha256sum -c -; \
-        fi; \
-        mv /tmp/${TG_BIN} /usr/local/bin/terragrunt && chmod +x /usr/local/bin/terragrunt && rm -f /tmp/terragrunt_SHA256SUMS
+    TG_BIN="terragrunt_linux_amd64"; \
+    TG_URL_BASE="https://github.com/gruntwork-io/terragrunt/releases/download/v${TERRAGRUNT_VERSION}"; \
+    echo "Downloading Terragrunt ${TERRAGRUNT_VERSION}..."; \
+    curl -fsSL --retry 3 --retry-delay 2 -o /tmp/${TG_BIN} "${TG_URL_BASE}/${TG_BIN}"; \
+    echo "Installing Terragrunt..."; \
+    mv /tmp/${TG_BIN} /usr/local/bin/terragrunt && \
+    chmod +x /usr/local/bin/terragrunt && \
+    terragrunt --version
 
 # Install kubectl
-RUN curl -L "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
+RUN echo "Downloading kubectl ${KUBECTL_VERSION}..."; \
+    curl -fsSL --retry 3 --retry-delay 2 "https://dl.k8s.io/release/v${KUBECTL_VERSION}/bin/linux/amd64/kubectl" \
     -o /usr/local/bin/kubectl \
-    && chmod +x /usr/local/bin/kubectl
+    && chmod +x /usr/local/bin/kubectl \
+    && kubectl version --client
 
 # Install Helm
-RUN curl -L "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
+RUN echo "Downloading Helm ${HELM_VERSION}..."; \
+    curl -fsSL --retry 3 --retry-delay 2 "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
     -o /tmp/helm.tar.gz \
     && tar -xzf /tmp/helm.tar.gz -C /tmp \
     && mv /tmp/linux-amd64/helm /usr/local/bin/helm \
     && rm -rf /tmp/helm.tar.gz /tmp/linux-amd64 \
-    && chmod +x /usr/local/bin/helm
+    && chmod +x /usr/local/bin/helm \
+    && helm version
 
 # Install AWS CLI v2
-RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
+RUN echo "Downloading AWS CLI ${AWS_CLI_VERSION}..."; \
+    curl -fsSL --retry 3 --retry-delay 2 "https://awscli.amazonaws.com/awscli-exe-linux-x86_64-${AWS_CLI_VERSION}.zip" \
     -o /tmp/awscliv2.zip \
     && unzip /tmp/awscliv2.zip -d /tmp \
     && /tmp/aws/install \
-    && rm -rf /tmp/awscliv2.zip /tmp/aws
+    && rm -rf /tmp/awscliv2.zip /tmp/aws \
+    && aws --version
 
 # Install k9s (Kubernetes CLI UI)
-RUN curl -sL https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz \
+RUN echo "Downloading k9s..."; \
+    curl -fsSL --retry 3 --retry-delay 2 https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz \
     | tar xz -C /tmp \
     && mv /tmp/k9s /usr/local/bin/k9s \
-    && chmod +x /usr/local/bin/k9s
+    && chmod +x /usr/local/bin/k9s \
+    && k9s version
 
 # Install ArgoCD CLI
-RUN curl -sSL -o /usr/local/bin/argocd \
+RUN echo "Downloading ArgoCD CLI..."; \
+    curl -fsSL --retry 3 --retry-delay 2 -o /usr/local/bin/argocd \
     https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64 \
-    && chmod +x /usr/local/bin/argocd
+    && chmod +x /usr/local/bin/argocd \
+    && argocd version --client
 
 # Install kustomize (release binary)
-RUN KUSTOMIZE_VERSION="5.0.1" && \
-        curl -sL "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
-            | tar xz -C /tmp && mv /tmp/kustomize /usr/local/bin/kustomize && chmod +x /usr/local/bin/kustomize
+RUN echo "Downloading kustomize..."; \
+    KUSTOMIZE_VERSION="5.0.1" && \
+    curl -fsSL --retry 3 --retry-delay 2 "https://github.com/kubernetes-sigs/kustomize/releases/download/kustomize%2F${KUSTOMIZE_VERSION}/kustomize_${KUSTOMIZE_VERSION}_linux_amd64.tar.gz" \
+    | tar xz -C /tmp && mv /tmp/kustomize /usr/local/bin/kustomize && chmod +x /usr/local/bin/kustomize \
+    && kustomize version
 
 
 # Set up bash completion for kubectl and helm
