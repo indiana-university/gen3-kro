@@ -16,6 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 
 # Source logging library
+# shellcheck source=./bootstrap/scripts/lib-logging.sh
 source "${SCRIPT_DIR}/lib-logging.sh"
 
 # Configuration
@@ -101,9 +102,13 @@ main() {
   # Load configuration from config.yaml
   log_info "Loading configuration from: $CONFIG_FILE"
 
-  local hub_profile=$(get_config_value '.hub.aws_profile')
-  local hub_region=$(get_config_value '.hub.aws_region')
-  local cluster_base_name=$(get_config_value '.hub.cluster_name')
+  local hub_profile
+  local hub_region
+  local cluster_base_name
+
+  hub_profile=$(get_config_value '.hub.aws_profile')
+  hub_region=$(get_config_value '.hub.aws_region')
+  cluster_base_name=$(get_config_value '.hub.cluster_name')
 
   # Determine full cluster name based on environment
   local cluster_name
