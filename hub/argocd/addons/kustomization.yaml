@@ -6,7 +6,7 @@ namespace: argocd
 resources:
   # KRO controller - must be deployed first
   - kro-controller/base
-  
+
   # KRO Resource Graph Definitions - deployed after controller
   - kro-rgds/base
 

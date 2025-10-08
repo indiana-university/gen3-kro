@@ -20,7 +20,7 @@ addons:
   enable_ack_eks: true
   enable_ack_ec2: true
   enable_kro: true
-  
+
   # Disabled in staging
   enable_cert_manager: false
   enable_external_dns: false
