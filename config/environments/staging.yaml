@@ -1,0 +1,32 @@
+# Staging environment overrides
+environment: staging
+enable_cross_account_iam: false  # Same account for staging/testing
+
+# Cluster settings
+cluster_name_suffix: staging
+kubernetes_version: "1.33"
+
+# Networking
+vpc_cidr: "10.0.0.0/16"
+
+# Addons - conservative settings for staging
+addons:
+  enable_metrics_server: true
+  enable_kyverno: true
+  enable_kyverno_policies: true
+  enable_kyverno_policy_reporter: true
+  enable_external_secrets: true
+  enable_ack_iam: true
+  enable_ack_eks: true
+  enable_ack_ec2: true
+  enable_kro: true
+  
+  # Disabled in staging
+  enable_cert_manager: false
+  enable_external_dns: false
+
+# ArgoCD settings
+argocd:
+  auto_sync: true
+  self_heal: true
+  prune: false  # Don't auto-delete in staging
