@@ -42,7 +42,7 @@ jobs:
             VERSION="${GITHUB_REF_NAME}"
           else
             # Auto-increment patch version for main branch pushes
-            chmod +x scripts/version-bump.sh
+            chmod +x bootstrap/scripts/version-bump.sh
             ./bootstrap/scripts/version-bump.sh patch
             VERSION=$(cat .version)
             VERSION="v${VERSION}"
@@ -66,6 +66,8 @@ jobs:
           echo "VERSION=${VERSION}" >> $GITHUB_ENV
           echo "IMAGE_TAG=${TAG}" >> $GITHUB_ENV
           echo "IMAGE_TAGS=${IMAGE_TAGS}" >> $GITHUB_ENV
+          echo "IMAGE_TAGS=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
           echo "Version: ${VERSION}"
           echo "Tags: ${IMAGE_TAGS}"
 
@@ -75,18 +77,19 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push
+      - name: Build and push (use devcontainer Dockerfile)
         uses: docker/build-push-action@v4
         with:
           context: .
+          file: .devcontainer/Dockerfile
           push: true
-          tags: ${{ env.IMAGE_TAGS }}
+          tags: ${{ steps.vars.outputs.IMAGE_TAGS }}
           # enable BuildKit inline cache
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Output image
-        run: echo "Image(s) pushed - ${{ env.IMAGE_TAGS }}"
+        run: echo "Image(s) pushed - ${{ steps.vars.outputs.IMAGE_TAGS }}"
 
       - name: Commit version bump
         if: github.ref == 'refs/heads/main' && github.ref_type != 'tag'
@@ -94,6 +97,6 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .version
-          git commit -m "chore: auto-bump version to ${{ env.VERSION }}" || echo "No version changes to commit"
+          git commit -m "chore: auto-bump version to ${{ steps.vars.outputs.VERSION }}" || echo "No version changes to commit"
           git push || echo "Nothing to push"
 
