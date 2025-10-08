@@ -272,6 +272,16 @@ main() {
         terragrunt apply -auto-approve
       fi
       log_success "✓ Changes applied successfully"
+      
+      # Update kubeconfig after successful apply
+      log_info "Updating kubeconfig for environment: $environment"
+      if [[ -f "${SCRIPT_DIR}/scripts/connect-cluster.sh" ]]; then
+        bash "${SCRIPT_DIR}/scripts/connect-cluster.sh" "$environment"
+        log_success "✓ Kubeconfig updated successfully"
+      else
+        log_warn "connect-cluster.sh not found, skipping kubeconfig update"
+        log_notice "Run manually: ./bootstrap/scripts/connect-cluster.sh $environment"
+      fi
       ;;
 
     destroy)
