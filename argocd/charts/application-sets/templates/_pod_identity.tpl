@@ -20,8 +20,8 @@ Template to generate pod-identity configuration
         namespace: '{{ default $chartConfig.namespace .namespace }}'
     ignoreMissingValueFiles: true
     valueFiles:
-     {{- include "application-sets.valueFiles" (dict 
-     "nameNormalize" $chartName 
-     "valueFiles" $valueFiles 
+     {{- include "application-sets.valueFiles" (dict
+     "nameNormalize" $chartName
+     "valueFiles" $valueFiles
      "values" $values "chartType" "pod-identity") | nindent 6 }}
 {{- end }}
