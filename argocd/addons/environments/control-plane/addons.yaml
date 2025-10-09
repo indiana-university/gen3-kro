@@ -1,0 +1,22 @@
+# ArgoCD Addons Configuration for Control Plane Environment
+# Enables ACK controllers for hub cluster management
+
+# ACK IAM Controller
+ack-iam:
+  enabled: true
+  enableACK: true
+
+# ACK EKS Controller  
+ack-eks:
+  enabled: true
+  enableACK: true
+
+# ACK EC2 Controller
+ack-ec2:
+  enabled: true
+  enableACK: true
+
+# ACK EFS Controller
+ack-efs:
+  enabled: true
+  enableACK: true
