@@ -65,10 +65,10 @@ argocd:
 # GitOps repository configuration for staging
 gitops:
   addons:
-    revision: "argo-app-of-apps"
+    revision: "staging"
   fleet:
-    revision: "argo-app-of-apps"
+    revision: "staging"
   platform:
-    revision: "argo-app-of-apps"
+    revision: "staging"
   workload:
-    revision: "argo-app-of-apps"
+    revision: "staging"
