@@ -8,7 +8,7 @@ spec:
     preserveResourcesOnDeletion: false
   goTemplate: true
   goTemplateOptions:
-    - missingkey=error    
+    - missingkey=error
   generators:
   - matrix:
       generators:
@@ -46,11 +46,11 @@ spec:
             ignoreMissingValueFiles: true
             valueFiles:
             - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/defaults/argoprojects/values.yaml'
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/environments/{{.metadata.labels.environment}}/argoprojects/values.yaml'            
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/clusters/{{.metadata.labels.aws_cluster_name}}/argoprojects/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/environments/{{.metadata.labels.environment}}/argoprojects/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/clusters/{{.metadata.labels.hub_cluster_name}}/argoprojects/values.yaml'
             - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/defaults/argoprojects/values.yaml'
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/environments/{{.metadata.labels.environment}}/argoprojects/values.yaml'            
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/clusters/{{.metadata.labels.aws_cluster_name}}/argoprojects/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/environments/{{.metadata.labels.environment}}/argoprojects/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/clusters/{{.metadata.labels.hub_cluster_name}}/argoprojects/values.yaml'
             parameters:
               - name: "projects[0].sourceRepos[0]"
                 value: '{{.metadata.annotations.workload_repo_url}}'

@@ -15,7 +15,7 @@ spec:
   - clusters:
       selector:
         matchLabels:
-          fleet_member: control-plane          
+          fleet_member: control-plane
       values:
         addonChart: application-sets
   template:

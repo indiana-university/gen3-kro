@@ -27,32 +27,16 @@ ack:
     - sns
     - sqs
     - wafv2
+
 # Spoke accounts for cross-account resource provisioning
 spokes:
   - alias: "spoke1"
     region: "us-east-1"
-    profile: "boadeyem_tf" # Same account as hub for demo/testing
+    profile: "boadeyem_tf"  # Same account as hub for demo/testing
     tags:
       Team: "platform"
       Purpose: "multi-account-demo"
-  - alias: "workload-cluster1"
-    region: "us-east-1"
-    profile: "boadeyem_tf" # Configure AWS profile for workload cluster 1
-    tags:
-      Team: "workload"
-      Purpose: "application-workloads"
-  - alias: "workload-cluster2"
-    region: "us-east-1"
-    profile: "boadeyem_tf" # Configure AWS profile for workload cluster 2
-    tags:
-      Team: "workload"
-      Purpose: "application-workloads"
-  - alias: "workload-cluster3"
-    region: "us-east-1"
-    profile: "boadeyem_tf" # Configure AWS profile for workload cluster 3
-    tags:
-      Team: "workload"
-      Purpose: "application-workloads"
+
 # GitOps repository configuration
 gitops:
   org_name: "indiana-university"

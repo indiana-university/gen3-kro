@@ -13,8 +13,8 @@ Template to generate pod-identity configuration
     releaseName: '{{`{{ .name }}`}}-{{ $chartConfig.chartName | default $chartName }}'
     valuesObject:
       create: {{ $chartConfig.enableACK }}
-      region: '{{`{{ .metadata.annotations.aws_region }}`}}'
-      accountId: '{{`{{ .metadata.annotations.aws_account_id}}`}}'
+  region: '{{`{{ .metadata.annotations.hub_aws_region }}`}}'
+  accountId: '{{`{{ .metadata.annotations.hub_account_id}}`}}'
       podIdentityAssociation:
         clusterName: '{{`{{ .name }}`}}'
         namespace: '{{ default $chartConfig.namespace .namespace }}'

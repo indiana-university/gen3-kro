@@ -4,13 +4,13 @@ metadata:
   name: namespaces
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"  
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   syncPolicy:
     preserveResourcesOnDeletion: false
   goTemplate: true
   goTemplateOptions:
-    - missingkey=error    
+    - missingkey=error
   generators:
   - matrix:
       generators:
@@ -28,7 +28,7 @@ spec:
             #   - key: aws_cluster_name
             #     operator: NotIn
             #     values:
-            #       - workload-cluster2                  
+            #       - workload-cluster2
           values:
             chart: teams
       - git:
@@ -59,11 +59,11 @@ spec:
           ignoreMissingValueFiles: true
           valueFiles:
             - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/defaults/namespaces/values.yaml'
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/environments/{{.metadata.labels.environment}}/namespaces/values.yaml'            
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/clusters/{{.metadata.labels.aws_cluster_name}}/namespaces/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/environments/{{.metadata.labels.environment}}/namespaces/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/clusters/{{.metadata.labels.hub_cluster_name}}/namespaces/values.yaml'
             - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/defaults/namespaces/values.yaml'
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/environments/{{.metadata.labels.environment}}/namespaces/values.yaml'            
-            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/clusters/{{.metadata.labels.aws_cluster_name}}/namespaces/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/environments/{{.metadata.labels.environment}}/namespaces/values.yaml'
+            - '$values/{{.metadata.annotations.platform_repo_basepath}}teams/{{.path.basename}}/tenants/{{.metadata.labels.tenant}}/clusters/{{.metadata.labels.hub_cluster_name}}/namespaces/values.yaml'
       destination:
         name: '{{.name}}'
       syncPolicy:
