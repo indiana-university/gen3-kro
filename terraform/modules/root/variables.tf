@@ -308,13 +308,12 @@ variable "argocd_chart_version" {
 }
 
 variable "spokes" {
-  description = "List of spoke accounts for cross-account resource provisioning"
+  description = "List of spoke accounts for cross-account resource provisioning. Account IDs are determined at runtime via AWS credentials."
   type = list(object({
-    alias      = string
-    region     = string
-    profile    = string
-    account_id = string
-    tags       = map(string)
+    alias   = string
+    region  = string
+    profile = string
+    tags    = map(string)
   }))
   default = []
 }

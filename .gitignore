@@ -92,7 +92,7 @@ terraform/live/**/kube_providers.tf
 **/kro
 /cheat sheet - helm.md
 /cheat sheet - kubectl.md
-**/.github/*.md
+.github/*.md
 /gen3-kro-agg.ipynb
 /gen3-kro.code-workspace
 copilot-instructions.md

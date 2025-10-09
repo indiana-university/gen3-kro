@@ -134,6 +134,15 @@ generate "iam_access_modules" {
         "${spoke.alias}" = module.iam-access-${spoke.alias}.ack_spoke_role_arns
         %{endfor~}
       }
+
+      iam_access_modules_data = {
+        %{for spoke in local.spokes~}
+        "${spoke.alias}" = {
+          account_id = module.iam-access-${spoke.alias}.account_id
+          ack_spoke_role_arns = module.iam-access-${spoke.alias}.ack_spoke_role_arns
+        }
+        %{endfor~}
+      }
     }
   EOF
 }
@@ -159,11 +168,10 @@ inputs = {
   # Spokes configuration from config.yaml
   spokes = [
     for spoke in local.spokes : {
-      alias      = spoke.alias
-      region     = spoke.region
-      profile    = spoke.profile
-      account_id = try(spoke.account_id, "")
-      tags       = merge(try(spoke.tags, {}), { Environment = "staging" })
+      alias   = spoke.alias
+      region  = spoke.region
+      profile = spoke.profile
+      tags    = merge(try(spoke.tags, {}), { Environment = "staging" })
     }
   ]
 
@@ -171,13 +179,13 @@ inputs = {
   addons = local.addons
 
   # GitOps configurations from config.yaml with staging branch
+  # All repos use the same GitHub instance and organization
   gitops_addons_github_url     = local.gitops.github_url
   gitops_addons_org_name       = local.gitops.org_name
   gitops_addons_repo_name      = local.gitops.repo_name
   gitops_addons_repo_base_path = local.gitops.addons.base_path
   gitops_addons_repo_path      = local.gitops.addons.path
-  gitops_addons_repo_revision  = "staging"  # Use staging branch
-  gitops_iam_config_raw_file_base_url     = try(local.gitops.iam_config_raw_file_base_url, "")
+  gitops_addons_repo_revision  = "staging"
   gitops_addons_app_id                   = ""
   gitops_addons_app_installation_id      = ""
   gitops_addons_app_private_key_ssm_path = ""
@@ -211,6 +219,9 @@ inputs = {
   gitops_workload_app_id                   = ""
   gitops_workload_app_installation_id      = ""
   gitops_workload_app_private_key_ssm_path = ""
+
+  # IAM config raw file base URL for ACK controller policy templates
+  gitops_iam_config_raw_file_base_url = try(local.gitops.iam_config_raw_file_base_url, "")
 
   outputs_dir = local.outputs_dir
 

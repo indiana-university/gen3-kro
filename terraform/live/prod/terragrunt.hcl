@@ -135,6 +135,15 @@ generate "iam_access_modules" {
         "${spoke.alias}" = module.iam-access-${spoke.alias}.ack_spoke_role_arns
         %{endfor~}
       }
+
+      iam_access_modules_data = {
+        %{for spoke in local.spokes~}
+        "${spoke.alias}" = {
+          account_id = module.iam-access-${spoke.alias}.account_id
+          ack_spoke_role_arns = module.iam-access-${spoke.alias}.ack_spoke_role_arns
+        }
+        %{endfor~}
+      }
     }
   EOF
 }
@@ -160,11 +169,10 @@ inputs = {
   # Spokes configuration from config.yaml
   spokes = [
     for spoke in local.spokes : {
-      alias      = spoke.alias
-      region     = spoke.region
-      profile    = spoke.profile
-      account_id = try(spoke.account_id, "")
-      tags       = try(spoke.tags, {})
+      alias   = spoke.alias
+      region  = spoke.region
+      profile = spoke.profile
+      tags    = merge(try(spoke.tags, {}), { Environment = "production" })
     }
   ]
 

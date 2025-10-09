@@ -1,4 +1,8 @@
 clusters:
-  workload-cluster1: "012345678910" # AWS account for workload cluster 1
-  workload-cluster2: "123456789101" # AWS account for workload cluster 2
-  workload-cluster3: "234567891012" # AWS account for workload cluster 3
+  # Account IDs dynamically injected via ArgoCD cluster annotations
+  # Terraform populates <alias>_account_id from AWS data sources in iam-access modules
+  # Pattern: <alias>_account_id where <alias> matches terraform/config.yaml spokes[].alias
+  spoke1: "{{.metadata.annotations.spoke1_account_id}}"
+  workload-cluster1: "{{.metadata.annotations.workload-cluster1_account_id}}"
+  workload-cluster2: "{{.metadata.annotations.workload-cluster2_account_id}}"
+  workload-cluster3: "{{.metadata.annotations.workload-cluster3_account_id}}"

@@ -9,6 +9,37 @@ kubernetes_version: "1.33"
 # Networking
 vpc_cidr: "10.0.0.0/16"
 
+# Spokes - All use same profile as hub for staging (single account testing)
+spokes:
+  - alias: "spoke1"
+    region: "us-east-1"
+    profile: "boadeyem_tf"  # Same as hub
+    account_id: ""
+    tags:
+      Team: "platform"
+      Purpose: "multi-account-demo"
+  - alias: "workload-cluster1"
+    region: "us-east-1"
+    profile: "boadeyem_tf"  # Same as hub for staging
+    account_id: ""
+    tags:
+      Team: "workload"
+      Purpose: "staging-workloads"
+  - alias: "workload-cluster2"
+    region: "us-east-1"
+    profile: "boadeyem_tf"  # Same as hub for staging
+    account_id: ""
+    tags:
+      Team: "workload"
+      Purpose: "staging-workloads"
+  - alias: "workload-cluster3"
+    region: "us-east-1"
+    profile: "boadeyem_tf"  # Same as hub for staging
+    account_id: ""
+    tags:
+      Team: "workload"
+      Purpose: "staging-workloads"
+
 # Addons - conservative settings for staging
 addons:
   enable_metrics_server: true
