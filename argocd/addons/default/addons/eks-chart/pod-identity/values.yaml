@@ -1,0 +1,11 @@
+# Pod Identity configuration for ACK EKS controller
+# Base values - can be overridden by tenant/environment/cluster specific values
+
+podIdentityRole:
+  description: "Pod Identity Role for ACK EKS Controller"
+  managedPolicies: []
+  policyRefs: []
+
+podIdentityPolicy:
+  description: "IAM Policy for ACK EKS Controller"
+  policies: []

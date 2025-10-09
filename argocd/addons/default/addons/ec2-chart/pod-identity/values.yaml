@@ -1,0 +1,11 @@
+# Pod Identity configuration for ACK EC2 controller
+# Base values - can be overridden by tenant/environment/cluster specific values
+
+podIdentityRole:
+  description: "Pod Identity Role for ACK EC2 Controller"
+  managedPolicies: []
+  policyRefs: []
+
+podIdentityPolicy:
+  description: "IAM Policy for ACK EC2 Controller"
+  policies: []
