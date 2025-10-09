@@ -62,19 +62,19 @@ gitops:
   addons:
     base_path: "argocd/addons"
     path: "bootstrap"
-    revision: "main"
+    revision: "argo-app-of-apps"
   fleet:
     base_path: "argocd/fleet"
     path: "bootstrap"
-    revision: "main"
+    revision: "argo-app-of-apps"
   platform:
     base_path: "argocd/platform"
     path: "bootstrap"
-    revision: "main"
+    revision: "argo-app-of-apps"
   workload:
     base_path: "argocd/apps"
     path: "bootstrap"
-    revision: "main"
+    revision: "argo-app-of-apps"
 # Output and state paths
 paths:
   outputs_dir: "outputs"
