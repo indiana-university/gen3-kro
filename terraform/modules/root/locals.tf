@@ -124,7 +124,8 @@ locals {
       environment                     = local.environment
       aws_vpc_id                      = local.vpc_id
       use_ack                         = local.use_ack
-
+      # Add tenants annotation with list of spoke aliases
+      tenants                         = jsonencode([for spoke in var.spokes : spoke.alias])
     },
     {
       argocd_namespace        = local.argocd_namespace,

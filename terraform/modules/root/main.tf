@@ -7,7 +7,7 @@
 module "eks-hub" {
   source = "../eks-hub"
 
-  create                       = true  # Always create EKS cluster
+  create                       = true # Always create EKS cluster
   aws_region                   = var.hub_aws_region
   ack_services                 = var.ack_services
   ack_services_config          = local.ack_services_config
@@ -25,7 +25,7 @@ module "eks-hub" {
   tags                         = local.tags
 
   providers = {
-    aws        = aws.hub
+    aws = aws.hub
   }
 }
 

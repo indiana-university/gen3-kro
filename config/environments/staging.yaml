@@ -14,28 +14,24 @@ spokes:
   - alias: "spoke1"
     region: "us-east-1"
     profile: "boadeyem_tf"  # Same as hub
-    account_id: ""
     tags:
       Team: "platform"
       Purpose: "multi-account-demo"
   - alias: "workload-cluster1"
     region: "us-east-1"
     profile: "boadeyem_tf"  # Same as hub for staging
-    account_id: ""
     tags:
       Team: "workload"
       Purpose: "staging-workloads"
   - alias: "workload-cluster2"
     region: "us-east-1"
     profile: "boadeyem_tf"  # Same as hub for staging
-    account_id: ""
     tags:
       Team: "workload"
       Purpose: "staging-workloads"
   - alias: "workload-cluster3"
     region: "us-east-1"
     profile: "boadeyem_tf"  # Same as hub for staging
-    account_id: ""
     tags:
       Team: "workload"
       Purpose: "staging-workloads"
