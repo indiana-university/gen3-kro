@@ -1,0 +1,13 @@
+# Override values for opensearchservice ACK controller
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.opensearchservice}}"
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

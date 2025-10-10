@@ -1,0 +1,61 @@
+# Default values for ACK controllers
+
+global:
+  namespace: ack-system
+  
+  podIdentity:
+    enabled: true
+    
+  serviceAccount:
+    create: true
+    annotations: {}
+    
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+      
+  replicaCount: 1
+  
+  image:
+    pullPolicy: IfNotPresent
+    
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+
+# Controller-specific settings
+controllers:
+  cloudtrail:
+    enabled: true
+  cloudwatchlogs:
+    enabled: true
+  ec2:
+    enabled: true
+  efs:
+    enabled: true
+  eks:
+    enabled: true
+  iam:
+    enabled: true
+  kms:
+    enabled: true
+  opensearchservice:
+    enabled: true
+  rds:
+    enabled: true
+  route53:
+    enabled: true
+  s3:
+    enabled: true
+  secretsmanager:
+    enabled: true
+  sns:
+    enabled: true
+  sqs:
+    enabled: true
+  wafv2:
+    enabled: true

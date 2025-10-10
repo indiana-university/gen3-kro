@@ -113,6 +113,8 @@ locals {
     { fleet_member = local.fleet_member },
     { kubernetes_version = local.cluster_version },
     { aws_cluster_name = try(local.cluster_info.cluster_name, null) },
+    # Removed single tenant label - use tenants annotation (JSON array) instead for multi-tenant support
+    { hub_cluster_name = try(local.cluster_info.cluster_name, local.cluster_name) }, # Hub cluster name label
   )
 
   # canonical keys expected by downstream templates / ApplicationSets

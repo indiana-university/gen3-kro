@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: spoke-installations
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # Get cluster with tenants annotation
+          - clusters:
+              selector:
+                matchLabels:
+                  argocd.argoproj.io/secret-type: cluster
+              values:
+                tenantsList: '{{.metadata.annotations.tenants}}'
+                clusterName: '{{.name}}'
+          # Parse JSON array and iterate over tenants
+          - list:
+              elements: '{{index . "tenantsList" | default "[]" | fromJson}}'
+              elementsYaml: |
+                - tenant: '{{.}}'
+    - git:
+        repoURL: https://github.com/indiana-university/gen3-kro.git
+        revision: HEAD
+        directories:
+          - path: 'argo/spokes/{{.tenant}}/*/applications'
+        values:
+          gen3_url: '{{index .path.segments 3}}'
+  template:
+    metadata:
+      name: 'spoke-{{.tenant}}-{{.gen3_url}}'
+      labels:
+        tenant: '{{.tenant}}'
+        gen3_url: '{{.gen3_url}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: "3"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/indiana-university/gen3-kro.git
+        targetRevision: HEAD
+        path: 'argo/spokes/{{.tenant}}/{{.gen3_url}}/applications'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.gen3_url}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
