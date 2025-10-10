@@ -1,10 +1,10 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: web-store-backend
+  name: gen3
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "3"  
+    argocd.argoproj.io/sync-wave: "3"
 spec:
   syncPolicy:
     preserveResourcesOnDeletion: false
@@ -15,7 +15,7 @@ spec:
           - clusters:
               selector:
                 matchLabels:
-                  workloads: 'true'              
+                  workloads: 'true'
                 matchExpressions:
                   - key: environment
                     operator: In
@@ -43,9 +43,9 @@ spec:
         team: '{{values.team}}'
         component: '{{path.basename}}'
         workloads: 'true'
-      # annotations:        
+      # annotations:
         # argocd.argoproj.io/compare-options: IgnoreExtraneous
-        # argocd.argoproj.io/sync-options: Prune=true        
+        # argocd.argoproj.io/sync-options: Prune=true
       finalizers:
       # This is here only for workshop purposes. In a real-world scenario, you should not use this
       - resources-finalizer.argocd.argoproj.io

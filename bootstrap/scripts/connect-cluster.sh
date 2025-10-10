@@ -20,7 +20,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
 source "${SCRIPT_DIR}/lib-logging.sh"
 
 # Configuration
-CONFIG_FILE="${REPO_ROOT}/terraform/config.yaml"
+CONFIG_FILE="${REPO_ROOT}/config/config.yaml"
 OUTPUTS_DIR="${REPO_ROOT}/outputs"
 
 # Create outputs directory structure

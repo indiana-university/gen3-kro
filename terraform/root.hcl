@@ -4,7 +4,7 @@
 
 locals {
   # Load centralized configuration from YAML
-  config_file = "${get_repo_root()}/terraform/config.yaml"
+  config_file = "${get_repo_root()}/config/config.yaml"
   config      = yamldecode(file(local.config_file))
 
   # Extract configuration sections for easy access

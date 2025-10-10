@@ -1,16 +1,13 @@
-# terraform/config.yaml
-# Centralized configuration for gen3-kro multi-account EKS platform
-# This file replaces all .env files (controller-list.env, spokes-list.env, kro/core.env, kro/mods.env)
----
-hub:
-  alias: "gen3-csoc"                  # Alias for hub account
-  aws_profile: "boadeyem_tf"  # AWS CLI profile for hub account (has access to S3 backend)
-  aws_region: "us-east-1"     # Primary region for hub cluster
-  cluster_name: "gen3-kro-hub"     # EKS cluster name
-  kubernetes_version: "1.33"       # Kubernetes version
-  vpc_name: "gen3-kro-vpc"         # VPC name for hub cluster
+# Base configuration shared across all environments
 
-# ACK (AWS Controllers for Kubernetes) configuration
+# Staging environment overrides
+hub:
+  alias: "gen3-csoc"
+  kubernetes_version: "1.33"
+  vpc_name: "gen3-kro-vpc"
+  aws_profile: "boadeyem_tf"
+  aws_region: "us-east-1"
+  cluster_name: "gen3-kro-hub"
 ack:
   namespace: "ack-system"
   user_provided_inline_policy_link: ""
@@ -18,6 +15,8 @@ ack:
     - cloudtrail
     - cloudwatchlogs
     - ec2
+    - efs
+    - eks
     - iam
     - kms
     - opensearchservice
@@ -28,58 +27,36 @@ ack:
     - sns
     - sqs
     - wafv2
-
-# Spoke accounts for cross-account resource provisioning
-spokes:
-  - alias: "spoke1"
-    region: "us-east-1"
-    profile: "boadeyem_tf"  # Same account as hub for demo/testing
-    account_id: ""  # Will be determined at runtime if empty
-    tags:
-      Team: "platform"
-      Purpose: "multi-account-demo"
-
-# GitOps repository configuration
 gitops:
   org_name: "indiana-university"
   repo_name: "gen3-kro"
   github_url: "github.com"
-  iam_config_raw_file_base_url: ""  # Leave empty to use default: "https://raw.githubusercontent.com/<org>/<repo>/<branch>"
-
+  iam_config_raw_file_base_url: ""
   addons:
-    base_path: "argocd/addons"
-    path: "bootstrap"
-    revision: "main"
-
+    base_path: "argo/hub/charts"
+    path: "ack"
+    revision: "staging"
   fleet:
-    base_path: "argocd/fleet"
-    path: "bootstrap"
-    revision: "main"
-
+    base_path: "argo/hub/bootstrap"
+    path: "spoke-template"
+    revision: "staging"
   platform:
-    base_path: "argocd/platform"
-    path: "bootstrap"
-    revision: "main"
-
+    base_path: "argo/teams"
+    path: "."
+    revision: "staging"
   workload:
-    base_path: "argocd/apps"
-    path: "bootstrap"
-    revision: "main"
-
-# Output and state paths
+    base_path: "argo/spokes"
+    path: "."
+    revision: "staging"
 paths:
   outputs_dir: "outputs"
   kubeconfig_dir: "outputs/kube"
   terraform_state_bucket: "gen3-kro-envs-4852"
-  terraform_locks_table: "gen3-kro-terraform-locks" # Unused
-
-# Deployment configuration
+  terraform_locks_table: "gen3-kro-terraform-locks"
 deployment:
-  enable_cross_account_iam: true  # Enable cross-account IAM roles for spokes
-  argocd_chart_version: "5.46.0"  # ArgoCD Helm chart version
-  kubeconfig_dir: "outputs/kube"  # Directory for kubeconfig files
-
-# Kubernetes addons configuration
+  argocd_chart_version: "5.46.0"
+  kubeconfig_dir: "outputs/kube"
+  enable_cross_account_iam: false # Same account for staging
 addons:
   enable_metrics_server: true
   enable_kyverno: true
@@ -103,4 +80,12 @@ addons:
   enable_cw_prometheus: false
   enable_opentelemetry_operator: false
   enable_prometheus_node_exporter: false
-
+spokes:
+  - alias: "spoke1"
+    region: "us-east-1"
+    profile: "boadeyem_tf"
+    account_id: ""
+    tags:
+      Team: "platform"
+      Purpose: "multi-account-demo"
+      Environment: "staging"

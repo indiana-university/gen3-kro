@@ -15,7 +15,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 source "${SCRIPT_DIR}/scripts/lib-logging.sh"
 
 # Configuration
-CONFIG_FILE="${REPO_ROOT}/terraform/config.yaml"
+CONFIG_FILE="${REPO_ROOT}/config/config.yaml"
 LIVE_DIR="${REPO_ROOT}/terraform/live"
 LOG_DIR="${REPO_ROOT}/outputs/logs"
 
@@ -272,7 +272,7 @@ main() {
         terragrunt apply -auto-approve
       fi
       log_success "✓ Changes applied successfully"
-      
+
       # Update kubeconfig after successful apply
       log_info "Updating kubeconfig for environment: $environment"
       if [[ -f "${SCRIPT_DIR}/scripts/connect-cluster.sh" ]]; then

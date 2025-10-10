@@ -5,64 +5,7 @@ type: application
 version: 1.0.0
 appVersion: "1.0"
 
-dependencies:
-  - name: cloudtrail-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart"
-    condition: controllers.cloudtrail.enabled
-  - name: cloudwatchlogs-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/cloudwatchlogs-chart"
-    condition: controllers.cloudwatchlogs.enabled
-  - name: ec2-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/ec2-chart"
-    condition: controllers.ec2.enabled
-  - name: efs-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/efs-chart"
-    condition: controllers.efs.enabled
-  - name: eks-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/eks-chart"
-    condition: controllers.eks.enabled
-  - name: iam-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/iam-chart"
-    condition: controllers.iam.enabled
-  - name: kms-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/kms-chart"
-    condition: controllers.kms.enabled
-  - name: opensearchservice-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/opensearchservice-chart"
-    condition: controllers.opensearchservice.enabled
-  - name: rds-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/rds-chart"
-    condition: controllers.rds.enabled
-  - name: route53-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/route53-chart"
-    condition: controllers.route53.enabled
-  - name: s3-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/s3-chart"
-    condition: controllers.s3.enabled
-  - name: secretsmanager-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/secretsmanager-chart"
-    condition: controllers.secretsmanager.enabled
-  - name: sns-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/sns-chart"
-    condition: controllers.sns.enabled
-  - name: sqs-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/sqs-chart"
-    condition: controllers.sqs.enabled
-  - name: wafv2-chart
-    version: "1.x.x"
-    repository: "oci://public.ecr.aws/aws-controllers-k8s/wafv2-chart"
-    condition: controllers.wafv2.enabled
+# NOTE: ACK Helm charts deployment disabled - use individual controller deployments instead
+# The OCI chart format requires specific versioning that conflicts with dynamic deployment
+# Individual controllers can be deployed directly to ack-system namespace
+dependencies: []

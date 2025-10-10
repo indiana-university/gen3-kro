@@ -2,22 +2,22 @@
 
 metrics-server:
   enabled: true
-  
+
 kyverno:
   enabled: true
-  
+
 kyverno-policies:
   enabled: true
-  
+
 external-secrets:
   enabled: true
-  
+
 kro:
   enabled: true
-  
+
 # Additional addons
 cert-manager:
   enabled: false
-  
+
 external-dns:
   enabled: false

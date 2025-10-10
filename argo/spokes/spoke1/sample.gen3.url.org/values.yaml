@@ -4,10 +4,10 @@ instance:
   name: sample-gen3-url-org
   tenant: spoke1
   domain: sample.gen3.url.org
-  
+
 vpc:
   cidr: "10.1.0.0/16"
-  
+
 eks:
   version: "1.33"
   nodeGroups:
