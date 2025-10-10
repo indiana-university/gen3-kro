@@ -14,11 +14,8 @@ spec:
     targetRevision: staging
     path: argocd/hub/charts/other-addons
     helm:
-      values: |
-        clusterName: {{ .Values.clusterName }}
-        environment: {{ .Values.environment }}
-        awsRegion: {{ .Values.awsRegion }}
-        accountId: {{ .Values.accountId }}
+      # Values will be populated from cluster annotations
+      parameters: []
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
