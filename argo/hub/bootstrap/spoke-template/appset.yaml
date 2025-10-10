@@ -9,28 +9,12 @@ spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-    - matrix:
-        generators:
-          # Get cluster with tenants annotation
-          - clusters:
-              selector:
-                matchLabels:
-                  argocd.argoproj.io/secret-type: cluster
-              values:
-                tenantsList: '{{.metadata.annotations.tenants}}'
-                clusterName: '{{.name}}'
-          # Parse JSON array and iterate over tenants
-          - list:
-              elements: '{{index . "tenantsList" | default "[]" | fromJson}}'
-              elementsYaml: |
-                - tenant: '{{.}}'
-    - git:
-        repoURL: https://github.com/indiana-university/gen3-kro.git
-        revision: HEAD
-        directories:
-          - path: 'argo/spokes/{{.tenant}}/*/applications'
-        values:
-          gen3_url: '{{index .path.segments 3}}'
+    # For now, use a simple list generator
+    # TODO: Make dynamic based on git directories
+    - list:
+        elements:
+          - tenant: spoke1
+            gen3_url: sample.gen3.url.org
   template:
     metadata:
       name: 'spoke-{{.tenant}}-{{.gen3_url}}'
@@ -43,7 +27,7 @@ spec:
       project: default
       source:
         repoURL: https://github.com/indiana-university/gen3-kro.git
-        targetRevision: HEAD
+        targetRevision: staging
         path: 'argo/spokes/{{.tenant}}/{{.gen3_url}}/applications'
       destination:
         server: https://kubernetes.default.svc

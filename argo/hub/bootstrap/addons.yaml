@@ -11,7 +11,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/indiana-university/gen3-kro.git
-    targetRevision: HEAD
+    targetRevision: staging
     path: argo/hub/charts/addons
     helm:
       valueFiles:

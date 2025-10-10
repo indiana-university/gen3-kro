@@ -9,7 +9,7 @@ spec:
   project: default
   source:
     repoURL: https://github.com/indiana-university/gen3-kro.git
-    targetRevision: HEAD
+    targetRevision: staging
     path: argo/hub/graphs/instances
   destination:
     server: https://kubernetes.default.svc
