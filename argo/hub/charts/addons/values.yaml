@@ -1,6 +1,0 @@
-# Default values - will be overridden by ../../values/addons-defaults.yaml
-metrics-server: {}
-kyverno: {}
-kyverno-policies: {}
-external-secrets: {}
-kro: {}

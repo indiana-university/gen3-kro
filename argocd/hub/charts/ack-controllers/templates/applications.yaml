@@ -1,0 +1,64 @@
+{{- $acks := .Values -}}
+{{- $addonsConfig := fromYaml (tpl (.Files.Get "../../addons/acks.yaml") .) -}}
+{{- range $addonName, $addon := $addonsConfig -}}
+{{- if and (hasPrefix "ack-" $addonName) (or (hasPrefix "kro" $addonName) (eq $addonName "kro") (eq $addonName "kro-eks-rgs")) -}}
+{{- if and $addon.enabled (ne $addon.enabled false) -}}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $addonName }}
+  namespace: argocd
+  annotations:
+    {{- if $addon.annotationsAppSet }}
+    {{- toYaml $addon.annotationsAppSet | nindent 4 }}
+    {{- end }}
+spec:
+  project: default
+  source:
+    {{- if $addon.chartRepository }}
+    {{- if contains "ghcr.io" $addon.chartRepository }}
+    repoURL: oci://{{ $addon.chartRepository }}/{{ $addon.chartNamespace }}
+    chart: {{ $addon.chartName }}
+    {{- else if contains "public.ecr.aws" $addon.chartRepository }}
+    repoURL: oci://{{ $addon.chartRepository }}/{{ $addon.chartNamespace }}
+    chart: {{ $addon.chartName }}
+    {{- else }}
+    repoURL: {{ $addon.chartRepository }}
+    chart: {{ $addon.chartName }}
+    {{- end }}
+    targetRevision: {{ $addon.defaultVersion | quote }}
+    helm:
+      {{- if $addon.releaseName }}
+      releaseName: {{ $addon.releaseName }}
+      {{- end }}
+      {{- if $addon.valuesObject }}
+      values: |
+        {{- tpl (toYaml $addon.valuesObject) $ | nindent 8 }}
+      {{- end }}
+    {{- else if $addon.path }}
+    repoURL: {{ tpl $addon.chartRepository $ }}
+    path: {{ $addon.path }}
+    targetRevision: {{ tpl $addon.targetRevision $ }}
+    {{- end }}
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $addon.namespace | default $acks.ackNamespace }}
+  syncPolicy:
+    automated:
+      prune: {{ $addonsConfig.syncPolicy.automated.prune | default true }}
+      selfHeal: {{ $addonsConfig.syncPolicy.automated.selfHeal | default true }}
+      allowEmpty: {{ $addonsConfig.syncPolicy.automated.allowEmpty | default true }}
+    retry:
+      limit: {{ $addonsConfig.syncPolicy.retry.limit | default -1 }}
+      backoff:
+        duration: {{ $addonsConfig.syncPolicy.retry.backoff.duration | default "5s" }}
+        factor: {{ $addonsConfig.syncPolicy.retry.backoff.factor | default 2 }}
+        maxDuration: {{ $addonsConfig.syncPolicy.retry.backoff.maxDuration | default "10m" }}
+    syncOptions:
+      {{- range $addonsConfig.syncPolicy.syncOptions }}
+      - {{ . }}
+      {{- end }}
+{{- end }}
+{{- end }}
+{{- end }}

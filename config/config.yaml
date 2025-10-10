@@ -33,19 +33,19 @@ gitops:
   github_url: "github.com"
   iam_config_raw_file_base_url: ""
   addons:
-    base_path: "argo/hub/charts"
-    path: "ack"
+    base_path: "argocd/hub/addons"
+    path: ""
     revision: "staging"
   fleet:
-    base_path: "argo/hub/bootstrap"
-    path: "spoke-template"
+    base_path: "argocd/hub"
+    path: "bootstrap"
     revision: "staging"
   platform:
-    base_path: "argo/teams"
+    base_path: "argocd/teams"
     path: "."
     revision: "staging"
   workload:
-    base_path: "argo/spokes"
+    base_path: "argocd/spokes"
     path: "."
     revision: "staging"
 paths:
