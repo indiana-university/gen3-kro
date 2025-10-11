@@ -32,8 +32,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s/iam-chart
-        chart: iam-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s/iam-chart
         targetRevision: 1.2.1
         helm:
           releaseName: ack-iam-controller
@@ -99,8 +98,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s/eks-chart
-        chart: eks-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
         targetRevision: 1.9.3
         helm:
           releaseName: ack-eks-controller
@@ -166,8 +164,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s/ec2-chart
-        chart: ec2-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
         targetRevision: 1.7.0
         helm:
           releaseName: ack-ec2-controller
@@ -233,8 +230,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s/efs-chart
-        chart: efs-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s/efs-chart
         targetRevision: 1.1.1
         helm:
           releaseName: ack-efs-controller
