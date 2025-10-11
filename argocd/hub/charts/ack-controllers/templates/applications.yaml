@@ -1,64 +1,235 @@
-{{- $acks := .Values -}}
-{{- $addonsConfig := fromYaml (tpl (.Files.Get "../../addons/acks.yaml") .) -}}
-{{- range $addonName, $addon := $addonsConfig -}}
-{{- if and (hasPrefix "ack-" $addonName) (or (hasPrefix "kro" $addonName) (eq $addonName "kro") (eq $addonName "kro-eks-rgs")) -}}
-{{- if and $addon.enabled (ne $addon.enabled false) -}}
+{{- $values := .Values -}}
+# KRO Operator
+{{- if $values.enableKRO }}
 ---
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: {{ $addonName }}
+  name: kro
   namespace: argocd
   annotations:
-    {{- if $addon.annotationsAppSet }}
-    {{- toYaml $addon.annotationsAppSet | nindent 4 }}
-    {{- end }}
+    argocd.argoproj.io/sync-wave: "-3"
 spec:
   project: default
   source:
-    {{- if $addon.chartRepository }}
-    {{- if contains "ghcr.io" $addon.chartRepository }}
-    repoURL: oci://{{ $addon.chartRepository }}/{{ $addon.chartNamespace }}
-    chart: {{ $addon.chartName }}
-    {{- else if contains "public.ecr.aws" $addon.chartRepository }}
-    repoURL: oci://{{ $addon.chartRepository }}/{{ $addon.chartNamespace }}
-    chart: {{ $addon.chartName }}
-    {{- else }}
-    repoURL: {{ $addon.chartRepository }}
-    chart: {{ $addon.chartName }}
-    {{- end }}
-    targetRevision: {{ $addon.defaultVersion | quote }}
-    helm:
-      {{- if $addon.releaseName }}
-      releaseName: {{ $addon.releaseName }}
-      {{- end }}
-      {{- if $addon.valuesObject }}
-      values: |
-        {{- tpl (toYaml $addon.valuesObject) $ | nindent 8 }}
-      {{- end }}
-    {{- else if $addon.path }}
-    repoURL: {{ tpl $addon.chartRepository $ }}
-    path: {{ $addon.path }}
-    targetRevision: {{ tpl $addon.targetRevision $ }}
-    {{- end }}
+    repoURL: oci://ghcr.io/kro-run/kro
+    chart: kro
+    targetRevision: "0.2.1"
   destination:
     server: https://kubernetes.default.svc
-    namespace: {{ $addon.namespace | default $acks.ackNamespace }}
+    namespace: kro-system
   syncPolicy:
     automated:
-      prune: {{ $addonsConfig.syncPolicy.automated.prune | default true }}
-      selfHeal: {{ $addonsConfig.syncPolicy.automated.selfHeal | default true }}
-      allowEmpty: {{ $addonsConfig.syncPolicy.automated.allowEmpty | default true }}
+      prune: true
+      selfHeal: true
+      allowEmpty: true
     retry:
-      limit: {{ $addonsConfig.syncPolicy.retry.limit | default -1 }}
+      limit: -1
       backoff:
-        duration: {{ $addonsConfig.syncPolicy.retry.backoff.duration | default "5s" }}
-        factor: {{ $addonsConfig.syncPolicy.retry.backoff.factor | default 2 }}
-        maxDuration: {{ $addonsConfig.syncPolicy.retry.backoff.maxDuration | default "10m" }}
+        duration: 5s
+        factor: 2
+        maxDuration: 10m
     syncOptions:
-      {{- range $addonsConfig.syncPolicy.syncOptions }}
-      - {{ . }}
-      {{- end }}
+      - CreateNamespace=true
+      - ServerSideApply=true
 {{- end }}
+
+# KRO Resource Graphs
+{{- if $values.enableKROResourceGraphs }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kro-resource-graphs
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/indiana-university/gen3-kro.git
+    targetRevision: staging
+    path: argocd/hub/shared/kro-rgds/aws
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kro-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    retry:
+      limit: -1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 10m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
 {{- end }}
+
+# ACK IAM Controller (Hub only)
+{{- if $values.enableACKIAM }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-iam
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    chart: iam-chart
+    targetRevision: "1.3.16"
+    helm:
+      values: |
+        aws:
+          region: {{ $values.awsRegion | default "us-east-1" }}
+        serviceAccount:
+          name: ack-iam-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $values.ackNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    retry:
+      limit: -1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 10m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
 {{- end }}
+
+# ACK EKS Controller
+{{- if $values.enableACKEKS }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-eks
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    chart: eks-chart
+    targetRevision: "1.6.0"
+    helm:
+      values: |
+        aws:
+          region: {{ $values.awsRegion | default "us-east-1" }}
+        serviceAccount:
+          name: ack-eks-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $values.ackNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    retry:
+      limit: -1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 10m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+{{- end }}
+
+# ACK EC2 Controller
+{{- if $values.enableACKEC2 }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-ec2
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  project: default
+  source:
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    chart: ec2-chart
+    targetRevision: "1.3.4"
+    helm:
+      values: |
+        aws:
+          region: {{ $values.awsRegion | default "us-east-1" }}
+        serviceAccount:
+          name: ack-ec2-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $values.ackNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    retry:
+      limit: -1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 10m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+{{- end }}
+
+# ACK EFS Controller
+{{- if $values.enableACKEFS }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ack-efs
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  project: default
+  source:
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    chart: efs-chart
+    targetRevision: "1.0.6"
+    helm:
+      values: |
+        aws:
+          region: {{ $values.awsRegion | default "us-east-1" }}
+        serviceAccount:
+          name: ack-efs-controller
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: {{ $values.ackNamespace }}
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+    retry:
+      limit: -1
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 10m
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+{{- end }}
+
