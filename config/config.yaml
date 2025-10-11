@@ -7,7 +7,7 @@ hub:
   vpc_name: "gen3-kro-vpc"
   aws_profile: "boadeyem_tf"
   aws_region: "us-east-1"
-  cluster_name: "gen3-kro-hub"
+  cluster_name: "gen3-hub"
 ack:
   namespace: "ack-system"
   user_provided_inline_policy_link: ""
