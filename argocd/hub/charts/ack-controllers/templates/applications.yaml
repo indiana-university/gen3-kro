@@ -14,7 +14,7 @@ spec:
   source:
     repoURL: oci://ghcr.io/kro-run/kro
     chart: kro
-    targetRevision: "0.2.1"
+    targetRevision: "0.4.1"
   destination:
     server: https://kubernetes.default.svc
     namespace: kro-system
@@ -82,7 +82,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/iam-chart
     chart: iam-chart
     targetRevision: "1.3.16"
     helm:
@@ -123,7 +123,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
     chart: eks-chart
     targetRevision: "1.6.0"
     helm:
@@ -164,7 +164,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
     chart: ec2-chart
     targetRevision: "1.3.4"
     helm:
@@ -205,7 +205,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: oci://public.ecr.aws/aws-controllers-k8s
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/efs-chart
     chart: efs-chart
     targetRevision: "1.0.6"
     helm:
