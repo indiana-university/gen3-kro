@@ -41,8 +41,8 @@ gitops:
     path: "ack"
     revision: "main"
   fleet:
-    base_path: "argocd/hub/bootstrap"
-    path: "spoke-template"
+    base_path: "argocd/hub"
+    path: "bootstrap"
     revision: "main"
   platform:
     base_path: "argocd/teams"
@@ -54,7 +54,7 @@ gitops:
     revision: "main"
 
 deployment:
-  argocd_chart_version: "5.46.0"
+  argocd_chart_version: "8.6.0"
   kubeconfig_dir: "~/.kube"
   enable_cross_account_iam: false
 

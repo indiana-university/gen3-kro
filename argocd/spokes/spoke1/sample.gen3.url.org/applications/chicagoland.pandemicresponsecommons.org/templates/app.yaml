@@ -3,8 +3,6 @@ kind: Application
 metadata:
   name: gen3-covid19prod
   namespace: argocd
-  finalizers:
-  - resources-finalizer.argocd.argoproj.io
 spec:
   project: default
   sources:
