@@ -1,0 +1,102 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main, staging ]
+    tags: ['v*', 'v*.*.*']
+  workflow_dispatch:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    env:
+      # Optional: set a default repo; override by defining the secret DOCKER_REPO
+      DEFAULT_DOCKER_REPO: jayadeyemi/gen3-kro
+      DOCKER_REPO_SECRET: ${{ secrets.DOCKER_REPO }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Fetch all history for version calculation
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Auto-increment version and determine tags
+        id: vars
+        run: |
+          set -euo pipefail
+
+          # Prefer secret-provided DOCKER_REPO, else use default
+          if [[ -n "${DOCKER_REPO_SECRET:-}" ]]; then
+            DOCKER_REPO="${DOCKER_REPO_SECRET}"
+          else
+            DOCKER_REPO="${DEFAULT_DOCKER_REPO}"
+          fi
+
+          # If this is a tag push, use the tag name directly
+          if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
+            VERSION="${GITHUB_REF_NAME}"
+          else
+            # Auto-increment patch version for main branch pushes
+            chmod +x bootstrap/scripts/version-bump.sh
+            ./bootstrap/scripts/version-bump.sh patch
+            VERSION=$(cat .version)
+            VERSION="v${VERSION}"
+          fi
+
+          GIT_SHA=$(git rev-parse --short HEAD)
+          DATE=$(date +%Y%m%d)
+
+          # Create immutable tag: v{version}-{date}-g{sha}
+          TAG="${VERSION}-${DATE}-g${GIT_SHA}"
+
+          IMAGE="${DOCKER_REPO}"
+          IMAGE_TAGS="${IMAGE}:${TAG},${IMAGE}:${VERSION}"
+
+          # Tag :latest for main branch pushes
+          if [[ "${GITHUB_REF_NAME:-}" == "main" && "${GITHUB_REF_TYPE:-}" != "tag" ]]; then
+            IMAGE_TAGS+=",${IMAGE}:latest"
+          fi
+
+          echo "IMAGE=${IMAGE}" >> $GITHUB_ENV
+          echo "VERSION=${VERSION}" >> $GITHUB_ENV
+          echo "IMAGE_TAG=${TAG}" >> $GITHUB_ENV
+          echo "IMAGE_TAGS=${IMAGE_TAGS}" >> $GITHUB_ENV
+          echo "IMAGE_TAGS=${IMAGE_TAGS}" >> $GITHUB_OUTPUT
+          echo "VERSION=${VERSION}" >> $GITHUB_OUTPUT
+          echo "Version: ${VERSION}"
+          echo "Tags: ${IMAGE_TAGS}"
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push (use devcontainer Dockerfile)
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          file: .devcontainer/Dockerfile
+          push: true
+          tags: ${{ steps.vars.outputs.IMAGE_TAGS }}
+          # enable BuildKit inline cache
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Output image
+        run: echo "Image(s) pushed - ${{ steps.vars.outputs.IMAGE_TAGS }}"
+
+      - name: Commit version bump
+        if: github.ref == 'refs/heads/main' && github.ref_type != 'tag'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add .version
+          git commit -m "chore: auto-bump version to ${{ steps.vars.outputs.VERSION }}" || echo "No version changes to commit"
+          git push || echo "Nothing to push"
+

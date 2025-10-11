@@ -1,0 +1,808 @@
+ambassador:
+  jupyterNamespace: jupyter-pods
+arborist:
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/arborist
+    tag: '2025.09'
+audit:
+  enabled: true
+  externalSecrets:
+    auditG3auto: covid19prod-audit-g3auto
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/audit-service
+    tag: '2025.09'
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::236714345101:role/covid19prod--covid19prod-helm--audit-sqs-receiver
+auspice:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/gen3-auspice
+    tag: v2.25.gen3.2.15
+aws-es-proxy:
+  enabled: true
+  esEndpoint: vpc-covid19prod-gen3-metadata-2-kd46ogc4c4lcwpmvkxwsprqgn4.us-east-1.es.amazonaws.com
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/aws-es-proxy
+    tag: v1.3.1
+awshelper:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/awshelper
+    tag: '2025.09'
+covid19-bayes:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/covid19-bayes
+    tag: 5.1.4
+covid19-etl:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/covid19-etl
+    tag: 5.2.4
+covid19-notebook-etl:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/covid19-notebook-etl
+    tag: 5.1.6
+dashboard:
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  dashboardConfig:
+    bucket: dashboard-236714345101-covid19-prod-gen3
+    prefix: chicagoland.pandemicresponsecommons.org
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/gen3-statics
+    tag: '2025.08'
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::236714345101:role/covid19prod--covid19prod-helm--dashboard-access
+etl:
+  esEndpoint: elasticsearch
+  etlMapping:
+    mappings:
+      - doc_type: location
+        flatten_props:
+          - path: summary_clinicals
+            props:
+              - name: all_bed_occupancy_rate
+              - name: confirmed
+              - name: date
+              - name: deaths
+              - name: deaths_per_10000
+              - name: estimated_full_mech_ventilators_per_100000
+              - name: estimated_full_mech_pediatric_ventilators
+              - name: estimated_full_mech_pediatric_ventilators_per_100000
+              - name: icu_beds
+              - name: icu_bed_occupancy_rate
+              - name: icu_in_use_beds_non_covid
+              - name: icu_in_use_beds_covid
+              - name: icu_open_beds
+              - name: lastUpdateEt
+              - name: licensed_all_beds
+              - name: licensed_all_beds_per_1000
+              - name: licensed_all_beds_per_1000_gtr_20
+              - name: licensed_all_beds_per_1000_gtr_65
+              - name: negative
+              - name: recovered
+              - name: region_icu_avail
+              - name: region_icu_capacity
+              - name: region_vents_available
+              - name: region_vents_capacity
+              - name: state_icu_capacity
+              - name: staffed_all_beds_per_1000
+              - name: staffed_all_beds_per_1000_gtr_20
+              - name: staffed_all_beds_per_1000_gtr_65
+              - name: staffed_icu_beds_per_1000
+              - name: staffed_icu_beds_per_1000_gtr_20
+              - name: staffed_icu_beds_per_1000_gtr_65
+              - name: state_total_beds
+              - name: testing
+              - name: ventilator_capacity
+              - name: ventilator_in_use_non_covid
+              - name: ventilator_in_use_covid
+              - name: total_in_use_beds_non_covid
+              - name: total_in_use_beds_covid
+              - name: totalTestsViral
+              - name: provider_subtype
+              - name: detailed_specialty
+              - name: new_cases
+              - name: new_deaths
+              - name: positive_rate
+              - name: vaccine_administered_count
+              - name: vaccine_persons_fully_vaccinated_pct
+              - name: vaccine_total_delivered_vaccine_doses
+              - name: vaccine_community_reported_inventory
+              - name: vaccine_reported_inventory
+            sorted_by: updated_datetime, desc
+          - path: summary_socio_demographics
+            props:
+              - name: population
+              - name: population_gtr_65
+              - name: population_density
+              - name: share_asian
+              - name: share_black
+              - name: share_hisp
+              - name: share_white
+              - name: college_degree
+              - name: graduate_degree
+              - name: completed_high_school
+              - name: employment
+              - name: job_density
+              - name: extreme_poverty
+              - name: jail
+              - name: hhinc_mean
+              - name: med_hhinc
+              - name: gdp_per_capita
+              - name: life_expectancy
+              - name: grocery_and_pharmacy_percent_change_from_baseline
+              - name: parks_percent_change_from_baseline
+              - name: retail_and_recreation_percent_change_from_baseline
+              - name: transit_stations_percent_change_from_baseline
+              - name: workplaces_percent_change_from_baseline
+              - name: handwashing_facilities
+              - name: stringency_index
+            sorted_by: updated_datetime, desc
+        name: covid19
+        parent_props:
+          - path: projects[project_code:code,project_name:name,project_url:url,project_investigator_affiliation:investigator_affiliation,project_date_collected:date_collected]
+        props:
+          - name: submitter_id
+          - name: project_id
+          - name: country_region
+            value_mappings:
+              - US: United States
+              - Korea, South: South Korea
+              - Taiwan*: Taiwan
+          - name: community_area
+          - name: province_state
+            value_mappings:
+              - AL: Alabama
+              - AK: Alaska
+              - AS: American Samoa
+              - AZ: Arizona
+              - AR: Arkansas
+              - CA: California
+              - CO: Colorado
+              - CT: Connecticut
+              - DE: Delaware
+              - DC: District of Columbia
+              - FL: Florida
+              - GA: Georgia
+              - GU: Guam
+              - HI: Hawaii
+              - ID: Idaho
+              - IL: Illinois
+              - IN: Indiana
+              - IA: Iowa
+              - KS: Kansas
+              - KY: Kentucky
+              - LA: Louisiana
+              - ME: Maine
+              - MD: Maryland
+              - MA: Massachusetts
+              - MI: Michigan
+              - MN: Minnesota
+              - MS: Mississippi
+              - MO: Missouri
+              - MT: Montana
+              - NE: Nebraska
+              - NV: Nevada
+              - NH: New Hampshire
+              - NJ: New Jersey
+              - NM: New Mexico
+              - NY: New York
+              - NC: North Carolina
+              - ND: North Dakota
+              - MP: Northern Mariana Islands
+              - OH: Ohio
+              - OK: Oklahoma
+              - OR: Oregon
+              - PA: Pennsylvania
+              - PR: Puerto Rico
+              - RI: Rhode Island
+              - SC: South Carolina
+              - SD: South Dakota
+              - TN: Tennessee
+              - TX: Texas
+              - VI: US Virgin Islands
+              - UT: Utah
+              - VT: Vermont
+              - VA: Virginia
+              - WA: Washington
+              - WV: West Virginia
+              - WI: Wisconsin
+              - WY: Wyoming
+          - name: county
+          - name: latitude
+          - name: longitude
+          - name: FIPS
+          - name: iso2
+          - name: iso3
+          - name: reporting_org
+          - name: state_hospital_region
+          - name: state_region_description
+        root: summary_location
+        type: aggregator
+      - aggregated_props:
+          - fn: set
+            name: image_location
+            path: imaging_files
+            src: image_location
+        doc_type: subject
+        flatten_props:
+          - path: demographics
+            props:
+              - name: gender
+              - name: age
+              - name: race
+              - name: ethnicity
+              - name: age_decade
+              - name: year_of_birth
+              - name: country_region
+              - name: province_state
+              - name: city
+          - path: observations
+            props:
+              - name: treatment_status
+              - name: isolation_status
+              - name: icu_status
+              - name: hospitalized_status
+              - name: needed_supplemental_O2
+              - name: condition
+              - name: symptoms
+              - name: reporting_date
+              - name: reporting_source
+              - name: date_onset_symptoms
+              - name: exposure
+              - name: released_date
+              - name: hospital
+              - name: pneumonia_type
+              - name: ventilator_status
+            sorted_by: updated_datetime, desc
+          - path: follow_ups
+            props:
+              - name: extubated
+                value_mappings:
+                  - Y: 'True'
+                  - N: 'False'
+              - name: pO2_saturation
+              - name: leukocyte_count
+              - name: neutrophil_count
+              - name: lymphocyte_count
+              - name: view
+            sorted_by: updated_datetime, desc
+        name: covid19_subject
+        parent_props:
+          - path: projects[project_code:code,project_name:name,project_url:url,project_data_description:data_description,project_investigator_affiliation:investigator_affiliation,project_availability_type:availability_type,project_date_collected:date_collected]
+          - path: studies[study_doi:study_doi]
+        props:
+          - name: project_id
+          - name: vital_status
+          - name: covid_19_status
+          - name: date_confirmation
+          - name: travel_history_location
+          - name: infected_by
+        root: subject
+        type: aggregator
+      - doc_type: clinical_trials
+        name: covid19_clinical_trials
+        parent_props:
+          - path: projects[project_code:code,project_name:name,project_url:url,project_data_description:data_description,project_investigator_affiliation:investigator_affiliation,project_availability_type:availability_type,project_date_collected:date_collected]
+        props:
+          - name: project_id
+          - name: completed_clinical_trials
+          - name: description
+          - name: development_stage
+          - name: fda_regulated_drug_product
+          - name: focus
+          - name: inprogress_clinical_trials
+          - name: location
+          - name: nct_number
+          - name: phase
+          - name: sponsor
+          - name: technology
+          - name: title
+        root: clinical_trials
+        type: aggregator
+      - category: genomic_data_file
+        doc_type: genomic_file
+        injecting_props:
+          project:
+            props:
+              - fn: set
+                name: project_code
+                src: code
+              - fn: set
+                name: project_name
+                src: name
+              - fn: set
+                name: project_url
+                src: url
+              - fn: set
+                name: project_data_description
+                src: data_description
+              - fn: set
+                name: project_investigator_affiliation
+                src: investigator_affiliation
+              - fn: set
+                name: project_availability_type
+                src: availability_type
+              - fn: set
+                name: project_date_collected
+                src: date_collected
+          sample:
+            props:
+              - fn: set
+                name: location
+                src: location
+              - fn: set
+                name: continent
+                src: continent
+              - fn: set
+                name: country_region
+                src: country_region
+              - fn: set
+                name: province_state
+                src: province_state
+              - fn: set
+                name: county
+                src: county
+              - fn: set
+                name: zipcode
+                src: zipcode
+              - fn: set
+                name: host
+                src: host
+              - fn: set
+                name: organism
+                src: organism
+              - fn: set
+                name: sample_type
+                src: sample_type
+              - fn: set
+                name: isolation_source
+                src: isolation_source
+              - fn: set
+                name: isolate
+                src: isolate
+              - fn: set
+                name: collection_date
+                src: collection_date
+              - fn: set
+                name: originating_lab
+                src: originating_lab
+              - fn: set
+                name: submitting_lab
+                src: submitting_lab
+              - fn: set
+                name: submitting_lab_PI
+                src: submitting_lab_PI
+          study:
+            props:
+              - fn: set
+                name: journal
+                src: journal
+              - fn: set
+                name: pmid
+                src: pmid
+        name: covid19_genomic_file
+        props:
+          - name: object_id
+          - name: md5sum
+          - name: file_name
+          - name: file_size
+          - name: data_format
+          - name: data_type
+          - name: state
+          - name: accession
+          - name: genbank_accession
+          - name: sra_accession
+          - name: assay_type
+          - name: center_name
+          - name: nextstrain_clade
+          - name: submitter_id
+        root: None
+        type: collector
+      - doc_type: dataset
+        name: covid19_dataset
+        parent_props:
+          - path: programs[program_name:name]
+        props:
+          - name: code
+          - name: name
+          - name: url
+          - name: data_description
+          - name: investigator_affiliation
+          - name: availability_type
+          - name: date_collected
+          - name: disclaimer
+        root: project
+        type: aggregator
+  image:
+    tube:
+      tag: '2025.09'
+    spark:
+      tag: '2025.09'
+fence:
+  usersync:
+    usersync: true
+    userYamlS3Path: s3://cdis-gen3-users/covid19/user.yaml
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::236714345101:role/covid19prod--covid19prod-helm--audit-sqs-sender
+  autoscaling:
+    enabled: true
+    maxReplicas: 10
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  enabled: true
+  externalSecrets:
+    createK8sGoogleAppSecrets: true
+    fenceConfig: covid19prod-fence-config
+    fenceJwtKeys: covid19prod-fence-jwt
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/fence
+    tag: '2025.09'
+fluentd:
+  enabled: true
+  image:
+    repository: fluent/fluentd-kubernetes-daemonset
+    tag: v1.15.3-debian-cloudwatch-1.0
+global:
+  pdb: true
+  aws:
+    account: '236714345101'
+    awsEsProxyRole: covid19prod--covid19prod-helm--es-access
+    enabled: true
+    hatchery_role: covid19prod--covid19prod-helm--hatchery-sa
+    secretStoreServiceAccount:
+      enabled: true
+      roleArn: arn:aws:iam::236714345101:role/covid19prod--covid19prod-helm--external-secrets-sa
+    wafv2:
+      enabled: true
+      wafAclArn: arn:aws:wafv2:us-east-1:236714345101:regional/webacl/covid19prod-waf/0ca854eb-0058-49ee-86b5-749c6630ea99
+  dev: false
+  dictionaryUrl: https://s3.amazonaws.com/dictionary-artifacts/covid19-datadictionary/3.9.2/schema.json
+  dispatcherJobNum: '10'
+  environment: covid19prod
+  externalSecrets:
+    deploy: true
+    createSlackWebhookSecret: true
+    slackWebhookSecretName: covid19prod-slack-webhook
+  hostname: chicagoland.pandemicresponsecommons.org
+  fenceURL: https://chicagoland.pandemicresponsecommons.org/user
+  publicDataSets: true
+  maintenanceMode: false
+  manifestGlobalExtraValues:
+    covid19_data_bucket: s3://opencdn-databucket-gen3
+    kube_bucket: kube-covid19-prod-gen3
+    logs_bucket: s3logs-logs-covid19-prod-gen3
+  tierAccessLevel: regular
+  tierAccessLimit: 5
+  portalApp: gitops
+  postgres:
+    dbCreate: false
+  revproxyArn: arn:aws:acm:us-east-1:236714345101:certificate/e5edf56f-4003-4ee3-9ecd-162aaf19c058
+guppy:
+  authFilterField: auth_resource_path
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  configIndex: covid19_array-config
+  enabled: true
+  esEndpoint: http://elasticsearch:9200
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/guppy
+    tag: '2025.09'
+  indices:
+    - index: covid19
+      type: location
+    - index: covid19_genomic_file
+      type: genomic_file
+    - index: covid19_subject
+      type: subject
+    - index: covid19_clinical_trials
+      type: clinical_trials
+    - index: covid19_dataset
+      type: dataset
+hatchery:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/hatchery
+    tag: '2025.09'
+  hatchery:
+    json: |-
+      {
+        "user-namespace": "jupyter-pods",
+        "sub-dir": "/lw-workspace",
+        "user-volume-size": "10Gi",
+        "sidecar": {
+          "cpu-limit": "1.0",
+          "memory-limit": "256Mi",
+          "image": "707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/gen3fuse-sidecar:2025.08",
+          "env": {
+            "NAMESPACE": "default",
+            "HOSTNAME": "chicagoland.pandemicresponsecommons.org"
+          },
+          "args": [],
+          "command": [
+            "/bin/bash",
+            "/sidecarDockerrun.sh"
+          ],
+          "lifecycle-pre-stop": [
+            "su",
+            "-c",
+            "echo test",
+            "-s",
+            "/bin/sh",
+            "root"
+          ]
+        },
+        "containers": [
+          {
+            "target-port": 8787,
+            "cpu-limit": "1.0",
+            "memory-limit": "1024Mi",
+            "name": "R Studio-3.5",
+            "image": "quay.io/cdis/rstudio:master",
+            "env": {
+              "DISABLE_AUTH": "true"
+            },
+            "args": [],
+            "path-rewrite": "/",
+            "use-tls": "false",
+            "ready-probe": "/",
+            "user-volume-location": "/home/rstudio/pd",
+            "fs-gid": 100
+          },
+          {
+            "target-port": 8888,
+            "cpu-limit": "4.0",
+            "memory-limit": "16Gi",
+            "name": "A collection of Jupyter notebooks to explore health outcomes for COVID-19",
+            "image": "quay.io/cdis/jupyter-notebook:covid19-1.3.2",
+            "env": {
+              "DISABLE_AUTH": "true",
+              "NAMESPACE": "default",
+              "HOSTNAME": "chicagoland.pandemicresponsecommons.org",
+              "FRAME_ANCESTORS": "https://chicagoland.pandemicresponsecommons.org"
+            },
+            "args": [
+              "--ServerApp.base_url=/lw-workspace/proxy",
+              "--ServerApp.default_url=/lab/tree/welcome.html",
+              "--ServerApp.shutdown_no_activity_timeout=240",
+              "--ServerApp.password=''",
+              "--ServerApp.token=''",
+              "--ServerApp.allow_remote_access=True"
+            ],
+            "command": [
+              "start-notebook.sh"
+            ],
+            "path-rewrite": "/lw-workspace/proxy/",
+            "use-tls": "false",
+            "ready-probe": "/lw-workspace/proxy/",
+            "user-volume-location": "/home/jovyan/pd",
+            "fs-gid": 100
+          },
+          {
+            "target-port": 8787,
+            "cpu-limit": "1.0",
+            "memory-limit": "1024Mi",
+            "name": "R Studio-3.6",
+            "image": "quay.io/cdis/rstudio3.6:rstudio3.6-1.0.0",
+            "env": {
+              "DISABLE_AUTH": "true"
+            },
+            "args": [],
+            "path-rewrite": "/",
+            "use-tls": "false",
+            "ready-probe": "/",
+            "user-volume-location": "/home/rstudio/pd",
+            "fs-gid": 100
+          },
+          {
+            "target-port": 8787,
+            "cpu-limit": "1.0",
+            "memory-limit": "1024Mi",
+            "name": "R Studio JHU map",
+            "image": "quay.io/cdis/rstudio-jhumap:jhumap-1.0.0",
+            "env": {
+              "DISABLE_AUTH": "true"
+            },
+            "args": [],
+            "path-rewrite": "/",
+            "use-tls": "false",
+            "ready-probe": "/",
+            "user-volume-location": "/home/rstudio/pd",
+            "fs-gid": 100
+          }
+        ]
+      }
+indexd:
+  defaultPrefix: dg.63D5/
+  autoscaling:
+    enabled: true
+    maxReplicas: 8
+    minReplicas: 4
+    targetCPUUtilizationPercentage: 40
+  enabled: true
+  externalSecrets:
+    serviceCreds: covid19prod-indexd-service-creds
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/indexd
+    tag: '2025.09'
+manifestservice:
+  enabled: true
+  externalSecrets:
+    manifestserviceG3auto: covid19prod-manifestservice-g3auto
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/manifestservice
+    tag: '2025.09'
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::236714345101:role/covid19prod--covid19prod-helm--manifest-service-sa
+metadata:
+  enabled: true
+  esEndpoint: http://elasticsearch:9200
+  externalSecrets:
+    metadataG3auto: covid19prod-metadata-g3auto
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/metadata-service
+    tag: '2025.09'
+mutatingWebhook:
+  enabled: false
+peregrine:
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/peregrine
+    tag: '2025.09'
+portal:
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  enabled: true
+  customConfig:
+    enabled: true
+    dir: covid19prod/chicagoland.pandemicresponsecommons.org/values/portal/
+    repo: https://github.com/uc-cdis/gen3-gitops.git
+    branch: master
+  gitops:
+    gen3Bundle: covid19
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/data-portal
+    tag: '2025.09'
+revproxy:
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/nginx
+    tag: '2025.09'
+  ingress:
+    aws:
+      group: covid19prod
+sheepdog:
+  autoscaling:
+    enabled: true
+    maxReplicas: 4
+    minReplicas: 2
+    targetCPUUtilizationPercentage: 40
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/sheepdog
+    tag: '2025.09'
+sower:
+  enabled: true
+  externalSecrets:
+    createK8sPelicanServiceSecret: true
+    createK8sSowerJobsSecret: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/sower
+    tag: '2025.09'
+  sowerConfig:
+    - action: export
+      container:
+        cpu-limit: '1'
+        env:
+          - name: DICTIONARY_URL
+            valueFrom:
+              configMapKeyRef:
+                key: dictionary_url
+                name: manifest-global
+          - name: GEN3_HOSTNAME
+            valueFrom:
+              configMapKeyRef:
+                key: hostname
+                name: manifest-global
+          - name: ROOT_NODE
+            value: subject
+          - name: DB_HOST
+            valueFrom:
+              secretKeyRef:
+                name: sheepdog-dbcreds
+                key: host
+          - name: DB_DATABASE
+            valueFrom:
+              secretKeyRef:
+                name: sheepdog-dbcreds
+                key: database
+          - name: DB_USER
+            valueFrom:
+              secretKeyRef:
+                name: sheepdog-dbcreds
+                key: username
+          - name: DB_PASS
+            valueFrom:
+              secretKeyRef:
+                name: sheepdog-dbcreds
+                key: password
+          - name: SHEEPDOG
+            valueFrom:
+              secretKeyRef:
+                name: indexd-service-creds
+                key: sheepdog
+        image: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/pelican-export:2025.09
+        memory-limit: 4Gi
+        name: job-task
+        pull_policy: Always
+        volumeMounts:
+          - mountPath: /pelican-creds.json
+            name: pelican-creds-volume
+            readOnly: true
+            subPath: config.json
+      name: pelican-export
+      restart_policy: Never
+      volumes:
+        - name: pelican-creds-volume
+          secret:
+            secretName: pelicanservice-g3auto
+spark:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/gen3-spark
+    tag: '2025.08'
+ssjdispatcher:
+  enabled: true
+  externalSecrets:
+    credsFile: covid19prod-ssjdispatcher-creds
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/ssjdispatcher
+    tag: '2025.09'
+  indexing: quay.io/cdis/indexs3client:2025.09
+tube:
+  enabled: true
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/tube
+    tag: '2025.08'
+wts:
+  enabled: true
+  externalSecrets:
+    createWtsOidcClientSecret: false
+    wtsG3auto: covid19prod-wts-g3auto
+    wtsOidcClient: covid19prod-wts-client-secret
+  image:
+    repository: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/workspace-token-service
+    tag: '2025.09'
