@@ -35,7 +35,7 @@ spec:
       source:
         repoURL: public.ecr.aws
         chart: aws-controllers-k8s/eks-chart
-        targetRevision: v1.6.0
+        targetRevision: 1.6.0
         helm:
           releaseName: ack-eks-controller
           values: |

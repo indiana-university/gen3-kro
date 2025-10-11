@@ -32,7 +32,7 @@ spec:
       source:
         repoURL: public.ecr.aws
         chart: aws-controllers-k8s/efs-chart
-        targetRevision: v1.0.6
+        targetRevision: 1.0.6
         helm:
           releaseName: ack-efs-controller
           values: |

@@ -33,7 +33,7 @@ spec:
       source:
         repoURL: public.ecr.aws
         chart: aws-controllers-k8s/iam-chart
-        targetRevision: v1.3.16
+        targetRevision: 1.3.16
         helm:
           releaseName: ack-iam-controller
           values: |
