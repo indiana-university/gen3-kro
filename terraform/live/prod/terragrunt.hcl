@@ -15,7 +15,6 @@ locals {
   hub        = local.config.hub
   ack        = local.config.ack
   spokes     = local.config.spokes
-  kro        = local.config.kro
   gitops     = local.config.gitops
   deployment = local.config.deployment
   addons     = local.config.addons
@@ -40,10 +39,22 @@ generate "kube_providers" {
   path      = "kube_providers.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
+    # Data source to lookup existing cluster (will be null if cluster doesn't exist yet)
+    # This allows Terraform to work whether cluster exists or is being created
+    data "aws_eks_cluster" "cluster" {
+      name = "${local.hub.cluster_name}"
+    }
+
+    data "aws_eks_cluster_auth" "cluster" {
+      name = "${local.hub.cluster_name}"
+    }
+
     # Kubernetes provider - EKS authentication
     provider "kubernetes" {
-      host                   = module.eks-hub.cluster_info.cluster_endpoint
-      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+      # Use data source instead of module output to avoid circular dependency
+      host                   = data.aws_eks_cluster.cluster.endpoint
+      cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+      token                  = data.aws_eks_cluster_auth.cluster.token
 
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
@@ -60,8 +71,9 @@ generate "kube_providers" {
     # Helm provider
     provider "helm" {
       kubernetes = {
-        host                   = module.eks-hub.cluster_info.cluster_endpoint
-        cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+        host                   = data.aws_eks_cluster.cluster.endpoint
+        cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+        token                  = data.aws_eks_cluster_auth.cluster.token
 
         exec = {
           api_version = "client.authentication.k8s.io/v1beta1"
@@ -78,11 +90,12 @@ generate "kube_providers" {
 
     # Kubectl provider
     provider "kubectl" {
-      host                   = module.eks-hub.cluster_info.cluster_endpoint
-      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+      host                   = data.aws_eks_cluster.cluster.endpoint
+      cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+      token                  = data.aws_eks_cluster_auth.cluster.token
       load_config_file       = false
 
-      exec {
+      exec = {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
         args = [

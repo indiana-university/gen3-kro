@@ -101,6 +101,11 @@ locals {
     enable_external_secrets                      = try(var.addons.enable_external_secrets, false)
     enable_kro                                   = try(var.addons.enable_kro, false)
     enable_kro_eks_rgs                           = try(var.addons.enable_kro_eks_rgs, false)
+    # ACK Controller enable flags for ApplicationSet selection
+    enable_ack_iam                               = try(var.addons.enable_ack_iam, false)
+    enable_ack_eks                               = try(var.addons.enable_ack_eks, false)
+    enable_ack_ec2                               = try(var.addons.enable_ack_ec2, false)
+    enable_ack_efs                               = try(var.addons.enable_ack_efs, false)
   }
 
   oss_addons = {

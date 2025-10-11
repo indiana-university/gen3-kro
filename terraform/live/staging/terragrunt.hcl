@@ -42,9 +42,21 @@ generate "kube_providers" {
   path      = "kube_providers.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
+    # Data source to lookup existing cluster (will be null if cluster doesn't exist yet)
+    # This allows Terraform to work whether cluster exists or is being created
+    data "aws_eks_cluster" "cluster" {
+      name = "${local.cluster_name}"
+    }
+
+    data "aws_eks_cluster_auth" "cluster" {
+      name = "${local.cluster_name}"
+    }
+
     provider "kubernetes" {
-      host                   = module.eks-hub.cluster_info.cluster_endpoint
-      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+      # Use data source for existing clusters, fallback to module output for new clusters
+      host                   = data.aws_eks_cluster.cluster.endpoint
+      cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+      token                  = data.aws_eks_cluster_auth.cluster.token
 
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
@@ -61,8 +73,9 @@ generate "kube_providers" {
 
     provider "helm" {
       kubernetes = {
-        host                   = module.eks-hub.cluster_info.cluster_endpoint
-        cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+        host                   = data.aws_eks_cluster.cluster.endpoint
+        cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+        token                  = data.aws_eks_cluster_auth.cluster.token
 
         exec = {
           api_version = "client.authentication.k8s.io/v1beta1"
@@ -79,8 +92,9 @@ generate "kube_providers" {
     }
 
     provider "kubectl" {
-      host                   = module.eks-hub.cluster_info.cluster_endpoint
-      cluster_ca_certificate = base64decode(module.eks-hub.cluster_info.cluster_certificate_authority_data)
+      host                   = data.aws_eks_cluster.cluster.endpoint
+      cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+      token                  = data.aws_eks_cluster_auth.cluster.token
       load_config_file       = false
 
       exec {

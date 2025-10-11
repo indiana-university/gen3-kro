@@ -1,0 +1,73 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ack-iam
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          fleet_member: control-plane  # IAM controller ONLY in hub
+        matchExpressions:
+          - key: enable_ack_iam
+            operator: In
+            values: ['true']
+  template:
+    metadata:
+      name: '{{.name}}-ack-iam'
+      labels:
+        app: ack-iam
+        cluster: '{{.name}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: "1"
+    spec:
+      project: default
+      source:
+        repoURL: oci://public.ecr.aws
+        chart: aws-controllers-k8s/iam-chart
+        targetRevision: v1.3.16
+        helm:
+          releaseName: ack-iam-controller
+          values: |
+            aws:
+              region: {{.metadata.annotations.hub_aws_region}}
+            serviceAccount:
+              name: ack-iam-controller
+              annotations:
+                eks.amazonaws.com/role-arn: {{index .metadata.annotations "gen3-csoc-iam-ack-arn"}}
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+      destination:
+        server: '{{.server}}'
+        namespace: ack-system
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 10m
+      ignoreDifferences:
+        - group: apps
+          kind: Deployment
+          jsonPointers:
+            - /spec/replicas
