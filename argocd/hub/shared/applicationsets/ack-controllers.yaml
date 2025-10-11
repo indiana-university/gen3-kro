@@ -32,13 +32,13 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s/iam-chart
         chart: iam-chart
         targetRevision: 1.2.1
         helm:
           releaseName: ack-iam-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
             {{- $iamConfig := index $ackControllers "iam" -}}
             aws:
               region: {{.metadata.annotations.hub_aws_region}}
@@ -99,13 +99,13 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s/eks-chart
         chart: eks-chart
         targetRevision: 1.9.3
         helm:
           releaseName: ack-eks-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
             {{- $eksConfig := index $ackControllers "eks" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
@@ -166,13 +166,13 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s/ec2-chart
         chart: ec2-chart
         targetRevision: 1.7.0
         helm:
           releaseName: ack-ec2-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
             {{- $ec2Config := index $ackControllers "ec2" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
@@ -233,13 +233,13 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s/efs-chart
         chart: efs-chart
         targetRevision: 1.1.1
         helm:
           releaseName: ack-efs-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
             {{- $efsConfig := index $ackControllers "efs" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
