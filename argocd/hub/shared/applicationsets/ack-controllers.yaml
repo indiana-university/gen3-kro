@@ -63,7 +63,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s/{{.chart}}
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        chart: '{{.chart}}'
         targetRevision: '{{.version}}'
         helm:
           releaseName: ack-{{.controller}}-controller
