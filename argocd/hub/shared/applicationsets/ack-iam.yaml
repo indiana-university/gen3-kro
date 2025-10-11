@@ -31,7 +31,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws
+        repoURL: public.ecr.aws
         chart: aws-controllers-k8s/iam-chart
         targetRevision: v1.3.16
         helm:

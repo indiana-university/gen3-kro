@@ -30,7 +30,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws
+        repoURL: public.ecr.aws
         chart: aws-controllers-k8s/efs-chart
         targetRevision: v1.0.6
         helm:
