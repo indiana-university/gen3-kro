@@ -1,23 +1,48 @@
 locals {
   repo_root = get_repo_root()
 
-  # Check if merged config.yaml exists (created by wrapper script)
-  merged_config_file = "${local.repo_root}/config/config.yaml"
-  config = fileexists(local.merged_config_file) ? yamldecode(file(local.merged_config_file)) : yamldecode(file("${local.repo_root}/config/base.yaml"))
+  # Simplified environment detection
+  environment = coalesce(
+    get_env("ENVIRONMENT", ""),
+    get_env("ENV", ""),
+    get_env("TERRAGRUNT_ENV", ""),
+    try(split("/", path_relative_to_include())[0], "")
+  )
 
-  hub        = local.config.hub
-  ack        = local.config.ack
-  spokes     = local.config.spokes
-  gitops     = local.config.gitops
-  paths      = local.config.paths
-  deployment = local.config.deployment
-  addons     = local.config.addons
+  # Load configurations - simplified without conditional
+  base_config = yamldecode(file("${local.repo_root}/config/base.yaml"))
+  env_config  = yamldecode(file("${local.repo_root}/config/environments/${local.environment}.yaml"))
 
+  # Simplified config merging - single pass
+  hub        = merge(lookup(local.base_config, "hub", {}), lookup(local.env_config, "hub", {}))
+  ack        = merge(lookup(local.base_config, "ack", {}), lookup(local.env_config, "ack", {}))
+  spokes     = lookup(local.env_config, "spokes", lookup(local.base_config, "spokes", []))
+  paths      = merge(lookup(local.base_config, "paths", {}), lookup(local.env_config, "paths", {}))
+  deployment = merge(lookup(local.base_config, "deployment", {}), lookup(local.env_config, "deployment", {}))
+  addons     = merge(lookup(local.base_config, "addons", {}), lookup(local.env_config, "addons", {}))
+
+  # Simplified gitops merge - cleaner nested merge
+  base_gitops = lookup(local.base_config, "gitops", {})
+  env_gitops  = lookup(local.env_config, "gitops", {})
+
+  gitops = merge(
+    local.base_gitops,
+    local.env_gitops,
+    {
+      addons   = merge(lookup(local.base_gitops, "addons", {}), lookup(local.env_gitops, "addons", {}))
+      fleet    = merge(lookup(local.base_gitops, "fleet", {}), lookup(local.env_gitops, "fleet", {}))
+      platform = merge(lookup(local.base_gitops, "platform", {}), lookup(local.env_gitops, "platform", {}))
+      workload = merge(lookup(local.base_gitops, "workload", {}), lookup(local.env_gitops, "workload", {}))
+    }
+  )
+
+  # Common tags
   common_tags = {
-    ManagedBy  = "Terragrunt"
-    Repository = "gen3-kro"
-    Blueprint  = "multi-account-eks-gitops"
-    Owner      = "platform-engineering"
+    ManagedBy   = "Terragrunt"
+    Repository  = "gen3-kro"
+    Blueprint   = "multi-account-eks-gitops"
+    Owner       = "platform-engineering"
+    Environment = local.environment
   }
 }
 

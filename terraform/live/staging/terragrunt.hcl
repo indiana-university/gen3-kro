@@ -4,14 +4,15 @@ include "root" {
 
 locals {
   root_config = read_terragrunt_config(find_in_parent_folders("root.hcl"))
-  config      = local.root_config.locals.config
 
-  hub         = local.config.hub
-  ack         = local.config.ack
-  spokes      = local.config.spokes
-  gitops      = local.config.gitops
-  addons      = local.config.addons
-  deployment  = local.config.deployment
+  # Directly reference root locals - simplified
+  hub         = local.root_config.locals.hub
+  ack         = local.root_config.locals.ack
+  spokes      = local.root_config.locals.spokes
+  gitops      = local.root_config.locals.gitops
+  addons      = local.root_config.locals.addons
+  deployment  = local.root_config.locals.deployment
+  paths       = local.root_config.locals.paths
   common_tags = local.root_config.locals.common_tags
 
   deployment_stage         = "staging"
@@ -21,7 +22,7 @@ locals {
   vpc_name     = "${local.hub.vpc_name}-staging"
 
   repo_root   = get_repo_root()
-  outputs_dir = "${local.repo_root}/${local.config.paths.outputs_dir}/staging"
+  outputs_dir = "${local.repo_root}/${local.paths.outputs_dir}/staging"
 }
 
 terraform {

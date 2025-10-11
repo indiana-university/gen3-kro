@@ -233,6 +233,10 @@ main() {
   cd "$env_dir"
   log_info "Working directory: $env_dir"
 
+  # Export environment variable for Terragrunt to pick up
+  export ENVIRONMENT="$environment"
+  log_info "Set ENVIRONMENT=$environment for Terragrunt config loading"
+
   # Execute Terragrunt command
   case "$command" in
     plan)
