@@ -153,6 +153,12 @@ variable "use_ack" {
   default     = true
 }
 
+variable "enable_argo" {
+  description = "Enable ArgoCD bootstrap"
+  type        = bool
+  default     = true
+}
+
 variable "environment" {
   description = "Name of the environment for the Hub Cluster"
   type        = string

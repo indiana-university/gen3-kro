@@ -1,13 +1,13 @@
-# Base configuration shared across all environments
-
 hub:
   alias: "gen3-csoc"
   kubernetes_version: "1.33"
   vpc_name: "gen3-kro-vpc"
+  aws_profile: "boadeyem_tf"
+  aws_region: "us-east-1"
+  cluster_name: "gen3-kro-hub"
 
 ack:
   namespace: "ack-system"
-  user_provided_inline_policy_link: ""
   controllers:
     - cloudtrail
     - cloudwatchlogs
@@ -25,21 +25,38 @@ ack:
     - sqs
     - wafv2
 
+paths:
+  outputs_dir: "outputs"
+  kubeconfig_dir: "~/.kube"
+  terraform_state_bucket: "gen3-kro-envs-4852"
+  terraform_locks_table: "gen3-kro-terraform-locks"
+
 gitops:
   org_name: "indiana-university"
   repo_name: "gen3-kro"
   github_url: "github.com"
   iam_config_raw_file_base_url: ""
-
-paths:
-  outputs_dir: "outputs"
-  kubeconfig_dir: "outputs/kube"
-  terraform_state_bucket: "gen3-kro-envs-4852"
-  terraform_locks_table: "gen3-kro-terraform-locks"
+  addons:
+    base_path: "argo/hub/charts"
+    path: "ack"
+    revision: "main"
+  fleet:
+    base_path: "argo/hub/bootstrap"
+    path: "spoke-template"
+    revision: "main"
+  platform:
+    base_path: "argo/teams"
+    path: "."
+    revision: "main"
+  workload:
+    base_path: "argo/spokes"
+    path: "."
+    revision: "main"
 
 deployment:
   argocd_chart_version: "5.46.0"
-  kubeconfig_dir: "outputs/kube"
+  kubeconfig_dir: "~/.kube"
+  enable_cross_account_iam: false
 
 addons:
   enable_metrics_server: true
@@ -64,3 +81,13 @@ addons:
   enable_cw_prometheus: false
   enable_opentelemetry_operator: false
   enable_prometheus_node_exporter: false
+
+spokes:
+  - alias: "spoke1"
+    region: "us-east-1"
+    profile: "boadeyem_tf"
+    account_id: ""
+    tags:
+      Team: "platform"
+      Purpose: "multi-account-demo"
+      Environment: "staging"

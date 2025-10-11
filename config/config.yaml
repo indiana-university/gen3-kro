@@ -1,16 +1,14 @@
-# Base configuration shared across all environments
-
-# Staging environment overrides
 hub:
   alias: "gen3-csoc"
   kubernetes_version: "1.33"
   vpc_name: "gen3-kro-vpc"
   aws_profile: "boadeyem_tf"
   aws_region: "us-east-1"
-  cluster_name: "gen3-hub"
+  cluster_name: "gen3-kro-hub"
+  enable_argo: true
+  old_cluster_name: "gen3-kro-hub-v2-staging"
 ack:
   namespace: "ack-system"
-  user_provided_inline_policy_link: ""
   controllers:
     - cloudtrail
     - cloudwatchlogs
@@ -27,36 +25,36 @@ ack:
     - sns
     - sqs
     - wafv2
+paths:
+  outputs_dir: "outputs"
+  kubeconfig_dir: "~/.kube"
+  terraform_state_bucket: "gen3-kro-envs-4852"
+  terraform_locks_table: "gen3-kro-terraform-locks"
 gitops:
   org_name: "indiana-university"
   repo_name: "gen3-kro"
   github_url: "github.com"
   iam_config_raw_file_base_url: ""
   addons:
-    base_path: "argocd/hub/addons"
-    path: ""
+    base_path: "argo/hub/charts"
+    path: "ack"
     revision: "staging"
   fleet:
-    base_path: "argocd/hub"
-    path: "bootstrap"
+    base_path: "argo/hub/bootstrap"
+    path: "spoke-template"
     revision: "staging"
   platform:
-    base_path: "argocd/teams"
+    base_path: "argo/teams"
     path: "."
     revision: "staging"
   workload:
-    base_path: "argocd/spokes"
+    base_path: "argo/spokes"
     path: "."
     revision: "staging"
-paths:
-  outputs_dir: "outputs"
-  kubeconfig_dir: "outputs/kube"
-  terraform_state_bucket: "gen3-kro-envs-4852"
-  terraform_locks_table: "gen3-kro-terraform-locks"
 deployment:
   argocd_chart_version: "5.46.0"
-  kubeconfig_dir: "outputs/kube"
-  enable_cross_account_iam: false # Same account for staging
+  kubeconfig_dir: "~/.kube"
+  enable_cross_account_iam: false
 addons:
   enable_metrics_server: true
   enable_kyverno: true

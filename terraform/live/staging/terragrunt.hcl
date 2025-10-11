@@ -1,34 +1,25 @@
-# terraform/live/staging/terragrunt.hcl
-# Staging environment configuration
-# This environment is for testing before production deployment
-
 include "root" {
   path = find_in_parent_folders("root.hcl")
 }
 
 locals {
-  # Load root configuration
   root_config = read_terragrunt_config(find_in_parent_folders("root.hcl"))
   config      = local.root_config.locals.config
 
-  # Extract configuration sections
-  hub        = local.config.hub
-  ack        = local.config.ack
-  spokes     = local.config.spokes
-  gitops     = local.config.gitops
-  addons     = local.config.addons
-  deployment = local.config.deployment
+  hub         = local.config.hub
+  ack         = local.config.ack
+  spokes      = local.config.spokes
+  gitops      = local.config.gitops
+  addons      = local.config.addons
+  deployment  = local.config.deployment
   common_tags = local.root_config.locals.common_tags
-  user_provided_inline_policy_link = local.ack.user_provided_inline_policy_link
-  # Staging-specific settings
-  deployment_stage         = "staging"
-  enable_cross_account_iam = false  # Same account for staging
 
-  # Modify cluster name for staging
+  deployment_stage         = "staging"
+  enable_cross_account_iam = false
+
   cluster_name = "${local.hub.cluster_name}-staging"
   vpc_name     = "${local.hub.vpc_name}-staging"
 
-  # Output directory
   repo_root   = get_repo_root()
   outputs_dir = "${local.repo_root}/${local.config.paths.outputs_dir}/staging"
 }
@@ -42,29 +33,52 @@ generate "kube_providers" {
   path      = "kube_providers.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
-    # Data source to lookup existing cluster (will be null if cluster doesn't exist yet)
-    # This allows Terraform to work whether cluster exists or is being created
+    data "external" "cluster_exists" {
+      program = ["bash", "-c", <<EOT
+        cluster_names="${local.cluster_name}"
+        %{if try(local.hub.old_cluster_name, "") != ""}
+        cluster_names="$cluster_names ${local.hub.old_cluster_name}"
+        %{endif}
+
+        for cluster_name in $cluster_names; do
+          if aws eks describe-cluster --name "$cluster_name" --region ${local.hub.aws_region} --profile ${local.hub.aws_profile} &>/dev/null; then
+            echo "{\"cluster_name\":\"$cluster_name\",\"exists\":\"true\"}"
+            exit 0
+          fi
+        done
+        echo "{\"cluster_name\":\"${local.cluster_name}\",\"exists\":\"false\"}"
+      EOT
+      ]
+    }
+
+    locals {
+      cluster_exists          = try(data.external.cluster_exists.result.exists, "false") == "true"
+      active_cluster_name     = try(data.external.cluster_exists.result.cluster_name, "${local.cluster_name}")
+      cluster_rename_in_progress = local.cluster_exists && local.active_cluster_name != "${local.cluster_name}"
+    }
+
     data "aws_eks_cluster" "cluster" {
-      name = "${local.cluster_name}"
+      count = local.cluster_exists ? 1 : 0
+      name  = local.active_cluster_name
     }
 
     data "aws_eks_cluster_auth" "cluster" {
-      name = "${local.cluster_name}"
+      count = local.cluster_exists ? 1 : 0
+      name  = local.active_cluster_name
     }
 
     provider "kubernetes" {
-      # Use data source for existing clusters, fallback to module output for new clusters
-      host                   = data.aws_eks_cluster.cluster.endpoint
-      cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-      token                  = data.aws_eks_cluster_auth.cluster.token
+      host                   = local.cluster_exists ? data.aws_eks_cluster.cluster[0].endpoint : "https://127.0.0.1:65535"
+      cluster_ca_certificate = local.cluster_exists ? base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data) : null
+      token                  = local.cluster_exists ? data.aws_eks_cluster_auth.cluster[0].token : null
+      insecure               = !local.cluster_exists
 
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
         args = [
-          "eks",
-          "get-token",
-          "--cluster-name", "${local.cluster_name}",
+          "eks", "get-token",
+          "--cluster-name", local.active_cluster_name,
           "--region", "${local.hub.aws_region}",
           "--profile", "${local.hub.aws_profile}"
         ]
@@ -73,17 +87,17 @@ generate "kube_providers" {
 
     provider "helm" {
       kubernetes = {
-        host                   = data.aws_eks_cluster.cluster.endpoint
-        cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-        token                  = data.aws_eks_cluster_auth.cluster.token
+        host                   = local.cluster_exists ? data.aws_eks_cluster.cluster[0].endpoint : "https://127.0.0.1:65535"
+        cluster_ca_certificate = local.cluster_exists ? base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data) : null
+        token                  = local.cluster_exists ? data.aws_eks_cluster_auth.cluster[0].token : null
+        insecure               = !local.cluster_exists
 
         exec = {
           api_version = "client.authentication.k8s.io/v1beta1"
           command     = "aws"
           args = [
-            "eks",
-            "get-token",
-            "--cluster-name", "${local.cluster_name}",
+            "eks", "get-token",
+            "--cluster-name", local.active_cluster_name,
             "--region", "${local.hub.aws_region}",
             "--profile", "${local.hub.aws_profile}"
           ]
@@ -92,17 +106,18 @@ generate "kube_providers" {
     }
 
     provider "kubectl" {
-      host                   = data.aws_eks_cluster.cluster.endpoint
-      cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
-      token                  = data.aws_eks_cluster_auth.cluster.token
+      host                   = local.cluster_exists ? data.aws_eks_cluster.cluster[0].endpoint : "https://127.0.0.1:65535"
+      cluster_ca_certificate = local.cluster_exists ? base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data) : null
+      token                  = local.cluster_exists ? data.aws_eks_cluster_auth.cluster[0].token : null
       load_config_file       = false
+      insecure               = !local.cluster_exists
 
       exec {
         api_version = "client.authentication.k8s.io/v1beta1"
         command     = "aws"
         args = [
           "eks", "get-token",
-          "--cluster-name", "${local.cluster_name}",
+          "--cluster-name", local.active_cluster_name,
           "--region", "${local.hub.aws_region}",
           "--profile", "${local.hub.aws_profile}"
         ]
@@ -111,7 +126,6 @@ generate "kube_providers" {
   EOF
 }
 
-# Generate IAM Access module calls dynamically for each spoke
 generate "iam_access_modules" {
   path      = "iam-access-modules.tf"
   if_exists = "overwrite_terragrunt"
@@ -120,15 +134,14 @@ generate "iam_access_modules" {
     module "iam-access-${spoke.alias}" {
       source = "../iam-access"
 
-      ack_services                     = var.ack_services
-      environment                      = local.environment
-      cluster_info                     = local.cluster_info
-      ack_hub_roles                    = local.ack_hub_roles
-      tags                             = local.tags
-      alias_tag                        = "${spoke.alias}"
-      spoke_alias                      = "${spoke.alias}"
+      ack_services     = var.ack_services
+      environment      = local.environment
+      cluster_info     = local.cluster_info
+      ack_hub_roles    = local.ack_hub_roles
+      tags             = local.tags
+      alias_tag        = "${spoke.alias}"
+      spoke_alias      = "${spoke.alias}"
 
-      # For staging, all spokes are internal (same account)
       enable_external_spoke = false
       enable_internal_spoke = true
 
@@ -141,7 +154,6 @@ generate "iam_access_modules" {
     }
     %{endfor~}
 
-    # Collect outputs from all IAM access modules
     locals {
       ack_spoke_role_arns_by_spoke = {
         %{for spoke in local.spokes~}
@@ -152,7 +164,7 @@ generate "iam_access_modules" {
       iam_access_modules_data = {
         %{for spoke in local.spokes~}
         "${spoke.alias}" = {
-          account_id = module.iam-access-${spoke.alias}.account_id
+          account_id          = module.iam-access-${spoke.alias}.account_id
           ack_spoke_role_arns = module.iam-access-${spoke.alias}.ack_spoke_role_arns
         }
         %{endfor~}
@@ -160,8 +172,8 @@ generate "iam_access_modules" {
     }
   EOF
 }
+
 inputs = {
-  # Hub configuration from config.yaml
   hub_alias          = local.hub.alias
   hub_aws_profile    = local.hub.aws_profile
   hub_aws_region     = local.hub.aws_region
@@ -169,17 +181,15 @@ inputs = {
   kubernetes_version = local.hub.kubernetes_version
   vpc_name           = local.vpc_name
   kubeconfig_dir     = local.deployment.kubeconfig_dir
+  enable_argo        = try(local.hub.enable_argo, true)
 
-  # Deployment configuration from config.yaml
   deployment_stage         = local.deployment_stage
   enable_cross_account_iam = local.enable_cross_account_iam
   argocd_chart_version     = local.deployment.argocd_chart_version
 
-  # ACK configuration from config.yaml
   ack_services = local.ack.controllers
   use_ack      = true
 
-  # Spokes configuration from config.yaml
   spokes = [
     for spoke in local.spokes : {
       alias   = spoke.alias
@@ -189,52 +199,48 @@ inputs = {
     }
   ]
 
-  # Addons configuration from config.yaml
   addons = local.addons
 
-  # GitOps configurations from config.yaml with staging branch
-  # All repos use the same GitHub instance and organization
-  gitops_addons_github_url     = local.gitops.github_url
-  gitops_addons_org_name       = local.gitops.org_name
-  gitops_addons_repo_name      = local.gitops.repo_name
-  gitops_addons_repo_base_path = local.gitops.addons.base_path
-  gitops_addons_repo_path      = local.gitops.addons.path
-  gitops_addons_repo_revision  = "staging"
+  gitops_addons_github_url               = local.gitops.github_url
+  gitops_addons_org_name                 = local.gitops.org_name
+  gitops_addons_repo_name                = local.gitops.repo_name
+  gitops_addons_repo_base_path           = local.gitops.addons.base_path
+  gitops_addons_repo_path                = local.gitops.addons.path
+  gitops_addons_repo_revision            = "staging"
   gitops_addons_app_id                   = ""
   gitops_addons_app_installation_id      = ""
   gitops_addons_app_private_key_ssm_path = ""
 
-  gitops_fleet_github_url     = local.gitops.github_url
-  gitops_fleet_org_name       = local.gitops.org_name
-  gitops_fleet_repo_name      = local.gitops.repo_name
-  gitops_fleet_repo_base_path = local.gitops.fleet.base_path
-  gitops_fleet_repo_path      = local.gitops.fleet.path
-  gitops_fleet_repo_revision  = "staging"
+  gitops_fleet_github_url               = local.gitops.github_url
+  gitops_fleet_org_name                 = local.gitops.org_name
+  gitops_fleet_repo_name                = local.gitops.repo_name
+  gitops_fleet_repo_base_path           = local.gitops.fleet.base_path
+  gitops_fleet_repo_path                = local.gitops.fleet.path
+  gitops_fleet_repo_revision            = "staging"
   gitops_fleet_app_id                   = ""
   gitops_fleet_app_installation_id      = ""
   gitops_fleet_app_private_key_ssm_path = ""
 
-  gitops_platform_github_url     = local.gitops.github_url
-  gitops_platform_org_name       = local.gitops.org_name
-  gitops_platform_repo_name      = local.gitops.repo_name
-  gitops_platform_repo_base_path = local.gitops.platform.base_path
-  gitops_platform_repo_path      = local.gitops.platform.path
-  gitops_platform_repo_revision  = "staging"
+  gitops_platform_github_url               = local.gitops.github_url
+  gitops_platform_org_name                 = local.gitops.org_name
+  gitops_platform_repo_name                = local.gitops.repo_name
+  gitops_platform_repo_base_path           = local.gitops.platform.base_path
+  gitops_platform_repo_path                = local.gitops.platform.path
+  gitops_platform_repo_revision            = "staging"
   gitops_platform_app_id                   = ""
   gitops_platform_app_installation_id      = ""
   gitops_platform_app_private_key_ssm_path = ""
 
-  gitops_workload_github_url     = local.gitops.github_url
-  gitops_workload_org_name       = local.gitops.org_name
-  gitops_workload_repo_name      = local.gitops.repo_name
-  gitops_workload_repo_base_path = local.gitops.workload.base_path
-  gitops_workload_repo_path      = local.gitops.workload.path
-  gitops_workload_repo_revision  = "staging"
+  gitops_workload_github_url               = local.gitops.github_url
+  gitops_workload_org_name                 = local.gitops.org_name
+  gitops_workload_repo_name                = local.gitops.repo_name
+  gitops_workload_repo_base_path           = local.gitops.workload.base_path
+  gitops_workload_repo_path                = local.gitops.workload.path
+  gitops_workload_repo_revision            = "staging"
   gitops_workload_app_id                   = ""
   gitops_workload_app_installation_id      = ""
   gitops_workload_app_private_key_ssm_path = ""
 
-  # IAM config raw file base URL for ACK controller policy templates
   gitops_iam_config_raw_file_base_url = try(local.gitops.iam_config_raw_file_base_url, "")
 
   outputs_dir = local.outputs_dir

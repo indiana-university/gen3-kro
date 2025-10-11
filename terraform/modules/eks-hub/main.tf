@@ -57,6 +57,20 @@ module "eks" {
   tags = local.resource_tags
 }
 
+# Lifecycle protection for cluster rename scenarios
+# This ensures new cluster is created before old one is destroyed
+resource "null_resource" "cluster_lifecycle_protection" {
+  count = var.create ? 1 : 0
+
+  triggers = {
+    cluster_name = var.cluster_name
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
 ###################################################################################################################################################
 # Pod Identities for various addons
 ###################################################################################################################################################

@@ -43,7 +43,7 @@ spec:
             serviceAccount:
               name: ack-iam-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{index .metadata.annotations "gen3-csoc-iam-ack-arn"}}
+                eks.amazonaws.com/role-arn: {{(index (index .metadata.annotations.ack_controllers | fromJson).iam "hub_role_arn")}}
             resources:
               limits:
                 cpu: 200m
@@ -55,10 +55,11 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        automated:
-          selfHeal: true
-          prune: true
-          allowEmpty: true
+        # DISABLED FOR LOCAL TESTING - Re-enable after validation
+        # automated:
+        #   selfHeal: true
+        #   prune: true
+        #   allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -109,7 +110,7 @@ spec:
             serviceAccount:
               name: ack-eks-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations "gen3-csoc-eks-ack-arn"}}{{else}}{{index .metadata.annotations (printf "%s-eks-ack-arn" .name)}}{{end}}
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{(index (index .metadata.annotations.ack_controllers | fromJson).eks "hub_role_arn")}}{{else}}{{index (index (index .metadata.annotations.ack_controllers | fromJson).eks "spoke_role_arns") .name}}{{end}}
             resources:
               limits:
                 cpu: 200m
@@ -121,10 +122,11 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        automated:
-          selfHeal: true
-          prune: true
-          allowEmpty: true
+        # DISABLED FOR LOCAL TESTING - Re-enable after validation
+        # automated:
+        #   selfHeal: true
+        #   prune: true
+        #   allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -175,7 +177,7 @@ spec:
             serviceAccount:
               name: ack-ec2-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations "gen3-csoc-ec2-ack-arn"}}{{else}}{{index .metadata.annotations (printf "%s-ec2-ack-arn" .name)}}{{end}}
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{(index (index .metadata.annotations.ack_controllers | fromJson).ec2 "hub_role_arn")}}{{else}}{{index (index (index .metadata.annotations.ack_controllers | fromJson).ec2 "spoke_role_arns") .name}}{{end}}
             resources:
               limits:
                 cpu: 200m
@@ -187,10 +189,11 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        automated:
-          selfHeal: true
-          prune: true
-          allowEmpty: true
+        # DISABLED FOR LOCAL TESTING - Re-enable after validation
+        # automated:
+          # selfHeal: true
+          # prune: true
+          # allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -241,7 +244,7 @@ spec:
             serviceAccount:
               name: ack-efs-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations "gen3-csoc-efs-ack-arn"}}{{else}}{{index .metadata.annotations (printf "%s-efs-ack-arn" .name)}}{{end}}
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{(index (index .metadata.annotations.ack_controllers | fromJson).efs "hub_role_arn")}}{{else}}{{index (index (index .metadata.annotations.ack_controllers | fromJson).efs "spoke_role_arns") .name}}{{end}}
             resources:
               limits:
                 cpu: 200m
@@ -253,10 +256,11 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        automated:
-          selfHeal: true
-          prune: true
-          allowEmpty: true
+        # DISABLED FOR LOCAL TESTING - Re-enable after validation
+        # automated:
+          # selfHeal: true
+          # prune: true
+          # allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

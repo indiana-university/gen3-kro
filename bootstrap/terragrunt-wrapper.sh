@@ -231,6 +231,18 @@ main() {
   log_info "Log file: $LOG_FILE"
   log_info "========================================="
 
+  # Merge configuration files
+  log_info "Merging configuration files..."
+  if [[ -f "${REPO_ROOT}/config/merge-config.sh" ]]; then
+    bash "${REPO_ROOT}/config/merge-config.sh" "$environment" || {
+      log_error "Failed to merge configuration files"
+      exit 1
+    }
+    log_success "✓ Configuration merged: base.yaml + ${environment}.yaml -> config.yaml"
+  else
+    log_warn "merge-config.sh not found, using existing config.yaml"
+  fi
+
   # Validate configuration
   validate_config || exit 1
 

@@ -32,10 +32,13 @@ module "eks-hub" {
 ###################################################################################################################################################
 # GitOps Bridge and ArgoCD Bootstrap
 ###################################################################################################################################################
+# Only install ArgoCD if cluster exists (checked via kube_providers.tf)
+# This prevents Kubernetes provider errors during initial cluster creation
 module "gitops-bridge-bootstrap" {
   source = "../argocd-bootstrap"
 
-  create      = local.oss_addons.enable_argocd
+  create      = var.enable_argo && local.oss_addons.enable_argocd && try(local.cluster_exists, false)
+  install     = var.enable_argo && try(local.cluster_exists, false)
   cluster     = local.argocd_cluster_data
   apps        = local.argocd_apps
   argocd      = local.argocd_settings

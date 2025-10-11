@@ -1,37 +1,16 @@
-# Staging environment overrides
-
 hub:
-  aws_profile: "boadeyem_tf"
-  aws_region: "us-east-1"
-  cluster_name: "gen3-kro-hub"
+  enable_argo: true
+  old_cluster_name: "gen3-kro-hub-v2-staging"
 
-spokes:
-  - alias: "spoke1"
-    region: "us-east-1"
-    profile: "boadeyem_tf"
-    account_id: ""
-    tags:
-      Team: "platform"
-      Purpose: "multi-account-demo"
-      Environment: "staging"
+deployment:
+  enable_cross_account_iam: false
 
 gitops:
   addons:
-    base_path: "argo/hub/charts"
-    path: "ack"
     revision: "staging"
   fleet:
-    base_path: "argo/hub/bootstrap"
-    path: "spoke-template"
     revision: "staging"
   platform:
-    base_path: "argo/teams"
-    path: "."
     revision: "staging"
   workload:
-    base_path: "argo/spokes"
-    path: "."
     revision: "staging"
-
-deployment:
-  enable_cross_account_iam: false  # Same account for staging
