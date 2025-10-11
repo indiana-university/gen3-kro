@@ -20,8 +20,7 @@ spec:
     server: https://kubernetes.default.svc
     namespace: argocd
   syncPolicy:
-    # DISABLED FOR LOCAL TESTING - Re-enable after validation
-    # automated:
+    # DISABLED FOR LOCAL WORK - automated:
     #   prune: true
     #   selfHeal: true
     syncOptions:

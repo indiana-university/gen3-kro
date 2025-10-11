@@ -34,16 +34,18 @@ spec:
       source:
         repoURL: oci://public.ecr.aws/aws-controllers-k8s
         chart: iam-chart
-        targetRevision: 1.3.16
+        targetRevision: 1.2.1
         helm:
           releaseName: ack-iam-controller
           values: |
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $iamConfig := index $ackControllers "iam" -}}
             aws:
               region: {{.metadata.annotations.hub_aws_region}}
             serviceAccount:
               name: ack-iam-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{(index (index .metadata.annotations.ack_controllers | fromJson).iam "hub_role_arn")}}
+                eks.amazonaws.com/role-arn: {{ $iamConfig.hub_role_arn }}
             resources:
               limits:
                 cpu: 200m
@@ -55,8 +57,7 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL TESTING - Re-enable after validation
-        # automated:
+        # DISABLED FOR LOCAL WORK - automated:
         #   selfHeal: true
         #   prune: true
         #   allowEmpty: true
@@ -101,16 +102,18 @@ spec:
       source:
         repoURL: oci://public.ecr.aws/aws-controllers-k8s
         chart: eks-chart
-        targetRevision: 1.6.0
+        targetRevision: 1.9.3
         helm:
           releaseName: ack-eks-controller
           values: |
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $eksConfig := index $ackControllers "eks" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
             serviceAccount:
               name: ack-eks-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{(index (index .metadata.annotations.ack_controllers | fromJson).eks "hub_role_arn")}}{{else}}{{index (index (index .metadata.annotations.ack_controllers | fromJson).eks "spoke_role_arns") .name}}{{end}}
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{ $eksConfig.hub_role_arn }}{{else}}{{ index $eksConfig.spoke_role_arns .name }}{{end}}
             resources:
               limits:
                 cpu: 200m
@@ -122,8 +125,7 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL TESTING - Re-enable after validation
-        # automated:
+        # DISABLED FOR LOCAL WORK - automated:
         #   selfHeal: true
         #   prune: true
         #   allowEmpty: true
@@ -168,16 +170,18 @@ spec:
       source:
         repoURL: oci://public.ecr.aws/aws-controllers-k8s
         chart: ec2-chart
-        targetRevision: 1.3.4
+        targetRevision: 1.7.0
         helm:
           releaseName: ack-ec2-controller
           values: |
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $ec2Config := index $ackControllers "ec2" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
             serviceAccount:
               name: ack-ec2-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{(index (index .metadata.annotations.ack_controllers | fromJson).ec2 "hub_role_arn")}}{{else}}{{index (index (index .metadata.annotations.ack_controllers | fromJson).ec2 "spoke_role_arns") .name}}{{end}}
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{ $ec2Config.hub_role_arn }}{{else}}{{ index $ec2Config.spoke_role_arns .name }}{{end}}
             resources:
               limits:
                 cpu: 200m
@@ -189,11 +193,10 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL TESTING - Re-enable after validation
-        # automated:
-          # selfHeal: true
-          # prune: true
-          # allowEmpty: true
+        # DISABLED FOR LOCAL WORK - automated:
+        #   selfHeal: true
+        #   prune: true
+        #   allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -235,16 +238,18 @@ spec:
       source:
         repoURL: oci://public.ecr.aws/aws-controllers-k8s
         chart: efs-chart
-        targetRevision: 1.0.6
+        targetRevision: 1.1.1
         helm:
           releaseName: ack-efs-controller
           values: |
+            {{- $ackControllers := .metadata.annotations.ack_controllers | fromJson -}}
+            {{- $efsConfig := index $ackControllers "efs" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
             serviceAccount:
               name: ack-efs-controller
               annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{(index (index .metadata.annotations.ack_controllers | fromJson).efs "hub_role_arn")}}{{else}}{{index (index (index .metadata.annotations.ack_controllers | fromJson).efs "spoke_role_arns") .name}}{{end}}
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{ $efsConfig.hub_role_arn }}{{else}}{{ index $efsConfig.spoke_role_arns .name }}{{end}}
             resources:
               limits:
                 cpu: 200m
@@ -256,11 +261,10 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL TESTING - Re-enable after validation
-        # automated:
-          # selfHeal: true
-          # prune: true
-          # allowEmpty: true
+        # DISABLED FOR LOCAL WORK - automated:
+        #   selfHeal: true
+        #   prune: true
+        #   allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

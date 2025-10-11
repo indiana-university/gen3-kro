@@ -170,8 +170,6 @@ locals {
       aws_load_balancer_controller_namespace       = local.aws_load_balancer_controller.namespace
       aws_load_balancer_controller_service_account = local.aws_load_balancer_controller.service_account
     },
-    # ACK Controllers - Single JSON annotation with nested structure
-    # Structure: {service: {namespace, service_account, hub_role_arn, spoke_role_arns: {spoke_alias: arn}}}
     {
       ack_controllers = jsonencode({
         for service, cfg in local.ack_services_config : service => merge(
