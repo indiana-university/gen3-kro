@@ -1,0 +1,39 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: spoke-template-applications
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  labels:
+    spoke: spoke-template
+    type: applications
+spec:
+  goTemplate: true
+  generators:
+    - git:
+        repoURL: https://github.com/indiana-university/gen3-kro
+        revision: HEAD
+        directories:
+          - path: spokes/spoke-template/applications/*
+  template:
+    metadata:
+      name: 'spoke-template-{{.path.basename}}'
+      labels:
+        spoke: spoke-template
+        app: '{{.path.basename}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/indiana-university/gen3-kro
+        targetRevision: HEAD
+        path: '{{.path.path}}/base'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.path.basename}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true

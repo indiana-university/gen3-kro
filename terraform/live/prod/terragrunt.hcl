@@ -223,6 +223,7 @@ inputs = {
   gitops_addons_repo_base_path           = local.gitops.addons.base_path
   gitops_addons_repo_path                = local.gitops.addons.path
   gitops_addons_repo_revision            = local.gitops.addons.revision
+  gitops_iam_config_raw_file_base_url               = try(local.gitops.iam_config_raw_file_base_url, "")
   gitops_addons_app_id                   = ""
   gitops_addons_app_installation_id      = ""
   gitops_addons_app_private_key_ssm_path = ""

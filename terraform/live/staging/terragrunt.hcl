@@ -184,13 +184,16 @@ inputs = {
   kubeconfig_dir     = local.deployment.kubeconfig_dir
   enable_argo        = try(local.hub.enable_argo, true)
 
+  # Deployment configuration from config.yaml
   deployment_stage         = local.deployment_stage
   enable_cross_account_iam = local.enable_cross_account_iam
   argocd_chart_version     = local.deployment.argocd_chart_version
 
+  # ACK configuration from config.yaml
   ack_services = local.ack.controllers
   use_ack      = true
 
+  # Spokes configuration from config.yaml
   spokes = [
     for spoke in local.spokes : {
       alias   = spoke.alias
@@ -200,6 +203,7 @@ inputs = {
     }
   ]
 
+  # Addons configuration from config.yaml
   addons = local.addons
 
   gitops_addons_github_url               = local.gitops.github_url
