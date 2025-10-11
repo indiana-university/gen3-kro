@@ -1,0 +1,269 @@
+---
+# Unified ACK Controllers ApplicationSet
+# This file contains all ACK controller ApplicationSets using matrix generators
+# Each controller can be enabled/disabled per cluster via labels
+
+---
+# ACK IAM Controller - Hub ONLY
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ack-iam
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          fleet_member: control-plane  # IAM only on hub
+          enable_ack_iam: "true"
+  template:
+    metadata:
+      name: '{{.name}}-ack-iam'
+      labels:
+        app: ack-iam
+        cluster: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: public.ecr.aws
+        chart: aws-controllers-k8s/iam-chart
+        targetRevision: 1.3.16
+        helm:
+          releaseName: ack-iam-controller
+          values: |
+            aws:
+              region: {{.metadata.annotations.hub_aws_region}}
+            serviceAccount:
+              name: ack-iam-controller
+              annotations:
+                eks.amazonaws.com/role-arn: {{index .metadata.annotations "gen3-csoc-iam-ack-arn"}}
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+      destination:
+        server: '{{.server}}'
+        namespace: ack-system
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 10m
+
+---
+# ACK EKS Controller - Hub and Spokes
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ack-eks
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          enable_ack_eks: "true"
+  template:
+    metadata:
+      name: '{{.name}}-ack-eks'
+      labels:
+        app: ack-eks
+        cluster: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: public.ecr.aws
+        chart: aws-controllers-k8s/eks-chart
+        targetRevision: 1.6.0
+        helm:
+          releaseName: ack-eks-controller
+          values: |
+            aws:
+              region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
+            serviceAccount:
+              name: ack-eks-controller
+              annotations:
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations "gen3-csoc-eks-ack-arn"}}{{else}}{{index .metadata.annotations (printf "%s-eks-ack-arn" .name)}}{{end}}
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+      destination:
+        server: '{{.server}}'
+        namespace: ack-system
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 10m
+
+---
+# ACK EC2 Controller - Hub and Spokes
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ack-ec2
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          enable_ack_ec2: "true"
+  template:
+    metadata:
+      name: '{{.name}}-ack-ec2'
+      labels:
+        app: ack-ec2
+        cluster: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: public.ecr.aws
+        chart: aws-controllers-k8s/ec2-chart
+        targetRevision: 1.3.4
+        helm:
+          releaseName: ack-ec2-controller
+          values: |
+            aws:
+              region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
+            serviceAccount:
+              name: ack-ec2-controller
+              annotations:
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations "gen3-csoc-ec2-ack-arn"}}{{else}}{{index .metadata.annotations (printf "%s-ec2-ack-arn" .name)}}{{end}}
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+      destination:
+        server: '{{.server}}'
+        namespace: ack-system
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 10m
+
+---
+# ACK EFS Controller - Hub and Spokes
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ack-efs
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          argocd.argoproj.io/secret-type: cluster
+          enable_ack_efs: "true"
+  template:
+    metadata:
+      name: '{{.name}}-ack-efs'
+      labels:
+        app: ack-efs
+        cluster: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: public.ecr.aws
+        chart: aws-controllers-k8s/efs-chart
+        targetRevision: 1.0.6
+        helm:
+          releaseName: ack-efs-controller
+          values: |
+            aws:
+              region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
+            serviceAccount:
+              name: ack-efs-controller
+              annotations:
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations "gen3-csoc-efs-ack-arn"}}{{else}}{{index .metadata.annotations (printf "%s-efs-ack-arn" .name)}}{{end}}
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+      destination:
+        server: '{{.server}}'
+        namespace: ack-system
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 10m
