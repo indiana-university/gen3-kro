@@ -1,0 +1,20 @@
+hub:
+  enable_argo: true
+  old_cluster_name: ""
+
+deployment:
+  enable_cross_account_iam: true
+
+gitops:
+  addons:
+    revision: "main"
+  fleet:
+    revision: "main"
+  platform:
+    revision: "main"
+  workload:
+    revision: "main"
+
+addons:
+  enable_cert_manager: true
+  enable_external_dns: true

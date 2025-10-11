@@ -1,0 +1,13 @@
+# Override values for cloudwatchlogs ACK controller
+
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.cloudwatchlogs}}"
+
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi

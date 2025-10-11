@@ -1,0 +1,18 @@
+# KRO Instance Values for sample.gen3.url.org
+
+instance:
+  name: sample-gen3-url-org
+  tenant: spoke1
+  domain: sample.gen3.url.org
+
+vpc:
+  cidr: "10.1.0.0/16"
+
+eks:
+  version: "1.33"
+  nodeGroups:
+    - name: general
+      instanceType: t3.medium
+      desiredSize: 2
+      minSize: 1
+      maxSize: 4

@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+# .githooks/pre-commit
+set -euo pipefail
+
+# Default behavior: do nothing. To enable automatic docker push on commit,
+# set the repo config: git config hooks.docker.autoPush true
+
+auto_push=$(git config --get hooks.docker.autoPush || echo "false")
+if [[ "$auto_push" != "true" ]]; then
+  # echo "[pre-commit] Docker auto-push disabled (git config hooks.docker.autoPush != true)"
+  exit 0
+fi
+
+echo "[pre-commit] Docker auto-push enabled - running build/push script"
+export DOCKER_PUSH=true
+# Respect DOCKER_USERNAME/DOCKER_PASSWORD if set in environment
+./scripts/docker-build-push.sh
+
+exit 0
