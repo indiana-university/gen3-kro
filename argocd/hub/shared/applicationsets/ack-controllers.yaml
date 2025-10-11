@@ -1,4 +1,3 @@
----
 # Unified ACK Controllers ApplicationSet
 # This file contains all ACK controller ApplicationSets using matrix generators
 # Each controller can be enabled/disabled per cluster via labels
@@ -33,8 +32,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws
-        chart: aws-controllers-k8s/iam-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        chart: iam-chart
         targetRevision: 1.3.16
         helm:
           releaseName: ack-iam-controller
@@ -99,8 +98,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws
-        chart: aws-controllers-k8s/eks-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        chart: eks-chart
         targetRevision: 1.6.0
         helm:
           releaseName: ack-eks-controller
@@ -165,8 +164,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws
-        chart: aws-controllers-k8s/ec2-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        chart: ec2-chart
         targetRevision: 1.3.4
         helm:
           releaseName: ack-ec2-controller
@@ -231,8 +230,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: public.ecr.aws
-        chart: aws-controllers-k8s/efs-chart
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        chart: efs-chart
         targetRevision: 1.0.6
         helm:
           releaseName: ack-efs-controller
