@@ -28,6 +28,6 @@ spec:
         namespace: 'argocd'
         name: '{{.name}}'
       syncPolicy:
-        # DISABLED FOR LOCAL WORK - automated: {}
+        automated: {}
         syncOptions:
           - CreateNamespace=true
