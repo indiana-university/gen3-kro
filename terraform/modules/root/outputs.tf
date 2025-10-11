@@ -5,5 +5,5 @@ output "argo_metadata_yaml" {
 
 output "ack_controllers_metadata" {
   description = "ACK controllers metadata (nested JSON per controller)"
-  value       = jsondecode(local.addons_metadata["ack_controllers"])
+  value       = local.addons_metadata["ack_controllers"]
 }

@@ -131,7 +131,7 @@ locals {
       environment      = local.environment
       aws_vpc_id       = local.vpc_id
       use_ack          = local.use_ack
-      tenants          = jsonencode([for spoke in var.spokes : spoke.alias])
+      tenants          = yamlencode([for spoke in var.spokes : spoke.alias])
     },
     {
       argocd_namespace           = local.argocd_namespace,
@@ -171,7 +171,7 @@ locals {
       aws_load_balancer_controller_service_account = local.aws_load_balancer_controller.service_account
     },
     {
-      ack_controllers = jsonencode({
+      ack_controllers = {
         for service, cfg in local.ack_services_config : service => merge(
           {
             namespace       = cfg.namespace
@@ -187,7 +187,7 @@ locals {
             }
           }
         )
-      })
+      }
     },
     {
       for spoke_alias, spoke_data in try(local.iam_access_modules_data, {}) :

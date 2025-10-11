@@ -76,7 +76,15 @@ locals {
       cluster_name = local.cluster_name
       environment  = local.environment
     },
-    try(var.cluster.metadata, {})
+    {
+      for k, v in try(var.cluster.metadata, {}) :
+      k => (
+        # Kubernetes annotations must be strings
+        # ack_controllers is an object that needs YAML encoding for ArgoCD
+        # Other values might be strings, bools, numbers, or objects
+        can(tostring(v)) && !can(keys(v)) ? tostring(v) : yamlencode(v)
+      )
+    }
   )
 }
 
