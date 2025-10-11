@@ -170,25 +170,29 @@ locals {
       aws_load_balancer_controller_namespace       = local.aws_load_balancer_controller.namespace
       aws_load_balancer_controller_service_account = local.aws_load_balancer_controller.service_account
     },
+    # Flatten ACK controller configs into individual annotations
+    # Hub role ARNs
     {
-      ack_controllers = {
-        for service, cfg in local.ack_services_config : service => merge(
-          {
-            namespace       = cfg.namespace
-            service_account = cfg.service_account
-          },
-          {
-            hub_role_arn = try(local.ack_hub_roles[service].arn, "")
-          },
-          {
-            spoke_role_arns = {
-              for spoke_alias, arn_maps in try(local.ack_spoke_role_arns_by_spoke, {}) :
-              spoke_alias => try(arn_maps[service], "")
-            }
-          }
-        )
-      }
+      for service, cfg in local.ack_services_config :
+      "ack_${service}_hub_role_arn" => try(local.ack_hub_roles[service].arn, "")
     },
+    # Namespaces
+    {
+      for service, cfg in local.ack_services_config :
+      "ack_${service}_namespace" => cfg.namespace
+    },
+    # Service accounts
+    {
+      for service, cfg in local.ack_services_config :
+      "ack_${service}_service_account" => cfg.service_account
+    },
+    # Spoke role ARNs - flatten completely
+    merge([
+      for service, cfg in local.ack_services_config : {
+        for spoke_alias, arn_maps in try(local.ack_spoke_role_arns_by_spoke, {}) :
+        "ack_${service}_spoke_role_arn_${spoke_alias}" => try(arn_maps[service], "")
+      }
+    ]...),
     {
       for spoke_alias, spoke_data in try(local.iam_access_modules_data, {}) :
       "${spoke_alias}_account_id" => try(spoke_data.account_id, null)

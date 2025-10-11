@@ -80,8 +80,7 @@ locals {
       for k, v in try(var.cluster.metadata, {}) :
       k => (
         # Kubernetes annotations must be strings
-        # ack_controllers is an object that needs YAML encoding for ArgoCD
-        # Other values might be strings, bools, numbers, or objects
+        # Convert non-string values to strings, objects to YAML
         can(tostring(v)) && !can(keys(v)) ? tostring(v) : yamlencode(v)
       )
     }

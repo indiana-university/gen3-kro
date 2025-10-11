@@ -3,7 +3,10 @@ output "argo_metadata_yaml" {
   value       = yamlencode(local.addons_metadata)
 }
 
-output "ack_controllers_metadata" {
-  description = "ACK controllers metadata (nested JSON per controller)"
-  value       = local.addons_metadata["ack_controllers"]
+output "ack_controllers_flat_annotations" {
+  description = "ACK controllers metadata (flattened annotations)"
+  value = {
+    for k, v in local.addons_metadata :
+    k => v if startswith(k, "ack_")
+  }
 }

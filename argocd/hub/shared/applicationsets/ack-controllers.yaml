@@ -1,13 +1,13 @@
 # Unified ACK Controllers ApplicationSet
-# This file contains all ACK controller ApplicationSets using matrix generators
+# Single ApplicationSet that deploys all ACK controllers using a matrix generator
+# Templates off metadata.annotations.ack_* for each controller's configuration
 # Each controller can be enabled/disabled per cluster via labels
 
 ---
-# ACK IAM Controller - Hub ONLY
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: ack-iam
+  name: ack-controllers
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "1"
@@ -17,100 +17,64 @@ spec:
   syncPolicy:
     preserveResourcesOnDeletion: false
   generators:
-  - clusters:
-      selector:
-        matchLabels:
-          argocd.argoproj.io/secret-type: cluster
-          fleet_member: control-plane  # IAM only on hub
-          enable_ack_iam: "true"
+  - matrix:
+      generators:
+      # Controller definitions with versions
+      - list:
+          elements:
+          - controller: iam
+            chart: iam-chart
+            version: "1.2.1"
+            hub_only: "true"
+            sync_wave: "1"
+          - controller: eks
+            chart: eks-chart
+            version: "1.9.3"
+            hub_only: "false"
+            sync_wave: "1"
+          - controller: ec2
+            chart: ec2-chart
+            version: "1.7.0"
+            hub_only: "false"
+            sync_wave: "1"
+          - controller: efs
+            chart: efs-chart
+            version: "1.1.1"
+            hub_only: "false"
+            sync_wave: "3"
+      # Cluster selector
+      - clusters:
+          selector:
+            matchLabels:
+              argocd.argoproj.io/secret-type: cluster
+            matchExpressions:
+            - key: enable_ack_{{.controller}}
+              operator: In
+              values: ["true"]
   template:
     metadata:
-      name: '{{.name}}-ack-iam'
+      name: '{{.name}}-ack-{{.controller}}'
       labels:
-        app: ack-iam
+        app: ack-{{.controller}}
         cluster: '{{.name}}'
+        controller-type: ack
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{.sync_wave}}'
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s/iam-chart
-        targetRevision: 1.2.1
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        chart: '{{.chart}}'
+        targetRevision: '{{.version}}'
         helm:
-          releaseName: ack-iam-controller
+          releaseName: ack-{{.controller}}-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers}}
-            {{- $iamConfig := index $ackControllers "iam" -}}
-            aws:
-              region: {{.metadata.annotations.hub_aws_region}}
-            serviceAccount:
-              name: ack-iam-controller
-              annotations:
-                eks.amazonaws.com/role-arn: {{ $iamConfig.hub_role_arn }}
-            resources:
-              limits:
-                cpu: 200m
-                memory: 256Mi
-              requests:
-                cpu: 100m
-                memory: 128Mi
-      destination:
-        server: '{{.server}}'
-        namespace: ack-system
-      syncPolicy:
-        selfHeal: true
-        prune: true
-        allowEmpty: true
-        syncOptions:
-          - CreateNamespace=true
-          - ServerSideApply=true
-        retry:
-          limit: -1
-          backoff:
-            duration: 5s
-            factor: 2
-            maxDuration: 10m
-
----
-# ACK EKS Controller - Hub and Spokes
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
-  name: ack-eks
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  goTemplate: true
-  goTemplateOptions: ["missingkey=error"]
-  syncPolicy:
-    preserveResourcesOnDeletion: false
-  generators:
-  - clusters:
-      selector:
-        matchLabels:
-          argocd.argoproj.io/secret-type: cluster
-          enable_ack_eks: "true"
-  template:
-    metadata:
-      name: '{{.name}}-ack-eks'
-      labels:
-        app: ack-eks
-        cluster: '{{.name}}'
-    spec:
-      project: default
-      source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
-        targetRevision: 1.9.3
-        helm:
-          releaseName: ack-eks-controller
-          values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers}}
-            {{- $eksConfig := index $ackControllers "eks" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
             serviceAccount:
-              name: ack-eks-controller
+              name: {{index .metadata.annotations (printf "ack_%s_service_account" .controller)}}
               annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{ $eksConfig.hub_role_arn }}{{else}}{{ index $eksConfig.spoke_role_arns .name }}{{end}}
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations (printf "ack_%s_hub_role_arn" .controller)}}{{else}}{{index .metadata.annotations (printf "ack_%s_spoke_role_arn_%s" .controller .name)}}{{end}}
             resources:
               limits:
                 cpu: 200m
@@ -120,11 +84,12 @@ spec:
                 memory: 128Mi
       destination:
         server: '{{.server}}'
-        namespace: ack-system
+        namespace: '{{index .metadata.annotations (printf "ack_%s_namespace" .controller)}}'
       syncPolicy:
-        selfHeal: true
-        prune: true
-        allowEmpty: true
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -134,135 +99,8 @@ spec:
             duration: 5s
             factor: 2
             maxDuration: 10m
-
----
-# ACK EC2 Controller - Hub and Spokes
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
-  name: ack-ec2
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  goTemplate: true
-  goTemplateOptions: ["missingkey=error"]
-  syncPolicy:
-    preserveResourcesOnDeletion: false
-  generators:
-  - clusters:
-      selector:
-        matchLabels:
-          argocd.argoproj.io/secret-type: cluster
-          enable_ack_ec2: "true"
-  template:
-    metadata:
-      name: '{{.name}}-ack-ec2'
-      labels:
-        app: ack-ec2
-        cluster: '{{.name}}'
-    spec:
-      project: default
-      source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
-        targetRevision: 1.7.0
-        helm:
-          releaseName: ack-ec2-controller
-          values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers}}
-            {{- $ec2Config := index $ackControllers "ec2" -}}
-            aws:
-              region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
-            serviceAccount:
-              name: ack-ec2-controller
-              annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{ $ec2Config.hub_role_arn }}{{else}}{{ index $ec2Config.spoke_role_arns .name }}{{end}}
-            resources:
-              limits:
-                cpu: 200m
-                memory: 256Mi
-              requests:
-                cpu: 100m
-                memory: 128Mi
-      destination:
-        server: '{{.server}}'
-        namespace: ack-system
-      syncPolicy:
-        selfHeal: true
-        prune: true
-        allowEmpty: true
-        syncOptions:
-          - CreateNamespace=true
-          - ServerSideApply=true
-        retry:
-          limit: -1
-          backoff:
-            duration: 5s
-            factor: 2
-            maxDuration: 10m
-
----
-# ACK EFS Controller - Hub and Spokes
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
-  name: ack-efs
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
-spec:
-  goTemplate: true
-  goTemplateOptions: ["missingkey=error"]
-  syncPolicy:
-    preserveResourcesOnDeletion: false
-  generators:
-  - clusters:
-      selector:
-        matchLabels:
-          argocd.argoproj.io/secret-type: cluster
-          enable_ack_efs: "true"
-  template:
-    metadata:
-      name: '{{.name}}-ack-efs'
-      labels:
-        app: ack-efs
-        cluster: '{{.name}}'
-    spec:
-      project: default
-      source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s/efs-chart
-        targetRevision: 1.1.1
-        helm:
-          releaseName: ack-efs-controller
-          values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers}}
-            {{- $efsConfig := index $ackControllers "efs" -}}
-            aws:
-              region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
-            serviceAccount:
-              name: ack-efs-controller
-              annotations:
-                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{ $efsConfig.hub_role_arn }}{{else}}{{ index $efsConfig.spoke_role_arns .name }}{{end}}
-            resources:
-              limits:
-                cpu: 200m
-                memory: 256Mi
-              requests:
-                cpu: 100m
-                memory: 128Mi
-      destination:
-        server: '{{.server}}'
-        namespace: ack-system
-      syncPolicy:
-        selfHeal: true
-        prune: true
-        allowEmpty: true
-        syncOptions:
-          - CreateNamespace=true
-          - ServerSideApply=true
-        retry:
-          limit: -1
-          backoff:
-            duration: 5s
-            factor: 2
-            maxDuration: 10m
+      ignoreDifferences:
+      - group: "*"
+        kind: Secret
+        jsonPointers:
+        - /data
