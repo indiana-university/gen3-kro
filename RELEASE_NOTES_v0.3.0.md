@@ -1,12 +1,12 @@
-# Release Notes - Version 0.2.0
+# Release Notes - Version 0.3.0
 
-**Release Date**: October 11, 2025  
-**Branch**: staging  
+**Release Date**: October 11, 2025
+**Branch**: staging
 **Release Type**: Minor Release
 
 ## Overview
 
-Version 0.2.0 introduces a production-ready ACK (AWS Controllers for Kubernetes) deployment system to the hub cluster using a unified ApplicationSet pattern. This release significantly enhances the platform's ability to manage AWS resources natively through Kubernetes.
+Version 0.3.0 introduces a production-ready ACK (AWS Controllers for Kubernetes) deployment system to the hub cluster using a unified ApplicationSet pattern. This release significantly enhances the platform's ability to manage AWS resources natively through Kubernetes.
 
 ## 🚀 Major Features
 
@@ -16,7 +16,7 @@ Successfully deployed AWS Controllers for Kubernetes to the hub cluster with the
 
 **Active Controllers:**
 - ✅ **IAM Controller** (v1.2.1) - Managing IAM roles, policies, and access
-- ✅ **EKS Controller** (v1.9.3) - Managing EKS clusters and node groups  
+- ✅ **EKS Controller** (v1.9.3) - Managing EKS clusters and node groups
 - ✅ **EC2 Controller** (v1.7.0) - Managing EC2 instances and networking resources
 - ✅ **EFS Controller** (v1.1.1) - Managing Elastic File Systems
 
@@ -160,7 +160,7 @@ None. This release is fully backward compatible with v0.1.0.
 
 ## 🚦 Upgrade Path
 
-From v0.1.0 to v0.2.0:
+From v0.1.1 to v0.3.0:
 
 1. Pull latest changes from staging branch
 2. Review and update `config/config.yaml` with ACK controller list
@@ -194,4 +194,4 @@ For issues related to this release:
 
 ---
 
-**Full Changelog**: https://github.com/indiana-university/gen3-kro/compare/v0.1.0...v0.2.0
+**Full Changelog**: https://github.com/indiana-university/gen3-kro/compare/v0.1.1...v0.3.0
