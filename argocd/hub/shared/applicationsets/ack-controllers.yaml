@@ -57,10 +57,9 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL WORK - automated:
-        #   selfHeal: true
-        #   prune: true
-        #   allowEmpty: true
+        selfHeal: true
+        prune: true
+        allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -125,10 +124,9 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL WORK - automated:
-        #   selfHeal: true
-        #   prune: true
-        #   allowEmpty: true
+        selfHeal: true
+        prune: true
+        allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -193,10 +191,9 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL WORK - automated:
-        #   selfHeal: true
-        #   prune: true
-        #   allowEmpty: true
+        selfHeal: true
+        prune: true
+        allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
@@ -261,10 +258,9 @@ spec:
         server: '{{.server}}'
         namespace: ack-system
       syncPolicy:
-        # DISABLED FOR LOCAL WORK - automated:
-        #   selfHeal: true
-        #   prune: true
-        #   allowEmpty: true
+        selfHeal: true
+        prune: true
+        allowEmpty: true
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
