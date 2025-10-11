@@ -37,7 +37,7 @@ spec:
         helm:
           releaseName: ack-iam-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers}}
             {{- $iamConfig := index $ackControllers "iam" -}}
             aws:
               region: {{.metadata.annotations.hub_aws_region}}
@@ -103,7 +103,7 @@ spec:
         helm:
           releaseName: ack-eks-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers}}
             {{- $eksConfig := index $ackControllers "eks" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
@@ -169,7 +169,7 @@ spec:
         helm:
           releaseName: ack-ec2-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers}}
             {{- $ec2Config := index $ackControllers "ec2" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
@@ -235,7 +235,7 @@ spec:
         helm:
           releaseName: ack-efs-controller
           values: |
-            {{- $ackControllers := .metadata.annotations.ack_controllers | fromYaml -}}
+            {{- $ackControllers := .metadata.annotations.ack_controllers}}
             {{- $efsConfig := index $ackControllers "efs" -}}
             aws:
               region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
