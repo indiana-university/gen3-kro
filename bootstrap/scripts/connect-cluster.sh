@@ -92,6 +92,15 @@ main() {
   fi
 
   local environment="$1"
+  shift || true
+
+  # Support optional --dry-run flag (stops before making external calls)
+  local DRY_RUN=false
+  for arg in "$@"; do
+    if [[ "$arg" == "--dry-run" ]]; then
+      DRY_RUN=true
+    fi
+  done
 
   log_info "========================================="
   log_info "Connect to EKS Cluster - gen3-kro"
@@ -102,6 +111,60 @@ main() {
   # Load configuration from config.yaml
   log_info "Loading configuration from: $CONFIG_FILE"
 
+  # Merge base + environment overlay into config/config.yaml if needed
+  merge_configs() {
+    local env="$1"
+    local base="$REPO_ROOT/config/base.yaml"
+    local overlay="$REPO_ROOT/config/environments/${env}.yaml"
+    local out="$REPO_ROOT/config/config.yaml"
+
+    if [[ ! -f "$base" ]]; then
+      log_error "Base config not found: $base"
+      return 1
+    fi
+    if [[ ! -f "$overlay" ]]; then
+      log_error "Environment overlay not found: $overlay"
+      return 1
+    fi
+
+    # Use yq if available
+    if command -v yq >/dev/null 2>&1; then
+      yq eval-all 'select(fileIndex == 0) * select(fileIndex == 1)' "$base" "$overlay" > "$out"
+      log_info "Merged $base + $overlay -> $out (via yq)"
+      return 0
+    fi
+
+    # Fall back to Python merge
+    if command -v python3 >/dev/null 2>&1; then
+      python3 - <<PY
+import sys, yaml
+from pathlib import Path
+base = yaml.safe_load(Path(r"$base").read_text()) or {}
+overlay = yaml.safe_load(Path(r"$overlay").read_text()) or {}
+
+def deep_merge(a, b):
+    for k, v in b.items():
+        if k in a and isinstance(a[k], dict) and isinstance(v, dict):
+            deep_merge(a[k], v)
+        else:
+            a[k] = v
+
+deep_merge(base, overlay)
+Path(r"$out").write_text(yaml.safe_dump(base, sort_keys=False))
+print(f"Merged {r'$base'} + {r'$overlay'} -> {r'$out'} (via python)")
+PY
+      return 0
+    fi
+
+    log_error "Neither yq nor python3 available to merge configs"
+    return 1
+  }
+
+  if ! merge_configs "$environment"; then
+    log_error "Failed to prepare merged config"
+    exit 1
+  fi
+
   local hub_profile
   local hub_region
   local cluster_base_name
@@ -109,6 +172,18 @@ main() {
   hub_profile=$(get_config_value '.hub.aws_profile')
   hub_region=$(get_config_value '.hub.aws_region')
   cluster_base_name=$(get_config_value '.hub.cluster_name')
+
+  # If dry-run, print the resolved values and exit before making external calls
+  if [[ "$DRY_RUN" == true ]]; then
+    log_info "--- DRY RUN: resolved config values ---"
+    log_info "hub_profile: $hub_profile"
+    log_info "hub_region: $hub_region"
+    log_info "cluster_base_name: $cluster_base_name"
+    log_info "Using merged config: $CONFIG_FILE"
+    echo
+    log_info "Dry-run complete; no external commands were executed."
+    return 0
+  fi
 
   # Determine full cluster name based on environment
   local cluster_name

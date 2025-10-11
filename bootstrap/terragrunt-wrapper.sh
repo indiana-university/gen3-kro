@@ -15,7 +15,6 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 source "${SCRIPT_DIR}/scripts/lib-logging.sh"
 
 # Configuration
-CONFIG_FILE="${REPO_ROOT}/config/config.yaml"
 LIVE_DIR="${REPO_ROOT}/terraform/live"
 LOG_DIR="${REPO_ROOT}/outputs/logs"
 
@@ -32,11 +31,6 @@ validate_config() {
 
   log_info "Validating configuration..."
 
-  # Check config file exists
-  if [[ ! -f "$CONFIG_FILE" ]]; then
-    log_error "Configuration file not found: $CONFIG_FILE"
-    ((errors++))
-  fi
 
   # Check required commands
   for cmd in terragrunt terraform kubectl helm jq aws; do
@@ -52,19 +46,6 @@ validate_config() {
     # Try python as fallback
     if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
       log_error "Neither yq nor python found for YAML processing"
-      ((errors++))
-    fi
-  fi
-
-  # Validate YAML syntax using yq or python
-  if command -v yq >/dev/null 2>&1; then
-    if ! yq eval '.' "$CONFIG_FILE" >/dev/null 2>&1; then
-      log_error "Invalid YAML syntax in: $CONFIG_FILE"
-      ((errors++))
-    fi
-  elif command -v python3 >/dev/null 2>&1; then
-    if ! python3 -c "import yaml; yaml.safe_load(open('$CONFIG_FILE'))" 2>/dev/null; then
-      log_error "Invalid YAML syntax in: $CONFIG_FILE"
       ((errors++))
     fi
   fi
@@ -230,18 +211,6 @@ main() {
   log_info "Command: $command"
   log_info "Log file: $LOG_FILE"
   log_info "========================================="
-
-  # Merge configuration files
-  log_info "Merging configuration files..."
-  if [[ -f "${REPO_ROOT}/config/merge-config.sh" ]]; then
-    bash "${REPO_ROOT}/config/merge-config.sh" "$environment" || {
-      log_error "Failed to merge configuration files"
-      exit 1
-    }
-    log_success "✓ Configuration merged: base.yaml + ${environment}.yaml -> config.yaml"
-  else
-    log_warn "merge-config.sh not found, using existing config.yaml"
-  fi
 
   # Validate configuration
   validate_config || exit 1

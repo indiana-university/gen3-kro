@@ -32,7 +32,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s
         chart: iam-chart
         targetRevision: 1.2.1
         helm:
@@ -99,7 +99,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s
         chart: eks-chart
         targetRevision: 1.9.3
         helm:
@@ -166,7 +166,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s
         chart: ec2-chart
         targetRevision: 1.7.0
         helm:
@@ -233,7 +233,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: oci://public.ecr.aws/aws-controllers-k8s
+        repoURL: public.ecr.aws/aws-controllers-k8s
         chart: efs-chart
         targetRevision: 1.1.1
         helm:
