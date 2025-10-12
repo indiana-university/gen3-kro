@@ -42,8 +42,8 @@ jobs:
             VERSION="${GITHUB_REF_NAME}"
           else
             # Auto-increment patch version for main branch pushes
-            chmod +x bootstrap/scripts/version-bump.sh
-            ./bootstrap/scripts/version-bump.sh patch
+            chmod +x .github/workflows/version-bump.sh
+            ./.github/workflows/version-bump.sh
             VERSION=$(cat .version)
             VERSION="v${VERSION}"
           fi
@@ -91,12 +91,14 @@ jobs:
       - name: Output image
         run: echo "Image(s) pushed - ${{ steps.vars.outputs.IMAGE_TAGS }}"
 
-      - name: Commit version bump
+      - name: Commit and push version bump
         if: github.ref == 'refs/heads/main' && github.ref_type != 'tag'
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .version
           git commit -m "chore: auto-bump version to ${{ steps.vars.outputs.VERSION }}" || echo "No version changes to commit"
-          git push || echo "Nothing to push"
+          git push origin main || echo "Nothing to push"
+          # Push the new tag
+          git push origin --tags || echo "No tags to push"
 
