@@ -242,6 +242,74 @@ kubectl get applications -n argocd <cluster>-ack-<controller> -o yaml
 - **Secrets**: Stored in AWS Secrets Manager, not in Git
 - **Network Policies**: Restrict pod-to-pod communication
 
+## CI/CD Pipeline
+
+### Automated Versioning
+
+The project uses **fully automated semantic versioning** via GitHub Actions. No manual version file updates needed for patch releases!
+
+**How it works:**
+1. **Every push to `main` branch**: The CI automatically bumps the patch version (e.g., 0.3.1 → 0.3.2)
+2. **Version file auto-updates**: The `.version` file is updated and committed by the CI
+3. **Git tags created**: New version tags (e.g., `v0.3.2`) are automatically created and pushed
+4. **Docker images published**: Images are tagged with the new version
+
+**For major/minor version changes only:**
+- Update `.version` file manually (e.g., `echo "0.4.0" > .version`)
+- Commit and push to `main`
+- CI detects the change and creates the appropriate tag
+
+**Version bump logic:**
+- If `.version` matches latest git tag → **auto-bump patch** (0.3.1 → 0.3.2)
+- If `.version` has new major/minor → **use file version** (0.3.x → 0.4.0)
+- Tag already exists → **error** (prevents duplicate releases)
+
+### Docker Image Build
+
+Every push to `main`, `staging`, or tag triggers:
+1. Version auto-increment (if applicable)
+2. Docker image build from `.devcontainer/Dockerfile`
+3. Multi-tag push to Docker Hub:
+   - `<repo>:v<version>-<date>-g<sha>` (immutable)
+   - `<repo>:v<version>` (mutable)
+   - `<repo>:latest` (main branch only)
+
+### Version Management Script
+
+Located at `.github/workflows/version-bump.sh`, this script:
+- **Auto-detects** if version bump is needed
+- Compares `.version` file with latest git tag
+- **Auto-bumps patch** if major/minor unchanged and versions match
+- Creates annotated git tags automatically
+- Outputs version for CI/CD consumption
+- **Fails fast** if tag already exists (prevents duplicates)
+
+**You don't need to run this manually** - the CI handles it automatically!
+
+**For testing purposes only:**
+```bash
+# Test the version bump script locally
+./.github/workflows/version-bump.sh
+
+# Check results
+cat .version
+git tag --list | sort -V | tail -3
+```
+
+**Manual major/minor version bump example:**
+```bash
+# Update .version file
+echo "0.4.0" > .version
+
+# Run version script manually
+./.github/workflows/version-bump.sh
+
+# Push changes
+git add .version
+git commit -m "chore: bump to v0.4.0"
+git push origin main --tags
+```
+
 ## Contributing
 
 1. Create a feature branch from `staging`
@@ -264,6 +332,9 @@ For issues and questions:
 
 ## Release History
 
+- **v0.3.2** (October 2025): CI/CD pipeline fixes - automated version bumping and tagging
+- **v0.3.1** (October 2025): ArgoCD architecture refactoring with new bootstrap pattern
+- **v0.3.0** (October 2025): Staging ACK deployment with unified ApplicationSet pattern
 - **v0.2.0** (October 2025): ACK controllers deployed to hub cluster with ApplicationSet pattern
 - **v0.1.0** (October 2025): Initial infrastructure setup with Terraform and ArgoCD
 
