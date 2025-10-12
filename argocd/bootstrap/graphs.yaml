@@ -1,0 +1,37 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: graphs
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          fleet_member: control-plane
+  - git:
+      repoURL: https://github.com/indiana-university/gen3-kro.git
+      revision: staging
+      files:
+        - path: argocd/shared/graphs/**/*.yaml
+  template:
+    metadata:
+      name: '{{.path.basename}}-{{.name}}'
+      labels:
+        app.kubernetes.io/part-of: graphs
+        cluster: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/indiana-university/gen3-kro.git
+        targetRevision: staging
+        path: '{{.path}}'
+      destination:
+        name: '{{.name}}'
+        namespace: default
+      syncPolicy:
+        automated: {}

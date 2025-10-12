@@ -1,0 +1,181 @@
+# Controller-specific settings
+cloudtrail:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.cloudtrail}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+cloudwatchlogs:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.cloudwatchlogs}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+ec2:
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.ec2}}"
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+efs:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.efs}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+eks:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.eks}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+iam:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.iam}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+kms:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.kms}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+opensearchservice:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.opensearchservice}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+rds:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.rds}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+route53:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.route53}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+s3:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.s3}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+secretsmanager:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.secretsmanager}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+sns:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.sns}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+sqs:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.sqs}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+wafv2:
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.wafv2}}"
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+# End of controller-specific settings
