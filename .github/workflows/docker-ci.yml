@@ -2,7 +2,7 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ main, staging, argocd ]
+    branches: [ main, staging, jimi-container ]
     tags: ['v*.*.*', 'v*.*.*', 'v*.*.*']
   workflow_dispatch:
 
