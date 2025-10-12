@@ -1,0 +1,83 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: addons
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - merge:
+        mergeKeys: ["cluster","addon"]
+        generators:
+          # A) catalog: per-addon chart metadata
+          - matrix:
+              generators:
+                - git:
+                    repoURL: https://github.com/indiana-university/gen3-kro.git
+                    revision: staging
+                    files:
+                      - path: argocd/hub/addons/catalog.yaml
+                - list:
+                    # Expand catalog.items → [{addon,repoURL,revision,chartPath}, ...]
+                    elementsYaml: |
+                      {{ toYaml .items }}
+          # B) enablement: expand each cluster's map → [{cluster,addon}, ...] only when enabled
+          - matrix:
+              generators:
+                - git:
+                    repoURL: https://github.com/indiana-university/gen3-kro.git
+                    revision: staging
+                    files:
+                      - path: argocd/hub/addons/enablement.yaml
+                      - path: argocd/spokes/*/addons/enablement.yaml
+                - list:
+                    elementsYaml: |
+                      {{- $cluster := .cluster -}}
+                      {{- $out := list -}}
+                      {{- range $name, $cfg := .enablement }}
+                        {{- if $cfg.enabled }}
+                          {{- $out = append $out (dict "cluster" $cluster "addon" $name) }}
+                        {{- end }}
+                      {{- end }}
+                      {{ toYaml $out }}
+          # C) values: expand each cluster's values map → [{cluster,addon,addonValues,global}, ...]
+          - matrix:
+              generators:
+                - git:
+                    repoURL: https://github.com/indiana-university/gen3-kro.git
+                    revision: staging
+                    files:
+                      - path: argocd/hub/addons/values.yaml
+                      - path: argocd/spokes/*/addons/values.yaml
+                - list:
+                    elementsYaml: |
+                      {{- $cluster := .cluster -}}
+                      {{- $out := list -}}
+                      {{- range $addon, $cfg := .values }}
+                        {{- $out = append $out (dict "cluster" $cluster "addon" $addon "addonValues" $cfg "global" .global) }}
+                      {{- end }}
+                      {{ toYaml $out }}
+  template:
+    metadata:
+      name: '{{ .cluster }}-{{ .addon }}'
+      labels:
+        app.kubernetes.io/part-of: addons
+        cluster: '{{ .cluster }}'
+        addon: '{{ .addon }}'
+    spec:
+      project: default
+      source:
+        repoURL: '{{ .repoURL }}'
+        targetRevision: '{{ .revision }}'
+        path: '{{ .chartPath }}'
+        helm:
+          values: |
+            '{{ .addonValues | default dict }}'
+      destination:
+        name: '{{ .cluster }}'
+        namespace: '{{ get (get .global "namespaces") "ack" | default "ack-system" }}'
+      syncPolicy:
+        automated: {}

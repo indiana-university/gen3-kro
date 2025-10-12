@@ -169,33 +169,6 @@ generate "iam_access_modules" {
     }
   EOF
 }
-inputs = {
-  # Hub configuration from config.yaml
-  hub_aws_profile    = local.hub.aws_profile
-  hub_aws_region     = local.hub.aws_region
-  cluster_name       = local.hub.cluster_name
-  kubernetes_version = local.hub.kubernetes_version
-  vpc_name           = local.hub.vpc_name
-  kubeconfig_dir     = local.deployment.kubeconfig_dir
-
-  # Deployment configuration from config.yaml
-  deployment_stage         = local.deployment_stage
-  enable_cross_account_iam = local.enable_cross_account_iam
-  argocd_chart_version     = local.deployment.argocd_chart_version
-  user_provided_inline_policy_link = local.ack.user_provided_inline_policy_link
-  # ACK configuration from config.yaml
-  ack_services = local.ack.controllers
-  use_ack      = true
-
-  # Spokes configuration from config.yaml
-  spokes = [
-    for spoke in local.spokes : {
-      alias   = spoke.alias
-      region  = spoke.region
-      profile = spoke.profile
-      tags    = merge(try(spoke.tags, {}), { Environment = "production" })
-    }
-  ]
 
 inputs = {
   hub_alias          = local.hub.alias

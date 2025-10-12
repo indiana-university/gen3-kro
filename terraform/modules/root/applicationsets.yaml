@@ -22,7 +22,7 @@ spec:
         path: '{{.metadata.annotations.fleet_repo_basepath}}{{.metadata.annotations.fleet_repo_path}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
         directory:
-          recurse: false
+          recurse: true
           exclude: exclude/*
       destination:
         namespace: 'argocd'
