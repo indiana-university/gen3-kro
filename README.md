@@ -248,15 +248,17 @@ kubectl get applications -n argocd <cluster>-ack-<controller> -o yaml
 
 The project uses **fully automated semantic versioning** via GitHub Actions. No manual version file updates needed for patch releases!
 
+**Status:** ✅ Tested and working on `jimi-container`, `main`, and `staging` branches (October 2025)
+
 **How it works:**
-1. **Every push to `main` branch**: The CI automatically bumps the patch version (e.g., 0.3.1 → 0.3.2)
+1. **Every push to monitored branches**: The CI automatically bumps the patch version (e.g., 0.3.1 → 0.3.2)
 2. **Version file auto-updates**: The `.version` file is updated and committed by the CI
 3. **Git tags created**: New version tags (e.g., `v0.3.2`) are automatically created and pushed
 4. **Docker images published**: Images are tagged with the new version
 
 **For major/minor version changes only:**
 - Update `.version` file manually (e.g., `echo "0.4.0" > .version`)
-- Commit and push to `main`
+- Commit and push to your branch
 - CI detects the change and creates the appropriate tag
 
 **Version bump logic:**
