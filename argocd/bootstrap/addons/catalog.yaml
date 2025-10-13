@@ -1,7 +1,3 @@
-# Addon Catalog - Centralized registry of all available addons
-# Each addon defines its Helm chart source and default configuration
-# Structure: array of addon definitions for ArgoCD ApplicationSet list generator
-
 - addon: kro
   repoURL: oci://ghcr.io/kro-run/kro/kro
   revision: 0.4.1

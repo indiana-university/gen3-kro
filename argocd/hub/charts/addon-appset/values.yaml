@@ -17,6 +17,7 @@ hubRepoRevision: ""
 hubRepoBasePath: ""
 partOf: "addons"
 appSetName: "addons"
+fleetMember: "control-plane"
 
 # Annotations or metadata passed through to generated Application(s)
 annotations: {}

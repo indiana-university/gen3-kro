@@ -19,6 +19,14 @@ spec:
         valuesPath: argocd/bootstrap/addons/values.yaml
         partOf: hub-addons
         appSetName: hub-addons-appset
+        fleetMember: control-plane
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
