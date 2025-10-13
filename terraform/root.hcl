@@ -1,37 +1,24 @@
 locals {
   repo_root = get_repo_root()
 
-  # Detect deployment stage from path
-  # We are in terraform/live/<stage>/terragrunt.hcl
-  # path_relative_to_include() gives us the path from root.hcl to the current terragrunt.hcl
-  # which should be something like "live/staging" or "staging"
-  # Split on "/" and take the last non-empty segment
-  rel_path_raw     = path_relative_to_include()
-  rel_path_parts   = [for p in split("/", local.rel_path_raw) : p if p != "" && p != "."]
-  deployment_stage = length(local.rel_path_parts) > 0 ? local.rel_path_parts[length(local.rel_path_parts) - 1] : "staging"
-
-  # Load configurations
+  # Load configuration from single base config file
   base_config = yamldecode(file("${local.repo_root}/config/base.yaml"))
-  env_config  = yamldecode(file("${local.repo_root}/config/environments/${local.deployment_stage}.yaml"))
 
-  # Simplified config merging
-  hub        = merge(lookup(local.base_config, "hub", {}), lookup(local.env_config, "hub", {}))
-  ack        = merge(lookup(local.base_config, "ack", {}), lookup(local.env_config, "ack", {}))
-  spokes     = lookup(local.env_config, "spokes", lookup(local.base_config, "spokes", []))
-  paths      = merge(lookup(local.base_config, "paths", {}), lookup(local.env_config, "paths", {}))
-  deployment = merge(lookup(local.base_config, "deployment", {}), lookup(local.env_config, "deployment", {}))
-  addons     = merge(lookup(local.base_config, "addons", {}), lookup(local.env_config, "addons", {}))
+  # Direct config references - no environment-specific overrides
+  hub        = lookup(local.base_config, "hub", {})
+  ack        = lookup(local.base_config, "ack", {})
+  spokes     = lookup(local.base_config, "spokes", [])
+  paths      = lookup(local.base_config, "paths", {})
+  deployment = lookup(local.base_config, "deployment", {})
+  addons     = lookup(local.base_config, "addons", {})
+  gitops     = lookup(local.base_config, "gitops", {})
 
-  # Simplified gitops - just merge, no nested complexity
-  gitops = merge(lookup(local.base_config, "gitops", {}), lookup(local.env_config, "gitops", {}))
-
-  # Common tags
+  # Common tags - no deployment stage
   common_tags = {
-    ManagedBy       = "Terragrunt"
-    Repository      = "gen3-kro"
-    Blueprint       = "multi-account-eks-gitops"
-    Owner           = "platform-engineering"
-    DeploymentStage = local.deployment_stage
+    ManagedBy  = "Terragrunt"
+    Repository = "gen3-kro"
+    Blueprint  = "multi-account-eks-gitops"
+    Owner      = "platform-engineering"
   }
 }
 
@@ -46,9 +33,8 @@ remote_state {
     s3_bucket_tags = merge(
       local.common_tags,
       {
-        Name        = "gen3-kro-terraform-state"
-        Purpose     = "Terraform state storage"
-        Environment = "shared"
+        Name    = "gen3-kro-envs-4852"
+        Purpose = "Terraform state storage"
       }
     )
   }

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # CI Version Management Script
-# Auto-bumps patch version if no changes to major/minor
+# Auto-bumps patch version only when needed
 # Creates git tags for releases
 # Usage: ./version-bump.sh
 
@@ -34,27 +34,25 @@ IFS='.' read -r TAG_MAJOR TAG_MINOR TAG_PATCH <<< "$LATEST_TAG"
 SHOULD_BUMP=false
 NEW_VERSION="${CURRENT_VERSION}"
 
-# Check if major or minor changed
+# Check if major or minor changed from latest tag
 if [[ "$CURRENT_MAJOR" != "$TAG_MAJOR" ]] || [[ "$CURRENT_MINOR" != "$TAG_MINOR" ]]; then
-  # Major or minor changed - use version from file as-is
+  # Major or minor changed - use version from file as-is and create tag
   echo "Major/Minor version changed. Using version from file: ${NEW_VERSION}"
   SHOULD_BUMP=true
-else
-  # Check if current version is same as latest tag (need to auto-bump)
-  if [[ "$CURRENT_VERSION" == "$LATEST_TAG" ]]; then
-    # Auto-bump patch version
-    NEW_PATCH=$((CURRENT_PATCH + 1))
-    NEW_VERSION="${CURRENT_MAJOR}.${CURRENT_MINOR}.${NEW_PATCH}"
-    echo "Auto-bumping patch version: ${CURRENT_VERSION} → ${NEW_VERSION}"
-    SHOULD_BUMP=false
+elif [[ "$CURRENT_VERSION" == "$LATEST_TAG" ]]; then
+  # Version file matches latest tag - auto-bump patch
+  NEW_PATCH=$((CURRENT_PATCH + 1))
+  NEW_VERSION="${CURRENT_MAJOR}.${CURRENT_MINOR}.${NEW_PATCH}"
+  echo "Auto-bumping patch version: ${CURRENT_VERSION} → ${NEW_VERSION}"
 
-    # Update version file
-    echo "$NEW_VERSION" > "$VERSION_FILE"
-  else
-    # Version file already has a new version (manual bump)
-    echo "Version file already updated: ${CURRENT_VERSION}"
-    SHOULD_BUMP=true
-  fi
+  # Update version file
+  echo "$NEW_VERSION" > "$VERSION_FILE"
+  SHOULD_BUMP=true
+else
+  # Version file already has a different version than latest tag
+  # This means version was manually bumped - just create the tag
+  echo "Version file already updated to ${CURRENT_VERSION}, different from tag ${LATEST_TAG}"
+  SHOULD_BUMP=true
 fi
 
 # Create git tag only if version changed
@@ -65,14 +63,14 @@ if $SHOULD_BUMP; then
 
   if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
     echo "ERROR: Tag ${TAG_NAME} already exists!"
-    echo "This should not happen - version bump logic may be incorrect."
+    echo "Version in .version file may need manual correction."
     exit 1
   else
     git tag -a "$TAG_NAME" -m "Release ${NEW_VERSION}"
     echo "✓ Created tag: ${TAG_NAME}"
   fi
 else
-  echo "No version bump needed."
+  echo "No version bump needed - version unchanged."
 fi
 
 # Output for CI/CD systems

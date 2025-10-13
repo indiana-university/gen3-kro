@@ -62,10 +62,8 @@ resource "helm_release" "argocd" {
 ################################################################################
 locals {
   cluster_name = try(var.cluster.cluster_name, "in-cluster")
-  environment  = try(var.cluster.environment, "dev")
   argocd_labels = merge({
     cluster_name                     = local.cluster_name
-    environment                      = local.environment
     enable_argocd                    = true
     "argocd.argoproj.io/secret-type" = "cluster"
     },
@@ -74,7 +72,6 @@ locals {
   argocd_annotations = merge(
     {
       cluster_name = local.cluster_name
-      environment  = local.environment
     },
     {
       for k, v in try(var.cluster.metadata, {}) :

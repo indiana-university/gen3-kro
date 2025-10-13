@@ -1,16 +1,18 @@
 locals {
   cluster_info              = try(module.eks-hub.cluster_info, null)
+  cluster_exists            = try(module.eks-hub.cluster_info.cluster_name, null) != null
   vpc_id                    = try(module.eks-hub.vpc_id, null)
   vpc_cidr                  = "10.0.0.0/16"
   use_ack                   = var.use_ack
   cluster_name              = var.cluster_name
+  old_cluster_name          = var.old_cluster_name
   vpc_name                  = "${var.vpc_name}-vpc"
   argocd_namespace          = "argocd"
   ack_namespace             = "ack-system"
   fleet_member              = "control-plane"
   argocd_chart_version      = var.argocd_chart_version
   cluster_version           = var.kubernetes_version
-  hub_profile               = var.hub_aws_profile
+  hub_profile               = var.aws_profile
   hub_region                = var.hub_aws_region
       # automode/aws_load_balancer_controller will activate aws_lb_controller_pod_identity
 
@@ -21,6 +23,8 @@ locals {
   hub_account_id            = try(module.eks-hub.account_id, null)
   argocd_hub_pod_identity_iam_role_arn = try(module.eks-hub.argocd_hub_pod_identity_iam_role_arn, null)
   ack_hub_roles             = try(module.eks-hub.ack_hub_roles, {})
+  ack_spoke_role_arns_by_spoke = {}  # Empty for now, populated when spokes are enabled
+  iam_access_modules_data      = {}  # Empty for now, populated when cross-account IAM is enabled
 
   external_secrets = {
     namespace       = "external-secrets"
@@ -83,7 +87,6 @@ locals {
       hub_account_id   = module.eks-hub.account_id
       hub_cluster_name = local.cluster_info.cluster_name
       hub_aws_region   = local.hub_region
-      deployment_stage = var.deployment_stage
       aws_vpc_id       = local.vpc_id
       use_ack          = local.use_ack
       tenants          = yamlencode([for spoke in var.spokes : spoke.alias])
@@ -146,7 +149,6 @@ locals {
   }
   argocd_cluster_data = {
     cluster_name = try(local.cluster_info.cluster_name, null)
-    deployment_stage  = var.deployment_stage
     metadata     = local.addons_metadata
     addons       = local.addons
   }
@@ -163,9 +165,8 @@ locals {
   tags = merge(
     var.tags,
     {
-      Blueprint  = local.cluster_name
-      DeploymentStage = var.deployment_stage
-      ManagedBy  = "Terraform-ArgoCD"
+      Blueprint = local.cluster_name
+      ManagedBy = "Terraform-ArgoCD"
     }
   )
 }

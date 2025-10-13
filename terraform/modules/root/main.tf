@@ -5,7 +5,7 @@
 # All environments now use EKS
 
 module "eks-hub" {
-  source = "../eks-hub"
+  source = "../../modules/eks-hub"
 
   create                       = true # Always create EKS cluster
   aws_region                   = var.hub_aws_region
@@ -13,6 +13,7 @@ module "eks-hub" {
   ack_services_config          = local.ack_services_config
   vpc_name                     = local.vpc_name
   cluster_name                 = local.cluster_name
+  old_cluster_name             = local.old_cluster_name
   cluster_info                 = local.cluster_info
   vpc_cidr                     = local.vpc_cidr
   hub_alias                    = var.hub_alias
@@ -25,7 +26,7 @@ module "eks-hub" {
   tags                         = local.tags
 
   providers = {
-    aws = aws.hub
+    aws = aws
   }
 }
 
@@ -35,7 +36,7 @@ module "eks-hub" {
 # Only install ArgoCD if cluster exists (checked via kube_providers.tf)
 # This prevents Kubernetes provider errors during initial cluster creation
 module "gitops-bridge-bootstrap" {
-  source = "../argocd-bootstrap"
+  source = "../../modules/argocd-bootstrap"
 
   create      = var.enable_argo && local.oss_addons.enable_argocd && try(local.cluster_exists, false)
   install     = var.enable_argo && try(local.cluster_exists, false)

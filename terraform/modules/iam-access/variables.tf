@@ -28,12 +28,6 @@ variable "enable_internal_spoke" {
   default     = true
 }
 
-variable "deployment_stage" {
-  description = "The deployment stage where the cluster is deployed (e.g., dev, staging, prod)"
-  type        = string
-  default     = "prod"
-}
-
 variable "cluster_info" {
   description = "Cluster information to be used by the module"
   type        = any

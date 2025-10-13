@@ -6,7 +6,6 @@ hub:
   aws_region: "us-east-1"
   cluster_name: "gen3-kro-hub"
   enable_argo: false
-  old_cluster_name: "gen3-kro-hub-v2-staging"
 ack:
   namespace: "ack-system"
   controllers:
@@ -29,7 +28,6 @@ paths:
   outputs_dir: "outputs"
   kubeconfig_dir: "~/.kube"
   terraform_state_bucket: "gen3-kro-envs-4852"
-  terraform_locks_table: "gen3-kro-terraform-locks"
 gitops:
   org_name: "indiana-university"
   repo_name: "gen3-kro"
@@ -38,19 +36,19 @@ gitops:
   addons:
     base_path: "argocd/hub/charts"
     path: "ack"
-    revision: "staging"
+    revision: "jimi-container"
   fleet:
     base_path: "argocd/hub/bootstrap"
     path: "spoke-template"
-    revision: "staging"
+    revision: "jimi-container"
   platform:
     base_path: "argocd/teams"
     path: "."
-    revision: "staging"
+    revision: "jimi-container"
   workload:
     base_path: "argocd/spokes"
     path: "."
-    revision: "staging"
+    revision: "jimi-container"
 deployment:
   argocd_chart_version: "5.46.0"
   kubeconfig_dir: "~/.kube"
@@ -86,4 +84,3 @@ spokes:
     tags:
       Team: "platform"
       Purpose: "multi-account-demo"
-      Environment: "staging"

@@ -1,11 +1,18 @@
-variable "vpc_name" {
-  description = "VPC name to be used by pipelines for data"
+variable "hub_aws_region" {
+  description = "AWS region for the Hub Cluster"
   type        = string
+  default     = "us-east-1"
 }
-variable "hub_aws_profile" {
+
+variable "aws_profile" {
   description = "AWS CLI profile to use"
   type        = string
   default     = "default"
+}
+
+variable "vpc_name" {
+  description = "VPC name to be used by pipelines for data"
+  type        = string
 }
 
 variable "kubernetes_version" {
@@ -114,6 +121,12 @@ variable "cluster_name" {
   default     = "hub-cluster"
 }
 
+variable "old_cluster_name" {
+  description = "Previous cluster name (for migration/rename scenarios). Ensures Kubernetes provider and dependencies connect to existing cluster during name changes."
+  type        = string
+  default     = ""
+}
+
 variable "use_ack" {
   description = "Defining to use ack or terraform for pod identity if this is true then we will use this label to deploy resouces with ack"
   type        = bool
@@ -124,12 +137,6 @@ variable "enable_argo" {
   description = "Enable ArgoCD bootstrap"
   type        = bool
   default     = true
-}
-
-variable "hub_aws_region" {
-  description = "AWS region for the Hub Cluster"
-  type        = string
-  default     = "us-east-1"
 }
 
 variable "ack_services" {
@@ -165,12 +172,6 @@ variable "spokes" {
     tags    = map(string)
   }))
   default = []
-}
-
-variable "deployment_stage" {
-  description = "Deployment stage (dev, staging, prod)"
-  type        = string
-  default     = "prod"
 }
 
 variable "enable_cross_account_iam" {

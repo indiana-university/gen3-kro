@@ -91,16 +91,16 @@ variable "cluster_name" {
   default     = "hub-cluster"
 }
 
+variable "old_cluster_name" {
+  description = "Previous cluster name for migration scenarios. Used by Kubernetes provider to connect to existing cluster during name changes to prevent orphaning resources."
+  type        = string
+  default     = ""
+}
+
 variable "use_ack" {
   description = "Defining to use ack or terraform for pod identity if this is true then we will use this label to deploy resouces with ack"
   type        = bool
   default     = true
-}
-
-variable "environment" {
-  description = "Name of the environment for the Hub Cluster"
-  type        = string
-  default     = "control-plane"
 }
 
 variable "account_ids" {

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # Validate Terragrunt configuration
+
 set -euo pipefail
 IFS=$'\n\t'
 
@@ -7,24 +8,15 @@ IFS=$'\n\t'
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 source "${SCRIPT_DIR}/lib-logging.sh"
 
-ENV=${1:-staging}
-REGION=${2:-us-east-1}
-
 log_info "=== Validating Terragrunt Configuration ==="
-log_info "Environment: $ENV"
-log_info "Region: $REGION"
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+TG_PATH="$REPO_ROOT/terraform/live"
 
-# Determine terragrunt path based on structure
-if [[ -d "$REPO_ROOT/hub/terraform/live/$ENV/$REGION" ]]; then
-    TG_PATH="$REPO_ROOT/hub/terraform/live/$ENV/$REGION"
-    log_info "Using new structure: $TG_PATH"
-elif [[ -d "$REPO_ROOT/terraform/live/$ENV" ]]; then
-    TG_PATH="$REPO_ROOT/terraform/live/$ENV"
-    log_info "Using current structure: $TG_PATH"
-else
-    log_error "Could not find terragrunt configuration for $ENV"
+log_info "Working directory: $TG_PATH"
+
+if [[ ! -d "$TG_PATH" ]]; then
+    log_error "Could not find terragrunt configuration at $TG_PATH"
     exit 1
 fi
 
@@ -50,4 +42,4 @@ if terragrunt init --terragrunt-non-interactive -backend=false 2>&1 | grep -q "T
     log_info "✓ Terragrunt init test passed"
 fi
 
-log_info "=== Terragrunt Validation Complete ==="
+log_success "=== Validation Complete ==="
