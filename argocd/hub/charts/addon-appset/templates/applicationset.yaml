@@ -2,7 +2,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: addon-apps-{{ include "addon-appset.name" . }}
+  name: {{ default $vals.appSetName .Values.appSetName }}
   namespace: argocd
   labels:
     app.kubernetes.io/part-of: '{{ default $vals.partOf .Values.partOf }}'
@@ -21,42 +21,51 @@ spec:
               revision: '{{ default $vals.hubRepoRevision .Values.hubRepoRevision }}'
               files:
                 - path: '{{ default $vals.catalogPath .Values.catalogPath }}'
+        template:
+          # This nested template extracts each item from the items array
+          metadata: {}
+          spec:
+            generators:
+              - list:
+                  elements: '{{`{{`}} .items {{`}}`}}'
   template:
     metadata:
-      name: '{{`{{`}}.name{{`}}`}}-{{`{{`}}.values.items.addon{{`}}`}}'
+      name: '{{`{{`}}.name{{`}}`}}-{{`{{`}}.addon{{`}}`}}'
       labels:
-        app.kubernetes.io/part-of: addons
-        app.kubernetes.io/name: '{{`{{`}}.values.items.addon{{`}}`}}'
+        app.kubernetes.io/part-of: '{{ default $vals.partOf .Values.partOf }}'
+        app.kubernetes.io/name: '{{`{{`}}.addon{{`}}`}}'
         cluster: '{{`{{`}}.name{{`}}`}}'
-        addon: '{{`{{`}}.values.items.addon{{`}}`}}'
+        addon: '{{`{{`}}.addon{{`}}`}}'
         fleet-member: control-plane
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{`{{`}}if eq .addon "kro"{{`}}`}}"-1"{{`{{`}}else{{`}}`}}"0"{{`{{`}}end{{`}}`}}'
     spec:
       project: '{{ $vals.appProject }}'
       sources:
-        - repoURL: '{{`{{`}}.values.items.addon.repoURL{{`}}`}}'
-          targetRevision: '{{`{{`}}.values.items.addon.revision{{`}}`}}'
-          chart: '{{`{{`}}.values.items.addon.chart{{`}}`}}'
+        - repoURL: '{{`{{`}}.repoURL{{`}}`}}'
+          targetRevision: '{{`{{`}}.revision{{`}}`}}'
+          chart: '{{`{{`}}.chart{{`}}`}}'
           helm:
             valueFiles:
               - $values/{{ default $vals.valuesPath $vals.valuesPath }}
             values: |
-              {{`{{-`}} if eq .values.items.addon "kro" {{`}}`}}
+              {{`{{-`}} if eq .addon "kro" {{`}}`}}
               image:
-                tag: {{`{{`}}.values.items.addon.revision{{`}}`}}
+                tag: {{`{{`}}.revision{{`}}`}}
               {{`{{-`}} end {{`}}`}}
-              {{`{{-`}} if hasPrefix "ack-" .values.items.addon {{`}}`}}
+              {{`{{-`}} if hasPrefix "ack-" .addon {{`}}`}}
               aws:
                 region: {{`{{`}}.metadata.annotations.aws_region{{`}}`}}
               serviceAccount:
                 annotations:
-                  eks.amazonaws.com/role-arn: {{`{{`}}index .metadata.annotations (printf "%s_irsa_role_arn" .values.items.addon){{`}}`}}
+                  eks.amazonaws.com/role-arn: {{`{{`}}index .metadata.annotations (printf "%s_irsa_role_arn" .addon){{`}}`}}
               {{`{{-`}} end {{`}}`}}
         - repoURL: '{{ $vals.hubRepoURL }}'
           targetRevision: '{{ $vals.hubRepoRevision }}'
           ref: values
       destination:
         name: '{{`{{`}}.name{{`}}`}}'
-        namespace: '{{`{{`}}if eq .values.items.addon "kro"{{`}}`}}kro-system{{`{{`}}else if hasPrefix "ack-" .values.items.addon{{`}}`}}ack-system{{`{{`}}else{{`}}`}}{{`{{`}}.values.items.addon{{`}}`}}-system{{`{{`}}end{{`}}`}}'
+        namespace: '{{`{{`}}if eq .addon "kro"{{`}}`}}kro-system{{`{{`}}else if hasPrefix "ack-" .addon{{`}}`}}ack-system{{`{{`}}else{{`}}`}}{{`{{`}}.addon{{`}}`}}-system{{`{{`}}end{{`}}`}}'
       syncPolicy:
         automated:
           prune: true
