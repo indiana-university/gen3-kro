@@ -1,0 +1,111 @@
+# Addon Catalog - Centralized registry of all available addons
+# Each addon defines its Helm chart source and default configuration
+
+items:
+  # KRO Controller - Required for ResourceGraphDefinitions
+  - addon: kro
+    repoURL: oci://ghcr.io/awslabs/kro/kro-chart
+    revision: v0.1.0
+    chartPath: ""  # OCI charts don't use path
+
+  # ACK Controllers - AWS Service Operators
+  - addon: ack-cloudtrail
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart
+    revision: v1.0.14
+    chartPath: ""
+
+  - addon: ack-cloudwatchlogs
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudwatchlogs-chart
+    revision: v1.0.11
+    chartPath: ""
+
+  - addon: ack-ec2
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
+    revision: v1.2.24
+    chartPath: ""
+
+  - addon: ack-efs
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/efs-chart
+    revision: v1.0.11
+    chartPath: ""
+
+  - addon: ack-eks
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
+    revision: v1.4.13
+    chartPath: ""
+
+  - addon: ack-iam
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/iam-chart
+    revision: v1.3.15
+    chartPath: ""
+
+  - addon: ack-kms
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/kms-chart
+    revision: v1.0.13
+    chartPath: ""
+
+  - addon: ack-opensearchservice
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/opensearchservice-chart
+    revision: v1.0.13
+    chartPath: ""
+
+  - addon: ack-rds
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/rds-chart
+    revision: v1.4.11
+    chartPath: ""
+
+  - addon: ack-route53
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/route53-chart
+    revision: v1.0.15
+    chartPath: ""
+
+  - addon: ack-s3
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/s3-chart
+    revision: v1.0.17
+    chartPath: ""
+
+  - addon: ack-secretsmanager
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/secretsmanager-chart
+    revision: v1.0.9
+    chartPath: ""
+
+  - addon: ack-sns
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/sns-chart
+    revision: v1.0.11
+    chartPath: ""
+
+  - addon: ack-sqs
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/sqs-chart
+    revision: v1.0.14
+    chartPath: ""
+
+  - addon: ack-wafv2
+    repoURL: oci://public.ecr.aws/aws-controllers-k8s/wafv2-chart
+    revision: v1.0.16
+    chartPath: ""
+
+  # Platform Components
+  - addon: external-secrets
+    repoURL: https://charts.external-secrets.io
+    revision: 0.10.10
+    chartPath: external-secrets
+
+  - addon: kyverno
+    repoURL: https://kyverno.github.io/kyverno/
+    revision: 3.3.5
+    chartPath: kyverno
+
+  - addon: kyverno-policies
+    repoURL: https://kyverno.github.io/kyverno/
+    revision: 3.3.5
+    chartPath: kyverno-policies
+
+  - addon: metrics-server
+    repoURL: https://kubernetes-sigs.github.io/metrics-server/
+    revision: 3.12.2
+    chartPath: metrics-server
+
+  - addon: kube-state-metrics
+    repoURL: https://prometheus-community.github.io/helm-charts
+    revision: 5.28.1
+    chartPath: kube-state-metrics
