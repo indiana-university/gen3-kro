@@ -22,7 +22,7 @@ spec:
             - path: '{{.metadata.annotations.rgds_path}}/graphs/**/*.yaml'
   template:
     metadata:
-      name: '{{- if .path }}{{ .path.filename }}-{{ .name }}{{- else }}{{ .name }}{{- end }}'
+      name: '{{- if .path }}{{ .path.filenameNormalized }}-{{ .name }}{{- else }}{{ .name }}{{- end }}'
       labels:
         app.kubernetes.io/part-of: graphs
         cluster: '{{.name}}'
