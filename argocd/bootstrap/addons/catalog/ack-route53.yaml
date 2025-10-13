@@ -1,5 +1,0 @@
-addon: ack-route53
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/route53-chart
-revision: 1.1.1
-chart: route53-chart
-chartPath: ""

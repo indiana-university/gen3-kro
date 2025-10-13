@@ -1,5 +1,0 @@
-addon: kube-state-metrics
-repoURL: https://prometheus-community.github.io/helm-charts
-revision: 6.4.0
-chart: kube-state-metrics
-chartPath: kube-state-metrics

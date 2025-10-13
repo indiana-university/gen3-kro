@@ -1,5 +1,0 @@
-addon: ack-opensearchservice
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/opensearchservice-chart
-revision: 1.1.1
-chart: opensearchservice-chart
-chartPath: ""

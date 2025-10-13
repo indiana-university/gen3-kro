@@ -1,5 +1,0 @@
-addon: ack-sqs
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/sqs-chart
-revision: 1.2.1
-chart: sqs-chart
-chartPath: ""

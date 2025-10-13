@@ -1,5 +1,0 @@
-addon: ack-cloudtrail
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart
-revision: 1.1.1
-chart: cloudtrail-chart
-chartPath: ""

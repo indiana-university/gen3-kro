@@ -1,5 +1,0 @@
-addon: ack-wafv2
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/wafv2-chart
-revision: 1.1.1
-chart: wafv2-chart
-chartPath: ""

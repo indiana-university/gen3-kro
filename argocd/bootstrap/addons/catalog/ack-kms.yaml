@@ -1,5 +1,0 @@
-addon: ack-kms
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/kms-chart
-revision: 1.1.0
-chart: kms-chart
-chartPath: ""

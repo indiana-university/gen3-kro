@@ -1,5 +1,0 @@
-addon: ack-s3
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/s3-chart
-revision: 1.1.1
-chart: s3-chart
-chartPath: ""

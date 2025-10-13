@@ -8,20 +8,17 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: "{{.Values.hubRepoURL}}"
-    path: "{{.Values.hubRepoBasePath}}/charts/addon-appset"
-    targetRevision: "{{.Values.hubRepoRevision}}"
+    repoURL: https://github.com/indiana-university/gen3-kro.git
+    path: argocd/hub/charts/addon-appset
+    targetRevision: jimi-container
     helm:
       values: |
-        hubRepoURL: "{{.Values.}}"
-        hubRepoRevision: "{{.Values.hubRepoRevision}}"
-        catalogPath: "bootstrap/addons/catalog.yaml"
-        valuesPath: "bootstrap/addons/values.yaml"
+        hubRepoURL: https://github.com/indiana-university/gen3-kro.git
+        hubRepoRevision: jimi-container
+        catalogPath: argocd/bootstrap/addons/catalog.yaml
+        valuesPath: argocd/bootstrap/addons/values.yaml
         partOf: hub-addons
         appSetName: hub-addons-appset
   destination:
     server: https://kubernetes.default.svc
     namespace: argocd
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true

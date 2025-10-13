@@ -1,5 +1,0 @@
-addon: ack-iam
-repoURL: oci://public.ecr.aws/aws-controllers-k8s/iam-chart
-revision: 1.5.2
-chart: iam-chart
-chartPath: ""

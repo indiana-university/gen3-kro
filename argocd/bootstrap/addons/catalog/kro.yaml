@@ -1,5 +1,0 @@
-addon: kro
-repoURL: oci://ghcr.io/kro-run/kro/kro
-revision: 0.4.1
-chart: kro
-chartPath: ""
