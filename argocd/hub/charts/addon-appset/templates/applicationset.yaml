@@ -23,28 +23,28 @@ spec:
                 - path: '{{ default $vals.catalogPath .Values.catalogPath }}'
   template:
     metadata:
-      name: '{{`{{`}}.name{{`}}`}}-{{`{{`}}.path.basename{{`}}`}}-{{`{{`}}.items.addon{{`}}`}}'
+      name: '{{`{{`}}.name{{`}}`}}-{{`{{`}}.addon{{`}}`}}'
       labels:
         app.kubernetes.io/part-of: '{{ default $vals.partOf .Values.partOf }}'
-        app.kubernetes.io/name: '{{`{{`}}.items.addon{{`}}`}}'
+        app.kubernetes.io/name: '{{`{{`}}.addon{{`}}`}}'
         cluster: '{{`{{`}}.name{{`}}`}}'
-        addon: '{{`{{`}}.items.addon{{`}}`}}'
+        addon: '{{`{{`}}.addon{{`}}`}}'
         fleet-member: control-plane
     spec:
       project: '{{ $vals.appProject }}'
       sources:
-        - repoURL: '{{`{{`}}.items.repoURL{{`}}`}}'
-          targetRevision: '{{`{{`}}.items.revision{{`}}`}}'
-          chart: '{{`{{`}}.items.chart{{`}}`}}'
+        - repoURL: '{{`{{`}}.repoURL{{`}}`}}'
+          targetRevision: '{{`{{`}}.revision{{`}}`}}'
+          chart: '{{`{{`}}.chart{{`}}`}}'
           helm:
             valueFiles:
               - $values/{{ default $vals.valuesPath .Values.valuesPath }}
             values: |
-              {{`{{-`}} if eq .items.addon "kro" {{`}}`}}
+              {{`{{-`}} if eq .addon "kro" {{`}}`}}
               image:
-                tag: {{`{{`}}.items.revision{{`}}`}}
+                tag: {{`{{`}}.revision{{`}}`}}
               {{`{{-`}} end {{`}}`}}
-              {{`{{-`}} if hasPrefix "ack-" .items.addon {{`}}`}}
+              {{`{{-`}} if hasPrefix "ack-" .addon {{`}}`}}
               {{`{{-`}} if .metadata.annotations.aws_region {{`}}`}}
               aws:
                 region: {{`{{`}}.metadata.annotations.aws_region{{`}}`}}
@@ -55,7 +55,7 @@ spec:
           ref: values
       destination:
         name: '{{`{{`}}.name{{`}}`}}'
-        namespace: '{{`{{`}}if eq .items.addon "kro"{{`}}`}}kro-system{{`{{`}}else if hasPrefix "ack-" .items.addon{{`}}`}}ack-system{{`{{`}}else{{`}}`}}{{`{{`}}.items.addon{{`}}`}}-system{{`{{`}}end{{`}}`}}'
+        namespace: '{{`{{`}}if eq .addon "kro"{{`}}`}}kro-system{{`{{`}}else if hasPrefix "ack-" .addon{{`}}`}}ack-system{{`{{`}}else{{`}}`}}{{`{{`}}.addon{{`}}`}}-system{{`{{`}}end{{`}}`}}'
       syncPolicy:
         automated:
           prune: true
