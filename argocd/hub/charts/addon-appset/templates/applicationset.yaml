@@ -47,9 +47,9 @@ spec:
                 tag: {{`{{`}}.revision{{`}}`}}
               {{`{{-`}} end {{`}}`}}
               {{`{{-`}} if hasPrefix "ack-" .addon {{`}}`}}
-              {{`{{-`}} if .metadata.annotations.aws_region {{`}}`}}
+              {{`{{-`}} with .metadata.annotations.hub_aws_region {{`}}`}}
               aws:
-                region: {{`{{`}}.metadata.annotations.aws_region{{`}}`}}
+                region: {{`{{`}} . {{`}}`}}
               {{`{{-`}} end {{`}}`}}
               {{`{{-`}} end {{`}}`}}
         - repoURL: '{{ default $vals.hubRepoURL .Values.hubRepoURL }}'
