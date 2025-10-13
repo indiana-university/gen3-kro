@@ -1,0 +1,5 @@
+addon: ack-cloudwatchlogs
+repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudwatchlogs-chart
+revision: 1.1.1
+chart: cloudwatchlogs-chart
+chartPath: ""

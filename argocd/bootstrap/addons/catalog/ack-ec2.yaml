@@ -1,0 +1,5 @@
+addon: ack-ec2
+repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
+revision: 1.7.0
+chart: ec2-chart
+chartPath: ""

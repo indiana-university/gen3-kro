@@ -1,7 +1,8 @@
 # Default values for addon-appset chart
 
-# Path (in repo) to the addon catalog file (bootstrap/addons/catalog.yaml by default)
-catalogPath: "bootstrap/addons/catalog.yaml"
+# Path (in repo) to the addon catalog directory (bootstrap/addons/catalog by default)
+# The ApplicationSet will read all .yaml files from this directory
+catalogPath: "bootstrap/addons/catalog"
 
 # Path (in repo) to the enablement file (bootstrap/addons/enablement.yaml by default)
 enablementPath: "bootstrap/addons/enablement.yaml"

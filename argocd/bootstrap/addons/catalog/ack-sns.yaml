@@ -1,0 +1,5 @@
+addon: ack-sns
+repoURL: oci://public.ecr.aws/aws-controllers-k8s/sns-chart
+revision: 1.2.2
+chart: sns-chart
+chartPath: ""

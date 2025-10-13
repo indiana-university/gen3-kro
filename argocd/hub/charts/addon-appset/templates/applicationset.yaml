@@ -20,14 +20,7 @@ spec:
               repoURL: '{{ default $vals.hubRepoURL .Values.hubRepoURL }}'
               revision: '{{ default $vals.hubRepoRevision .Values.hubRepoRevision }}'
               files:
-                - path: '{{ default $vals.catalogPath .Values.catalogPath }}'
-        template:
-          # This nested template extracts each item from the items array
-          metadata: {}
-          spec:
-            generators:
-              - list:
-                  elements: '{{`{{`}} .items {{`}}`}}'
+                - path: '{{ default $vals.catalogPath .Values.catalogPath }}/*.yaml'
   template:
     metadata:
       name: '{{`{{`}}.name{{`}}`}}-{{`{{`}}.addon{{`}}`}}'

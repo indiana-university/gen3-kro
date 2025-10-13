@@ -1,0 +1,5 @@
+addon: ack-efs
+repoURL: oci://public.ecr.aws/aws-controllers-k8s/efs-chart
+revision: 1.1.1
+chart: efs-chart
+chartPath: ""

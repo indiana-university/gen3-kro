@@ -1,0 +1,5 @@
+addon: ack-rds
+repoURL: oci://public.ecr.aws/aws-controllers-k8s/rds-chart
+revision: 1.6.2
+chart: rds-chart
+chartPath: ""

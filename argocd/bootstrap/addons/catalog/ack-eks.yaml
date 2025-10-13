@@ -1,0 +1,5 @@
+addon: ack-eks
+repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
+revision: 1.9.3
+chart: eks-chart
+chartPath: ""
