@@ -27,7 +27,7 @@ spec:
             - path: '{{.metadata.annotations.spokes_path}}/*/sample.gen3.url.org/templates/app.yaml'
   template:
     metadata:
-      name: '{{.name}}-gen3-instance'
+      name: '{{- if .path }}{{ .name }}-gen3-instance{{- else }}{{ .name }}-gen3-instance{{- end }}'
       labels:
         app: gen3-instance
         cluster: '{{.name}}'
@@ -36,7 +36,7 @@ spec:
       source:
         repoURL: '{{.metadata.annotations.spokes_repo_url}}'
         targetRevision: '{{.metadata.annotations.branch}}'
-        path: '{{.path.dirname}}'
+        path: '{{- if .path }}{{ .path.dirname }}{{- else }}{{ .name }}/sample.gen3.url.org{{- end }}'
       destination:
         server: '{{.server}}'
         namespace: default

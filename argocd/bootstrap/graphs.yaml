@@ -22,7 +22,7 @@ spec:
             - path: '{{.metadata.annotations.rgds_path}}/graphs/**/*.yaml'
   template:
     metadata:
-      name: '{{.path.basename}}-{{.name}}'
+      name: '{{- if .path }}{{ .path.basename }}-{{ .name }}{{- else }}{{ .name }}{{- end }}'
       labels:
         app.kubernetes.io/part-of: graphs
         cluster: '{{.name}}'
@@ -31,7 +31,7 @@ spec:
       source:
         repoURL: '{{.metadata.annotations.rgds_repo_url}}'
         targetRevision: '{{.metadata.annotations.branch}}'
-        path: '{{.path}}'
+        path: '{{- if .path }}{{ .path }}{{- else }}{{ .metadata.annotations.rgds_path }}/graphs/{{ .name }}{{- end }}'
       destination:
         name: '{{.name}}'
         namespace: default
