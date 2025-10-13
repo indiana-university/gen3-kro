@@ -24,6 +24,8 @@ spec:
   template:
     metadata:
       name: '{{`{{`}}.name{{`}}`}}-{{`{{`}}.addon{{`}}`}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{`{{`}}default "0" .sync_wave{{`}}`}}'
       labels:
         app.kubernetes.io/part-of: '{{ default $vals.partOf .Values.partOf }}'
         app.kubernetes.io/name: '{{`{{`}}.addon{{`}}`}}'
