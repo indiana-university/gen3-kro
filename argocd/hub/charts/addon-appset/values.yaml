@@ -1,0 +1,31 @@
+# Default values for addon-appset chart
+
+# Path (in repo) to the addon catalog file (bootstrap/addons/catalog.yaml by default)
+catalogPath: "bootstrap/addons/catalog.yaml"
+
+# Path (in repo) to the enablement file (bootstrap/addons/enablement.yaml by default)
+enablementPath: "bootstrap/addons/enablement.yaml"
+
+# Path (in repo) to the values file used by addons
+valuesPath: "bootstrap/addons/values.yaml"
+
+# Information about the hub repo that will be passed in by the caller (hub ApplicationSet)
+# These are intentionally left blank and expected to be set by the parent ApplicationSet via values.
+hubRepoURL: ""
+hubRepoRevision: ""
+hubRepoBasePath: ""
+
+# Annotations or metadata passed through to generated Application(s)
+annotations: {}
+
+# Defaults for rendered ApplicationSet behavior
+appProject: "default"
+syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+retry:
+  limit: 3
+  backoff:
+    duration: 5s
+    factor: 2
+    maxDuration: 3m

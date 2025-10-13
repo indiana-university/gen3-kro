@@ -1,0 +1,78 @@
+{{- $vals := .Values -}}
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: addon-apps-{{ include "addon-appset.name" . }}
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  fleet_member: control-plane
+          - git:
+              repoURL: '{{ default $vals.hubRepoURL .Values.hubRepoURL }}'
+              revision: '{{ default $vals.hubRepoRevision .Values.hubRepoRevision }}'
+              files:
+                - path: '{{ default $vals.catalogPath .Values.catalogPath }}'
+  template:
+    metadata:
+      name: '{{`{{`}}.name{{`}}`}}-{{`{{`}}.values.items.addon{{`}}`}}'
+      labels:
+        app.kubernetes.io/part-of: addons
+        app.kubernetes.io/name: '{{`{{`}}.values.items.addon{{`}}`}}'
+        cluster: '{{`{{`}}.name{{`}}`}}'
+        addon: '{{`{{`}}.values.items.addon{{`}}`}}'
+        fleet-member: control-plane
+    spec:
+      project: '{{ $vals.appProject }}'
+      sources:
+        - repoURL: '{{`{{`}}.values.items.addon.repoURL{{`}}`}}'
+          targetRevision: '{{`{{`}}.values.items.addon.revision{{`}}`}}'
+          chart: '{{`{{`}}.values.items.addon.chart{{`}}`}}'
+          helm:
+            valueFiles:
+              - $values/{{ default $vals.valuesPath $vals.valuesPath }}
+            values: |
+              {{`{{-`}} if eq .values.items.addon "kro" {{`}}`}}
+              image:
+                tag: {{`{{`}}.values.items.addon.revision{{`}}`}}
+              {{`{{-`}} end {{`}}`}}
+              {{`{{-`}} if hasPrefix "ack-" .values.items.addon {{`}}`}}
+              aws:
+                region: {{`{{`}}.metadata.annotations.aws_region{{`}}`}}
+              serviceAccount:
+                annotations:
+                  eks.amazonaws.com/role-arn: {{`{{`}}index .metadata.annotations (printf "%s_irsa_role_arn" .values.items.addon){{`}}`}}
+              {{`{{-`}} end {{`}}`}}
+        - repoURL: '{{ $vals.hubRepoURL }}'
+          targetRevision: '{{ $vals.hubRepoRevision }}'
+          ref: values
+      destination:
+        name: '{{`{{`}}.name{{`}}`}}'
+        namespace: '{{`{{`}}if eq .values.items.addon "kro"{{`}}`}}kro-system{{`{{`}}else if hasPrefix "ack-" .values.items.addon{{`}}`}}ack-system{{`{{`}}else{{`}}`}}{{`{{`}}.values.items.addon{{`}}`}}-system{{`{{`}}end{{`}}`}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+{{- range $i, $opt := $vals.syncOptions }}
+          - {{ $opt }}
+{{- end }}
+        retry:
+          limit: {{ $vals.retry.limit }}
+          backoff:
+            duration: {{ $vals.retry.backoff.duration }}
+            factor: {{ $vals.retry.backoff.factor }}
+            maxDuration: {{ $vals.retry.backoff.maxDuration }}
+      ignoreDifferences:
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+          jsonPointers:
+            - /spec/conversion/webhook/clientConfig/caBundle
+            - /status

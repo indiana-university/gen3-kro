@@ -1,0 +1,27 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: addon-appset-chart
+  namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: addons
+spec:
+  project: default
+  # Replace repoURL and targetRevision with the repo that contains the catalog/values files
+  source:
+    repoURL: "https://github.com/indiana-university/gen3-kro"
+    path: "argocd/hub/charts/addon-appset"
+    targetRevision: "jimi-container"
+    helm:
+      values: |
+        # The hub repo the generated ApplicationSet should read from
+        hubRepoURL: "https://github.com/indiana-university/gen3-kro"
+        hubRepoRevision: "jimi-container"
+        catalogPath: "bootstrap/addons/catalog.yaml"
+        valuesPath: "bootstrap/addons/values.yaml"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

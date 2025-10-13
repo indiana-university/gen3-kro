@@ -95,6 +95,8 @@ locals {
     },
     {
       hub_repo_url     = local.gitops_hub_repo_url
+      hub_repo_revision = local.gitops_branch
+      hub_repo_basepath = "argocd"
       rgds_repo_url    = local.gitops_rgds_repo_url
       spokes_repo_url  = local.gitops_spokes_repo_url
       branch           = local.gitops_branch
