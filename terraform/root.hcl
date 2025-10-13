@@ -1,19 +1,20 @@
 locals {
   repo_root = get_repo_root()
 
-  # Simplified environment detection
-  environment = coalesce(
-    get_env("ENVIRONMENT", ""),
-    get_env("ENV", ""),
-    get_env("TERRAGRUNT_ENV", ""),
-    try(split("/", path_relative_to_include())[0], "")
-  )
+  # Detect deployment stage from path
+  # We are in terraform/live/<stage>/terragrunt.hcl
+  # path_relative_to_include() gives us the path from root.hcl to the current terragrunt.hcl
+  # which should be something like "live/staging" or "staging"
+  # Split on "/" and take the last non-empty segment
+  rel_path_raw     = path_relative_to_include()
+  rel_path_parts   = [for p in split("/", local.rel_path_raw) : p if p != "" && p != "."]
+  deployment_stage = length(local.rel_path_parts) > 0 ? local.rel_path_parts[length(local.rel_path_parts) - 1] : "staging"
 
-  # Load configurations - simplified without conditional
+  # Load configurations
   base_config = yamldecode(file("${local.repo_root}/config/base.yaml"))
-  env_config  = yamldecode(file("${local.repo_root}/config/environments/${local.environment}.yaml"))
+  env_config  = yamldecode(file("${local.repo_root}/config/environments/${local.deployment_stage}.yaml"))
 
-  # Simplified config merging - single pass
+  # Simplified config merging
   hub        = merge(lookup(local.base_config, "hub", {}), lookup(local.env_config, "hub", {}))
   ack        = merge(lookup(local.base_config, "ack", {}), lookup(local.env_config, "ack", {}))
   spokes     = lookup(local.env_config, "spokes", lookup(local.base_config, "spokes", []))
@@ -21,28 +22,16 @@ locals {
   deployment = merge(lookup(local.base_config, "deployment", {}), lookup(local.env_config, "deployment", {}))
   addons     = merge(lookup(local.base_config, "addons", {}), lookup(local.env_config, "addons", {}))
 
-  # Simplified gitops merge - cleaner nested merge
-  base_gitops = lookup(local.base_config, "gitops", {})
-  env_gitops  = lookup(local.env_config, "gitops", {})
-
-  gitops = merge(
-    local.base_gitops,
-    local.env_gitops,
-    {
-      addons   = merge(lookup(local.base_gitops, "addons", {}), lookup(local.env_gitops, "addons", {}))
-      fleet    = merge(lookup(local.base_gitops, "fleet", {}), lookup(local.env_gitops, "fleet", {}))
-      platform = merge(lookup(local.base_gitops, "platform", {}), lookup(local.env_gitops, "platform", {}))
-      workload = merge(lookup(local.base_gitops, "workload", {}), lookup(local.env_gitops, "workload", {}))
-    }
-  )
+  # Simplified gitops - just merge, no nested complexity
+  gitops = merge(lookup(local.base_config, "gitops", {}), lookup(local.env_config, "gitops", {}))
 
   # Common tags
   common_tags = {
-    ManagedBy   = "Terragrunt"
-    Repository  = "gen3-kro"
-    Blueprint   = "multi-account-eks-gitops"
-    Owner       = "platform-engineering"
-    Environment = local.environment
+    ManagedBy       = "Terragrunt"
+    Repository      = "gen3-kro"
+    Blueprint       = "multi-account-eks-gitops"
+    Owner           = "platform-engineering"
+    DeploymentStage = local.deployment_stage
   }
 }
 

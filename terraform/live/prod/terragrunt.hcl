@@ -133,7 +133,7 @@ generate "iam_access_modules" {
 
       ack_services_config  = local.ack_services_config
       ack_services         = var.ack_services
-      environment          = local.environment
+      deployment_stage     = var.deployment_stage
       hub_account_id       = local.hub_account_id
       cluster_info         = local.cluster_info
       tags                 = local.tags
@@ -190,47 +190,16 @@ inputs = {
   spokes = local.spokes
   addons = local.addons
 
-  gitops_addons_github_url               = local.gitops.github_url
-  gitops_addons_org_name                 = local.gitops.org_name
-  gitops_addons_repo_name                = local.gitops.repo_name
-  gitops_addons_repo_base_path           = local.gitops.addons.base_path
-  gitops_addons_repo_path                = local.gitops.addons.path
-  gitops_addons_repo_revision            = local.gitops.addons.revision
-  gitops_addons_app_id                   = ""
-  gitops_addons_app_installation_id      = ""
-  gitops_addons_app_private_key_ssm_path = ""
-
-  gitops_fleet_github_url               = local.gitops.github_url
-  gitops_fleet_org_name                 = local.gitops.org_name
-  gitops_fleet_repo_name                = local.gitops.repo_name
-  gitops_fleet_repo_base_path           = local.gitops.fleet.base_path
-  gitops_fleet_repo_path                = local.gitops.fleet.path
-  gitops_fleet_repo_revision            = local.gitops.fleet.revision
-  gitops_fleet_app_id                   = ""
-  gitops_fleet_app_installation_id      = ""
-  gitops_fleet_app_private_key_ssm_path = ""
-
-  gitops_platform_github_url               = local.gitops.github_url
-  gitops_platform_org_name                 = local.gitops.org_name
-  gitops_platform_repo_name                = local.gitops.repo_name
-  gitops_platform_repo_base_path           = local.gitops.platform.base_path
-  gitops_platform_repo_path                = local.gitops.platform.path
-  gitops_platform_repo_revision            = local.gitops.platform.revision
-  gitops_platform_app_id                   = ""
-  gitops_platform_app_installation_id      = ""
-  gitops_platform_app_private_key_ssm_path = ""
-
-  gitops_workload_github_url               = local.gitops.github_url
-  gitops_workload_org_name                 = local.gitops.org_name
-  gitops_workload_repo_name                = local.gitops.repo_name
-  gitops_workload_repo_base_path           = local.gitops.workload.base_path
-  gitops_workload_repo_path                = local.gitops.workload.path
-  gitops_workload_repo_revision            = local.gitops.workload.revision
-  gitops_workload_app_id                   = ""
-  gitops_workload_app_installation_id      = ""
-  gitops_workload_app_private_key_ssm_path = ""
-
-  gitops_iam_config_raw_file_base_url = try(local.gitops.iam_config_raw_file_base_url, "")
+  # GitOps configuration - simplified with separate repo URLs
+  gitops_org_name        = local.gitops.org_name
+  gitops_repo_name       = local.gitops.repo_name
+  gitops_hub_repo_url    = local.gitops.hub_repo_url
+  gitops_rgds_repo_url   = local.gitops.rgds_repo_url
+  gitops_spokes_repo_url = local.gitops.spokes_repo_url
+  gitops_branch          = local.gitops.branch
+  gitops_bootstrap_path  = local.gitops.argo_bootstrap
+  gitops_rgds_path       = local.gitops.argo_rgds
+  gitops_spokes_path     = local.gitops.argo_spokes
 
   outputs_dir = local.outputs_dir
 

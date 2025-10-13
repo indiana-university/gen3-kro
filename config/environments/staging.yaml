@@ -11,12 +11,4 @@ hub:
 deployment:
   enable_cross_account_iam: false
 
-gitops:
-  addons:
-    revision: "staging"
-  fleet:
-    revision: "staging"
-  platform:
-    revision: "staging"
-  workload:
-    revision: "staging"
+# No gitops overrides needed - using branch from base.yaml

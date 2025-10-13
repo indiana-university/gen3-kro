@@ -28,9 +28,10 @@ variable "enable_internal_spoke" {
   default     = true
 }
 
-variable "environment" {
-  description = "The environment where the cluster is deployed (e.g., dev, staging, prod)"
+variable "deployment_stage" {
+  description = "The deployment stage where the cluster is deployed (e.g., dev, staging, prod)"
   type        = string
+  default     = "prod"
 }
 
 variable "cluster_info" {

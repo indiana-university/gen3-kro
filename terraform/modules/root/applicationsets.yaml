@@ -18,9 +18,9 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}{{.metadata.annotations.fleet_repo_path}}'
-        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        repoURL: '{{.metadata.annotations.hub_repo_url}}'
+        path: '{{.metadata.annotations.bootstrap_path}}'
+        targetRevision: '{{.metadata.annotations.branch}}'
         directory:
           recurse: true
           exclude: exclude/*

@@ -9,15 +9,17 @@ spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-  - clusters:
-      selector:
-        matchLabels:
-          fleet_member: control-plane
-  - git:
-      repoURL: https://github.com/indiana-university/gen3-kro.git
-      revision: staging
-      files:
-        - path: argocd/shared/graphs/**/*.yaml
+  - matrix:
+      generators:
+      - clusters:
+          selector:
+            matchLabels:
+              fleet_member: control-plane
+      - git:
+          repoURL: '{{.metadata.annotations.rgds_repo_url}}'
+          revision: '{{.metadata.annotations.branch}}'
+          files:
+            - path: '{{.metadata.annotations.rgds_path}}/graphs/**/*.yaml'
   template:
     metadata:
       name: '{{.path.basename}}-{{.name}}'
@@ -27,8 +29,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/indiana-university/gen3-kro.git
-        targetRevision: staging
+        repoURL: '{{.metadata.annotations.rgds_repo_url}}'
+        targetRevision: '{{.metadata.annotations.branch}}'
         path: '{{.path}}'
       destination:
         name: '{{.name}}'

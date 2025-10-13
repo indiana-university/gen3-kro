@@ -21,10 +21,10 @@ spec:
             matchLabels:
               fleet_member: spoke
       - git:
-          repoURL: https://github.com/indiana-university/gen3-kro.git
-          revision: staging
+          repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+          revision: '{{.metadata.annotations.branch}}'
           files:
-            - path: argocd/spokes/*/sample.gen3.url.org/templates/app.yaml
+            - path: '{{.metadata.annotations.spokes_path}}/*/sample.gen3.url.org/templates/app.yaml'
   template:
     metadata:
       name: '{{.name}}-gen3-instance'
@@ -34,8 +34,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/indiana-university/gen3-kro.git
-        targetRevision: staging
+        repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+        targetRevision: '{{.metadata.annotations.branch}}'
         path: '{{.path.dirname}}'
       destination:
         server: '{{.server}}'

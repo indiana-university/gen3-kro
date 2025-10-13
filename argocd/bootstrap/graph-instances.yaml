@@ -12,10 +12,10 @@ spec:
   - matrix:
       generators:
         - git:
-            repoURL: https://github.com/indiana-university/gen3-kro.git
-            revision: staging
+            repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+            revision: '{{.metadata.annotations.branch}}'
             directories:
-              - path: argocd/spokes/*
+              - path: '{{.metadata.annotations.spokes_path}}/*'
         - clusters:
             selector:
               matchLabels:
@@ -31,8 +31,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/indiana-university/gen3-kro.git
-        targetRevision: staging
+        repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+        targetRevision: '{{.metadata.annotations.branch}}'
         path: '{{ .path.path }}/infrastructure'
         kustomize:
           commonLabels:
