@@ -35,23 +35,17 @@ gitops:
   org_name: "indiana-university"
   repo_name: "gen3-kro"
   github_url: "github.com"
-  iam_config_raw_file_base_url: ""
-  addons:
-    base_path: "argocd/hub/charts"
-    path: "ack"
-    revision: "main"
-  fleet:
-    base_path: "argocd/hub"
-    path: "bootstrap"
-    revision: "main"
-  platform:
-    base_path: "argocd/teams"
-    path: "."
-    revision: "main"
-  workload:
-    base_path: "argocd/spokes"
-    path: "."
-    revision: "main"
+  branch: "jimi-container"
+
+  # Repository URLs - separate repos for different concerns
+  hub_repo_url: "https://github.com/indiana-university/gen3-kro.git"
+  rgds_repo_url: "https://github.com/indiana-university/gen3-kro.git"
+  spokes_repo_url: "https://github.com/indiana-university/gen3-kro.git"
+
+  # Paths within repositories
+  argo_bootstrap: "argocd/bootstrap"
+  argo_rgds: "argocd/shared"
+  argo_spokes: "argocd/spokes"
 
 deployment:
   argocd_chart_version: "8.6.0"

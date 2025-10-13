@@ -45,93 +45,60 @@ variable "addons" {
 }
 
 // Removed unused variables: manifests, enable_addon_selector, route53_zone_name
-# Github Repos Variables
+# GitOps Variables - Simplified with separate repository URLs
 
-variable "git_org_name" {
-  description = "The name of Github organisation"
+variable "gitops_org_name" {
+  description = "GitHub organization name"
+  type        = string
   default     = "kro-run"
 }
 
-variable "gitops_addons_repo_name" {
-  description = "The name of git repo"
+variable "gitops_repo_name" {
+  description = "GitOps repository name"
+  type        = string
   default     = "kro"
 }
 
-variable "gitops_addons_repo_path" {
-  description = "The path of addons bootstraps in the repo"
+variable "gitops_hub_repo_url" {
+  description = "Repository URL for hub/bootstrap manifests"
+  type        = string
   default     = ""
 }
 
-variable "gitops_addons_repo_base_path" {
-  description = "The base path of addons in the repon"
+variable "gitops_rgds_repo_url" {
+  description = "Repository URL for RGDs and application-sets"
+  type        = string
   default     = ""
 }
 
-variable "gitops_addons_repo_revision" {
-  description = "The name of branch or tag"
-  default     = "main"
-}
-# Fleet
-variable "gitops_fleet_repo_name" {
-  description = "The name of Git repo"
-  default     = "kro"
-}
-
-variable "gitops_fleet_repo_path" {
-  description = "The path of fleet bootstraps in the repo"
+variable "gitops_spokes_repo_url" {
+  description = "Repository URL for spoke configurations"
+  type        = string
   default     = ""
 }
 
-variable "gitops_fleet_repo_base_path" {
-  description = "The base path of fleet in the repon"
-  default     = ""
-}
-
-variable "gitops_fleet_repo_revision" {
-  description = "The name of branch or tag"
+variable "gitops_branch" {
+  description = "Git branch for all ArgoCD applications"
+  type        = string
   default     = "main"
 }
 
-# workload
-variable "gitops_workload_repo_name" {
-  description = "The name of Git repo"
-  default     = "kro"
+variable "gitops_bootstrap_path" {
+  description = "Path to bootstrap ApplicationSets in the repo"
+  type        = string
+  default     = "argocd/bootstrap"
 }
 
-variable "gitops_workload_repo_path" {
-  description = "The path of workload bootstraps in the repo"
-  default     = ""
+variable "gitops_rgds_path" {
+  description = "Path to RGDs (shared graphs) in the repo"
+  type        = string
+  default     = "argocd/shared"
 }
 
-variable "gitops_workload_repo_base_path" {
-  description = "The base path of workloads in the repo"
-  default     = ""
-}
-
-variable "gitops_workload_repo_revision" {
-  description = "The name of branch or tag"
-  default     = "main"
-}
-
-# Platform
-variable "gitops_platform_repo_name" {
-  description = "The name of Git repo"
-  default     = "kro"
-}
-
-variable "gitops_platform_repo_path" {
-  description = "The path of platform bootstraps in the repo"
-  default     = ""
-}
-
-variable "gitops_platform_repo_base_path" {
-  description = "The base path of platform in the repo"
-  default     = ""
-}
-
-variable "gitops_platform_repo_revision" {
-  description = "The name of branch or tag"
-  default     = "main"
+variable "gitops_spokes_path" {
+  description = "Path to spoke configurations in the repo"
+  type        = string
+  default     = "argocd/spokes"
 }
 
 
@@ -159,134 +126,10 @@ variable "enable_argo" {
   default     = true
 }
 
-variable "environment" {
-  description = "Name of the environment for the Hub Cluster"
-  type        = string
-  default     = "control-plane"
-}
-
 variable "hub_aws_region" {
   description = "AWS region for the Hub Cluster"
   type        = string
   default     = "us-east-1"
-}
-
-variable "gitops_addons_github_url" {
-  description = "The GitHub URL for GitOps Addons"
-  default     = "github.com"
-}
-
-variable "iam_config_raw_file_base_url" {
-  description = "Base URL for raw file access for IAM config (e.g., for charts). Leave empty to use default GitHub raw URL"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_fleet_github_url" {
-  description = "The GitHub URL for GitOps Fleet"
-  default     = "github.com"
-}
-
-variable "gitops_workload_github_url" {
-  description = "The GitHub URL for GitOps Workload"
-  default     = "github.com"
-}
-
-variable "gitops_platform_github_url" {
-  description = "The GitHub URL for GitOps Platform"
-  default     = "github.com"
-}
-
-variable "gitops_addons_org_name" {
-  description = "The organization name for GitOps Addons"
-  default     = "kro"
-}
-
-variable "gitops_fleet_org_name" {
-  description = "The organization name for GitOps Fleet"
-  default     = "kro"
-}
-
-variable "gitops_workload_org_name" {
-  description = "The organization name for GitOps Workload"
-  default     = "kro"
-}
-
-variable "gitops_platform_org_name" {
-  description = "The organization name for GitOps Platform"
-  default     = "kro"
-}
-
-variable "gitops_addons_app_private_key_ssm_path" {
-  description = "SSM path for the GitOps Addons app private key"
-  type        = string
-  default     = "/kro/gitops/addons/app-private-key"
-}
-
-variable "gitops_fleet_app_private_key_ssm_path" {
-  description = "SSM path for the GitOps Fleet app private key"
-  type        = string
-  default     = "/kro/gitops/fleet/app-private-key"
-}
-
-variable "gitops_workload_app_private_key_ssm_path" {
-  description = "SSM path for the GitOps Workload app private key"
-  type        = string
-  default     = "/kro/gitops/workload/app-private-key"
-}
-
-variable "gitops_platform_app_private_key_ssm_path" {
-  description = "SSM path for the GitOps Platform app private key"
-  type        = string
-  default     = "/kro/gitops/platform/app-private-key"
-}
-
-variable "gitops_addons_app_id" {
-  description = "GitOps Addons app ID"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_fleet_app_id" {
-  description = "GitOps Fleet app ID"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_workload_app_id" {
-  description = "GitOps Workload app ID"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_platform_app_id" {
-  description = "GitOps Platform app ID"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_addons_app_installation_id" {
-  description = "GitOps Addons app installation ID"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_fleet_app_installation_id" {
-  description = "GitOps Fleet app installation ID"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_workload_app_installation_id" {
-  description = "GitOps Workload app installation ID"
-  type        = string
-  default     = ""
-}
-
-variable "gitops_platform_app_installation_id" {
-  description = "GitOps Platform app installation ID"
-  type        = string
-  default     = ""
 }
 
 variable "ack_services" {

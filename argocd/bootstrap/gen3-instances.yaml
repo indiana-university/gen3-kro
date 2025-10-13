@@ -1,0 +1,44 @@
+# Unified ACK Controllers ApplicationSet
+# Single ApplicationSet that deploys all ACK controllers using a matrix generator
+# Templates off metadata.annotations.ack_* for each controller's configuration
+# Each controller can be enabled/disabled per cluster via labels
+
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: gen3-instances
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+  - matrix:
+      generators:
+      - clusters:
+          selector:
+            matchLabels:
+              fleet_member: spoke
+      - git:
+          repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+          revision: '{{.metadata.annotations.branch}}'
+          files:
+            - path: '{{.metadata.annotations.spokes_path}}/*/sample.gen3.url.org/templates/app.yaml'
+  template:
+    metadata:
+      name: '{{.name}}-gen3-instance'
+      labels:
+        app: gen3-instance
+        cluster: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+        targetRevision: '{{.metadata.annotations.branch}}'
+        path: '{{.path.dirname}}'
+      destination:
+        server: '{{.server}}'
+        namespace: default
+      syncPolicy:
+        automated: {}
