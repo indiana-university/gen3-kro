@@ -1,0 +1,348 @@
+syncPolicy:
+  automated:
+    selfHeal: false
+    allowEmpty: true
+    prune: false
+  retry:
+    limit: -1 # number of failed sync attempt retries; unlimited number of attempts if less than 0
+    backoff:
+      duration: 5s # the amount to back off. Default unit is seconds, but could also be a duration (e.g. "2m", "1h")
+      factor: 2 # a factor to multiply the base duration after each failed retry
+      maxDuration: 10m # the maximum amount of time allowed for the backoff strategy
+  syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true  # Big CRDs.
+syncPolicyAppSet:
+  preserveResourcesOnDeletion: false # to be able to cleanup
+useSelectors: true
+repoURLGit: '{{.metadata.annotations.addons_repo_url}}'
+repoURLGitRevision: '{{.metadata.annotations.addons_repo_revision}}'
+repoURLGitBasePath: '{{.metadata.annotations.addons_repo_basepath}}'
+valueFiles:
+  - default/addons
+  - environments/{{.metadata.labels.environment}}/addons
+  - clusters/{{.nameNormalized}}/addons
+useValuesFilePrefix: true
+valuesFilePrefix: 'tenants/{{.metadata.labels.tenant}}/'
+
+########################################
+# ACK Controllers
+########################################
+
+ack-iam:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1" # Needs to be after KRO RGD
+  namespace: ack-system
+  defaultVersion: "1.3.16"
+  chartNamespace: aws-controllers-k8s
+  chartName: iam-chart
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_iam
+        operator: In
+        values: ['true']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']  # IAM controller only in hub
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: '{{default "ack-iam-controller" (index .metadata.annotations "ack_iam_service_account")}}'
+
+ack-eks:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1" # Needs to be after KRO RGD
+  namespace: ack-system
+  chartName: eks-chart
+  defaultVersion: "1.6.0"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_eks
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: '{{default "ack-eks-controller" (index .metadata.annotations "ack_eks_service_account")}}'
+
+ack-ec2:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1" # Needs to be after KRO RGD
+  namespace: ack-system
+  chartName: ec2-chart
+  defaultVersion: "1.3.4"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_ec2
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: '{{default "ack-ec2-controller" (index .metadata.annotations "ack_ec2_service_account")}}'
+
+ack-efs:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "3" # Needs to be after KRO RGD
+  namespace: ack-system
+  chartName: efs-chart
+  defaultVersion: "1.0.6"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_efs
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-efs-controller'
+
+ack-cloudtrail:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: cloudtrail-chart
+  defaultVersion: "1.0.3"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_cloudtrail
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-cloudtrail-controller'
+
+ack-cloudwatchlogs:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: cloudwatchlogs-chart
+  defaultVersion: "1.0.11"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_cloudwatchlogs
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-cloudwatchlogs-controller'
+
+ack-kms:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: kms-chart
+  defaultVersion: "1.0.7"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_kms
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-kms-controller'
+
+ack-opensearchservice:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: opensearchservice-chart
+  defaultVersion: "1.0.4"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_opensearchservice
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-opensearchservice-controller'
+
+ack-rds:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: rds-chart
+  defaultVersion: "1.6.3"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_rds
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-rds-controller'
+
+ack-route53:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: route53-chart
+  defaultVersion: "1.0.11"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_route53
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-route53-controller'
+
+ack-s3:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: s3-chart
+  defaultVersion: "1.0.15"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_s3
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-s3-controller'
+
+ack-secretsmanager:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: secretsmanager-chart
+  defaultVersion: "1.0.8"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_secretsmanager
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-secretsmanager-controller'
+
+ack-sns:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: sns-chart
+  defaultVersion: "1.0.11"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_sns
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-sns-controller'
+
+ack-sqs:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: sqs-chart
+  defaultVersion: "1.0.13"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_sqs
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-sqs-controller'
+
+ack-wafv2:
+  enabled: true
+  enableACK: true
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  namespace: ack-system
+  chartName: wafv2-chart
+  defaultVersion: "1.0.11"
+  chartNamespace: aws-controllers-k8s
+  chartRepository: public.ecr.aws
+  selector:
+    matchExpressions:
+      - key: enable_ack_wafv2
+        operator: In
+        values: ['true']
+  valuesObject:
+    aws:
+      region: '{{.metadata.annotations.hub_aws_region}}'
+    serviceAccount:
+      name: 'ack-wafv2-controller'

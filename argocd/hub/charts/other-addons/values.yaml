@@ -1,0 +1,19 @@
+# Default values for other-addons
+# These can be overridden by environment-specific or tenant-specific values
+
+# Cluster information - will be populated by ArgoCD
+clusterName: ""
+environment: ""
+awsRegion: ""
+accountId: ""
+
+# Enable/disable addons
+enableMetricsServer: true
+enableExternalSecrets: true
+enableKyverno: true
+enableKyvernoPolicy Reporter: true
+enableKyvernoPolicies: true
+enableKubeStateMetrics: true
+enableCertManager: false
+enableExternalDNS: false
+enableAWSEFSCSIDriver: false

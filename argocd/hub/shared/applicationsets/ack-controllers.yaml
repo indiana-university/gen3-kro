@@ -1,0 +1,106 @@
+# Unified ACK Controllers ApplicationSet
+# Single ApplicationSet that deploys all ACK controllers using a matrix generator
+# Templates off metadata.annotations.ack_* for each controller's configuration
+# Each controller can be enabled/disabled per cluster via labels
+
+---
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ack-controllers
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  generators:
+  - matrix:
+      generators:
+      # Controller definitions with versions
+      - list:
+          elements:
+          - controller: iam
+            chart: iam-chart
+            version: "1.2.1"
+            hub_only: "true"
+            sync_wave: "1"
+          - controller: eks
+            chart: eks-chart
+            version: "1.9.3"
+            hub_only: "false"
+            sync_wave: "1"
+          - controller: ec2
+            chart: ec2-chart
+            version: "1.7.0"
+            hub_only: "false"
+            sync_wave: "1"
+          - controller: efs
+            chart: efs-chart
+            version: "1.1.1"
+            hub_only: "false"
+            sync_wave: "3"
+      # Cluster selector
+      - clusters:
+          selector:
+            matchLabels:
+              argocd.argoproj.io/secret-type: cluster
+            matchExpressions:
+            - key: enable_ack_{{.controller}}
+              operator: In
+              values: ["true"]
+  template:
+    metadata:
+      name: '{{.name}}-ack-{{.controller}}'
+      labels:
+        app: ack-{{.controller}}
+        cluster: '{{.name}}'
+        controller-type: ack
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{.sync_wave}}'
+    spec:
+      project: default
+      source:
+        repoURL: oci://public.ecr.aws/aws-controllers-k8s/{{.chart}}
+        chart: '{{.chart}}'
+        targetRevision: '{{.version}}'
+        helm:
+          releaseName: ack-{{.controller}}-controller
+          values: |
+            aws:
+              region: {{if eq .metadata.labels.fleet_member "control-plane"}}{{.metadata.annotations.hub_aws_region}}{{else}}{{.metadata.annotations.aws_region}}{{end}}
+            serviceAccount:
+              name: {{index .metadata.annotations (printf "ack_%s_service_account" .controller)}}
+              annotations:
+                eks.amazonaws.com/role-arn: {{if eq .metadata.labels.fleet_member "control-plane"}}{{index .metadata.annotations (printf "ack_%s_hub_role_arn" .controller)}}{{else}}{{index .metadata.annotations (printf "ack_%s_spoke_role_arn_%s" .controller .name)}}{{end}}
+            resources:
+              limits:
+                cpu: 200m
+                memory: 256Mi
+              requests:
+                cpu: 100m
+                memory: 128Mi
+      destination:
+        server: '{{.server}}'
+        namespace: '{{index .metadata.annotations (printf "ack_%s_namespace" .controller)}}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+          allowEmpty: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+        retry:
+          limit: -1
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 10m
+      ignoreDifferences:
+      - group: "*"
+        kind: Secret
+        jsonPointers:
+        - /data

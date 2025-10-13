@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: spoke-installations
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    # For now, use a simple list generator
+    # TODO: Make dynamic based on git directories
+    - list:
+        elements:
+          - tenant: spoke1
+            gen3_url: sample.gen3.url.org
+  template:
+    metadata:
+      name: 'spoke-{{.tenant}}-{{.gen3_url}}'
+      labels:
+        tenant: '{{.tenant}}'
+        gen3_url: '{{.gen3_url}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: "3"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/indiana-university/gen3-kro.git
+        targetRevision: staging
+        path: 'argo/spokes/{{.tenant}}/{{.gen3_url}}/applications'
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: '{{.gen3_url}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
