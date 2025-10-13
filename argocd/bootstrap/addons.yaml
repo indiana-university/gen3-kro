@@ -16,10 +16,10 @@ spec:
           - matrix:
               generators:
                 - git:
-                    repoURL: https://github.com/indiana-university/gen3-kro.git
-                    revision: staging
+                    repoURL: '{{.metadata.annotations.hub_repo_url}}'
+                    revision: '{{.metadata.annotations.branch}}'
                     files:
-                      - path: argocd/hub/addons/catalog.yaml
+                      - path: '{{.metadata.annotations.bootstrap_path}}/addons/catalog.yaml'
                 - list:
                     # Expand catalog.items → [{addon,repoURL,revision,chartPath}, ...]
                     elementsYaml: |
@@ -28,11 +28,15 @@ spec:
           - matrix:
               generators:
                 - git:
-                    repoURL: https://github.com/indiana-university/gen3-kro.git
-                    revision: staging
+                    repoURL: '{{.metadata.annotations.hub_repo_url}}'
+                    revision: '{{.metadata.annotations.branch}}'
                     files:
-                      - path: argocd/hub/addons/enablement.yaml
-                      - path: argocd/spokes/*/addons/enablement.yaml
+                      - path: '{{.metadata.annotations.bootstrap_path}}/addons/enablement.yaml'
+                - git:
+                    repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+                    revision: '{{.metadata.annotations.branch}}'
+                    files:
+                      - path: '{{.metadata.annotations.spokes_path}}/*/addons/enablement.yaml'
                 - list:
                     elementsYaml: |
                       {{- $cluster := .cluster -}}
@@ -47,11 +51,15 @@ spec:
           - matrix:
               generators:
                 - git:
-                    repoURL: https://github.com/indiana-university/gen3-kro.git
-                    revision: staging
+                    repoURL: '{{.metadata.annotations.hub_repo_url}}'
+                    revision: '{{.metadata.annotations.branch}}'
                     files:
-                      - path: argocd/hub/addons/values.yaml
-                      - path: argocd/spokes/*/addons/values.yaml
+                      - path: '{{.metadata.annotations.bootstrap_path}}/addons/values.yaml'
+                - git:
+                    repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+                    revision: '{{.metadata.annotations.branch}}'
+                    files:
+                      - path: '{{.metadata.annotations.spokes_path}}/*/addons/values.yaml'
                 - list:
                     elementsYaml: |
                       {{- $cluster := .cluster -}}
