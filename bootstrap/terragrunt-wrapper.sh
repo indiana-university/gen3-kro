@@ -232,10 +232,7 @@ main() {
   # Change to environment directory
   cd "$env_dir"
   log_info "Working directory: $env_dir"
-
-  # Export environment variable for Terragrunt to pick up
-  export ENVIRONMENT="$environment"
-  log_info "Set ENVIRONMENT=$environment for Terragrunt config loading"
+  log_info "Deployment stage: $environment (configured via root.hcl path detection)"
 
   # Execute Terragrunt command
   case "$command" in
