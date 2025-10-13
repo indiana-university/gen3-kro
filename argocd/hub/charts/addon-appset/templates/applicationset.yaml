@@ -4,6 +4,8 @@ kind: ApplicationSet
 metadata:
   name: addon-apps-{{ include "addon-appset.name" . }}
   namespace: argocd
+  labels:
+    app.kubernetes.io/part-of: '{{ default $vals.partOf .Values.partOf }}'
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]

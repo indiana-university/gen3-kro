@@ -14,6 +14,8 @@ valuesPath: "bootstrap/addons/values.yaml"
 hubRepoURL: ""
 hubRepoRevision: ""
 hubRepoBasePath: ""
+partOf: "addons"
+appSetName: "addons"
 
 # Annotations or metadata passed through to generated Application(s)
 annotations: {}
