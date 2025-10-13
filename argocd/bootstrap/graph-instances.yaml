@@ -1,0 +1,48 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: graph-instances
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "2"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+  - matrix:
+      generators:
+        - git:
+            repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+            revision: '{{.metadata.annotations.branch}}'
+            directories:
+              - path: '{{.metadata.annotations.spokes_path}}/*'
+        - clusters:
+            selector:
+              matchLabels:
+                fleet_member: control-plane
+  template:
+    metadata:
+      name: '{{ .path.basename }}-graph-instances'
+      labels:
+        app: graph-instances
+        cluster: '{{ .path.basename }}'
+      annotations:
+        argocd.argoproj.io/sync-wave: "2"
+    spec:
+      project: default
+      source:
+        repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+        targetRevision: '{{.metadata.annotations.branch}}'
+        path: '{{ .path.path }}/infrastructure'
+        kustomize:
+          commonLabels:
+            cluster: '{{ .path.basename }}'
+      destination:
+        server: '{{ .server }}'
+        namespace: default
+      syncPolicy:
+        automated:
+          selfHeal: true
+          prune: true
+        syncOptions:
+          - CreateNamespace=false
