@@ -6,14 +6,13 @@ set -euo pipefail
 IFS=$'\n\t'
 
 # Script directory resolution
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/scripts"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 # Source logging library
-source "${SCRIPT_DIR}/scripts/lib-logging.sh"
+source "${SCRIPT_DIR}/lib-logging.sh"
 
 # Configuration
-LIVE_DIR="${REPO_ROOT}/terraform/live"
 LOG_DIR="${REPO_ROOT}/outputs/logs"
 
 # Create log directory
@@ -55,19 +54,12 @@ main() {
   local command="$1"
   shift || true
 
-  cd "$LIVE_DIR" || {
-    log_error "Failed to change to directory: $LIVE_DIR"
-    exit 1
-  }
-
   case "$command" in
     plan)
       log_info "Running Terragrunt plan..."
       terragrunt plan "$@" 2>&1 | tee -a "$LOG_FILE"
       ;;
     apply)
-      log_info "Running Terragrunt init..."
-      terragrunt init "$@" 2>&1 | tee -a "$LOG_FILE"
       log_info "Running Terragrunt apply..."
       terragrunt apply "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
       ;;

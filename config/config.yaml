@@ -26,7 +26,6 @@ ack:
     - wafv2
 paths:
   outputs_dir: "outputs"
-  kubeconfig_dir: "~/.kube"
   terraform_state_bucket: "gen3-kro-envs-4852"
 gitops:
   org_name: "indiana-university"
@@ -51,7 +50,6 @@ gitops:
     revision: "jimi-container"
 deployment:
   argocd_chart_version: "5.46.0"
-  kubeconfig_dir: "~/.kube"
   enable_cross_account_iam: false
 addons:
   enable_metrics_server: true

@@ -106,7 +106,7 @@ Gen3 KRO implements a scalable, production-ready platform that:
 
 ### Components│   │   ├── eks-hub/           # Hub cluster provisioning
 
-│   │   ├── iam-access/        # IAM roles and policies
+│   │   ├── iam-spoke/        # IAM spoke roles and policies
 
 | Component | Purpose | Location |│   │   └── root/              # Root module
 
@@ -474,7 +474,7 @@ gen3-kro/Install git hooks for validation:
 
 │   │   ├── eks-hub/                 # Hub cluster provisioning- **GitOps**: All changes tracked in Git
 
-│   │   ├── iam-access/              # IAM roles for ACK controllers- **Secrets**: Stored in AWS Secrets Manager, not in Git
+│   │   ├── iam-spoke/              # IAM roles for ACK controllers- **Secrets**: Stored in AWS Secrets Manager, not in Git
 
 │   │   └── root/                    # Root orchestration module- **Network Policies**: Restrict pod-to-pod communication
 

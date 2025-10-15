@@ -1,0 +1,129 @@
+ack:
+  namespace: "ack-system"
+  controllers:
+    - cloudtrail
+    - cloudwatchlogs
+    - ec2
+    - efs
+    - eks
+    - iam
+    - kms
+    - opensearchservice
+    - rds
+    - route53
+    - s3
+    - secretsmanager
+    - sns
+    - sqs
+    - wafv2
+
+hub:
+  alias: "gen3-csoc"
+  aws_profile: "boadeyem_tf"
+  aws_region: "us-east-1"
+  vpc_name: "gen3-kro-vpc"
+  cluster_name: "gen3-kro-hub"
+  kubernetes_version: "1.33"
+  enable_argocd: true
+  argocd_chart_version: "8.6.0"
+  iam:
+    enable_aws_efs_csi_driver: false
+    enable_aws_for_fluentbit: false
+    enable_cert_manager: false
+    enable_cni_metrics_helper: false
+    enable_cw_prometheus: false
+    enable_external_dns: false
+    enable_external_secrets: true
+    enable_kro: true
+    enable_kro_eks_rgs: true
+    enable_kyverno: true
+    enable_kyverno_policies: true
+    enable_kyverno_policy_reporter: true
+    enable_metrics_server: true
+    enable_multi_acct: true
+    enable_opentelemetry_operator: false
+    enable_prometheus_node_exporter: false
+    enable_kube_state_metrics: true
+  gitops:
+    org_name: "indiana-university"
+    repo_name: "gen3-kro"
+    github_url: "github.com"
+    branch: "jimi-container"
+    bootstrap_path: "argocd/bootstrap"
+
+  iam_gitops:
+    org_name: "RDServices"
+    repo_name: "eks-cluster-mgmt"
+    github_url: "github.iu.edu"
+    branch: "main"
+    iam_policy_private_repo_path: "iam/policies"
+    version: "0.1.0"
+
+rgds:
+  gitops:
+    org_name: "indiana-university"
+    repo_name: "gen3-kro"
+    github_url: "github.com"
+    branch: "jimi-container"
+    argocd_path: "argocd/shared"
+
+iam_settings:
+  enable_hub_acks: true
+  enable_hub_aws_efs_csi_driver: false
+  enable_hub_aws_for_fluentbit: false
+  enable_hub_cert_manager: false
+  enable_hub_cni_metrics_helper: false
+  enable_hub_cw_prometheus: false
+  enable_hub_external_dns: false
+  enable_hub_external_secrets: true
+  enable_hub_kro: true
+  enable_hub_kro_eks_rgs: true
+  enable_hub_kyverno: true
+  enable_hub_kyverno_policies: true
+  enable_hub_kyverno_policy_reporter: true
+  enable_hub_metrics_server: true
+  enable_hub_multi_acct: true
+  enable_hub_opentelemetry_operator: false
+  enable_hub_prometheus_node_exporter: false
+  enable_hub_kube_state_metrics: true
+
+
+paths:
+  outputs_dir:            "outputs/gen3/gen3-kro-hub/"
+  terraform_state_bucket: "gen3-kro-envs-4852"
+  terraform_locks_table:  "gen3-kro-terraform-locks"
+
+spokes:
+  - alias: "spoke1"
+    enabled: true
+    region: "us-east-1"
+    profile: "boadeyem_tf"
+
+    gitops:
+      org_name: "indiana-university"
+      repo_name: "gen3-kro"
+      github_url: "github.com"
+      branch: "jimi-container"
+      repo_url: "https://github.com/indiana-university/gen3-kro.git"
+      argo_path: "argocd/spokes"
+
+    tags:
+      Team: "platform"
+      Purpose: "multi-account-demo"
+
+  - alias: "spoke2"
+    enabled: true
+    region: "us-east-1"
+    profile: "boadeyem_tf"
+
+    gitops:
+      org_name: "indiana-university"
+      repo_name: "gen3-kro"
+      github_url: "github.com"
+      branch: "jimi-container"
+      repo_url: "https://github.com/indiana-university/gen3-kro.git"
+      argo_path: "argocd/spokes"
+
+    tags:
+      Team: "platform"
+      Purpose: "multi-account-demo"
