@@ -34,22 +34,22 @@ data "local_file" "override_policy" {
 locals {
   # Determine source policy (from ACK repo)
   has_inline_policy = var.create && length(data.http.recommended_inline_policy) > 0 ? (
-    can(jsondecode(data.http.recommended_inline_policy[0].body)) &&
+    can(jsondecode(data.http.recommended_inline_policy[0].response_body)) &&
     data.http.recommended_inline_policy[0].status_code == 200
   ) : false
 
   has_policy_arn = var.create && length(data.http.recommended_policy_arn) > 0 ? (
     data.http.recommended_policy_arn[0].status_code == 200 &&
-    trimspace(data.http.recommended_policy_arn[0].body) != ""
+    trimspace(data.http.recommended_policy_arn[0].response_body) != ""
   ) : false
 
-  source_inline_policy = local.has_inline_policy ? trimspace(data.http.recommended_inline_policy[0].body) : null
-  source_policy_arn    = local.has_policy_arn ? trimspace(data.http.recommended_policy_arn[0].body) : null
+  source_inline_policy = local.has_inline_policy ? trimspace(data.http.recommended_inline_policy[0].response_body) : null
+  source_policy_arn    = local.has_policy_arn ? trimspace(data.http.recommended_policy_arn[0].response_body) : null
 
   # Determine override policy
   override_policy_json = var.create ? (
     var.override_policy_path != "" && length(data.local_file.override_policy) > 0 ? data.local_file.override_policy[0].content : (
-      var.override_policy_url != "" && length(data.http.override_policy) > 0 ? data.http.override_policy[0].body : null
+      var.override_policy_url != "" && length(data.http.override_policy) > 0 ? data.http.override_policy[0].response_body : null
     )
   ) : null
 

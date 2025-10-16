@@ -17,22 +17,3 @@ remote_state {
     encrypt = true
   }
 }
-
-# Locals available to all units
-locals {
-  # Repository root path
-  repo_root = get_repo_root()
-
-  # Common tags - can be overridden by stack inputs
-  common_tags = {
-    Project     = "gen3-kro"
-    ManagedBy   = "Terragrunt"
-  }
-}
-
-# Terraform version constraints
-terraform {
-  extra_arguments "common_vars" {
-    commands = get_terraform_commands_that_need_vars()
-  }
-}

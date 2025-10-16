@@ -48,7 +48,7 @@ hub:
     org_name: "indiana-university"
     repo_name: "gen3-kro"
     github_url: "github.com"
-    branch: "jimi-container"
+    branch: "jimi-container-terragrunt-remodel"
     bootstrap_path: "argocd/bootstrap"
 
   iam_gitops:
@@ -64,7 +64,7 @@ rgds:
     org_name: "indiana-university"
     repo_name: "gen3-kro"
     github_url: "github.com"
-    branch: "jimi-container"
+    branch: "jimi-container-terragrunt-remodel"
     argocd_path: "argocd/shared"
 
 iam_settings:
@@ -103,7 +103,7 @@ spokes:
       org_name: "indiana-university"
       repo_name: "gen3-kro"
       github_url: "github.com"
-      branch: "jimi-container"
+      branch: "jimi-container-terragrunt-remodel"
       repo_url: "https://github.com/indiana-university/gen3-kro.git"
       argo_path: "argocd/spokes"
 
@@ -120,7 +120,7 @@ spokes:
       org_name: "indiana-university"
       repo_name: "gen3-kro"
       github_url: "github.com"
-      branch: "jimi-container"
+      branch: "jimi-container-terragrunt-remodel"
       repo_url: "https://github.com/indiana-university/gen3-kro.git"
       argo_path: "argocd/spokes"
 

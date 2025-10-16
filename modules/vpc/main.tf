@@ -10,9 +10,9 @@ module "vpc" {
   name = var.vpc_name
   cidr = var.vpc_cidr
 
-  azs             = var.azs
-  private_subnets = [for k, v in var.azs : cidrsubnet(var.vpc_cidr, 4, k)]
-  public_subnets  = [for k, v in var.azs : cidrsubnet(var.vpc_cidr, 8, k + 48)]
+  azs             = [for a in data.aws_availability_zones.available[0].names : a]
+  private_subnets = [for k, v in data.aws_availability_zones.available[0].names : cidrsubnet(var.vpc_cidr, 4, k)]
+  public_subnets  = [for k, v in data.aws_availability_zones.available[0].names : cidrsubnet(var.vpc_cidr, 8, k + 48)]
 
   enable_nat_gateway = var.enable_nat_gateway
   single_nat_gateway = var.single_nat_gateway
