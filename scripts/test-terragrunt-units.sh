@@ -28,13 +28,13 @@ echo ""
 test_unit() {
     local unit_name=$1
     local unit_path="$UNITS_DIR/$unit_name"
-    
+
     echo "----------------------------------------"
     echo "Testing: $unit_name"
     echo "----------------------------------------"
-    
+
     cd "$unit_path"
-    
+
     # Run init
     echo "Running: terragrunt init"
     if terragrunt init --terragrunt-ignore-dependency-errors --terragrunt-log-level warn >> "$RESULTS_LOG" 2>&1; then
@@ -45,7 +45,7 @@ test_unit() {
         echo "  Check log file for details"
         return 1
     fi
-    
+
     # Run plan
     echo "Running: terragrunt plan"
     if terragrunt plan --terragrunt-ignore-dependency-errors --terragrunt-log-level warn >> "$RESULTS_LOG" 2>&1; then
@@ -56,7 +56,7 @@ test_unit() {
         echo "  Check log file for details"
         # Don't return error for plan failures - we want to see all results
     fi
-    
+
     echo ""
 }
 

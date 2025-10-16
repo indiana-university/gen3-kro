@@ -69,6 +69,7 @@ unit "vpc" {
   source = "git::git@github.com:indiana-university/gen3-kro.git//units/vpc?ref=${local.version}"
   path   = "vpc"
   values = {
+    version = "jimi-ar"
     vpc_name           = "gen3-vpc"
     vpc_cidr           = "10.0.0.0/16"
     cluster_name       = "gen3-cluster"

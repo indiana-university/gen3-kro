@@ -27,7 +27,7 @@ locals {
 
 # Dependencies
 dependency "ack_pod_identity" {
-  config_path = "../ack-pod-identity"
+  config_path = "../cross-account-policy"
 
   mock_outputs = {
     iam_role_arn  = "arn:aws:iam::123456789012:role/mock-ack-role"
@@ -41,16 +41,13 @@ dependency "ack_pod_identity" {
 inputs = merge(
   try(local.common_vars.inputs, {}),
   {
-    create       = true
-    service_name = local.service_name
-
-    # Hub pod identity role ARN
-    hub_pod_identity_role_arn = dependency.ack_pod_identity.outputs.iam_role_arn
-
-    # Spoke role ARNs
+    # values
+    create          = true
+    service_name    = local.service_name
     spoke_role_arns = local.spoke_role_arns
+    tags            = try(local.common_vars.inputs.tags, {})
 
-    # Tags
-    tags = try(local.common_vars.inputs.tags, {})
+    # Dependencies
+    hub_pod_identity_role_arn = dependency.ack_pod_identity.outputs.iam_role_arn
   }
 )
