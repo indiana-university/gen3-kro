@@ -1,0 +1,328 @@
+ack:
+
+
+hub:
+  alias: "gen3-csoc"
+  aws_profile: "boadeyem_tf"
+  aws_region: "us-east-1"
+
+  vpc:
+    enable_vpc: true
+    vpc_name: "gen3-kro-vpc"
+    vpc_cidr: "10.0.0.0/16"
+    cluster_name: "gen3-kro-hub"
+    enable_nat_gateway: true
+    single_nat_gateway: true
+  eks:
+    enable_eks_cluster: true
+    # Existing VPC configuration (set enable_vpc to attach to existing VPC)
+    existing_vpc_id: ""
+    existing_subnet_ids: []
+    kubernetes_version: "1.33"
+    cluster_endpoint_public_access: true
+    enable_cluster_creator_admin_permissions: true
+    cluster_compute_config:
+      enabled: true
+      node_pools: ["general purpose"]
+
+  gitops:
+    org_name: "indiana-university"
+    repo_name: "gen3-kro"
+    github_url: "github.com"
+    branch: "jimi-container-terragrunt-remodel"
+    bootstrap_path: "argocd/bootstrap"
+
+  iam_gitops:
+    org_name: "RDServices"
+    repo_name: "eks-cluster-mgmt"
+    github_url: "github.iu.edu"
+    branch: "main"
+    iam_policy_private_repo_path: "iam/policies"
+    version: "0.1.0"
+
+  # Addon configuration with placeholders
+  addon_configs:
+    ebs_csi:
+      enable_pod_identity: false
+      kms_arns: ["%PLACEHOLDER_KMS_ARN"]
+      namespace: "kube-system"
+      service_account: "ebs-csi-controller-sa"
+    external_secrets:
+      enable_pod_identity: false
+      kms_key_arns: ["%PLACEHOLDER_KMS_ARN"]
+      secrets_manager_arns: ["%PLACEHOLDER_SECRETS_MANAGER_ARN"]
+      ssm_parameter_arns: ["%PLACEHOLDER_SSM_PARAMETER_ARN"]
+      create_permission: true
+      attach_custom_policy: false
+      policy_statements: []
+      namespace: "external-secrets"
+      service_account: "external-secrets"
+    aws_load_balancer_controller:
+      enable_pod_identity: true
+      namespace: "kube-system"
+      service_account: "aws-load-balancer-controller"
+    argocd:
+      enable_pod_identity: true
+      enable_argocd: true
+      namespace: "argocd"
+      argocd_chart_version: "8.6.0"
+    amazon_managed_service_prometheus:
+      enable_pod_identity: false
+      workspace_arns: ["%PLACEHOLDER_AMP_WORKSPACE_ARN"]
+      namespace: "kube-system"
+      service_account: "amp-iamproxy-ingest-service-account"
+    aws_appmesh_controller:
+      enable_pod_identity: false
+      namespace: "appmesh-system"
+      service_account: "appmesh-controller"
+    aws_appmesh_envoy_proxy:
+      enable_pod_identity: false
+      namespace: "appmesh-system"
+      service_account: "appmesh-proxies"
+    aws_cloudwatch_observability:
+      enable_pod_identity: false
+      namespace: "amazon-cloudwatch"
+      service_account: "cloudwatch-agent"
+    aws_efs_csi:
+      enable_pod_identity: false
+      namespace: "kube-system"
+      service_account: "efs-csi-controller-sa"
+    aws_fsx_lustre_csi:
+      enable_pod_identity: false
+      service_role_arns: ["%PLACEHOLDER_FSX_SERVICE_ROLE_ARN"]
+      namespace: "kube-system"
+      service_account: "fsx-csi-controller-sa"
+    aws_gateway_controller:
+      enable_pod_identity: false
+      namespace: "aws-application-networking-system"
+      service_account: "gateway-api-controller"
+    aws_lb_controller_targetgroup_binding_only:
+      enable_pod_identity: false
+      targetgroup_arns: ["%PLACEHOLDER_TG_ARN"]
+      namespace: "kube-system"
+      service_account: "aws-load-balancer-controller"
+    aws_node_termination_handler:
+      enable_pod_identity: false
+      sqs_queue_arns: ["%PLACEHOLDER_SQS_QUEUE_ARN"]
+      namespace: "kube-system"
+      service_account: "aws-node-termination-handler"
+    aws_privateca_issuer:
+      enable_pod_identity: false
+      acmca_arns: ["%PLACEHOLDER_ACMCA_ARN"]
+      namespace: "cert-manager"
+      service_account: "aws-privateca-issuer"
+    aws_vpc_cni_ipv4:
+      enable_pod_identity: false
+      namespace: "kube-system"
+      service_account: "aws-node"
+    aws_vpc_cni_ipv6:
+      enable_pod_identity: false
+      namespace: "kube-system"
+      service_account: "aws-node"
+    cert_manager:
+      enable_pod_identity: false
+      hosted_zone_arns: ["%PLACEHOLDER_HOSTED_ZONE_ARN"]
+      namespace: "cert-manager"
+      service_account: "cert-manager"
+    cluster_autoscaler:
+      enable_pod_identity: false
+      cluster_names: ["gen3-kro-hub"]
+      namespace: "kube-system"
+      service_account: "cluster-autoscaler"
+    external_dns:
+      enable_pod_identity: false
+      hosted_zone_arns: ["%PLACEHOLDER_HOSTED_ZONE_ARN"]
+      namespace: "external-dns"
+      service_account: "external-dns"
+    mountpoint_s3_csi:
+      enable_pod_identity: false
+      bucket_arns: ["%PLACEHOLDER_S3_BUCKET_ARN"]
+      bucket_path_arns: ["%PLACEHOLDER_S3_BUCKET_PATH_ARN"]
+      namespace: "kube-system"
+      service_account: "s3-csi-driver"
+    velero:
+      enable_pod_identity: false
+      s3_bucket_arns: ["%PLACEHOLDER_VELERO_S3_BUCKET_ARN"]
+      s3_bucket_path_arns: ["%PLACEHOLDER_VELERO_S3_BUCKET_PATH_ARN"]
+      namespace: "velero"
+      service_account: "velero"
+  ack_configs:
+    cloudtrail:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-cloudtrail-controller"
+    cloudwatchlogs:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-cloudwatchlogs-controller"
+    ec2:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-ec2-controller"
+    efs:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-efs-controller"
+    eks:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-eks-controller"
+    iam:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-iam-controller"
+    kms:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-kms-controller"
+    opensearchservice:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-opensearchservice-controller"
+    rds:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-rds-controller"
+    route53:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-route53-controller"
+    s3:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-s3-controller"
+    secretsmanager:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-secretsmanager-controller"
+    sns:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-sns-controller"
+    sqs:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-sqs-controller"
+    wafv2:
+      enable_pod_identity: true
+      namespace: "ack-system"
+      service_account: "ack-wafv2-controller"
+
+# GitOps configuration for rgds to be passed to argocd for deployment
+rgds:
+  gitops:
+    org_name: "indiana-university"
+    repo_name: "gen3-kro"
+    github_url: "github.com"
+    branch: "jimi-container-terragrunt-remodel"
+    argocd_path: "argocd/shared"
+
+# Base tags applied to all resources
+tags:
+  Project: "gen3-kro"
+  Environment: "hub"
+  ManagedBy: "terragrunt"
+  Owner: "platform-team"
+
+paths:
+  outputs_dir:            "outputs/terraform"
+  terraform_state_bucket: "gen3-kro-envs-4852"
+
+spokes:
+  - alias: "spoke1"
+    enabled: true
+    region: "us-east-1"
+    profile: "boadeyem_tf"
+
+    gitops:
+      org_name: "indiana-university"
+      repo_name: "gen3-kro"
+      github_url: "github.com"
+      branch: "jimi-container-terragrunt-remodel"
+      repo_url: "https://github.com/indiana-university/gen3-kro.git"
+      argo_path: "argocd/spokes"
+
+    ack_configs:
+      cloudtrail:
+        enable_pod_identity: true
+      cloudwatchlogs:
+        enable_pod_identity: true
+      ec2:
+        enable_pod_identity: true
+      efs:
+        enable_pod_identity: true
+      eks:
+        enable_pod_identity: true
+      iam:
+        enable_pod_identity: true
+      kms:
+        enable_pod_identity: true
+      opensearchservice:
+        enable_pod_identity: true
+      rds:
+        enable_pod_identity: true
+      route53:
+        enable_pod_identity: true
+      s3:
+        enable_pod_identity: true
+      secretsmanager:
+        enable_pod_identity: true
+      sns:
+        enable_pod_identity: true
+      sqs:
+        enable_pod_identity: true
+      wafv2:
+        enable_pod_identity: true
+
+    tags:
+      Team: "platform"
+      Purpose: "multi-account-demo"
+
+  - alias: "spoke2"
+    enabled: true
+    region: "us-east-1"
+    profile: "boadeyem_tf"
+
+    gitops:
+      org_name: "indiana-university"
+      repo_name: "gen3-kro"
+      github_url: "github.com"
+      branch: "jimi-container-terragrunt-remodel"
+      repo_url: "https://github.com/indiana-university/gen3-kro.git"
+      argo_path: "argocd/spokes"
+
+    ack_configs:
+      cloudtrail:
+        enable_pod_identity: true
+      cloudwatchlogs:
+        enable_pod_identity: true
+      ec2:
+        enable_pod_identity: true
+      efs:
+        enable_pod_identity: true
+      eks:
+        enable_pod_identity: true
+      iam:
+        enable_pod_identity: true
+      kms:
+        enable_pod_identity: true
+      opensearchservice:
+        enable_pod_identity: true
+      rds:
+        enable_pod_identity: true
+      route53:
+        enable_pod_identity: true
+      s3:
+        enable_pod_identity: true
+      secretsmanager:
+        enable_pod_identity: true
+      sns:
+        enable_pod_identity: true
+      sqs:
+        enable_pod_identity: true
+      wafv2:
+        enable_pod_identity: true
+
+    tags:
+      Team: "platform"
+      Purpose: "multi-account-demo"
