@@ -8,54 +8,35 @@ variable "tags" {
 }
 
 variable "cluster_name" {
-  description = "Name of the EKS cluster the ACK roles target"
+  description = "Name of the EKS cluster (hub cluster name) the ACK roles target"
+  type        = string
+}
+
+variable "spoke_alias" {
+  description = "Alias/name for this spoke account (e.g., 'spoke1', 'spoke2')"
   type        = string
 }
 
 ###############################################################################
-# ACK IAM Policy Variables
+# ACK Configuration Variables
 ###############################################################################
-variable "enable_ack" {
-  description = "Enable ACK IAM policy module"
-  type        = bool
-  default     = false
-}
-
-variable "ack_services" {
-  description = "Map of ACK services to configure"
+variable "ack_configs" {
+  description = "Map of ACK controller configurations for this spoke from config.yaml (includes enable_pod_identity per controller)"
   type        = map(any)
   default     = {}
+  # Example structure:
+  # {
+  #   "iam" = {
+  #     enable_pod_identity = true
+  #   }
+  #   "s3" = {
+  #     enable_pod_identity = false  # Disabled for this spoke
+  #   }
+  # }
 }
 
-variable "ack_tags" {
-  description = "Additional tags for ACK IAM policy resources"
-  type        = map(string)
-  default     = {}
-}
-
-###############################################################################
-# ACK Spoke Role Variables
-###############################################################################
-variable "enable_ack_spoke_roles" {
-  description = "Enable ACK spoke role module"
-  type        = bool
-  default     = false
-}
-
-variable "ack_spoke_accounts" {
-  description = "Map of spoke accounts for ACK cross-account access"
+variable "hub_ack_configs" {
+  description = "Map of ACK controller configurations from hub (used as reference for services)"
   type        = map(any)
-  default     = {}
-}
-
-variable "ack_spoke_tags" {
-  description = "Additional tags for ACK spoke role resources"
-  type        = map(string)
-  default     = {}
-}
-
-variable "ack_hub_pod_identity_role_arns" {
-  description = "Map of ACK service names to hub pod identity role ARNs"
-  type        = map(string)
   default     = {}
 }

@@ -42,7 +42,6 @@ resource "aws_iam_role_policy" "spoke_ack_inline" {
 ###################################################################################################################################################
 resource "aws_iam_role_policy_attachment" "spoke_ack_managed" {
   for_each = var.create && var.has_managed_policy ? var.policy_arns : {}
-  provider = aws.spoke
 
   role       = aws_iam_role.spoke_ack[0].name
   policy_arn = each.value

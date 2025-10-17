@@ -7,16 +7,42 @@
 # Local Configuration
 ###################################################################################################################################################
 locals {
-  # Path to ACK permissions
-  ack_permissions_path = "${path.root}/../../iam/ack-permissions/${var.service_name}"
+  # Determine context from tags (hub or spoke)
+  context = lookup(var.tags, "Spoke", null) != null ? lookup(var.tags, "Spoke") : "hub"
 
-  # Check if local policy files exist
-  has_local_inline_policy = fileexists("${local.ack_permissions_path}/recommended-inline-policy")
-  has_local_policy_arn    = fileexists("${local.ack_permissions_path}/recommended-policy-arn")
+  # Build paths for policy files
+  # Try spoke-specific path first, then fall back to hub
+  spoke_path = "${path.root}/../../iam/gen3-kro/${local.context}/acks/${var.service_name}"
+  hub_path   = "${path.root}/../../iam/gen3-kro/hub/acks/${var.service_name}"
 
-  # Load local policies
-  local_inline_policy = local.has_local_inline_policy ? file("${local.ack_permissions_path}/recommended-inline-policy") : null
-  local_policy_arn    = local.has_local_policy_arn ? trimspace(file("${local.ack_permissions_path}/recommended-policy-arn")) : null
+  # Check if spoke-specific inline policy exists
+  has_spoke_inline_policy = local.context != "hub" ? fileexists("${local.spoke_path}/source-policy-inline.json") : false
+  has_hub_inline_policy   = fileexists("${hub_path}/source-policy-inline.json")
+
+  # Check if spoke-specific ARN policy exists
+  has_spoke_arn_policy = local.context != "hub" ? fileexists("${local.spoke_path}/source-policy-arn.json") : false
+  has_hub_arn_policy   = fileexists("${hub_path}/source-policy-arn.json")
+
+  # Check if spoke-specific override policy exists
+  has_spoke_override_policy = local.context != "hub" ? fileexists("${local.spoke_path}/overridepolicy.json") : false
+  has_hub_override_policy   = fileexists("${hub_path}/overridepolicy.json")
+
+  # Determine which path to use (spoke if exists, otherwise hub)
+  use_inline_path   = local.has_spoke_inline_policy ? local.spoke_path : local.hub_path
+  use_arn_path      = local.has_spoke_arn_policy ? local.spoke_path : local.hub_path
+  use_override_path = local.has_spoke_override_policy ? local.spoke_path : local.hub_path
+
+  # Load inline policy (spoke or hub)
+  has_inline_policy_file = local.has_spoke_inline_policy || local.has_hub_inline_policy
+  local_inline_policy    = local.has_inline_policy_file ? file("${local.use_inline_path}/source-policy-inline.json") : null
+
+  # Load policy ARNs (spoke or hub)
+  has_arn_policy_file = local.has_spoke_arn_policy || local.has_hub_arn_policy
+  local_policy_arns   = local.has_arn_policy_file ? jsondecode(file("${local.use_arn_path}/source-policy-arn.json")) : {}
+
+  # Load override policy (spoke or hub)
+  has_override_policy_file = local.has_spoke_override_policy || local.has_hub_override_policy
+  local_override_policy    = local.has_override_policy_file ? file("${local.use_override_path}/overridepolicy.json") : null
 
   # Build policy documents list (include cross-account policy if provided)
   source_policy_documents = compact([
@@ -24,15 +50,14 @@ locals {
     var.cross_account_policy_json
   ])
 
-  override_policy_documents = var.override_policy_documents
-
-  # Managed policy ARNs
-  recommended_policy_arns = local.local_policy_arn != null ? {
-    ack_recommended = local.local_policy_arn
-  } : {}
+  # Build override policy documents list
+  override_policy_documents = compact(concat(
+    var.override_policy_documents,
+    local.local_override_policy != null ? [local.local_override_policy] : []
+  ))
 
   # Merge with additional policy ARNs
-  all_policy_arns = merge(local.recommended_policy_arns, var.additional_policy_arns)
+  all_policy_arns = merge(local.local_policy_arns, var.additional_policy_arns)
 
   # Determine if we have inline policies to attach
   has_inline_policy = length(local.source_policy_documents) > 0 || length(local.override_policy_documents) > 0

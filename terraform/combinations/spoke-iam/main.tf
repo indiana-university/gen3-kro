@@ -4,14 +4,14 @@
 module "policy" {
   source = "../../modules/ack-iam-policy"
 
-  for_each = var.ack_services
+  for_each = local.enabled_controllers
 
-  create = var.enable_ack && lookup(each.value, "enabled", true)
+  create = true
 
   service_name           = each.key
-  override_policy_path   = lookup(each.value, "override_policy_path", "")
-  override_policy_url    = lookup(each.value, "override_policy_url", "")
-  additional_policy_arns = lookup(each.value, "additional_policy_arns", {})
+  override_policy_path   = ""
+  override_policy_url    = ""
+  additional_policy_arns = {}
 }
 
 ###############################################################################
@@ -20,23 +20,27 @@ module "policy" {
 module "role" {
   source = "../../modules/ack-spoke-role"
 
-  for_each = var.ack_spoke_accounts
+  for_each = local.enabled_controllers
 
-  create = var.enable_ack_spoke_roles && lookup(each.value, "enabled", true)
+  create = true
 
   cluster_name              = var.cluster_name
-  service_name              = each.value.service_name
-  spoke_alias               = lookup(each.value, "spoke_alias", each.key)
-  hub_pod_identity_role_arn = lookup(var.ack_hub_pod_identity_role_arns, each.value.service_name, "")
-  combined_policy_json      = try(module.policy[each.value.service_name].combined_policy_json, null)
-  policy_arns               = try(module.policy[each.value.service_name].policy_arns, {})
-  has_inline_policy         = try(module.policy[each.value.service_name].has_inline_policy, false)
-  has_managed_policy        = try(module.policy[each.value.service_name].has_managed_policy, false)
+  service_name              = each.key
+  spoke_alias               = var.spoke_alias
+  hub_pod_identity_role_arn = "" # Will be populated by hub via cross-account policy
+  combined_policy_json      = try(module.policy[each.key].combined_policy_json, null)
+  policy_arns               = try(module.policy[each.key].policy_arns, {})
+  has_inline_policy         = try(module.policy[each.key].has_inline_policy, false)
+  has_managed_policy        = try(module.policy[each.key].has_managed_policy, false)
 
   tags = merge(
     var.tags,
-    var.ack_spoke_tags,
-    lookup(each.value, "tags", {})
+    {
+      caller_level = "spoke_role_${each.key}"
+      ack_service  = each.key
+      spoke_alias  = var.spoke_alias
+      context      = "spoke"
+    }
   )
 
   depends_on = [module.policy]

@@ -11,16 +11,10 @@ locals {
   cluster_oidc_provider_arn = var.enable_eks_cluster ? module.eks_cluster.oidc_provider_arn : ""
   cluster_oidc_provider     = var.enable_eks_cluster ? module.eks_cluster.oidc_provider : ""
 
-  # ACK services configuration
-  ack_services_list = var.enable_ack ? keys(var.ack_services) : []
+  # ACK services configuration from ack_configs
+  ack_services_list = var.enable_ack ? keys(var.ack_configs) : []
   ack_services_enabled = var.enable_ack ? {
-    for k, v in var.ack_services : k => lookup(v, "enabled", true)
-  } : {}
-
-  # ACK spoke accounts configuration
-  ack_spoke_accounts_list = var.enable_ack_spoke_roles ? keys(var.ack_spoke_accounts) : []
-  ack_spoke_accounts_enabled = var.enable_ack_spoke_roles ? {
-    for k, v in var.ack_spoke_accounts : k => lookup(v, "enabled", true)
+    for k, v in var.ack_configs : k => lookup(v, "enable_pod_identity", true)
   } : {}
 
   # Common tags
@@ -31,5 +25,4 @@ locals {
       ClusterName = var.cluster_name
     }
   )
-
 }

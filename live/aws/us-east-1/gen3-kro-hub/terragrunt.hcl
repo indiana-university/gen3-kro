@@ -3,7 +3,7 @@ include {
 }
 
 terraform {
-  source = "${get_repo_root()}/terraform"
+  source = "${get_repo_root()}/terraform//combinations/hub"
 }
 
 locals {
@@ -171,13 +171,13 @@ generate "data_sources" {
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
 data "aws_eks_cluster" "cluster" {
-  count = local.enable_argocd && local.enable_eks_cluster ? 1 : 0
-  name  = local.cluster_name
+  count = var.enable_argocd && var.enable_eks_cluster ? 1 : 0
+  name  = var.cluster_name
 }
 
 data "aws_eks_cluster_auth" "cluster" {
-  count = local.enable_argocd && local.enable_eks_cluster ? 1 : 0
-  name  = local.cluster_name
+  count = var.enable_argocd && var.enable_eks_cluster ? 1 : 0
+  name  = var.cluster_name
 }
 EOF
 }
@@ -304,17 +304,17 @@ generate "spokes" {
     for spoke in local.spokes :
     <<-EOF
 module "spoke_${spoke.alias}" {
-  source = "combinations/spoke-iam"
+  source = "../spoke-iam"
 
   providers = {
     aws = aws.${spoke.alias}
   }
 
   tags           = ${jsonencode(merge(local.base_tags, lookup(spoke, "tags", {}), { Spoke = spoke.alias, caller_level = "spoke_${spoke.alias}" }))}
-  cluster_name   = local.cluster_name
+  cluster_name   = var.cluster_name
   spoke_alias    = "${spoke.alias}"
   ack_configs    = ${jsonencode(lookup(spoke, "ack_configs", {}))}
-  hub_ack_configs = local.ack_configs
+  hub_ack_configs = ${jsonencode(local.hub_ack_configs)}
 }
 EOF
   ]) : "")
