@@ -15,17 +15,17 @@ output "policy_arns" {
 
 output "combined_policy_json" {
   description = "Combined policy document JSON (if inline policies exist)"
-  value       = var.create && length(data.aws_iam_policy_document.ack_policy) > 0 ? data.aws_iam_policy_document.ack_policy[0].json : null
+  value       = var.create && length(data.aws_iam_policy_document.ack_policy) > 0 && (length(local.source_policy_documents) > 0 || length(local.override_policy_documents) > 0) ? data.aws_iam_policy_document.ack_policy[0].json : null
 }
 
 output "has_inline_policy" {
   description = "Whether inline policies are available"
-  value       = length(local.source_policy_documents) > 0 || length(local.override_policy_documents) > 0
+  value       = var.create ? (length(local.source_policy_documents) > 0 || length(local.override_policy_documents) > 0) : false
 }
 
 output "has_managed_policy" {
   description = "Whether managed policy ARNs are available"
-  value       = length(local.all_policy_arns) > 0
+  value       = var.create ? length(local.all_policy_arns) > 0 : false
 }
 
 output "service_name" {

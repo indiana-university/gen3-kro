@@ -55,7 +55,7 @@ module "external_secrets_pod_identity" {
   external_secrets_kms_key_arns               = lookup(local.enabled_addons["external_secrets"], "kms_key_arns", [])
   external_secrets_secrets_manager_arns       = lookup(local.enabled_addons["external_secrets"], "secrets_manager_arns", [])
   external_secrets_ssm_parameter_arns         = lookup(local.enabled_addons["external_secrets"], "ssm_parameter_arns", [])
-  external_secrets_secrets_manager_create_permission = lookup(local.enabled_addons["external_secrets"], "create_permission", true)
+  external_secrets_create_permission          = lookup(local.enabled_addons["external_secrets"], "create_permission", false)
   attach_custom_policy                        = lookup(local.enabled_addons["external_secrets"], "attach_custom_policy", false)
   policy_statements                           = lookup(local.enabled_addons["external_secrets"], "policy_statements", [])
 
@@ -79,7 +79,7 @@ module "aws_load_balancer_controller_pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
   version = "~> 1.4.0"
 
-  name = "${var.cluster_name}-aws-load-balancer-controller"
+  name = "${var.cluster_name}-aws-lb-ctrl"
 
   attach_aws_lb_controller_policy = true
 

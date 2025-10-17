@@ -122,7 +122,7 @@ variable "eks_cluster_tags" {
 ###############################################################################
 variable "addon_configs" {
   description = "Map of addon configurations from config.yaml (includes enable_pod_identity, namespace, service_account, and addon-specific settings)"
-  type        = map(any)
+  type        = any
   default     = {}
   # Example structure:
   # {
@@ -151,7 +151,7 @@ variable "addon_configs" {
 ###############################################################################
 variable "ack_configs" {
   description = "Map of ACK controller configurations from config.yaml (includes enable_pod_identity, namespace, service_account per controller)"
-  type        = map(any)
+  type        = any
   default     = {}
   # Example structure:
   # {
@@ -249,4 +249,10 @@ variable "argocd_outputs_dir" {
   description = "Directory to store ArgoCD generated output files"
   type        = string
   default     = "./outputs/argocd"
+}
+
+variable "argocd_inline_policy" {
+  description = "Inline IAM policy document for ArgoCD pod identity"
+  type        = string
+  default     = ""
 }

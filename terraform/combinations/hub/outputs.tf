@@ -81,10 +81,10 @@ output "oidc_provider_arn" {
 output "ack_iam_policies" {
   description = "Map of ACK IAM policy details"
   value = var.enable_ack ? {
-    for k, v in module.same_account : k => {
-      has_inline_policy  = v.has_inline_policy
-      has_managed_policy = v.has_managed_policy
-      policy_arns        = v.policy_arns
+    for k, v in module.ack : k => {
+      has_inline_policy = v.has_inline_policy
+      policy_arns       = v.policy_arns
+      role_arn          = v.role_arn
     }
   } : {}
 }
@@ -113,7 +113,7 @@ output "cross_account_policies" {
   description = "Map of cross-account policy details"
   value = {
     for k, v in module.cross_account_policy : k => {
-      policy_arn  = v.policy_arn
+      policy_id   = v.policy_id
       policy_name = v.policy_name
     }
   }
@@ -124,12 +124,12 @@ output "cross_account_policies" {
 ###############################################################################
 output "ebs_csi_role_arn" {
   description = "ARN of the EBS CSI driver IAM role"
-  value       = var.enable_aws_ebs_csi ? module.addons.ebs_csi_role_arn : null
+  value       = try(module.addons.aws_ebs_csi_role_arn, null)
 }
 
 output "external_secrets_role_arn" {
   description = "ARN of the External Secrets IAM role"
-  value       = var.enable_external_secrets ? module.addons.external_secrets_role_arn : null
+  value       = try(module.addons.external_secrets_role_arn, null)
 }
 
 output "addons_pod_identity_roles" {

@@ -70,7 +70,7 @@ locals {
 # IAM Policy Document (if inline policies are used)
 ###################################################################################################################################################
 data "aws_iam_policy_document" "ack_policy" {
-  count = var.create && (length(local.source_policy_documents) > 0 || length(local.override_policy_documents) > 0) ? 1 : 0
+  count = var.create ? 1 : 0
 
   # Source policy documents
   source_policy_documents = local.source_policy_documents

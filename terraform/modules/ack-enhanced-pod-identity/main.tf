@@ -12,20 +12,20 @@ locals {
 
   # Build paths for policy files
   # Try spoke-specific path first, then fall back to hub
-  spoke_path = "${path.root}/../../iam/gen3-kro/${local.context}/acks/${var.service_name}"
-  hub_path   = "${path.root}/../../iam/gen3-kro/hub/acks/${var.service_name}"
+  spoke_path = "${path.root}/../../../../../../../terraform/combinations/iam/gen3-kro/${local.context}/acks/${var.service_name}"
+  hub_path   = "${path.root}/../../../../../../../terraform/combinations/iam/gen3-kro/hub/acks/${var.service_name}"
 
   # Check if spoke-specific inline policy exists
   has_spoke_inline_policy = local.context != "hub" ? fileexists("${local.spoke_path}/source-policy-inline.json") : false
-  has_hub_inline_policy   = fileexists("${hub_path}/source-policy-inline.json")
+  has_hub_inline_policy   = fileexists("${local.hub_path}/source-policy-inline.json")
 
   # Check if spoke-specific ARN policy exists
   has_spoke_arn_policy = local.context != "hub" ? fileexists("${local.spoke_path}/source-policy-arn.json") : false
-  has_hub_arn_policy   = fileexists("${hub_path}/source-policy-arn.json")
+  has_hub_arn_policy   = fileexists("${local.hub_path}/source-policy-arn.json")
 
   # Check if spoke-specific override policy exists
   has_spoke_override_policy = local.context != "hub" ? fileexists("${local.spoke_path}/overridepolicy.json") : false
-  has_hub_override_policy   = fileexists("${hub_path}/overridepolicy.json")
+  has_hub_override_policy   = fileexists("${local.hub_path}/overridepolicy.json")
 
   # Determine which path to use (spoke if exists, otherwise hub)
   use_inline_path   = local.has_spoke_inline_policy ? local.spoke_path : local.hub_path

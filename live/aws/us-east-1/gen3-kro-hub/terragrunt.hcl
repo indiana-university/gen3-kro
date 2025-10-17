@@ -159,7 +159,7 @@ locals {
     for spoke in local.spokes : spoke.alias => {
       for controller_name in keys(local.hub_ack_configs) : controller_name =>
       try(
-        jsondecode(file("${local.repo_root}/iam/gen3-kro/${spoke.alias}/ack-spoke-arns-${controller_name}.json")),
+        jsondecode(file("${local.repo_root}/terraform/combinations/iam/gen3-kro/${spoke.alias}/ack-spoke-arns-${controller_name}.json")),
         null
       )
     }
@@ -257,6 +257,7 @@ inputs = {
   argocd_apps        = {}
   argocd_outputs_dir = local.outputs_dir
   argocd_namespace   = local.argocd_namespace
+  argocd_inline_policy = fileexists("${local.repo_root}/terraform/combinations/iam/gen3-kro/hub/argocd/recommended-inline-policy") ? file("${local.repo_root}/terraform/combinations/iam/gen3-kro/hub/argocd/recommended-inline-policy") : ""
 }
 
 # ArgoCD providers and module generation
@@ -303,18 +304,28 @@ generate "spokes" {
   contents  = (local.enable_ack_spoke_roles ? join("\n\n", [
     for spoke in local.spokes :
     <<-EOF
+# Local variable to collect hub ACK pod identity ARNs
+locals {
+  hub_pod_identity_arns_${spoke.alias} = {
+    ${join("\n    ", [for controller_name in keys(local.hub_ack_configs) : "\"${controller_name}\" = try(module.ack[\"${controller_name}\"].role_arn, \"\")"])}
+  }
+}
+
 module "spoke_${spoke.alias}" {
-  source = "../spoke-iam"
+  source = "../../combinations/spoke-iam"
 
   providers = {
     aws = aws.${spoke.alias}
   }
 
-  tags           = ${jsonencode(merge(local.base_tags, lookup(spoke, "tags", {}), { Spoke = spoke.alias, caller_level = "spoke_${spoke.alias}" }))}
-  cluster_name   = var.cluster_name
-  spoke_alias    = "${spoke.alias}"
-  ack_configs    = ${jsonencode(lookup(spoke, "ack_configs", {}))}
-  hub_ack_configs = ${jsonencode(local.hub_ack_configs)}
+  tags                  = ${jsonencode(merge(local.base_tags, lookup(spoke, "tags", {}), { Spoke = spoke.alias, caller_level = "spoke_${spoke.alias}" }))}
+  cluster_name          = var.cluster_name
+  spoke_alias           = "${spoke.alias}"
+  ack_configs           = ${jsonencode(lookup(spoke, "ack_configs", {}))}
+  hub_ack_configs       = ${jsonencode(local.hub_ack_configs)}
+  hub_pod_identity_arns = local.hub_pod_identity_arns_${spoke.alias}
+
+  depends_on = [module.ack]
 }
 EOF
   ]) : "")

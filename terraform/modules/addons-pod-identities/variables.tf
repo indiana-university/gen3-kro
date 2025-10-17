@@ -11,7 +11,7 @@ variable "cluster_name" {
 
 variable "addon_configs" {
   description = "Map of addon configurations from config.yaml (includes enable_pod_identity, namespace, service_account, and addon-specific settings)"
-  type        = map(any)
+  type        = any
   default     = {}
   # Example structure:
   # {

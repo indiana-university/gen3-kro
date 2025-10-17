@@ -140,10 +140,8 @@ module "argocd_pod_identity" {
   create = var.enable_vpc && var.enable_eks_cluster && var.enable_argocd
 
   cluster_name            = var.cluster_name
-  has_inline_policy       = true
-  source_policy_documents = [
-    file("${path.root}/../../iam/gen3-kro/hub/argocd/recommended-inline-policy")
-  ]
+  has_inline_policy       = var.argocd_inline_policy != ""
+  source_policy_documents = var.argocd_inline_policy != "" ? [var.argocd_inline_policy] : []
 
   association_defaults = {
     namespace = var.argocd_namespace

@@ -40,3 +40,14 @@ variable "hub_ack_configs" {
   type        = map(any)
   default     = {}
 }
+
+variable "hub_pod_identity_arns" {
+  description = "Map of hub ACK pod identity role ARNs by controller name (passed from hub's ACK module outputs)"
+  type        = map(string)
+  default     = {}
+  # Example structure:
+  # {
+  #   "iam" = "arn:aws:iam::123456789012:role/gen3-kro-hub-ack-iam-pod-identity"
+  #   "s3"  = "arn:aws:iam::123456789012:role/gen3-kro-hub-ack-s3-pod-identity"
+  # }
+}

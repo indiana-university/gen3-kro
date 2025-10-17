@@ -27,7 +27,7 @@ module "role" {
   cluster_name              = var.cluster_name
   service_name              = each.key
   spoke_alias               = var.spoke_alias
-  hub_pod_identity_role_arn = "" # Will be populated by hub via cross-account policy
+  hub_pod_identity_role_arn = lookup(var.hub_pod_identity_arns, each.key, "")
   combined_policy_json      = try(module.policy[each.key].combined_policy_json, null)
   policy_arns               = try(module.policy[each.key].policy_arns, {})
   has_inline_policy         = try(module.policy[each.key].has_inline_policy, false)

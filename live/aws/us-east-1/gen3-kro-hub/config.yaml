@@ -23,7 +23,7 @@ hub:
     enable_cluster_creator_admin_permissions: true
     cluster_compute_config:
       enabled: true
-      node_pools: ["general purpose"]
+      node_pools: ["general-purpose"]
 
   gitops:
     org_name: "indiana-university"
@@ -62,8 +62,8 @@ hub:
       namespace: "kube-system"
       service_account: "aws-load-balancer-controller"
     argocd:
-      enable_pod_identity: true
-      enable_argocd: true
+      enable_pod_identity: false
+      enable_argocd: false
       namespace: "argocd"
       argocd_chart_version: "8.6.0"
     amazon_managed_service_prometheus:
@@ -230,7 +230,7 @@ paths:
 
 spokes:
   - alias: "spoke1"
-    enabled: true
+    enabled: false
     region: "us-east-1"
     profile: "boadeyem_tf"
 
@@ -279,7 +279,7 @@ spokes:
       Purpose: "multi-account-demo"
 
   - alias: "spoke2"
-    enabled: true
+    enabled: false
     region: "us-east-1"
     profile: "boadeyem_tf"
 
