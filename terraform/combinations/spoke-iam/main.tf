@@ -1,10 +1,11 @@
 ###############################################################################
 # ACK IAM Policy Module
+# Only create policies for controllers that need role creation (no override_arn)
 ###############################################################################
 module "policy" {
   source = "../../modules/ack-iam-policy"
 
-  for_each = local.enabled_controllers
+  for_each = local.controllers_needing_roles
 
   create = true
 
@@ -16,11 +17,12 @@ module "policy" {
 
 ###############################################################################
 # ACK Spoke Role Module
+# Only create roles for controllers that need role creation (no override_arn)
 ###############################################################################
 module "role" {
   source = "../../modules/ack-spoke-role"
 
-  for_each = local.enabled_controllers
+  for_each = local.controllers_needing_roles
 
   create = true
 

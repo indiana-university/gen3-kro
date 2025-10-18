@@ -45,8 +45,27 @@ variable "private_subnet_tags" {
   default     = {}
 }
 
+###################################################################################################################################################
+# Explicit Subnet Configuration
+###################################################################################################################################################
+variable "availability_zones" {
+  description = "List of availability zones for subnets (e.g., ['us-east-1a', 'us-east-1b', 'us-east-1c'])"
+  type        = list(string)
+}
+
+variable "private_subnet_cidrs" {
+  description = "List of CIDR blocks for private subnets (must match length of availability_zones)"
+  type        = list(string)
+}
+
+variable "public_subnet_cidrs" {
+  description = "List of CIDR blocks for public subnets (must match length of availability_zones)"
+  type        = list(string)
+}
+
 variable "tags" {
   description = "Tags to apply to all VPC resources"
   type        = map(string)
   default     = {}
 }
+

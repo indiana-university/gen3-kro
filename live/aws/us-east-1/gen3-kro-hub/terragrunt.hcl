@@ -8,10 +8,14 @@ terraform {
 
 locals {
   ###################################################################################################################################################
-  # DATA IMPORT SECTION - Imports variables from config.yaml
+  # DATA IMPORT SECTION - Imports variables from config.yaml and disabled-addons.yaml
   ###################################################################################################################################################
   repo_root = get_repo_root()
   config    = yamldecode(file("${get_terragrunt_dir()}/config.yaml"))
+
+  # Import disabled addons (available addons set to enable_pod_identity: true for testing)
+  # In production, these would be disabled (enable_pod_identity: false)
+  disabled_addons = try(yamldecode(file("${get_terragrunt_dir()}/disabled-addons.yaml")), { addon_configs = {} })
 
   # Direct imports from config.yaml structure
   hub_config    = local.config.hub
@@ -30,14 +34,18 @@ locals {
   hub_alias    = local.hub_config.alias
 
   # VPC configuration from hub.vpc
-  vpc_config         = lookup(local.hub_config, "vpc", {})
-  enable_vpc         = lookup(local.vpc_config, "enable_vpc", false)
-  vpc_name           = lookup(local.vpc_config, "vpc_name", "")
-  vpc_cidr           = lookup(local.vpc_config, "vpc_cidr", "10.0.0.0/16")
-  enable_nat_gateway = lookup(local.vpc_config, "enable_nat_gateway", false)
-  single_nat_gateway = lookup(local.vpc_config, "single_nat_gateway", false)
-  existing_vpc_id    = lookup(local.vpc_config, "existing_vpc_id", "")
-  existing_subnet_ids = lookup(local.vpc_config, "existing_subnet_ids", [])
+  vpc_config                = lookup(local.hub_config, "vpc", {})
+  enable_vpc                = lookup(local.vpc_config, "enable_vpc", false)
+  vpc_name                  = lookup(local.vpc_config, "vpc_name", "")
+  vpc_cidr                  = lookup(local.vpc_config, "vpc_cidr", "10.0.0.0/16")
+  enable_nat_gateway        = lookup(local.vpc_config, "enable_nat_gateway", false)
+  single_nat_gateway        = lookup(local.vpc_config, "single_nat_gateway", false)
+  existing_vpc_id           = lookup(local.vpc_config, "existing_vpc_id", "")
+  existing_subnet_ids       = lookup(local.vpc_config, "existing_subnet_ids", [])
+  # Explicit subnet configuration provided via module variables
+  availability_zones        = lookup(local.vpc_config, "availability_zones", [])
+  private_subnet_cidrs      = lookup(local.vpc_config, "private_subnet_cidrs", [])
+  public_subnet_cidrs       = lookup(local.vpc_config, "public_subnet_cidrs", [])
 
   # EKS configuration from hub.eks
   eks_config                               = lookup(local.hub_config, "eks", {})
@@ -56,16 +64,30 @@ locals {
   gitops_bootstrap_path = lookup(local.gitops_config, "bootstrap_path", "")
 
   # IAM Gitops configuration from hub.iam_gitops
-  iam_gitops_config            = lookup(local.hub_config, "iam_gitops", {})
-  iam_gitops_org_name          = lookup(local.iam_gitops_config, "org_name", "")
-  iam_gitops_repo_name         = lookup(local.iam_gitops_config, "repo_name", "")
-  iam_gitops_github_url        = lookup(local.iam_gitops_config, "github_url", "github.com")
-  iam_gitops_branch            = lookup(local.iam_gitops_config, "branch", "main")
-  iam_gitops_private_repo_path = lookup(local.iam_gitops_config, "iam_policy_private_repo_path", "")
-  iam_gitops_version           = lookup(local.iam_gitops_config, "version", "0.1.0")
+  iam_gitops_config           = lookup(local.hub_config, "iam_gitops", {})
+  iam_gitops_org_name         = lookup(local.iam_gitops_config, "org_name", "")
+  iam_gitops_repo_name        = lookup(local.iam_gitops_config, "repo_name", "")
+  iam_gitops_github_url       = lookup(local.iam_gitops_config, "github_url", "github.com")
+  iam_gitops_branch           = lookup(local.iam_gitops_config, "branch", "main")
+  iam_gitops_policy_base_path = lookup(local.iam_gitops_config, "policy_base_path", "")
 
-  # Addon configurations from hub.addon_configs
-  addon_configs = lookup(local.hub_config, "addon_configs", {})
+  # Addon configurations - merge disabled-addons.yaml defaults with config.yaml overrides
+  # Strategy: disabled-addons.yaml provides the full catalog and default settings
+  #           config.yaml supplies environment-specific overrides
+  #           Merge each addon map individually so partial overrides keep catalog defaults
+  addon_configs_from_config = lookup(local.hub_config, "addon_configs", {})
+  addon_configs_from_disabled = lookup(local.disabled_addons, "addon_configs", {})
+  addon_config_names = distinct(concat(
+    keys(local.addon_configs_from_disabled),
+    keys(local.addon_configs_from_config)
+  ))
+  addon_configs = {
+    for name in local.addon_config_names :
+    name => merge(
+      lookup(local.addon_configs_from_disabled, name, {}),
+      lookup(local.addon_configs_from_config, name, {})
+    )
+  }
 
   # ACK configurations from hub.ack_configs
   hub_ack_configs = lookup(local.hub_config, "ack_configs", {})
@@ -74,6 +96,7 @@ locals {
   outputs_dir            = lookup(local.paths_config, "outputs_dir", "./outputs")
   terraform_state_bucket = lookup(local.paths_config, "terraform_state_bucket", "")
   terraform_locks_table  = lookup(local.paths_config, "terraform_locks_table", "")
+  iam_base_path          = local.iam_gitops_policy_base_path != "" ? local.iam_gitops_policy_base_path : lookup(local.paths_config, "iam_base_path", "iam")
 
   # RGDs configuration
   rgds_gitops_config      = lookup(local.rgds_config, "gitops", {})
@@ -117,6 +140,11 @@ locals {
   # Constructed URLs and paths
   hub_repo_url = format("https://%s/%s/%s.git", local.gitops_github_url, local.gitops_org_name, local.gitops_repo_name)
 
+  # IAM Git URL construction (using same repo as hub unless iam_gitops is configured)
+  iam_repo_url_base = local.iam_gitops_org_name != "" ? format("https://%s/%s/%s.git", local.iam_gitops_github_url, local.iam_gitops_org_name, local.iam_gitops_repo_name) : local.hub_repo_url
+  iam_git_url       = format("git::%s", local.iam_repo_url_base)
+  iam_git_branch    = local.iam_gitops_branch != "" ? local.iam_gitops_branch : local.gitops_branch
+
   # ArgoCD configuration objects
   argocd_config = {
     namespace     = local.argocd_namespace
@@ -124,6 +152,35 @@ locals {
     repository    = "https://argoproj.github.io/argo-helm"
     chart_version = local.argocd_chart_version
     values        = []
+  }
+
+  # ArgoCD GitOps metadata for cross-account access
+  argocd_gitops = {
+    hub = {
+      alias        = local.hub_alias
+      region       = local.aws_region
+      cluster_name = local.cluster_name
+      repo_url     = local.hub_repo_url
+      branch       = local.gitops_branch
+    }
+    spokes = [
+      for spoke in local.spokes : {
+        alias        = spoke.alias
+        region       = spoke.region
+        cluster_name = lookup(spoke, "cluster_name", "${local.cluster_name}-${spoke.alias}")
+        repo_url     = lookup(lookup(spoke, "gitops", {}), "repo_url", local.hub_repo_url)
+        branch       = lookup(lookup(spoke, "gitops", {}), "branch", local.gitops_branch)
+        argo_path    = lookup(lookup(spoke, "gitops", {}), "argo_path", "argocd/spokes")
+      }
+    ]
+    rgds = {
+      org_name    = local.rgds_gitops_org_name
+      repo_name   = local.rgds_gitops_repo_name
+      github_url  = local.rgds_gitops_github_url
+      branch      = local.rgds_gitops_branch
+      argocd_path = local.rgds_gitops_argocd_path
+      repo_url    = local.rgds_gitops_org_name != "" ? format("https://%s/%s/%s.git", local.rgds_gitops_github_url, local.rgds_gitops_org_name, local.rgds_gitops_repo_name) : ""
+    }
   }
 
   argocd_cluster = {
@@ -139,7 +196,8 @@ locals {
         fleet_member = "control-plane"
       }
     }
-    addons = {}  # Addons now managed via addon_configs
+    addons         = {}  # Addons now managed via addon_configs
+    gitops_context = local.argocd_gitops  # ArgoCD GitOps metadata for cross-account access
   }
 
   # Kubernetes provider configuration
@@ -173,11 +231,15 @@ generate "data_sources" {
 data "aws_eks_cluster" "cluster" {
   count = var.enable_argocd && var.enable_eks_cluster ? 1 : 0
   name  = var.cluster_name
+
+  depends_on = [module.eks_cluster]
 }
 
 data "aws_eks_cluster_auth" "cluster" {
   count = var.enable_argocd && var.enable_eks_cluster ? 1 : 0
   name  = var.cluster_name
+
+  depends_on = [module.eks_cluster]
 }
 EOF
 }
@@ -216,16 +278,20 @@ inputs = {
   cluster_name = local.cluster_name
 
   # VPC configuration
-  enable_vpc          = local.enable_vpc
-  vpc_name            = local.vpc_name
-  vpc_cidr            = local.vpc_cidr
-  enable_nat_gateway  = local.enable_nat_gateway
-  single_nat_gateway  = local.single_nat_gateway
-  vpc_tags            = {}
-  public_subnet_tags  = {}
-  private_subnet_tags = {}
-  existing_vpc_id     = local.existing_vpc_id
-  existing_subnet_ids = local.existing_subnet_ids
+  enable_vpc             = local.enable_vpc
+  vpc_name               = local.vpc_name
+  vpc_cidr               = local.vpc_cidr
+  enable_nat_gateway     = local.enable_nat_gateway
+  single_nat_gateway     = local.single_nat_gateway
+  vpc_tags               = {}
+  public_subnet_tags     = {}
+  private_subnet_tags    = {}
+  existing_vpc_id        = local.existing_vpc_id
+  existing_subnet_ids    = local.existing_subnet_ids
+  # Explicit subnet configuration provided via module variables
+  availability_zones     = local.availability_zones
+  private_subnet_cidrs   = local.private_subnet_cidrs
+  public_subnet_cidrs    = local.public_subnet_cidrs
 
   # EKS configuration
   enable_eks_cluster                       = local.enable_eks_cluster
@@ -248,6 +314,11 @@ inputs = {
 
   # Spoke ARN inputs (loaded from JSON files or empty)
   spoke_arn_inputs = local.spoke_arn_inputs
+
+  # IAM Git configuration
+  iam_git_repo_url = local.iam_git_url
+  iam_git_branch   = local.iam_git_branch
+  iam_base_path    = local.iam_base_path
 
   # ArgoCD configuration
   enable_argocd      = local.enable_argocd

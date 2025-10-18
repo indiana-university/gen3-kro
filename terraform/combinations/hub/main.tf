@@ -22,19 +22,24 @@ module "vpc" {
 
   create = var.enable_vpc
 
-  vpc_name            = var.vpc_name
-  vpc_cidr            = var.vpc_cidr
-  cluster_name        = var.cluster_name
-  enable_nat_gateway  = var.enable_nat_gateway
-  single_nat_gateway  = var.single_nat_gateway
-  public_subnet_tags  = var.public_subnet_tags
-  private_subnet_tags = var.private_subnet_tags
+  vpc_name               = var.vpc_name
+  vpc_cidr               = var.vpc_cidr
+  cluster_name           = var.cluster_name
+  enable_nat_gateway     = var.enable_nat_gateway
+  single_nat_gateway     = var.single_nat_gateway
+  public_subnet_tags     = var.public_subnet_tags
+  private_subnet_tags    = var.private_subnet_tags
+  # Explicit subnet configuration provided via module variables
+  availability_zones     = var.availability_zones
+  private_subnet_cidrs   = var.private_subnet_cidrs
+  public_subnet_cidrs    = var.public_subnet_cidrs
 
   tags = merge(
     var.tags,
     var.vpc_tags,
     {
-      caller_level = "vpc"
+      caller     = "hub"
+      module     = "vpc"
     }
   )
 }
@@ -59,7 +64,8 @@ module "eks_cluster" {
     var.tags,
     var.eks_cluster_tags,
     {
-      caller_level = "eks_cluster"
+      caller     = "hub"
+      module     = "eks_cluster"
     }
   )
 
@@ -67,38 +73,69 @@ module "eks_cluster" {
 }
 
 ###############################################################################
-# ACK Enhanced Pod Identity Module
+# Pod Identities Module (Unified: ACK, ArgoCD, Addons)
 ###############################################################################
-module "ack" {
-  source = "../../modules/ack-enhanced-pod-identity"
+module "pod_identities" {
+  source = "../../modules/pod-identity"
 
-  for_each = var.ack_configs
+  for_each = merge(
+    # ACK services
+    {
+      for svc_name, svc_config in var.ack_configs :
+      "ack-${svc_name}" => {
+        service_type         = "acks"  # folder name is plural: iam/gen3-kro/hub/acks/
+        service_name         = svc_name
+        namespace            = lookup(svc_config, "namespace", "ack-system")
+        service_account      = lookup(svc_config, "service_account", "ack-${svc_name}-controller")
+        custom_inline_policy = null
+        enabled              = var.enable_ack && lookup(svc_config, "enable_pod_identity", true)
+      }
+      if var.enable_ack && lookup(svc_config, "enable_pod_identity", true)
+    },
 
-  create = var.enable_vpc && var.enable_eks_cluster && var.enable_ack && lookup(each.value, "enable_pod_identity", true)
-
-  cluster_name              = var.cluster_name
-  service_name              = each.key
-  cross_account_policy_json = null
-  override_policy_documents = []
-  additional_policy_arns    = {}
-  trust_policy_conditions   = []
-
-  association_defaults = {
-    namespace = lookup(each.value, "namespace", "ack-system")
-  }
-
-  associations = {
-    default = {
-      cluster_name    = var.cluster_name
-      service_account = lookup(each.value, "service_account", "ack-${each.key}-controller")
+    # Addons
+    {
+      for addon_name, addon_config in var.addon_configs :
+      "${addon_name}" => {
+        service_type         = "addons"  # folder name is plural: iam/gen3-kro/hub/addons/
+        service_name         = addon_name
+        namespace            = lookup(addon_config, "namespace", "kube-system")
+        service_account      = lookup(addon_config, "service_account", addon_name)
+        custom_inline_policy = null
+        enabled              = lookup(addon_config, "enable_pod_identity", false)
+      }
+      if lookup(addon_config, "enable_pod_identity", false)
     }
-  }
+  )
+
+  create = var.enable_vpc && var.enable_eks_cluster && each.value.enabled
+
+  # Service identification
+  service_type = each.value.service_type
+  service_name = each.value.service_name
+  context      = "hub"
+
+  # Cluster and namespace configuration
+  cluster_name    = var.cluster_name
+  namespace       = each.value.namespace
+  service_account = each.value.service_account
+
+  # Custom inline policy (for ArgoCD or custom services)
+  custom_inline_policy = each.value.custom_inline_policy
+
+  # IAM Policy loading configuration
+  iam_policy_repo_url  = var.iam_git_repo_url
+  iam_policy_branch    = var.iam_git_branch
+  iam_policy_base_path = var.iam_base_path
+  repo_root_path       = var.iam_git_repo_url == "" ? "${path.root}/../../../.." : ""
 
   tags = merge(
     var.tags,
     {
-      caller_level = "ack_${each.key}"
-      ack_service  = each.key
+      caller       = "hub"
+      module       = "pod_identities"
+      service_type = each.value.service_type
+      service_name = each.value.service_name
       context      = local.context
     }
   )
@@ -117,82 +154,19 @@ module "cross_account_policy" {
   create = var.enable_multi_acct && var.enable_ack && lookup(each.value, "enable_pod_identity", true) && length(local.spoke_role_arns_by_controller[each.key]) > 0
 
   service_name              = each.key
-  hub_pod_identity_role_arn = try(module.ack[each.key].role_arn, "")
+  hub_pod_identity_role_arn = try(module.pod_identities["ack-${each.key}"].role_arn, "")
   spoke_role_arns           = local.spoke_role_arns_by_controller[each.key]
 
   tags = merge(
     var.tags,
     {
-      caller_level = "cross_account_policy_${each.key}"
-      ack_service  = each.key
+      caller  = "hub"
+      module  = "cross_account_policy"
+      service = each.key
     }
   )
 
-  depends_on = [module.ack]
-}
-
-###############################################################################
-# ArgoCD Pod Identity Module
-###############################################################################
-module "argocd_pod_identity" {
-  source = "../../modules/argocd-pod-identity"
-
-  create = var.enable_vpc && var.enable_eks_cluster && var.enable_argocd
-
-  cluster_name            = var.cluster_name
-  has_inline_policy       = var.argocd_inline_policy != ""
-  source_policy_documents = var.argocd_inline_policy != "" ? [var.argocd_inline_policy] : []
-
-  association_defaults = {
-    namespace = var.argocd_namespace
-  }
-
-  associations = {
-    controller = {
-      cluster_name    = var.cluster_name
-      service_account = "argocd-application-controller"
-    }
-    server = {
-      cluster_name    = var.cluster_name
-      service_account = "argocd-server"
-    }
-    repo-server = {
-      cluster_name    = var.cluster_name
-      service_account = "argocd-repo-server"
-    }
-  }
-
-  tags = merge(
-    var.tags,
-    {
-      caller_level = "argocd_pod_identity"
-      context      = local.context
-    }
-  )
-
-  depends_on = [module.eks_cluster]
-}
-
-###############################################################################
-# Addons Pod Identities Module
-###############################################################################
-module "addons" {
-  source = "../../modules/addons-pod-identities"
-
-  create = var.enable_vpc && var.enable_eks_cluster
-
-  cluster_name  = var.cluster_name
-  addon_configs = var.addon_configs
-
-  tags = merge(
-    var.tags,
-    {
-      caller_level = "addons_pod_identities"
-      context      = local.context
-    }
-  )
-
-  depends_on = [module.eks_cluster]
+  depends_on = [module.pod_identities]
 }
 
 ###############################################################################
@@ -209,5 +183,5 @@ module "argocd" {
   apps        = var.argocd_apps
   outputs_dir = var.argocd_outputs_dir
 
-  depends_on = [module.eks_cluster, module.addons, module.argocd_pod_identity]
+  depends_on = [module.eks_cluster, module.pod_identities]
 }

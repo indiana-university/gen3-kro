@@ -76,6 +76,27 @@ variable "existing_subnet_ids" {
 }
 
 ###############################################################################
+# Explicit Subnet Configuration
+###############################################################################
+variable "availability_zones" {
+  description = "List of availability zones for subnets (e.g., ['us-east-1a', 'us-east-1b', 'us-east-1c'])"
+  type        = list(string)
+  default     = []
+}
+
+variable "private_subnet_cidrs" {
+  description = "List of CIDR blocks for private subnets (must match length of availability_zones)"
+  type        = list(string)
+  default     = []
+}
+
+variable "public_subnet_cidrs" {
+  description = "List of CIDR blocks for public subnets (must match length of availability_zones)"
+  type        = list(string)
+  default     = []
+}
+
+###############################################################################
 # EKS Cluster Variables
 ###############################################################################
 variable "enable_eks_cluster" {
@@ -255,4 +276,25 @@ variable "argocd_inline_policy" {
   description = "Inline IAM policy document for ArgoCD pod identity"
   type        = string
   default     = ""
+}
+
+###############################################################################
+# IAM GitOps Variables
+###############################################################################
+variable "iam_git_repo_url" {
+  description = "Git repository URL for IAM policy files (e.g., git::https://github.com/org/repo.git)"
+  type        = string
+  default     = ""
+}
+
+variable "iam_git_branch" {
+  description = "Git branch to use for IAM policy files"
+  type        = string
+  default     = "main"
+}
+
+variable "iam_base_path" {
+  description = "Base path within the Git repository for IAM policy files"
+  type        = string
+  default     = "terraform/combinations/iam"
 }

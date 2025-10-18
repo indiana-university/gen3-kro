@@ -10,9 +10,9 @@ module "vpc" {
   name = var.vpc_name
   cidr = var.vpc_cidr
 
-  azs             = [for a in data.aws_availability_zones.available[0].names : a if a != "us-east-1e"]
-  private_subnets = [for k, v in [for a in data.aws_availability_zones.available[0].names : a if a != "us-east-1e"] : cidrsubnet(var.vpc_cidr, 4, k)]
-  public_subnets  = [for k, v in [for a in data.aws_availability_zones.available[0].names : a if a != "us-east-1e"] : cidrsubnet(var.vpc_cidr, 8, k + 240)]
+  azs             = var.availability_zones
+  private_subnets = var.private_subnet_cidrs
+  public_subnets  = var.public_subnet_cidrs
 
   enable_nat_gateway = var.enable_nat_gateway
   single_nat_gateway = var.single_nat_gateway
@@ -36,14 +36,7 @@ module "vpc" {
 }
 
 ###################################################################################################################################################
-# Data Sources
+# Notes
 ###################################################################################################################################################
-data "aws_availability_zones" "available" {
-  count = var.create ? 1 : 0
-
-  filter {
-    name   = "opt-in-status"
-    values = ["opt-in-not-required"]
-  }
-}
+# Availability zones are provided via variables; no additional data sources are required.
 

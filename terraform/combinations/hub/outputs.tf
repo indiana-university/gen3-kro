@@ -81,11 +81,13 @@ output "oidc_provider_arn" {
 output "ack_iam_policies" {
   description = "Map of ACK IAM policy details"
   value = var.enable_ack ? {
-    for k, v in module.ack : k => {
-      has_inline_policy = v.has_inline_policy
-      policy_arns       = v.policy_arns
-      role_arn          = v.role_arn
+    for k, v in module.pod_identities :
+    replace(k, "ack-", "") => {
+      policy_source = v.policy_source
+      policy_arn    = v.policy_arn
+      role_arn      = v.role_arn
     }
+    if startswith(k, "ack-")
   } : {}
 }
 
@@ -95,10 +97,12 @@ output "ack_iam_policies" {
 output "ack_pod_identities" {
   description = "Map of ACK pod identity details"
   value = var.enable_ack && var.enable_eks_cluster ? {
-    for k, v in module.ack : k => {
+    for k, v in module.pod_identities :
+    replace(k, "ack-", "") => {
       role_arn  = v.role_arn
       role_name = v.role_name
     }
+    if startswith(k, "ack-")
   } : {}
 }
 
@@ -124,17 +128,21 @@ output "cross_account_policies" {
 ###############################################################################
 output "ebs_csi_role_arn" {
   description = "ARN of the EBS CSI driver IAM role"
-  value       = try(module.addons.aws_ebs_csi_role_arn, null)
+  value       = try(module.pod_identities["addon-ebs_csi"].role_arn, null)
 }
 
 output "external_secrets_role_arn" {
   description = "ARN of the External Secrets IAM role"
-  value       = try(module.addons.external_secrets_role_arn, null)
+  value       = try(module.pod_identities["addon-external_secrets"].role_arn, null)
 }
 
 output "addons_pod_identity_roles" {
   description = "Map of addon pod identity IAM role ARNs keyed by addon"
-  value       = module.addons.pod_identity_roles
+  value = {
+    for k, v in module.pod_identities :
+    replace(k, "addon-", "") => v.role_arn
+    if startswith(k, "addon-")
+  }
 }
 
 ###############################################################################
@@ -142,17 +150,17 @@ output "addons_pod_identity_roles" {
 ###############################################################################
 output "argocd_pod_identity_role_arn" {
   description = "ARN of the IAM role associated with ArgoCD pod identity"
-  value       = var.enable_argocd && var.enable_eks_cluster ? module.argocd_pod_identity.role_arn : null
+  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd-app-controller"].role_arn, null) : null
 }
 
 output "argocd_pod_identity_role_name" {
   description = "Name of the IAM role associated with ArgoCD pod identity"
-  value       = var.enable_argocd && var.enable_eks_cluster ? module.argocd_pod_identity.role_name : null
+  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd-app-controller"].role_name, null) : null
 }
 
 output "argocd_pod_identity_associations" {
   description = "Map of ArgoCD pod identity associations"
-  value       = var.enable_argocd && var.enable_eks_cluster ? module.argocd_pod_identity.associations : {}
+  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd-app-controller"].associations, {}) : {}
 }
 
 ###############################################################################
@@ -171,9 +179,22 @@ output "argocd_release_name" {
 output "argocd_cluster_secret" {
   description = "ArgoCD cluster secret metadata for the deployed cluster registration"
   value       = var.enable_argocd ? module.argocd.cluster : null
+  sensitive   = true
 }
 
 output "argocd_applications" {
   description = "ArgoCD application resources rendered by the bootstrap chart"
   value       = var.enable_argocd ? module.argocd.apps : {}
+}
+
+###############################################################################
+# Debug Outputs
+###############################################################################
+output "iam_git_config" {
+  description = "IAM Git configuration for debugging"
+  value = {
+    iam_git_repo_url = var.iam_git_repo_url
+    iam_git_branch   = var.iam_git_branch
+    iam_base_path    = var.iam_base_path
+  }
 }
