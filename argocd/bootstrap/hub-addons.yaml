@@ -49,41 +49,41 @@ spec:
                 - path: '{{.metadata.annotations.hub_repo_basepath}}/bootstrap/addons/catalog.yaml'
   template:
     metadata:
-      name: '{{.name}}-{{.values.items.addon}}'
+      name: '{{.name}}-{{.addon}}'
       labels:
         app.kubernetes.io/part-of: addons
-        app.kubernetes.io/name: '{{.values.items.addon}}'
+        app.kubernetes.io/name: '{{.addon}}'
         cluster: '{{.name}}'
-        addon: '{{.values.items.addon}}'
+        addon: '{{.addon}}'
         fleet-member: control-plane
       annotations:
         # KRO must be installed first (wave -1), other addons in wave 0
-        argocd.argoproj.io/sync-wave: '{{if eq .values.items.addon "kro"}}"-1"{{else}}"0"{{end}}'
+        argocd.argoproj.io/sync-wave: '{{if eq .addon "kro"}}"-1"{{else}}"0"{{end}}'
     spec:
       project: default
       sources:
         # Addon Helm chart source
-        - repoURL: '{{.values.items.addon.repoURL}}'
-          targetRevision: '{{.values.items.addon.revision}}'
-          chart: '{{.values.items.addon.chart}}'
+        - repoURL: '{{.repoURL}}'
+          targetRevision: '{{.revision}}'
+          chart: '{{.chart}}'
           helm:
             valueFiles:
               # Load values from hub location
-              - $values/bootstrap/addons/values.yaml
+              - $values/{{.metadata.annotations.hub_repo_basepath}}/bootstrap/addons/values.yaml
             # Addon-specific inline values
             values: |
-              {{- if eq .values.items.addon "kro" }}
+              {{- if eq .addon "kro" }}
               # KRO-specific configuration
               image:
-                tag: {{.values.items.addon.revision}}
+                tag: {{.revision}}
               {{- end }}
-              {{- if hasPrefix "ack-" .values.items.addon }}
+              {{- if hasPrefix "ack-" .addon }}
               # ACK controller common configuration
               aws:
                 region: {{.metadata.annotations.aws_region}}
               serviceAccount:
                 annotations:
-                  eks.amazonaws.com/role-arn: {{index .metadata.annotations (printf "%s_irsa_role_arn" .values.items.addon)}}
+                  eks.amazonaws.com/role-arn: {{index .metadata.annotations (printf "%s_hub_role_arn" (trimPrefix "ack-" .addon))}}
               {{- end }}
         # Values repository reference for valueFiles
         - repoURL: '{{.metadata.annotations.hub_repo_url}}'
@@ -92,7 +92,7 @@ spec:
       destination:
         name: '{{.name}}'
         # Namespace mapping: kro -> kro-system, ack-* -> ack-system, others use addon name
-        namespace: '{{if eq .values.items.addon "kro"}}kro-system{{else if hasPrefix "ack-" .values.items.addon}}ack-system{{else}}{{.values.items.addon}}-system{{end}}'
+        namespace: '{{if eq .addon "kro"}}kro-system{{else if hasPrefix "ack-" .addon}}ack-system{{else}}{{.addon}}-system{{end}}'
       syncPolicy:
         automated:
           prune: true
