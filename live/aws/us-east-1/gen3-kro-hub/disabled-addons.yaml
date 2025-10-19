@@ -4,23 +4,6 @@
 # To enable an addon, add it to config.yaml with enable_pod_identity: true
 
 addon_configs:
-  # GitOps & Application Management
-  argocd:
-    enable_pod_identity: true
-    enable_argocd: true  # Special flag to install ArgoCD helm chart
-    namespace: "argocd"
-    argocd_chart_version: "8.6.0"
-
-  # Security & Secrets
-  external_secrets:
-    enable_pod_identity: true
-    kms_key_arns: ["arn:aws:kms:us-east-1:*:key/*"]
-    secrets_manager_arns: ["arn:aws:secretsmanager:us-east-1:*:secret:*"]
-    ssm_parameter_arns: ["arn:aws:ssm:us-east-1:*:parameter/*"]
-    create_permission: true
-    attach_custom_policy: false
-    namespace: "external-secrets"
-    service_account: "external-secrets"
 
   # Storage
   ebs_csi:
