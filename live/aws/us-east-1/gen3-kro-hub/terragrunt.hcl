@@ -187,21 +187,105 @@ locals {
     }
   }
 
+  # Computed paths for ArgoCD annotations
+  hub_repo_basepath     = trimsuffix(local.gitops_bootstrap_path, "/bootstrap")  # -> "argocd"
+  addons_repo_basepath  = "${trimsuffix(local.gitops_bootstrap_path, "/bootstrap")}/hub"  # -> "argocd/hub"
+
+  # ACK annotation pairs for cluster secret (backward compatibility)
+  ack_annotation_pairs = {
+    for name, cfg in local.hub_ack_configs :
+    name => {
+      namespace       = lookup(cfg, "namespace", "ack-system")
+      service_account = lookup(cfg, "service_account", "ack-${name}-controller")
+      # Note: hub_role_arn will be populated from module outputs in inputs section
+    }
+  }
+
+  # Addon annotation pairs for cluster secret (backward compatibility)
+  addon_annotation_pairs = {
+    for name, cfg in local.addon_configs :
+    name => {
+      namespace       = lookup(cfg, "namespace", name)
+      service_account = lookup(cfg, "service_account", name)
+      # Note: irsa_role_arn will be populated from module outputs in inputs section
+    }
+  }
+
   argocd_cluster = {
     cluster_name     = local.cluster_name
     secret_namespace = local.argocd_namespace
     metadata = {
-      annotations = {
-        hub_repo_url   = local.hub_repo_url
-        bootstrap_path = local.gitops_bootstrap_path
-        branch         = local.gitops_branch
-      }
-      labels = {
-        fleet_member = "control-plane"
-      }
+      annotations = merge(
+        {
+          # Repository Configuration (static)
+          hub_repo_url         = local.hub_repo_url
+          hub_repo_revision    = local.gitops_branch
+          hub_repo_basepath    = local.hub_repo_basepath
+          addons_repo_url      = local.hub_repo_url
+          addons_repo_revision = local.gitops_branch
+          addons_repo_basepath = local.addons_repo_basepath
+          rgds_repo_url        = local.argocd_gitops.rgds.repo_url
+          rgds_path            = local.rgds_gitops_argocd_path
+          branch               = local.gitops_branch
+          bootstrap_path       = local.gitops_bootstrap_path
+
+          # Cluster Information (static)
+          hub_cluster_name = local.cluster_name
+          hub_alias        = local.hub_alias
+          hub_aws_region   = local.aws_region
+          aws_region       = local.aws_region
+
+          # IAM Repository (for future IAM sync jobs)
+          iam_repo_url = local.iam_repo_url_base
+        },
+        # ACK controller namespace annotations (backward compatibility)
+        { for name, data in local.ack_annotation_pairs :
+          "ack_${name}_namespace" => data.namespace
+        },
+        # ACK controller service account annotations (backward compatibility)
+        { for name, data in local.ack_annotation_pairs :
+          "ack_${name}_service_account" => data.service_account
+        },
+        # Addon namespace annotations (backward compatibility)
+        { for name, data in local.addon_annotation_pairs :
+          "${replace(name, "_", "-")}_namespace" => data.namespace
+        },
+        # Addon service account annotations (backward compatibility)
+        { for name, data in local.addon_annotation_pairs :
+          "${replace(name, "_", "-")}_service_account" => data.service_account
+        }
+        # Note: IAM role ARN annotations (ack_*_hub_role_arn, *_irsa_role_arn) will be added
+        # by the argocd module or via a second terragrunt pass after pod identities are created.
+        # For now, these are omitted to avoid circular dependencies.
+      )
+      labels = merge(
+        {
+          # Cluster Categorization
+          fleet_member = "control-plane"
+          environment  = lookup(local.config, "environment", lookup(lookup(local.config, "tags", {}), "Environment", local.hub_alias))
+          tenant       = lookup(local.config, "tenant", local.hub_alias)  # tenant=hub_alias for hub
+        },
+        # ACK controller enable flags
+        { for name, cfg in local.hub_ack_configs :
+          "enable_ack_${name}" => tostring(lookup(cfg, "enable_pod_identity", false))
+        },
+        # Addon enable flags
+        { for name, cfg in local.addon_configs :
+          "enable_${name}" => tostring(lookup(cfg, "enable", lookup(cfg, "enable_pod_identity", false)))
+        }
+      )
     }
     addons         = {}  # Addons now managed via addon_configs
     gitops_context = local.argocd_gitops  # ArgoCD GitOps metadata for cross-account access
+  }
+
+  # ArgoCD ConfigMap data structure (will be populated with module outputs)
+  # This will be passed to the argocd module to create the ConfigMap
+  argocd_cluster_config_map = {
+    enabled = local.enable_argocd
+    name    = "${local.cluster_name}-argocd-settings"
+    # Data keys will be populated in the module using pod_identities outputs
+    # Structure documented in docs/argocd-hybrid-config-map.md
   }
 
   # Kubernetes provider configuration
@@ -389,7 +473,7 @@ locals {
 }
 
 module "spoke_${spoke.alias}" {
-  source = "../../combinations/spoke-iam"
+  source = "../../combinations/spoke"
 
   providers = {
     aws = aws.${spoke.alias}

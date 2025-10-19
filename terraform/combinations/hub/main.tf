@@ -187,3 +187,39 @@ module "argocd" {
 
   depends_on = [module.eks_cluster, module.pod_identities]
 }
+
+###############################################################################
+###############################################################################
+# ArgoCD Configuration ConfigMap
+###############################################################################
+module "argocd_config" {
+  source = "../../modules/argocd-config"
+
+  create = var.enable_vpc && var.enable_eks_cluster && var.enable_argocd
+
+  cluster_name      = var.cluster_name
+  argocd_namespace  = var.argocd_namespace
+  pod_identities    = module.pod_identities
+  ack_configs       = var.ack_configs
+  addon_configs     = var.addon_configs
+
+  cluster_info = var.enable_eks_cluster ? {
+    cluster_name              = var.cluster_name
+    cluster_endpoint          = module.eks_cluster.cluster_endpoint
+    cluster_version           = module.eks_cluster.cluster_version
+    account_id                = module.eks_cluster.account_id
+    region                    = lookup(lookup(var.argocd_cluster, "metadata", {}), "annotations", {})["aws_region"]
+    oidc_provider             = module.eks_cluster.oidc_provider
+    oidc_provider_arn         = module.eks_cluster.oidc_provider_arn
+    cluster_security_group_id = module.eks_cluster.cluster_security_group_id
+    vpc_id                    = var.enable_vpc ? module.vpc.vpc_id : var.existing_vpc_id
+    private_subnets           = var.enable_vpc ? module.vpc.private_subnets : var.existing_subnet_ids
+    public_subnets            = var.enable_vpc ? module.vpc.public_subnets : []
+  } : null
+
+  gitops_context = lookup(var.argocd_cluster, "gitops_context", {})
+  spokes         = {}  # Will be populated by spoke modules in future
+
+  depends_on = [module.argocd, module.pod_identities]
+}
+
