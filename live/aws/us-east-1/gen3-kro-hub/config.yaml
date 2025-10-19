@@ -76,70 +76,70 @@ hub:
       enable_pod_identity: true
       enable_argocd: true
       namespace: "argocd"
+      service_account: "argocd-server-sa"
       argocd_chart_version: "8.6.0"
 
   ack_configs:
     cloudtrail:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-cloudtrail-controller"
+      service_account: "ack-cloudtrail-sa"
     cloudwatchlogs:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-cloudwatchlogs-controller"
+      service_account: "ack-cloudwatchlogs-sa"
     ec2:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-ec2-controller"
+      service_account: "ack-ec2-sa"
     efs:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-efs-controller"
+      service_account: "ack-efs-sa"
     eks:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-eks-controller"
+      service_account: "ack-eks-sa"
     iam:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-iam-controller"
+      service_account: "ack-iam-sa"
     kms:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-kms-controller"
+      service_account: "ack-kms-sa"
     opensearchservice:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-opensearchservice-controller"
+      service_account: "ack-opensearchservice-sa"
     rds:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-rds-controller"
+      service_account: "ack-rds-sa"
     route53:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-route53-controller"
+      service_account: "ack-route53-sa"
     s3:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-s3-controller"
+      service_account: "ack-s3-sa"
     secretsmanager:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-secretsmanager-controller"
+      service_account: "ack-secretsmanager-sa"
     sns:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-sns-controller"
+      service_account: "ack-sns-sa"
     sqs:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-sqs-controller"
+      service_account: "ack-sqs-sa"
     wafv2:
       enable_pod_identity: true
       namespace: "ack-system"
-      service_account: "ack-wafv2-controller"
-
+      service_account: "ack-wafv2-sa"
 # GitOps configuration for rgds to be passed to argocd for deployment
 rgds:
   gitops:

@@ -86,7 +86,7 @@ module "pod_identities" {
         service_type         = "acks"  # folder name is plural: iam/gen3-kro/hub/acks/
         service_name         = svc_name
         namespace            = lookup(svc_config, "namespace", "ack-system")
-        service_account      = lookup(svc_config, "service_account", "ack-${svc_name}-controller")
+        service_account      = lookup(svc_config, "service_account", "ack-${svc_name}-sa")
         custom_inline_policy = null
         enabled              = var.enable_ack && lookup(svc_config, "enable_pod_identity", true)
       }
@@ -172,6 +172,54 @@ module "cross_account_policy" {
 }
 
 ###############################################################################
+# ArgoCD Cluster Configuration Enhancement
+###############################################################################
+locals {
+  # Build enhanced argocd_cluster with IAM role ARN annotations
+  argocd_cluster_enhanced = merge(
+    var.argocd_cluster,
+    {
+      metadata = merge(
+        lookup(var.argocd_cluster, "metadata", {}),
+        {
+          annotations = merge(
+            lookup(lookup(var.argocd_cluster, "metadata", {}), "annotations", {}),
+            # ACK controller role ARN annotations
+            {
+              for k, v in module.pod_identities :
+              "ack_${replace(k, "ack-", "")}_hub_role_arn" => v.role_arn
+              if startswith(k, "ack-")
+            },
+            # Addon role ARN annotations
+            {
+              for k, v in module.pod_identities :
+              "${replace(k, "_", "-")}_irsa_role_arn" => v.role_arn
+              if !startswith(k, "ack-")
+            }
+          )
+        }
+      )
+    }
+  )
+
+  # Enhanced ArgoCD config with initial values
+  argocd_config_enhanced = merge(
+    var.argocd_config,
+    {
+      values = [file("${path.module}/argocd-initial-values.yaml")]
+    }
+  )
+
+  # Merge bootstrap applicationsets with apps from terragrunt
+  argocd_apps_enhanced = merge(
+    {
+      bootstrap = file("${path.module}/applicationsets.yaml")
+    },
+    var.argocd_apps
+  )
+}
+
+###############################################################################
 # ArgoCD Module
 ###############################################################################
 module "argocd" {
@@ -179,10 +227,10 @@ module "argocd" {
 
   create = var.enable_vpc && var.enable_eks_cluster && var.enable_argocd
 
-  argocd      = var.argocd_config
+  argocd      = local.argocd_config_enhanced
   install     = var.argocd_install
-  cluster     = var.argocd_cluster
-  apps        = var.argocd_apps
+  cluster     = local.argocd_cluster_enhanced
+  apps        = local.argocd_apps_enhanced
   outputs_dir = var.argocd_outputs_dir
 
   depends_on = [module.eks_cluster, module.pod_identities]
@@ -190,10 +238,10 @@ module "argocd" {
 
 ###############################################################################
 ###############################################################################
-# ArgoCD Configuration ConfigMap
+# Spokes ConfigMap
 ###############################################################################
-module "argocd_config" {
-  source = "../../modules/argocd-config"
+module "spokes_configmap" {
+  source = "../../modules/spokes-configmap"
 
   create = var.enable_vpc && var.enable_eks_cluster && var.enable_argocd
 

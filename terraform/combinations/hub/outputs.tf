@@ -139,20 +139,20 @@ output "cross_account_policies" {
 ###############################################################################
 output "ebs_csi_role_arn" {
   description = "ARN of the EBS CSI driver IAM role"
-  value       = try(module.pod_identities["addon-ebs_csi"].role_arn, null)
+  value       = try(module.pod_identities["ebs_csi"].role_arn, null)
 }
 
 output "external_secrets_role_arn" {
   description = "ARN of the External Secrets IAM role"
-  value       = try(module.pod_identities["addon-external_secrets"].role_arn, null)
+  value       = try(module.pod_identities["external_secrets"].role_arn, null)
 }
 
 output "addons_pod_identity_roles" {
   description = "Map of addon pod identity IAM role ARNs keyed by addon"
   value = {
     for k, v in module.pod_identities :
-    replace(k, "addon-", "") => v.role_arn
-    if startswith(k, "addon-")
+    k => v.role_arn
+    if !startswith(k, "ack-")
   }
 }
 
@@ -161,17 +161,17 @@ output "addons_pod_identity_roles" {
 ###############################################################################
 output "argocd_pod_identity_role_arn" {
   description = "ARN of the IAM role associated with ArgoCD pod identity"
-  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd-app-controller"].role_arn, null) : null
+  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd"].role_arn, null) : null
 }
 
 output "argocd_pod_identity_role_name" {
   description = "Name of the IAM role associated with ArgoCD pod identity"
-  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd-app-controller"].role_name, null) : null
+  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd"].role_name, null) : null
 }
 
 output "argocd_pod_identity_associations" {
   description = "Map of ArgoCD pod identity associations"
-  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd-app-controller"].associations, {}) : {}
+  value       = var.enable_argocd && var.enable_eks_cluster ? try(module.pod_identities["argocd"].associations, {}) : {}
 }
 
 ###############################################################################
@@ -196,6 +196,19 @@ output "argocd_cluster_secret" {
 output "argocd_applications" {
   description = "ArgoCD application resources rendered by the bootstrap chart"
   value       = var.enable_argocd ? module.argocd.apps : {}
+  sensitive   = true
+}
+
+output "argocd_server_url" {
+  description = "ArgoCD server access information"
+  value = var.enable_argocd ? {
+    service_name = "argo-cd-argocd-server"
+    namespace    = "argocd"
+    port         = 443
+    port_forward_command = "kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:443"
+    admin_user   = "admin"
+    get_password_command = "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
+  } : null
 }
 
 ###############################################################################

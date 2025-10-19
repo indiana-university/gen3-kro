@@ -70,7 +70,7 @@ module "pod_identity" {
 
   count = var.create ? 1 : 0
 
-  # Role name - format: {cluster_name}-{service_type}-{service_name}
+  # Role name - format: {cluster_name}-{service_name}
   name            = "${var.cluster_name}-${var.service_name}"
   use_name_prefix = false  # Use exact name, don't add random suffix
 
@@ -87,15 +87,14 @@ module "pod_identity" {
 
   # Association defaults
   association_defaults = {
+    cluster_name    = var.cluster_name
     namespace       = var.namespace
     service_account = var.service_account
   }
 
-  # Pod Identity Association
+  # Pod Identity Association - unique per service
   associations = {
-    default = {
-      cluster_name = var.cluster_name
-    }
+    "${var.service_name}" = {}
   }
 
   tags = var.tags

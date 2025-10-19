@@ -74,7 +74,7 @@ locals {
       cluster_name = local.cluster_name
     },
     {
-      for k, v in try(var.cluster.metadata, {}) :
+      for k, v in try(var.cluster.metadata.annotations, {}) :
       k => (
         # Kubernetes annotations must be strings
         # Convert non-string values to strings, objects to YAML

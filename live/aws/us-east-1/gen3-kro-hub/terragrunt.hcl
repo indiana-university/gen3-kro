@@ -155,7 +155,6 @@ locals {
     chart         = "argo-cd"
     repository    = "https://argoproj.github.io/argo-helm"
     chart_version = local.argocd_chart_version
-    values        = []
   }
 
   # ArgoCD GitOps metadata for cross-account access
@@ -214,6 +213,14 @@ locals {
   argocd_cluster = {
     cluster_name     = local.cluster_name
     secret_namespace = local.argocd_namespace
+    # Addons key is used by argocd module for labels (not metadata.labels)
+    # NOTE: enable_* flags removed - these are now handled by enablement.yaml files
+    addons = {
+      # Cluster Categorization
+      fleet_member = "control-plane"
+      environment  = lookup(local.config, "environment", lookup(lookup(local.config, "tags", {}), "Environment", local.hub_alias))
+      tenant       = lookup(local.config, "tenant", local.hub_alias)  # tenant=hub_alias for hub
+    }
     metadata = {
       annotations = merge(
         {
@@ -258,24 +265,7 @@ locals {
         # by the argocd module or via a second terragrunt pass after pod identities are created.
         # For now, these are omitted to avoid circular dependencies.
       )
-      labels = merge(
-        {
-          # Cluster Categorization
-          fleet_member = "control-plane"
-          environment  = lookup(local.config, "environment", lookup(lookup(local.config, "tags", {}), "Environment", local.hub_alias))
-          tenant       = lookup(local.config, "tenant", local.hub_alias)  # tenant=hub_alias for hub
-        },
-        # ACK controller enable flags
-        { for name, cfg in local.hub_ack_configs :
-          "enable_ack_${name}" => tostring(lookup(cfg, "enable_pod_identity", false))
-        },
-        # Addon enable flags
-        { for name, cfg in local.addon_configs :
-          "enable_${name}" => tostring(lookup(cfg, "enable", lookup(cfg, "enable_pod_identity", false)))
-        }
-      )
     }
-    addons         = {}  # Addons now managed via addon_configs
     gitops_context = local.argocd_gitops  # ArgoCD GitOps metadata for cross-account access
   }
 
@@ -415,7 +405,6 @@ inputs = {
   argocd_config      = local.argocd_config
   argocd_install     = true
   argocd_cluster     = local.argocd_cluster
-  argocd_apps        = {}
   argocd_outputs_dir = local.outputs_dir
   argocd_namespace   = local.argocd_namespace
   argocd_inline_policy = fileexists("${local.repo_root}/terraform/combinations/iam/gen3-kro/hub/argocd/recommended-inline-policy") ? file("${local.repo_root}/terraform/combinations/iam/gen3-kro/hub/argocd/recommended-inline-policy") : ""
