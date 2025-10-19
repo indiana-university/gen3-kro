@@ -71,6 +71,12 @@ variable "iam_policy_base_path" {
   default     = "iam"
 }
 
+variable "iam_raw_base_url" {
+  description = "Raw file base URL for fetching IAM policies via HTTP (e.g., https://raw.githubusercontent.com/org/repo/branch)"
+  type        = string
+  default     = ""
+}
+
 variable "repo_root_path" {
   description = "Local filesystem path to the repository root (alternative to Git)"
   type        = string

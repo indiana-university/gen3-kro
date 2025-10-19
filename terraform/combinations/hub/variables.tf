@@ -298,3 +298,16 @@ variable "iam_base_path" {
   type        = string
   default     = "terraform/combinations/iam"
 }
+
+variable "iam_raw_base_url" {
+  description = "Raw file base URL for fetching IAM policies via HTTP (e.g., https://raw.githubusercontent.com/org/repo/branch)"
+  type        = string
+  default     = ""
+}
+
+variable "iam_repo_root" {
+  description = "Absolute path to the repository root for local IAM policy files"
+  type        = string
+  default     = ""
+}
+

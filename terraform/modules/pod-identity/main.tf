@@ -26,6 +26,7 @@ module "iam_policy" {
   iam_policy_repo_url  = var.iam_policy_repo_url
   iam_policy_branch    = var.iam_policy_branch
   iam_policy_base_path = var.iam_policy_base_path
+  iam_raw_base_url     = var.iam_raw_base_url
   repo_root_path       = var.repo_root_path
 }
 

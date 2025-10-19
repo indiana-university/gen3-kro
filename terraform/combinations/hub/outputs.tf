@@ -83,6 +83,8 @@ output "ack_iam_policies" {
   value = var.enable_ack ? {
     for k, v in module.pod_identities :
     replace(k, "ack-", "") => {
+      service_type  = v.service_type
+      service_name  = v.service_name
       policy_source = v.policy_source
       policy_arn    = v.policy_arn
       role_arn      = v.role_arn
@@ -102,6 +104,15 @@ output "ack_pod_identities" {
       role_arn  = v.role_arn
       role_name = v.role_name
     }
+    if startswith(k, "ack-")
+  } : {}
+}
+
+output "ack_debug_iam_paths" {
+  description = "Debug: IAM policy paths for ACK controllers"
+  value = var.enable_ack && var.enable_eks_cluster ? {
+    for k, v in module.pod_identities :
+    replace(k, "ack-", "") => v.debug_iam_policy_paths
     if startswith(k, "ack-")
   } : {}
 }

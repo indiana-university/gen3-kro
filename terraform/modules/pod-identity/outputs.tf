@@ -50,3 +50,12 @@ output "cluster_name" {
   description = "EKS cluster name"
   value       = var.cluster_name
 }
+
+output "debug_iam_policy_paths" {
+  description = "Debug: IAM policy loading paths and status"
+  value = {
+    load_policies       = local.load_policies
+    use_custom_policies = local.use_custom_policies
+    iam_policy_output   = local.load_policies ? try(module.iam_policy[0].debug_paths, null) : null
+  }
+}

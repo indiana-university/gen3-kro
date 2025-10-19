@@ -145,6 +145,10 @@ locals {
   iam_git_url       = format("git::%s", local.iam_repo_url_base)
   iam_git_branch    = local.iam_gitops_branch != "" ? local.iam_gitops_branch : local.gitops_branch
 
+  # IAM raw file URL for HTTP fetching (GitHub raw content URL)
+  # Format: https://raw.githubusercontent.com/{org}/{repo}/{branch}/{path}
+  iam_raw_base_url  = local.iam_gitops_org_name != "" ? format("https://raw.githubusercontent.com/%s/%s/%s", local.iam_gitops_org_name, local.iam_gitops_repo_name, local.iam_git_branch) : ""
+
   # ArgoCD configuration objects
   argocd_config = {
     namespace     = local.argocd_namespace
@@ -319,6 +323,8 @@ inputs = {
   iam_git_repo_url = local.iam_git_url
   iam_git_branch   = local.iam_git_branch
   iam_base_path    = local.iam_base_path
+  iam_raw_base_url = local.iam_raw_base_url  # Raw file base URL for HTTP fetching
+  iam_repo_root    = local.repo_root  # Absolute path to repository root for local policy files
 
   # ArgoCD configuration
   enable_argocd      = local.enable_argocd

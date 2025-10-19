@@ -51,9 +51,9 @@ hub:
     bootstrap_path: "argocd/bootstrap"
 
   iam_gitops:
-    org_name: "RDServices"
-    repo_name: "eks-cluster-mgmt"
-    github_url: "github.iu.edu"
+    org_name: "indiana-university"
+    repo_name: "gen3-kro"
+    github_url: "github.com"
     branch: "jimi-container-terragrunt-remodel"
     policy_base_path: "iam"
 

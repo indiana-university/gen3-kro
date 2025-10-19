@@ -124,10 +124,12 @@ module "pod_identities" {
   custom_inline_policy = each.value.custom_inline_policy
 
   # IAM Policy loading configuration
+  # HTTP data source will fetch from raw.githubusercontent.com with filesystem fallback
   iam_policy_repo_url  = var.iam_git_repo_url
   iam_policy_branch    = var.iam_git_branch
   iam_policy_base_path = var.iam_base_path
-  repo_root_path       = var.iam_git_repo_url == "" ? "${path.root}/../../../.." : ""
+  iam_raw_base_url     = var.iam_raw_base_url  # Raw file base URL for HTTP fetching
+  repo_root_path       = var.iam_repo_root != "" ? var.iam_repo_root : "${path.root}/../../../.."  # Filesystem fallback
 
   tags = merge(
     var.tags,
