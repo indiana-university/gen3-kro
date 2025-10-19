@@ -1,0 +1,24 @@
+output "role_arn" {
+  description = "ARN of the spoke account IAM role"
+  value       = var.create ? aws_iam_role.spoke_ack[0].arn : null
+}
+
+output "role_name" {
+  description = "Name of the spoke account IAM role"
+  value       = var.create ? aws_iam_role.spoke_ack[0].name : null
+}
+
+output "role_unique_id" {
+  description = "Stable and unique string identifying the IAM role"
+  value       = var.create ? aws_iam_role.spoke_ack[0].unique_id : null
+}
+
+output "service_name" {
+  description = "ACK service name"
+  value       = var.service_name
+}
+
+output "spoke_alias" {
+  description = "Spoke account alias"
+  value       = var.spoke_alias
+}
