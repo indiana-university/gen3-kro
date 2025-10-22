@@ -82,6 +82,7 @@ spec:
               aws:
                 region: {{.metadata.annotations.aws_region}}
               serviceAccount:
+                name: {{index .metadata.annotations (printf "ack_%s_service_account" (trimPrefix "ack-" .addon))}}
                 annotations:
                   eks.amazonaws.com/role-arn: {{index .metadata.annotations (printf "ack_%s_hub_role_arn" (trimPrefix "ack-" .addon))}}
               {{- end }}

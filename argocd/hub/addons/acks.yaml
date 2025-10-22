@@ -114,7 +114,7 @@ ack-efs:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-efs-controller'
+      name: '{{default "ack-efs-controller" (index .metadata.annotations "ack_efs_service_account")}}'
 
 ack-cloudtrail:
   enabled: true
@@ -135,7 +135,7 @@ ack-cloudtrail:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-cloudtrail-controller'
+      name: '{{default "ack-cloudtrail-controller" (index .metadata.annotations "ack_cloudtrail_service_account")}}'
 
 ack-cloudwatchlogs:
   enabled: true
@@ -156,7 +156,7 @@ ack-cloudwatchlogs:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-cloudwatchlogs-controller'
+      name: '{{default "ack-cloudwatchlogs-controller" (index .metadata.annotations "ack_cloudwatchlogs_service_account")}}'
 
 ack-kms:
   enabled: true
@@ -177,7 +177,7 @@ ack-kms:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-kms-controller'
+      name: '{{default "ack-kms-controller" (index .metadata.annotations "ack_kms_service_account")}}'
 
 ack-opensearchservice:
   enabled: true
@@ -198,7 +198,7 @@ ack-opensearchservice:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-opensearchservice-controller'
+      name: '{{default "ack-opensearchservice-controller" (index .metadata.annotations "ack_opensearchservice_service_account")}}'
 
 ack-rds:
   enabled: true
@@ -219,7 +219,7 @@ ack-rds:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-rds-controller'
+      name: '{{default "ack-rds-controller" (index .metadata.annotations "ack_rds_service_account")}}'
 
 ack-route53:
   enabled: true
@@ -240,7 +240,7 @@ ack-route53:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-route53-controller'
+      name: '{{default "ack-route53-controller" (index .metadata.annotations "ack_route53_service_account")}}'
 
 ack-s3:
   enabled: true
@@ -261,7 +261,7 @@ ack-s3:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-s3-controller'
+      name: '{{default "ack-s3-controller" (index .metadata.annotations "ack_s3_service_account")}}'
 
 ack-secretsmanager:
   enabled: true
@@ -282,7 +282,7 @@ ack-secretsmanager:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-secretsmanager-controller'
+      name: '{{default "ack-secretsmanager-controller" (index .metadata.annotations "ack_secretsmanager_service_account")}}'
 
 ack-sns:
   enabled: true
@@ -303,7 +303,7 @@ ack-sns:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-sns-controller'
+      name: '{{default "ack-sns-controller" (index .metadata.annotations "ack_sns_service_account")}}'
 
 ack-sqs:
   enabled: true
@@ -324,7 +324,7 @@ ack-sqs:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-sqs-controller'
+      name: '{{default "ack-sqs-controller" (index .metadata.annotations "ack_sqs_service_account")}}'
 
 ack-wafv2:
   enabled: true
@@ -345,4 +345,4 @@ ack-wafv2:
     aws:
       region: '{{.metadata.annotations.hub_aws_region}}'
     serviceAccount:
-      name: 'ack-wafv2-controller'
+      name: '{{default "ack-wafv2-controller" (index .metadata.annotations "ack_wafv2_service_account")}}'

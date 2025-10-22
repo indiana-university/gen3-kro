@@ -2,12 +2,11 @@ hub:
   alias: "gen3-csoc"
   aws_profile: "boadeyem_tf"
   aws_region: "us-east-1"
-
   vpc:
     enable_vpc: true
     vpc_name: "gen3-kro-vpc"
     vpc_cidr: "10.0.0.0/16"
-    cluster_name: "gen3-kro-hub"
+    cluster_name: "gen3-kro-csoc"
     enable_nat_gateway: true
     single_nat_gateway: true
     # Explicit subnet configuration (5 AZs in us-east-1)
@@ -19,18 +18,18 @@ hub:
       - "us-east-1f"
     # Private subnets: /20 blocks (4096 IPs each) for EKS nodes
     private_subnet_cidrs:
-      - "10.0.0.0/20"    # us-east-1a: 10.0.0.0 - 10.0.15.255
-      - "10.0.16.0/20"   # us-east-1b: 10.0.16.0 - 10.0.31.255
-      - "10.0.32.0/20"   # us-east-1c: 10.0.32.0 - 10.0.47.255
-      - "10.0.48.0/20"   # us-east-1d: 10.0.48.0 - 10.0.63.255
-      - "10.0.64.0/20"   # us-east-1f: 10.0.64.0 - 10.0.79.255
+      - "10.0.0.0/20" # us-east-1a: 10.0.0.0 - 10.0.15.255
+      - "10.0.16.0/20" # us-east-1b: 10.0.16.0 - 10.0.31.255
+      - "10.0.32.0/20" # us-east-1c: 10.0.32.0 - 10.0.47.255
+      - "10.0.48.0/20" # us-east-1d: 10.0.48.0 - 10.0.63.255
+      - "10.0.64.0/20" # us-east-1f: 10.0.64.0 - 10.0.79.255
     # Public subnets: /24 blocks (256 IPs each) for load balancers
     public_subnet_cidrs:
-      - "10.0.240.0/24"  # us-east-1a: 10.0.240.0 - 10.0.240.255
-      - "10.0.241.0/24"  # us-east-1b: 10.0.241.0 - 10.0.241.255
-      - "10.0.242.0/24"  # us-east-1c: 10.0.242.0 - 10.0.242.255
-      - "10.0.243.0/24"  # us-east-1d: 10.0.243.0 - 10.0.243.255
-      - "10.0.244.0/24"  # us-east-1f: 10.0.244.0 - 10.0.244.255
+      - "10.0.240.0/24" # us-east-1a: 10.0.240.0 - 10.0.240.255
+      - "10.0.241.0/24" # us-east-1b: 10.0.241.0 - 10.0.241.255
+      - "10.0.242.0/24" # us-east-1c: 10.0.242.0 - 10.0.242.255
+      - "10.0.243.0/24" # us-east-1d: 10.0.243.0 - 10.0.243.255
+      - "10.0.244.0/24" # us-east-1f: 10.0.244.0 - 10.0.244.255
   eks:
     enable_eks_cluster: true
     # Existing VPC configuration (set enable_vpc to attach to existing VPC)
@@ -42,23 +41,19 @@ hub:
     cluster_compute_config:
       enabled: true
       node_pools: ["general-purpose"]
-
   gitops:
     org_name: "indiana-university"
     repo_name: "gen3-kro"
     github_url: "github.com"
     branch: "jimi-container-terragrunt-remodel"
     bootstrap_path: "argocd/bootstrap"
-
   iam_gitops:
     org_name: "indiana-university"
     repo_name: "gen3-kro"
     github_url: "github.com"
     branch: "jimi-container-terragrunt-remodel"
     policy_base_path: "iam"
-
   # Addon configuration (enabled addons)
-  # Additional addons available in disabled-addons.yaml (currently enabled for testing)
   addon_configs:
     # Secrets Management
     external_secrets:
@@ -70,7 +65,6 @@ hub:
       attach_custom_policy: false
       namespace: "external-secrets"
       service_account: "external-secrets"
-
     # GitOps & Application Management
     argocd:
       enable_pod_identity: true
@@ -78,7 +72,6 @@ hub:
       namespace: "argocd"
       service_account: "argocd-server-sa"
       argocd_chart_version: "8.6.0"
-
   ack_configs:
     cloudtrail:
       enable_pod_identity: true
@@ -148,24 +141,20 @@ rgds:
     github_url: "github.com"
     branch: "jimi-container-terragrunt-remodel"
     argocd_path: "argocd/shared"
-
 # Base tags applied to all resources
 tags:
   Project: "gen3-kro"
   Environment: "hub"
   ManagedBy: "terragrunt"
   Owner: "platform-team"
-
 paths:
-  outputs_dir:            "outputs/terraform"
+  outputs_dir: "outputs/terraform"
   terraform_state_bucket: "gen3-kro-envs-4852"
-
 spokes:
   - alias: "spoke1"
-    enabled: false
+    enabled: true # Re-enabled for deployment due to iam-policy module "known only after apply" issues
     region: "us-east-1"
     profile: "boadeyem_tf"
-
     gitops:
       org_name: "indiana-university"
       repo_name: "gen3-kro"
@@ -173,7 +162,6 @@ spokes:
       branch: "jimi-container-terragrunt-remodel"
       repo_url: "https://github.com/indiana-university/gen3-kro.git"
       argo_path: "argocd/spokes"
-
     ack_configs:
       cloudtrail:
         enable_pod_identity: true
@@ -220,7 +208,11 @@ spokes:
       wafv2:
         enable_pod_identity: true
         # override_arn: "arn:aws:iam::123456789012:role/gen3-kro-hub-ack-wafv2"
-
     tags:
       Team: "platform"
       Purpose: "multi-account-demo"
+    addon_configs:
+      argocd:
+        enable_pod_identity: true
+      external_secrets:
+        enable_pod_identity: true

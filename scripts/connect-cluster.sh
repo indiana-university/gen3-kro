@@ -14,7 +14,7 @@ source "${SCRIPT_DIR}/lib-logging.sh"
 
 # Configuration
 LOG_DIR="${REPO_ROOT}/outputs/logs"
-LIVE_DIR="${REPO_ROOT}/terraform/live"
+TERRAGRUNT_DIR="${REPO_ROOT}/live/aws/us-east-1/gen3-kro-hub"
 
 # Create directories
 mkdir -p "$LOG_DIR"
@@ -27,14 +27,14 @@ log_info "========================================="
 log_info "Connect to EKS Cluster - gen3-kro"
 log_info "========================================="
 
-# Change to live directory
-cd "$LIVE_DIR"
+# Change to terragrunt directory
+cd "$TERRAGRUNT_DIR"
 
 # Get cluster name and region from Terragrunt outputs
 log_info "Retrieving cluster information from Terragrunt..."
 
 CLUSTER_NAME=$(terragrunt output -raw cluster_name 2>/dev/null || echo "")
-AWS_REGION=$(terragrunt output -raw aws_region 2>/dev/null || echo "us-east-1")
+AWS_REGION="us-east-1"  # Hard-coded for now, can make dynamic later
 AWS_PROFILE=$(terragrunt output -raw aws_profile 2>/dev/null || echo "default")
 
 if [[ -z "$CLUSTER_NAME" ]]; then
@@ -66,8 +66,39 @@ else
   log_warn "Could not verify cluster connectivity"
 fi
 
+# Get ArgoCD credentials if available
+log_info ""
+log_info "Retrieving ArgoCD access information..."
+ARGOCD_PASSWORD=$(terragrunt output -raw argocd_admin_password 2>/dev/null || echo "")
+ARGOCD_LB_URL=$(terragrunt output -raw argocd_loadbalancer_url 2>/dev/null || echo "")
+
+if [[ -n "$ARGOCD_PASSWORD" ]]; then
+  log_success "✓ ArgoCD Admin Password: $ARGOCD_PASSWORD"
+else
+  log_info "ArgoCD password not available (might not be deployed yet)"
+fi
+
+if [[ -n "$ARGOCD_LB_URL" && "$ARGOCD_LB_URL" != "null" ]]; then
+  log_success "✓ ArgoCD LoadBalancer URL: https://$ARGOCD_LB_URL"
+else
+  log_info "ArgoCD LoadBalancer URL not available (using port-forward instead)"
+  log_info "To access ArgoCD via port-forward:"
+  log_info "  kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:443"
+  log_info "  Then visit: https://localhost:8080"
+fi
+
 log_success "========================================="
 log_success "✓ Setup complete!"
 log_success "========================================="
 log_info "You can now use kubectl with context: $CLUSTER_NAME"
 log_info "Example: kubectl get pods -A --context $CLUSTER_NAME"
+
+if [[ -n "$ARGOCD_PASSWORD" ]]; then
+  log_info ""
+  log_info "ArgoCD Access:"
+  log_info "  Username: admin"
+  log_info "  Password: $ARGOCD_PASSWORD"
+  if [[ -n "$ARGOCD_LB_URL" && "$ARGOCD_LB_URL" != "null" ]]; then
+    log_info "  URL: https://$ARGOCD_LB_URL"
+  fi
+fi

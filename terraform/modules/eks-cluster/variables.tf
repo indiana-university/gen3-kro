@@ -46,6 +46,12 @@ variable "cluster_compute_config" {
   }
 }
 
+variable "cluster_addons" {
+  description = "Map of EKS cluster addon configurations (e.g., eks-pod-identity-agent, vpc-cni, etc.)"
+  type        = any
+  default     = {}
+}
+
 variable "tags" {
   description = "Tags to apply to all cluster resources"
   type        = map(string)

@@ -1,4 +1,10 @@
 ###############################################################################
+# Data Sources
+###############################################################################
+data "aws_region" "current" {}
+data "aws_caller_identity" "current" {}
+
+###############################################################################
 # Local Variables
 ###############################################################################
 locals {
@@ -73,6 +79,42 @@ module "eks_cluster" {
 }
 
 ###############################################################################
+# IAM Policy Module - Load policies for Pod Identities
+###############################################################################
+module "iam_policies" {
+  source = "../../modules/iam-policy"
+
+  for_each = merge(
+    # ACK services
+    {
+      for svc_name, svc_config in var.ack_configs :
+      "ack-${svc_name}" => {
+        service_type = "acks"
+        service_name = svc_name
+      }
+      if var.enable_ack && lookup(svc_config, "enable_pod_identity", true)
+    },
+
+    # Addons
+    {
+      for addon_name, addon_config in var.addon_configs :
+      "${addon_name}" => {
+        service_type = "addons"
+        service_name = addon_name
+      }
+      if lookup(addon_config, "enable_pod_identity", false)
+    }
+  )
+
+  service_type         = each.value.service_type
+  service_name         = each.value.service_name
+  context              = "hub"
+  iam_policy_base_path = var.iam_base_path
+  iam_raw_base_url     = var.iam_raw_base_url
+  repo_root_path       = var.iam_repo_root != "" ? var.iam_repo_root : "${path.root}/../../../.."
+}
+
+###############################################################################
 # Pod Identities Module (Unified: ACK, ArgoCD, Addons)
 ###############################################################################
 module "pod_identities" {
@@ -123,13 +165,11 @@ module "pod_identities" {
   # Custom inline policy (for ArgoCD or custom services)
   custom_inline_policy = each.value.custom_inline_policy
 
-  # IAM Policy loading configuration
-  # HTTP data source will fetch from raw.githubusercontent.com with filesystem fallback
-  iam_policy_repo_url  = var.iam_git_repo_url
-  iam_policy_branch    = var.iam_git_branch
-  iam_policy_base_path = var.iam_base_path
-  iam_raw_base_url     = var.iam_raw_base_url  # Raw file base URL for HTTP fetching
-  repo_root_path       = var.iam_repo_root != "" ? var.iam_repo_root : "${path.root}/../../../.."  # Filesystem fallback
+  # Loaded IAM policies from iam_policies module
+  loaded_inline_policy_document   = try(module.iam_policies[each.key].inline_policy_document, null)
+  loaded_override_policy_documents = try(module.iam_policies[each.key].override_policy_documents, [])
+  loaded_managed_policy_arns       = try(module.iam_policies[each.key].managed_policy_arns, {})
+  has_loaded_inline_policy         = try(module.iam_policies[each.key].has_inline_policy, false)
 
   tags = merge(
     var.tags,
@@ -142,7 +182,7 @@ module "pod_identities" {
     }
   )
 
-  depends_on = [module.eks_cluster]
+  depends_on = [module.eks_cluster, module.iam_policies]
 }
 
 ###############################################################################
@@ -184,18 +224,20 @@ locals {
         {
           annotations = merge(
             lookup(lookup(var.argocd_cluster, "metadata", {}), "annotations", {}),
-            # ACK controller role ARN annotations
+            # ACK controller hub role ARN annotations
             {
               for k, v in module.pod_identities :
               "ack_${replace(k, "ack-", "")}_hub_role_arn" => v.role_arn
               if startswith(k, "ack-")
             },
-            # Addon role ARN annotations
+            # Addon hub role ARN annotations
             {
               for k, v in module.pod_identities :
               "${replace(k, "_", "-")}_irsa_role_arn" => v.role_arn
               if !startswith(k, "ack-")
             }
+            # Note: Spoke role ARNs will be available via outputs and can be queried
+            # They are not added to hub configmap to keep concerns separated
           )
         }
       )
@@ -237,37 +279,58 @@ module "argocd" {
 }
 
 ###############################################################################
+# Hub ConfigMap for ArgoCD
+# Creates a configmap with hub-specific configuration that ArgoCD
+# ApplicationSets can query for IAM roles, namespaces, and cluster info.
 ###############################################################################
-# Spokes ConfigMap
-###############################################################################
-module "spokes_configmap" {
+module "hub_configmap" {
   source = "../../modules/spokes-configmap"
 
-  create = var.enable_vpc && var.enable_eks_cluster && var.enable_argocd
+  create           = var.enable_vpc && var.enable_eks_cluster && var.enable_argocd
+  cluster_name     = var.cluster_name
+  argocd_namespace = var.argocd_namespace
 
-  cluster_name      = var.cluster_name
-  argocd_namespace  = var.argocd_namespace
-  pod_identities    = module.pod_identities
-  ack_configs       = var.ack_configs
-  addon_configs     = var.addon_configs
+    # Hub pod identities (ACK controllers + addons)
+  pod_identities = {
+    for k, v in module.pod_identities : k => {
+      role_arn      = v.role_arn
+      role_name     = v.role_name
+      policy_arn    = v.policy_arn
+      service_type  = v.service_type
+      service_name  = v.service_name
+      policy_source = "hub_internal"
+    }
+  }
 
-  cluster_info = var.enable_eks_cluster ? {
+  # Hub configurations
+  ack_configs   = var.ack_configs
+  addon_configs = var.addon_configs
+
+  # Hub cluster information
+  cluster_info = {
     cluster_name              = var.cluster_name
-    cluster_endpoint          = module.eks_cluster.cluster_endpoint
-    cluster_version           = module.eks_cluster.cluster_version
-    account_id                = module.eks_cluster.account_id
-    region                    = lookup(lookup(var.argocd_cluster, "metadata", {}), "annotations", {})["aws_region"]
-    oidc_provider             = module.eks_cluster.oidc_provider
-    oidc_provider_arn         = module.eks_cluster.oidc_provider_arn
-    cluster_security_group_id = module.eks_cluster.cluster_security_group_id
+    cluster_endpoint          = try(module.eks_cluster.cluster_endpoint, "")
+    region                    = try(data.aws_region.current.id, "")
+    account_id                = try(data.aws_caller_identity.current.account_id, "")
+    cluster_version           = try(module.eks_cluster.cluster_version, "")
+    oidc_provider             = try(module.eks_cluster.oidc_provider, "")
+    oidc_provider_arn         = try(module.eks_cluster.oidc_provider_arn, "")
+    cluster_security_group_id = try(module.eks_cluster.cluster_security_group_id, "")
     vpc_id                    = var.enable_vpc ? module.vpc.vpc_id : var.existing_vpc_id
     private_subnets           = var.enable_vpc ? module.vpc.private_subnets : var.existing_subnet_ids
     public_subnets            = var.enable_vpc ? module.vpc.public_subnets : []
-  } : null
+  }
 
-  gitops_context = lookup(var.argocd_cluster, "gitops_context", {})
-  spokes         = {}  # Will be populated by spoke modules in future
+  # GitOps context for hub (from ArgoCD cluster annotations)
+  gitops_context = {
+    hub_repo_url      = try(var.argocd_cluster.metadata.annotations.hub_repo_url, "")
+    hub_repo_revision = try(var.argocd_cluster.metadata.annotations.hub_repo_revision, "main")
+    hub_repo_basepath = try(var.argocd_cluster.metadata.annotations.hub_repo_basepath, "argocd")
+    aws_region        = try(data.aws_region.current.id, "")
+  }
 
-  depends_on = [module.argocd, module.pod_identities]
+  # No spokes data in hub configmap (spokes manage their own)
+  spokes = {}
+
+  depends_on = [module.eks_cluster, module.pod_identities, module.argocd]
 }
-

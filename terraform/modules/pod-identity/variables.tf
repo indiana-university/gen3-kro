@@ -51,36 +51,30 @@ variable "service_account" {
 }
 
 ###################################################################################################################################################
-# IAM Policy Loading Configuration
+# Pre-loaded IAM Policy Configuration (from external iam-policy module)
 ###################################################################################################################################################
-variable "iam_policy_repo_url" {
-  description = "URL of the Git repository containing IAM policy files"
+variable "loaded_inline_policy_document" {
+  description = "Pre-loaded inline policy document from iam-policy module"
   type        = string
-  default     = ""
+  default     = null
 }
 
-variable "iam_policy_branch" {
-  description = "Branch of the Git repository to use"
-  type        = string
-  default     = "main"
+variable "loaded_override_policy_documents" {
+  description = "Pre-loaded override policy documents from iam-policy module"
+  type        = list(string)
+  default     = []
 }
 
-variable "iam_policy_base_path" {
-  description = "Base path within the Git repository where policy files are located"
-  type        = string
-  default     = "iam"
+variable "loaded_managed_policy_arns" {
+  description = "Pre-loaded managed policy ARNs from iam-policy module"
+  type        = map(string)
+  default     = {}
 }
 
-variable "iam_raw_base_url" {
-  description = "Raw file base URL for fetching IAM policies via HTTP (e.g., https://raw.githubusercontent.com/org/repo/branch)"
-  type        = string
-  default     = ""
-}
-
-variable "repo_root_path" {
-  description = "Local filesystem path to the repository root (alternative to Git)"
-  type        = string
-  default     = ""
+variable "has_loaded_inline_policy" {
+  description = "Whether pre-loaded inline policy exists"
+  type        = bool
+  default     = false
 }
 
 ###################################################################################################################################################

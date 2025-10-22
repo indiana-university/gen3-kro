@@ -108,13 +108,25 @@ output "ack_pod_identities" {
   } : {}
 }
 
-output "ack_debug_iam_paths" {
-  description = "Debug: IAM policy paths for ACK controllers"
+output "ack_debug_policy_info" {
+  description = "Debug: IAM policy information for ACK controllers"
   value = var.enable_ack && var.enable_eks_cluster ? {
     for k, v in module.pod_identities :
-    replace(k, "ack-", "") => v.debug_iam_policy_paths
+    replace(k, "ack-", "") => v.debug_policy_info
     if startswith(k, "ack-")
   } : {}
+}
+
+output "iam_policies_debug" {
+  description = "Debug: IAM policies loaded status"
+  value = {
+    for k, v in module.iam_policies :
+    k => {
+      policy_source        = v.policy_source
+      has_inline_policy    = v.has_inline_policy
+      managed_policy_count = length(v.managed_policy_arns)
+    }
+  }
 }
 
 ###############################################################################
@@ -187,6 +199,16 @@ output "argocd_release_name" {
   value       = var.enable_argocd ? try(module.argocd.argocd[0].name, null) : null
 }
 
+output "argocd_hub_configmap_name" {
+  description = "Name of the hub ConfigMap created for ArgoCD"
+  value       = var.enable_argocd ? try(module.hub_configmap.config_map_name, "") : ""
+}
+
+output "argocd_hub_configmap_namespace" {
+  description = "Namespace of the hub ConfigMap created for ArgoCD"
+  value       = var.enable_argocd ? try(module.hub_configmap.config_map_namespace, "") : ""
+}
+
 output "argocd_cluster_secret" {
   description = "ArgoCD cluster secret metadata for the deployed cluster registration"
   value       = var.enable_argocd ? module.argocd.cluster : null
@@ -210,6 +232,7 @@ output "argocd_server_url" {
     get_password_command = "kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d"
   } : null
 }
+
 
 ###############################################################################
 # Debug Outputs

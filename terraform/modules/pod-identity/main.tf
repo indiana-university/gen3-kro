@@ -1,44 +1,23 @@
 ###################################################################################################################################################
 # Generic Pod Identity Module
 # Universal wrapper for EKS Pod Identity supporting ACK, addons, ArgoCD, and custom services
-# Uses the terraform-aws-modules/eks-pod-identity/aws module with integrated IAM policy loading
+# Uses the terraform-aws-modules/eks-pod-identity/aws module
+# IAM policies are pre-loaded by caller and passed in
 ###################################################################################################################################################
 
 locals {
   # Determine context from tags (hub or spoke)
   context = lookup(var.tags, "Spoke", null) != null ? lookup(var.tags, "Spoke") : var.context
 
-  # Use IAM policy module to load policies
-  load_policies = var.create && (var.custom_inline_policy == null && length(var.custom_managed_arns) == 0)
-}
-
-###################################################################################################################################################
-# IAM Policy Module - Load policies from filesystem or Git
-###################################################################################################################################################
-module "iam_policy" {
-  source = "../iam-policy"
-
-  count = local.load_policies ? 1 : 0
-
-  service_type         = var.service_type
-  service_name         = var.service_name
-  context              = local.context
-  iam_policy_repo_url  = var.iam_policy_repo_url
-  iam_policy_branch    = var.iam_policy_branch
-  iam_policy_base_path = var.iam_policy_base_path
-  iam_raw_base_url     = var.iam_raw_base_url
-  repo_root_path       = var.repo_root_path
-}
-
-locals {
-  # Determine which policies to use (custom or loaded from filesystem)
+  # Determine which policies to use (custom or pre-loaded)
   use_custom_policies = var.custom_inline_policy != null || length(var.custom_managed_arns) > 0
+  use_loaded_policies = !local.use_custom_policies && var.has_loaded_inline_policy
 
   # Source policy documents (inline policies)
   source_policy_documents = local.use_custom_policies ? (
     var.custom_inline_policy != null ? [var.custom_inline_policy] : []
   ) : (
-    local.load_policies && try(module.iam_policy[0].has_inline_policy, false) ? [module.iam_policy[0].inline_policy_document] : []
+    local.use_loaded_policies && var.loaded_inline_policy_document != null ? [var.loaded_inline_policy_document] : []
   )
 
   # Add cross-account policy if provided
@@ -48,14 +27,12 @@ locals {
   ))
 
   # Override policy documents
-  override_policy_documents = local.use_custom_policies ? [] : (
-    local.load_policies ? try(module.iam_policy[0].override_policy_documents, []) : []
-  )
+  override_policy_documents = local.use_custom_policies ? [] : var.loaded_override_policy_documents
 
   # Managed policy ARNs
-  filesystem_policy_arns = local.load_policies ? try(module.iam_policy[0].managed_policy_arns, {}) : {}
+  loaded_policy_arns     = local.use_loaded_policies ? var.loaded_managed_policy_arns : {}
   custom_policy_arns     = local.use_custom_policies ? var.custom_managed_arns : {}
-  additional_policy_arns = merge(local.filesystem_policy_arns, local.custom_policy_arns, var.additional_policy_arns)
+  additional_policy_arns = merge(local.loaded_policy_arns, local.custom_policy_arns, var.additional_policy_arns)
 
   # Determine if we have inline policies to attach
   has_inline_policy = length(local.all_source_policy_documents) > 0 || length(local.override_policy_documents) > 0
@@ -66,7 +43,7 @@ locals {
 ###################################################################################################################################################
 module "pod_identity" {
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "~> 1.4.0"
+  version = "~> 2.2.0"
 
   count = var.create ? 1 : 0
 

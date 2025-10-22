@@ -32,8 +32,8 @@ output "associations" {
 }
 
 output "policy_source" {
-  description = "Source of the IAM policy (filesystem, custom, or none)"
-  value       = local.use_custom_policies ? "custom" : (local.load_policies ? try(module.iam_policy[0].policy_source, "none") : "none")
+  description = "Source of the IAM policy (loaded, custom, or none)"
+  value       = local.use_custom_policies ? "custom" : (local.use_loaded_policies ? "loaded" : "none")
 }
 
 output "service_type" {
@@ -51,11 +51,12 @@ output "cluster_name" {
   value       = var.cluster_name
 }
 
-output "debug_iam_policy_paths" {
-  description = "Debug: IAM policy loading paths and status"
+output "debug_policy_info" {
+  description = "Debug: Policy loading information"
   value = {
-    load_policies       = local.load_policies
+    use_loaded_policies = local.use_loaded_policies
     use_custom_policies = local.use_custom_policies
-    iam_policy_output   = local.load_policies ? try(module.iam_policy[0].debug_paths, null) : null
+    has_inline_policy   = local.has_inline_policy
+    policy_arns_count   = length(local.additional_policy_arns)
   }
 }

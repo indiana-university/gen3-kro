@@ -49,12 +49,6 @@ output "oidc_provider_arn" {
   value       = var.create ? try(module.eks[0].oidc_provider_arn, "") : null
 }
 
-output "cluster_auth_token" {
-  description = "Authentication token for the EKS cluster"
-  value       = var.create ? data.aws_eks_cluster_auth.this[0].token : null
-  sensitive   = true
-}
-
 output "account_id" {
   description = "AWS Account ID"
   value       = var.create ? data.aws_caller_identity.current[0].account_id : null

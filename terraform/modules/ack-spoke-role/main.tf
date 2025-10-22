@@ -28,21 +28,28 @@ resource "aws_iam_role" "spoke_ack" {
 
 ###################################################################################################################################################
 # Attach Inline Policy to Spoke Role
+# Always created when var.create is true; uses provided policy or empty policy if none provided
+# This avoids "known only after apply" issues with conditional count
 ###################################################################################################################################################
 resource "aws_iam_role_policy" "spoke_ack_inline" {
-  count    = var.create && var.has_inline_policy && var.combined_policy_json != null ? 1 : 0
+  count = var.create ? 1 : 0
 
-  name   = "${var.service_name}-ack-policy"
-  role   = aws_iam_role.spoke_ack[0].name
-  policy = var.combined_policy_json
+  name = "${var.service_name}-ack-policy"
+  role = aws_iam_role.spoke_ack[0].name
+
+  # Use provided policy JSON or create minimal no-op policy if none provided
+  policy = var.combined_policy_json != null ? var.combined_policy_json : jsonencode({
+    Version = "2012-10-17"
+    Statement = []
+  })
 }
 
 ###################################################################################################################################################
 # Attach Managed Policies to Spoke Role
+# Note: Managed policy ARNs from filesystem are unknown at plan time, causing for_each issues.
+# For ACK controllers, inline policies contain all necessary permissions, so managed policies
+# are typically not used. If needed, they should be pre-defined in variables, not loaded from filesystem.
 ###################################################################################################################################################
-resource "aws_iam_role_policy_attachment" "spoke_ack_managed" {
-  for_each = var.create ? var.policy_arns : {}
-
-  role       = aws_iam_role.spoke_ack[0].name
-  policy_arn = each.value
-}
+# Disabled: Managed policy attachment removed due to "known only after apply" limitation
+# If managed policies are required, they should be defined statically in terragrunt inputs
+# rather than loaded dynamically from filesystem in the iam-policy module

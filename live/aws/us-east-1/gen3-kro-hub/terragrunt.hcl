@@ -8,14 +8,10 @@ terraform {
 
 locals {
   ###################################################################################################################################################
-  # DATA IMPORT SECTION - Imports variables from config.yaml and disabled-addons.yaml
-  ###################################################################################################################################################
+  # DATA IMPORT SECTION - Imports variables from config.yaml
+  ##################################################################################################################################################
   repo_root = get_repo_root()
   config    = yamldecode(file("${get_terragrunt_dir()}/config.yaml"))
-
-  # Import disabled addons (available addons set to enable_pod_identity: true for testing)
-  # In production, these would be disabled (enable_pod_identity: false)
-  disabled_addons = try(yamldecode(file("${get_terragrunt_dir()}/disabled-addons.yaml")), { addon_configs = {} })
 
   # Direct imports from config.yaml structure
   hub_config    = local.config.hub
@@ -71,23 +67,10 @@ locals {
   iam_gitops_branch           = lookup(local.iam_gitops_config, "branch", "main")
   iam_gitops_policy_base_path = lookup(local.iam_gitops_config, "policy_base_path", "")
 
-  # Addon configurations - merge disabled-addons.yaml defaults with config.yaml overrides
-  # Strategy: disabled-addons.yaml provides the full catalog and default settings
-  #           config.yaml supplies environment-specific overrides
-  #           Merge each addon map individually so partial overrides keep catalog defaults
-  addon_configs_from_config = lookup(local.hub_config, "addon_configs", {})
-  addon_configs_from_disabled = lookup(local.disabled_addons, "addon_configs", {})
-  addon_config_names = distinct(concat(
-    keys(local.addon_configs_from_disabled),
-    keys(local.addon_configs_from_config)
-  ))
-  addon_configs = {
-    for name in local.addon_config_names :
-    name => merge(
-      lookup(local.addon_configs_from_disabled, name, {}),
-      lookup(local.addon_configs_from_config, name, {})
-    )
-  }
+  # Addon configurations from config.yaml only
+  # All addon configs are now sourced from config.yaml hub.addon_configs
+  # No merging with disabled-addons.yaml since that file has been removed
+  addon_configs = lookup(local.hub_config, "addon_configs", {})
 
   # ACK configurations from hub.ack_configs
   hub_ack_configs = lookup(local.hub_config, "ack_configs", {})
@@ -190,26 +173,6 @@ locals {
   hub_repo_basepath     = trimsuffix(local.gitops_bootstrap_path, "/bootstrap")  # -> "argocd"
   addons_repo_basepath  = "${trimsuffix(local.gitops_bootstrap_path, "/bootstrap")}/hub"  # -> "argocd/hub"
 
-  # ACK annotation pairs for cluster secret (backward compatibility)
-  ack_annotation_pairs = {
-    for name, cfg in local.hub_ack_configs :
-    name => {
-      namespace       = lookup(cfg, "namespace", "ack-system")
-      service_account = lookup(cfg, "service_account", "ack-${name}-controller")
-      # Note: hub_role_arn will be populated from module outputs in inputs section
-    }
-  }
-
-  # Addon annotation pairs for cluster secret (backward compatibility)
-  addon_annotation_pairs = {
-    for name, cfg in local.addon_configs :
-    name => {
-      namespace       = lookup(cfg, "namespace", name)
-      service_account = lookup(cfg, "service_account", name)
-      # Note: irsa_role_arn will be populated from module outputs in inputs section
-    }
-  }
-
   argocd_cluster = {
     cluster_name     = local.cluster_name
     secret_namespace = local.argocd_namespace
@@ -245,21 +208,21 @@ locals {
           # IAM Repository (for future IAM sync jobs)
           iam_repo_url = local.iam_repo_url_base
         },
-        # ACK controller namespace annotations (backward compatibility)
-        { for name, data in local.ack_annotation_pairs :
-          "ack_${name}_namespace" => data.namespace
+        # ACK controller namespace annotations
+        { for name, cfg in local.hub_ack_configs :
+          "ack_${name}_namespace" => lookup(cfg, "namespace", "ack-system")
         },
-        # ACK controller service account annotations (backward compatibility)
-        { for name, data in local.ack_annotation_pairs :
-          "ack_${name}_service_account" => data.service_account
+        # ACK controller service account annotations
+        { for name, cfg in local.hub_ack_configs :
+          "ack_${name}_service_account" => lookup(cfg, "service_account", "ack-${name}-sa")
         },
-        # Addon namespace annotations (backward compatibility)
-        { for name, data in local.addon_annotation_pairs :
-          "${replace(name, "_", "-")}_namespace" => data.namespace
+        # Addon namespace annotations
+        { for name, cfg in local.addon_configs :
+          "${replace(name, "_", "-")}_namespace" => lookup(cfg, "namespace", name)
         },
-        # Addon service account annotations (backward compatibility)
-        { for name, data in local.addon_annotation_pairs :
-          "${replace(name, "_", "-")}_service_account" => data.service_account
+        # Addon service account annotations
+        { for name, cfg in local.addon_configs :
+          "${replace(name, "_", "-")}_service_account" => lookup(cfg, "service_account", name)
         }
         # Note: IAM role ARN annotations (ack_*_hub_role_arn, *_irsa_role_arn) will be added
         # by the argocd module or via a second terragrunt pass after pod identities are created.
@@ -271,13 +234,6 @@ locals {
 
   # ArgoCD ConfigMap data structure (will be populated with module outputs)
   # This will be passed to the argocd module to create the ConfigMap
-  argocd_cluster_config_map = {
-    enabled = local.enable_argocd
-    name    = "${local.cluster_name}-argocd-settings"
-    # Data keys will be populated in the module using pod_identities outputs
-    # Structure documented in docs/argocd-hybrid-config-map.md
-  }
-
   # Kubernetes provider configuration
   hub_exec_args_base = [
     "eks",
@@ -407,7 +363,6 @@ inputs = {
   argocd_cluster     = local.argocd_cluster
   argocd_outputs_dir = local.outputs_dir
   argocd_namespace   = local.argocd_namespace
-  argocd_inline_policy = fileexists("${local.repo_root}/terraform/combinations/iam/gen3-kro/hub/argocd/recommended-inline-policy") ? file("${local.repo_root}/terraform/combinations/iam/gen3-kro/hub/argocd/recommended-inline-policy") : ""
 }
 
 # ArgoCD providers and module generation
@@ -419,11 +374,7 @@ provider "kubernetes" {
   host                   = try(data.aws_eks_cluster.cluster[0].endpoint, "")
   cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data), "")
 
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = ${jsonencode(local.hub_exec_args)}
-  }
+  token = try(data.aws_eks_cluster_auth.cluster[0].token, "")
 }
 EOF
 : "")
@@ -437,11 +388,7 @@ provider "helm" {
   kubernetes = {
     host                   = try(data.aws_eks_cluster.cluster[0].endpoint, "")
     cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data), "")
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = ${jsonencode(local.hub_exec_args)}
-    }
+    token                  = try(data.aws_eks_cluster_auth.cluster[0].token, "")
   }
 }
 EOF
@@ -454,10 +401,14 @@ generate "spokes" {
   contents  = (local.enable_ack_spoke_roles ? join("\n\n", [
     for spoke in local.spokes :
     <<-EOF
-# Local variable to collect hub ACK pod identity ARNs
+# Local variables to collect hub pod identity ARNs
 locals {
   hub_pod_identity_arns_${spoke.alias} = {
-    ${join("\n    ", [for controller_name in keys(local.hub_ack_configs) : "\"${controller_name}\" = try(module.ack[\"${controller_name}\"].role_arn, \"\")"])}
+    ${join("\n    ", [for controller_name in keys(local.hub_ack_configs) : "\"${controller_name}\" = try(module.pod_identities[\"ack-${controller_name}\"].role_arn, \"\")"])}
+  }
+
+  hub_addon_pod_identity_arns_${spoke.alias} = {
+    ${join("\n    ", [for addon_name in keys(local.addon_configs) : "\"${addon_name}\" = try(module.pod_identities[\"${addon_name}\"].role_arn, \"\")"])}
   }
 }
 
@@ -471,12 +422,87 @@ module "spoke_${spoke.alias}" {
   tags                  = ${jsonencode(merge(local.base_tags, lookup(spoke, "tags", {}), { Spoke = spoke.alias, caller_level = "spoke_${spoke.alias}" }))}
   cluster_name          = var.cluster_name
   spoke_alias           = "${spoke.alias}"
+
+  # ACK configuration
   ack_configs           = ${jsonencode(lookup(spoke, "ack_configs", {}))}
   hub_ack_configs       = ${jsonencode(local.hub_ack_configs)}
   hub_pod_identity_arns = local.hub_pod_identity_arns_${spoke.alias}
 
-  depends_on = [module.ack]
+  # Addon configuration
+  addon_configs                = ${jsonencode(lookup(spoke, "addon_configs", {}))}
+  hub_addon_configs            = ${jsonencode(local.addon_configs)}
+  hub_addon_pod_identity_arns  = local.hub_addon_pod_identity_arns_${spoke.alias}
+
+  # IAM Git configuration (same as hub)
+  iam_git_repo_url  = var.iam_git_repo_url
+  iam_git_branch    = var.iam_git_branch
+  iam_base_path     = var.iam_base_path
+  iam_raw_base_url  = var.iam_raw_base_url
+  iam_repo_root     = var.iam_repo_root
+
+  depends_on = [module.pod_identities]
 }
 EOF
   ]) : "")
+}
+
+generate "spoke_outputs" {
+  path      = "spoke_outputs.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = (local.enable_ack_spoke_roles && length(local.spokes) > 0 ? <<-EOF
+###############################################################################
+# Spoke Role Outputs
+# Dynamically generated outputs for each spoke's ACK and addon roles
+###############################################################################
+
+${join("\n\n", [for spoke in local.spokes : <<-SPOKE
+# Spoke: ${spoke.alias}
+output "spoke_${spoke.alias}_ack_roles" {
+  description = "All ACK roles for spoke ${spoke.alias} (created + override)"
+  value       = try(module.spoke_${spoke.alias}.ack_all_roles, {})
+}
+
+output "spoke_${spoke.alias}_addon_roles" {
+  description = "All addon roles for spoke ${spoke.alias} (created + override)"
+  value       = try(module.spoke_${spoke.alias}.addon_all_roles, {})
+}
+
+output "spoke_${spoke.alias}_ack_created_roles" {
+  description = "Created ACK roles for spoke ${spoke.alias}"
+  value       = try(module.spoke_${spoke.alias}.ack_spoke_roles, {})
+}
+
+output "spoke_${spoke.alias}_addon_created_roles" {
+  description = "Created addon roles for spoke ${spoke.alias}"
+  value       = try(module.spoke_${spoke.alias}.addon_spoke_roles, {})
+}
+
+output "spoke_${spoke.alias}_ack_override_arns" {
+  description = "ACK override ARNs for spoke ${spoke.alias}"
+  value       = try(module.spoke_${spoke.alias}.ack_override_arns, {})
+}
+
+output "spoke_${spoke.alias}_addon_override_arns" {
+  description = "Addon override ARNs for spoke ${spoke.alias}"
+  value       = try(module.spoke_${spoke.alias}.addon_override_arns, {})
+}
+SPOKE
+])}
+
+# Combined spoke roles output (all spokes)
+output "all_spoke_ack_roles" {
+  description = "All ACK roles across all spokes"
+  value = merge(
+${join(",\n", [for spoke in local.spokes : "    try(module.spoke_${spoke.alias}.ack_all_roles, {})"])}
+  )
+}
+
+output "all_spoke_addon_roles" {
+  description = "All addon roles across all spokes"
+  value = merge(
+${join(",\n", [for spoke in local.spokes : "    try(module.spoke_${spoke.alias}.addon_all_roles, {})"])}
+  )
+}
+EOF
+  : "")
 }
