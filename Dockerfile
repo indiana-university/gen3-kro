@@ -145,17 +145,19 @@ RUN echo 'alias k=kubectl' >> /home/vscode/.bashrc \
     && echo 'complete -F __start_kubectl k' >> /home/vscode/.bashrc \
     && echo 'export PS1="\[\033[01;32m\]\u@devcontainer\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/vscode/.bashrc
 
-# Display installed versions on container start
-RUN echo "=== Installed Tools ===" && \
-    echo "Terraform: $(terraform version | head -n1)" && \
-    echo "Terragrunt: $(terragrunt --version)" && \
-    echo "kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client)" && \
-    echo "Helm: $(helm version --short)" && \
-    echo "AWS CLI: $(aws --version)" && \
-    echo "yq: $(yq --version)" && \
-    echo "Node.js: $(node --version)" && \
-    echo "npm: $(npm --version)" && \
-    echo "======================="
+RUN echo '' >> /home/vscode/.bashrc \
+    && echo '# Display installed tools on terminal start' >> /home/vscode/.bashrc \
+    && echo 'echo "=== Installed Tools ==="' >> /home/vscode/.bashrc \
+    && echo 'echo "Terraform: $(terraform version | head -n1)"' >> /home/vscode/.bashrc \
+    && echo 'echo "Terragrunt: $(terragrunt --version)"' >> /home/vscode/.bashrc \
+    && echo 'echo "kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client 2>/dev/null | head -n1)"' >> /home/vscode/.bashrc \
+    && echo 'echo "Helm: $(helm version --short)"' >> /home/vscode/.bashrc \
+    && echo 'echo "AWS CLI: $(aws --version)"' >> /home/vscode/.bashrc \
+    && echo 'echo "yq: $(yq --version)"' >> /home/vscode/.bashrc \
+    && echo 'echo "Node.js: $(node --version) | npm: $(npm --version)"' >> /home/vscode/.bashrc \
+    && echo 'echo "======================="' >> /home/vscode/.bashrc \
+    && echo 'echo ""' >> /home/vscode/.bashrc
+
 
 # Reset to root for any final setup
 USER root
