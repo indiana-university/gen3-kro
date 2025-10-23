@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# bootstrap/scripts/connect-cluster.sh
+# scripts/connect-cluster.sh
 # Updates kubeconfig to connect to the EKS cluster using Terragrunt outputs
 
 set -euo pipefail

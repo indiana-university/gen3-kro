@@ -188,7 +188,10 @@ Wave 3: Gen3 Instances (Application workloads)```yaml
 
 # Connect to the hub cluster
 
-Edit `config/config.yaml` with your environment details:./bootstrap/scripts/connect-cluster.sh
+Edit `config/config.yaml` with your environment details:
+
+```bash
+./scripts/connect-cluster.sh
 
 ```
 
@@ -260,9 +263,9 @@ watch kubectl get pods -n argocd| SQS | Manage message queues | ack-system | Con
 
 # Configure kubectl context### ACK Configuration
 
-./bootstrap/scripts/connect-cluster.sh
+./scripts/connect-cluster.sh
 
-Controllers are configured via the unified ApplicationSet pattern (`argocd/hub/shared/applicationsets/ack-controllers.yaml`):
+Controllers are configured via the unified ApplicationSet pattern (`argocd/bootstrap/hub-addons.yaml`):
 
 # Verify connection
 
@@ -390,7 +393,7 @@ gen3-kro/Install git hooks for validation:
 
 │   ├── bootstrap/                   # Bootstrap ApplicationSets (deployed by Terraform)```bash
 
-│   │   ├── hub-addons.yaml          # Wave 0: Platform addons (ACK, KRO)./bootstrap/scripts/install-git-hooks.sh
+│   │   ├── hub-addons.yaml          # Wave 0: Platform addons (ACK, KRO)./scripts/install-git-hooks.sh
 
 │   │   ├── spoke-addons.yaml        # Wave 0: Spoke-specific addons```
 
@@ -842,7 +845,7 @@ Build and push the platform image:
 
 ```bash
 # Build image
-./bootstrap/scripts/docker-build-push.sh
+./scripts/docker-build-push.sh
 
 # Image includes:
 # - All Terraform/Terragrunt tools

@@ -125,7 +125,7 @@ module "pod_identities" {
     {
       for svc_name, svc_config in var.ack_configs :
       "ack-${svc_name}" => {
-        service_type         = "acks"  # folder name is plural: iam/gen3-kro/hub/acks/
+        service_type         = "acks"  # folder name is plural: iam/gen3/<hub_alias>/acks/
         service_name         = svc_name
         namespace            = lookup(svc_config, "namespace", "ack-system")
         service_account      = lookup(svc_config, "service_account", "ack-${svc_name}-sa")
@@ -139,7 +139,7 @@ module "pod_identities" {
     {
       for addon_name, addon_config in var.addon_configs :
       "${addon_name}" => {
-        service_type         = "addons"  # folder name is plural: iam/gen3-kro/hub/addons/
+        service_type         = "addons"  # folder name is plural: iam/gen3/<hub_alias>/addons/
         service_name         = addon_name
         namespace            = lookup(addon_config, "namespace", "kube-system")
         service_account      = lookup(addon_config, "service_account", addon_name)

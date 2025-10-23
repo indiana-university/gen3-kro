@@ -15,6 +15,6 @@ This directory stores the GitOps layer that ArgoCD consumes to bootstrap and ope
   - `shared/` and `values/`: Shared manifests and ACK overrides consumed by templated ApplicationSets.
 - `plans/Phase*.md`, `plans/deployment-plan.md`, `plans/Proposal.md`: Step-by-step wave plans documenting the intended ArgoCD rollout order.
 - `shared/instances/`: Kustomize base for reusable resource graph instances.
-- `spokes/bootstrap/`: ApplicationSet overlays that enable additional addons on spoke clusters.
+- `spokes/<spoke-name>/`: Spoke-specific configurations including addons, infrastructure, and application templates.
 - `sample.yaml`: Example ArgoCD application bundle kept for reference.
 
