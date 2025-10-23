@@ -1,21 +1,20 @@
 {
-  "name": "gen3-kro-dev",
+  "name": "gen3-kro-dev (Linux/macOS)",
   "build": {
     "dockerfile": "Dockerfile",
     "context": ".."
   },
   "workspaceFolder": "/workspaces/gen3-kro",
   "mounts": [
-    // Use conditional environment variables - one will be empty, other will have the path
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached"
+    "source=${localEnv:HOME}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
+    "source=${localEnv:HOME}/.config/gh,target=/home/vscode/.config/gh,type=bind,consistency=cached"
   ],
   "remoteUser": "vscode",
   "containerEnv": {
     "KUBECONFIG": "/home/vscode/.kube/config"
   },
-  "postCreateCommand": "bash -c 'sudo chown -R vscode:vscode /workspaces/gen3-kro && git config --global --add safe.directory /workspaces/gen3-kro && \n  # Create required output directories\n  mkdir -p /workspaces/gen3-kro/outputs/logs && \n  mkdir -p /workspaces/gen3-kro/outputs/argo && \n  echo \"Dev container setup complete!\" && \n  # Attempt to load kubeconfig and ArgoCD creds if AWS is configured and script exists\n  if [[ -f /workspaces/gen3-kro/bootstrap/scripts/connect-cluster.sh ]]; then \n    if command -v aws >/dev/null 2>&1 && [[ -n \"${AWS_PROFILE:-}\" || -f /home/vscode/.aws/credentials ]]; then \n      echo \"Running connect-cluster.sh (will be skipped if prerequisites are missing)...\" && \n      bash /workspaces/gen3-kro/bootstrap/scripts/connect-cluster.sh staging || true; \n    else \n      echo \"AWS CLI or credentials not found; skipping connect-cluster.sh.\"; \n    fi \n  fi'",
+  "postCreateCommand": "bash -c 'sudo chown -R vscode:vscode /workspaces/gen3-kro && git config --global --add safe.directory /workspaces/gen3-kro && mkdir -p /workspaces/gen3-kro/outputs/logs && mkdir -p /workspaces/gen3-kro/outputs/argo && echo \"Dev container setup complete!\" && if [[ -f /workspaces/gen3-kro/bootstrap/scripts/connect-cluster.sh ]]; then if command -v aws >/dev/null 2>&1 && [[ -n \"${AWS_PROFILE:-}\" || -f /home/vscode/.aws/credentials ]]; then echo \"Running connect-cluster.sh (will be skipped if prerequisites are missing)...\" && bash /workspaces/gen3-kro/bootstrap/scripts/connect-cluster.sh staging || true; else echo \"AWS CLI or credentials not found; skipping connect-cluster.sh.\"; fi fi'",
   "customizations": {
     "vscode": {
       "settings": {
@@ -43,9 +42,6 @@
         "redhat.vscode-yaml",
         "GitHub.copilot",
         "GitHub.copilot-chat",
-        "GitHub.copilot-labs",
-        "OpenAI.openai-vscode",
-
         "eamodio.gitlens",
         "ms-vscode.makefile-tools"
       ]
