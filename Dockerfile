@@ -73,13 +73,6 @@ RUN curl -L "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
     && rm -rf /tmp/helm.tar.gz /tmp/linux-amd64 \
     && chmod +x /usr/local/bin/helm
 
-# Install Node.js (LTS 22.21.0)
-RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
-    -o /tmp/node.tar.xz \
-    && mkdir -p /usr/local/lib/nodejs \
-    && tar -xJf /tmp/node.tar.xz -C /usr/local/lib/nodejs \
-    && rm /tmp/node.tar.xz
-
 # Install AWS CLI v2 (latest)
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
     -o /tmp/awscliv2.zip \
@@ -109,6 +102,12 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     python3-yaml \
     && rm -rf /var/lib/apt/lists/*
 
+    # Install Node.js (LTS 22.21.0)
+RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+    -o /tmp/node.tar.xz \
+    && mkdir -p /usr/local/lib/nodejs \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local/lib/nodejs \
+    && rm /tmp/node.tar.xz
 # Create working directory
 WORKDIR /workspace
 

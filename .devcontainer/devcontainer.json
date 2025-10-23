@@ -4,7 +4,7 @@
     "dockerfile": "Dockerfile",
     "context": ".."
   },
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/workspaces",
   "mounts": [
     // Kube and AWS credentials (Windows USERPROFILE if set)
     "source=${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
@@ -14,7 +14,7 @@
   "containerEnv": {
     "KUBECONFIG": "/home/vscode/.kube/config"
   },
-  "postCreateCommand": "bash -c 'sudo chown -R vscode:vscode /workspace && git config --global --add safe.directory /workspace && \n  # Create required output directories\n  mkdir -p /workspace/outputs/logs && \n  mkdir -p /workspace/outputs/argo && \n  echo \"Dev container setup complete!\" && \n  # Attempt to load kubeconfig and ArgoCD creds if AWS is configured and script exists\n  if [[ -f /workspace/bootstrap/scripts/connect-cluster.sh ]]; then \n    if command -v aws >/dev/null 2>&1 && [[ -n \"${AWS_PROFILE:-}\" || -f /home/vscode/.aws/credentials ]]; then \n      echo \"Running connect-cluster.sh (will be skipped if prerequisites are missing)...\" && \n      bash /workspace/bootstrap/scripts/connect-cluster.sh || true; \n    else \n      echo \"AWS CLI or credentials not found; skipping connect-cluster.sh.\"; \n    fi \n  fi'",
+  "postCreateCommand": "bash -c 'sudo chown -R vscode:vscode /workspaces && git config --global --add safe.directory /workspaces && \n  # Create required output directories\n  mkdir -p /workspaces/outputs/logs && \n  mkdir -p /workspaces/outputs/argo && \n  echo \"Dev container setup complete!\" && \n  # Attempt to load kubeconfig and ArgoCD creds if AWS is configured and script exists\n  if [[ -f /workspaces/bootstrap/scripts/connect-cluster.sh ]]; then \n    if command -v aws >/dev/null 2>&1 && [[ -n \"${AWS_PROFILE:-}\" || -f /home/vscode/.aws/credentials ]]; then \n      echo \"Running connect-cluster.sh (will be skipped if prerequisites are missing)...\" && \n      bash /workspaces/bootstrap/scripts/connect-cluster.sh || true; \n    else \n      echo \"AWS CLI or credentials not found; skipping connect-cluster.sh.\"; \n    fi \n  fi'",
   "customizations": {
     "vscode": {
       "settings": {

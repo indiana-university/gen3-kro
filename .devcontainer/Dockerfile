@@ -13,6 +13,7 @@ ARG KUBECTL_VERSION=1.34.1
 ARG HELM_VERSION=3.16.1
 ARG AWS_CLI_VERSION=2.15.17
 ARG YQ_VERSION=4.44.3
+ARG NODE_VERSION=25.0.0
 
 # Install base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -115,17 +116,24 @@ RUN echo "Downloading kustomize..."; \
 RUN kubectl completion bash > /etc/bash_completion.d/kubectl \
     && helm completion bash > /etc/bash_completion.d/helm
 
+    # Install Node.js (LTS 22.21.0)
+RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+    -o /tmp/node.tar.xz \
+    && mkdir -p /usr/local/lib/nodejs \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local/lib/nodejs \
+    && rm /tmp/node.tar.xz
+
 # Create workspace directory
-RUN mkdir -p /workspace
+RUN mkdir -p /workspaces
 
 # Set permissions for vscode user
-RUN chown -R vscode:vscode /workspace
+RUN chown -R vscode:vscode /workspaces
 
 # Switch to vscode user
 USER vscode
 
 # Set working directory
-WORKDIR /workspace
+WORKDIR /workspaces
 
 # Add helpful aliases to .bashrc
 RUN echo 'alias k=kubectl' >> /home/vscode/.bashrc \
@@ -135,14 +143,16 @@ RUN echo 'alias k=kubectl' >> /home/vscode/.bashrc \
     && echo 'export PS1="\[\033[01;32m\]\u@devcontainer\[\033[00m\]:\[\033[01;34m\]\w\[\033[00m\]\$ "' >> /home/vscode/.bashrc
 
 # Display installed versions on container start
-RUN echo 'echo "=== Development Environment ===" && \
+RUN echo "=== Installed Tools ===" && \
     echo "Terraform: $(terraform version | head -n1)" && \
     echo "Terragrunt: $(terragrunt --version)" && \
-    echo "kubectl: $(kubectl version --client --short 2>/dev/null || echo "Not configured")" && \
+    echo "kubectl: $(kubectl version --client --short 2>/dev/null || kubectl version --client)" && \
     echo "Helm: $(helm version --short)" && \
     echo "AWS CLI: $(aws --version)" && \
     echo "yq: $(yq --version)" && \
-    echo "==============================="' >> /home/vscode/.bashrc
+    echo "Node.js: $(node --version)" && \
+    echo "npm: $(npm --version)" && \
+    echo "======================="
 
 # Reset to root for any final setup
 USER root
