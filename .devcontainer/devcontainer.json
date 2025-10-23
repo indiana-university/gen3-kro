@@ -8,8 +8,8 @@
   "mounts": [
     // Kube and AWS credentials (Windows USERPROFILE if set)
     "source=${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
-    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
-],
+    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached"
+  ],
   "remoteUser": "vscode",
   "containerEnv": {
     "KUBECONFIG": "/home/vscode/.kube/config"
@@ -44,7 +44,6 @@
         "GitHub.copilot-chat",
         "GitHub.copilot-labs",
         "OpenAI.openai-vscode",
-
         "eamodio.gitlens",
         "ms-vscode.makefile-tools"
       ]
