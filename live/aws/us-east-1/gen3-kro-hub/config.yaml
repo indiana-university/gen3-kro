@@ -140,13 +140,13 @@ rgds:
     repo_name: "gen3-kro"
     github_url: "github.com"
     branch: "jimi-container-terragrunt-remodel"
-    argocd_path: "argocd/shared"
+    argocd_path: "argocd/graphs"
 # Base tags applied to all resources
 tags:
   Project: "gen3-kro"
   Environment: "hub"
   ManagedBy: "terragrunt"
-  Owner: "platform-team"
+  Owner: "RDS Team"
 paths:
   outputs_dir: "outputs/terraform"
   terraform_state_bucket: "gen3-kro-envs-4852"
@@ -209,8 +209,8 @@ spokes:
         enable_pod_identity: true
         # override_arn: "arn:aws:iam::123456789012:role/gen3-kro-hub-ack-wafv2"
     tags:
-      Team: "platform"
-      Purpose: "multi-account-demo"
+      Team: "TestingSpoke"
+      Purpose: "same-account-demo"
     addon_configs:
       argocd:
         enable_pod_identity: true

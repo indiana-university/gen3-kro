@@ -1,14 +1,14 @@
 # Default values for addon-appset chart
 
-# Path (in repo) to the addon catalog directory (bootstrap/addons/catalog by default)
+# Path (in repo) to the addon catalog directory (addons/hub/catalog by default)
 # The ApplicationSet will read all .yaml files from this directory
-catalogPath: "bootstrap/addons/catalog"
+catalogPath: "addons/hub/catalog"
 
-# Path (in repo) to the enablement file (bootstrap/addons/enablement.yaml by default)
-enablementPath: "bootstrap/addons/enablement.yaml"
+# Path (in repo) to the enablement file (addons/hub/enablement.yaml by default)
+enablementPath: "addons/hub/enablement.yaml"
 
 # Path (in repo) to the values file used by addons
-valuesPath: "bootstrap/addons/values.yaml"
+valuesPath: "addons/hub/values.yaml"
 
 # Information about the hub repo that will be passed in by the caller (hub ApplicationSet)
 # These are intentionally left blank and expected to be set by the parent ApplicationSet via values.

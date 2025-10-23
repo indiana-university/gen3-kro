@@ -3,7 +3,7 @@
 # This ApplicationSet deploys cluster addons (KRO, ACK controllers, and platform components)
 # to spoke clusters only (excludes hub/control-plane).
 #
-# 1. Addon Catalog (bootstrap/addons/catalog.yaml)
+# 1. Addon Catalog (addons/hub/catalog.yaml)
 #    - Defines available addons with their Helm chart sources and versions
 #    - Centralized registry for KRO, ACK controllers, and platform components
 #
@@ -49,7 +49,7 @@ spec:
               repoURL: '{{.metadata.annotations.hub_repo_url}}'
               revision: '{{.metadata.annotations.hub_repo_revision}}'
               files:
-                - path: '{{.metadata.annotations.hub_repo_basepath}}/bootstrap/addons/catalog.yaml'
+                - path: '{{.metadata.annotations.hub_repo_basepath}}/addons/hub/catalog.yaml'
   template:
     metadata:
       name: '{{.name}}-{{.values.items.addon}}'

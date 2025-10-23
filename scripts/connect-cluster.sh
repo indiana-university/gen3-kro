@@ -7,7 +7,7 @@ IFS=$'\n\t'
 
 # Script directory resolution
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 # Source logging library
 source "${SCRIPT_DIR}/lib-logging.sh"

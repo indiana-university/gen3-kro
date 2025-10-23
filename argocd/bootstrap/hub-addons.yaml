@@ -3,14 +3,14 @@
 # This ApplicationSet deploys cluster addons (KRO, ACK controllers, and platform components)
 # to hub/control-plane clusters only.
 #
-# 1. Addon Catalog (bootstrap/addons/catalog.yaml)
+# 1. Addon Catalog (addons/hub/catalog.yaml)
 #    - Defines available addons with their Helm chart sources and versions
 #    - Centralized registry for KRO, ACK controllers, and platform components
 #
-# 2. Enablement Configuration: bootstrap/addons/enablement.yaml
+# 2. Enablement Configuration: addons/hub/enablement.yaml
 #    - Controls which addons are deployed to hub clusters
 #
-# 3. Values Configuration: bootstrap/addons/values.yaml
+# 3. Values Configuration: addons/hub/values.yaml
 #    - Provides addon-specific configuration (resource limits, IRSA roles, etc.)
 #
 # The ApplicationSet uses:
@@ -46,7 +46,7 @@ spec:
               repoURL: '{{.metadata.annotations.hub_repo_url}}'
               revision: '{{.metadata.annotations.hub_repo_revision}}'
               files:
-                - path: '{{.metadata.annotations.hub_repo_basepath}}/bootstrap/addons/catalog.yaml'
+                - path: '{{.metadata.annotations.hub_repo_basepath}}/addons/hub/catalog.yaml'
   template:
     metadata:
       name: '{{.name}}-{{.addon}}'
@@ -69,7 +69,7 @@ spec:
           helm:
             valueFiles:
               # Load values from hub location
-              - $values/{{.metadata.annotations.hub_repo_basepath}}/bootstrap/addons/values.yaml
+              - $values/{{.metadata.annotations.hub_repo_basepath}}/addons/hub/values.yaml
             # Addon-specific inline values
             values: |
               {{- if eq .addon "kro" }}
