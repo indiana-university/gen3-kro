@@ -2,7 +2,7 @@
   "name": "gen3-kro-dev",
   "build": {
     "dockerfile": "../Dockerfile",
-    "context": "."
+    "context": ".."
   },
   "workspaceFolder": "/workspaces",
   "mounts": [
