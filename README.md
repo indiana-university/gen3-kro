@@ -221,13 +221,13 @@ Edit `live/aws/us-east-1/gen3-kro-hub/terragrunt.hcl` to customize:
 inputs = {
   # Change cluster name
   cluster_name = "my-hub-cluster"
-  
+
   # Update VPC configuration
   vpc_cidr = "10.0.0.0/16"
-  
+
   # Configure region
   region = "us-east-1"
-  
+
   # Update Git repository URL
   argocd_cluster = {
     metadata = {
