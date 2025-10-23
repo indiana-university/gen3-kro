@@ -1,0 +1,133 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Hub-Spoke Architecture" id="hub-spoke-architecture">
+    <mxGraphModel dx="1434" dy="796" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Hub Cluster -->
+        <mxCell id="hub-cluster" value="HUB CLUSTER (Control Plane)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=16;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="240" y="80" width="680" height="320" as="geometry"/>
+        </mxCell>
+
+        <!-- ArgoCD -->
+        <mxCell id="argocd" value="ArgoCD&#xa;(GitOps Controller)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="280" y="140" width="160" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- KRO -->
+        <mxCell id="kro" value="KRO Engine&#xa;(Resource Graphs)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="480" y="140" width="160" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ACK Controllers -->
+        <mxCell id="ack" value="ACK Controllers&#xa;(EC2, EKS, IAM, RDS, S3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="680" y="140" width="200" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- VPC -->
+        <mxCell id="vpc" value="VPC&#xa;10.0.0.0/16" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="280" y="280" width="120" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- EKS -->
+        <mxCell id="eks" value="EKS Cluster&#xa;v1.32" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="440" y="280" width="120" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Pod Identities -->
+        <mxCell id="pod-identities" value="Pod Identities&#xa;(IAM Roles)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="600" y="280" width="120" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- ConfigMaps -->
+        <mxCell id="configmaps" value="ConfigMaps&#xa;(Hub + Spoke)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="760" y="280" width="120" height="80" as="geometry"/>
+        </mxCell>
+
+        <!-- Spoke 1 -->
+        <mxCell id="spoke1" value="SPOKE 1 CLUSTER&#xa;(Workload)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="100" y="480" width="280" height="240" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spoke1-gen3" value="Gen3 Commons&#xa;(Applications)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="540" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spoke1-ack" value="ACK Controllers&#xa;(EC2, RDS, S3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="120" y="620" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Spoke 2 -->
+        <mxCell id="spoke2" value="SPOKE 2 CLUSTER&#xa;(Workload)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="440" y="480" width="280" height="240" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spoke2-gen3" value="Gen3 Commons&#xa;(Applications)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="460" y="540" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spoke2-ack" value="ACK Controllers&#xa;(EC2, RDS, S3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="460" y="620" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Spoke N -->
+        <mxCell id="spokenext" value="SPOKE N CLUSTER&#xa;(Workload)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="780" y="480" width="280" height="240" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spokenext-gen3" value="Gen3 Commons&#xa;(Applications)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="800" y="540" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="spokenext-ack" value="ACK Controllers&#xa;(EC2, RDS, S3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;" vertex="1" parent="1">
+          <mxGeometry x="800" y="620" width="240" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Connections -->
+        <mxCell id="hub-to-spoke1" value="GitOps Sync" style="endArrow=classic;html=1;exitX=0.25;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;strokeColor=#0066CC;" edge="1" parent="1" source="argocd" target="spoke1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="500" y="440" as="sourcePoint"/>
+            <mxPoint x="550" y="390" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="hub-to-spoke2" value="GitOps Sync" style="endArrow=classic;html=1;exitX=0.5;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;strokeColor=#0066CC;" edge="1" parent="1" source="argocd" target="spoke2">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="500" y="440" as="sourcePoint"/>
+            <mxPoint x="550" y="390" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="hub-to-spokenext" value="GitOps Sync" style="endArrow=classic;html=1;exitX=0.75;exitY=1;entryX=0.5;entryY=0;strokeWidth=2;strokeColor=#0066CC;" edge="1" parent="1" source="kro" target="spokenext">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="500" y="440" as="sourcePoint"/>
+            <mxPoint x="550" y="390" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend" value="Legend" style="rounded=0;whiteSpace=wrap;html=1;fillColor=#ffffff;strokeColor=#000000;verticalAlign=top;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="40" y="80" width="160" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-hub" value="Hub Control Plane" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="60" y="120" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-spoke" value="Spoke Workload" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="60" y="160" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-gen3" value="Gen3 App" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="60" y="200" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-service" value="Platform Service" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="60" y="240" width="120" height="30" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
