@@ -1,6 +1,6 @@
 # Gen3 KRO Platform
 
-Deploy your own Gen3 data commons infrastructure using a hub-spoke architecture with Kubernetes Resource Orchestration (KRO), managed by Terraform, Terragrunt, and ArgoCD.
+Deploy your own Gen3 data commons infrastructure using a hub-spoke architecture with Kubernetes Resource Orchestration (KRO), managed by Terraform, Terragrunt, and ArgoCD, all packaged in a ready-to-run development container.
 
 ## Table of Contents
 
@@ -14,20 +14,22 @@ Deploy your own Gen3 data commons infrastructure using a hub-spoke architecture 
 
 ## Overview
 
-This platform enables you to deploy and manage Gen3 data commons across multiple AWS accounts and Kubernetes clusters using a hub-spoke model:
+This platform enables you to deploy and manage Gen3 data commons across AWS, Azure, and Google Cloud accounts using a hub-spoke model orchestrated from a central CSOC hub cluster:
 
-- **Hub Cluster**: Central control plane managing infrastructure provisioning and GitOps operations
-- **Spoke Clusters**: Workload clusters running Gen3 applications
+- **CSOC Hub Cluster (AWS EKS)**: Central control plane that Terraform/Terragrunt bring up inside the dev container workflow
+- **Spoke Clusters**: Provider-specific Kubernetes workloads (AWS, GCP, Azure) running Gen3 applications through KRO graphs
+- **Cloud Controllers**: AWS ACK, Google Config Connector (KCC), and Azure Service Operator (ASO) automate infrastructure creation in spoke accounts
 - **KRO**: Defines reusable infrastructure graphs that can be instantiated across spokes
-- **GitOps**: ArgoCD-driven continuous deployment from your Git repository
+- **GitOps**: ArgoCD-driven continuous deployment triggered from branch commits in your Git repository
 
 ### Key Features
 
-- 🏗️ **Hub-Spoke Architecture**: Centralized management with distributed workloads
-- 🔐 **IAM Management**: Automated pod identity and cross-account role provisioning
-- ☁️ **Multi-Cloud Ready**: Designed for AWS, extensible to Azure and GCP
-- 📦 **ACK Integration**: AWS Controllers for Kubernetes (ACK) for native AWS resource management
-- 🔄 **GitOps Enabled**: ArgoCD-based continuous deployment
+- 🧰 **Dev Container Workflow**: Repository ships with a dev container that downloads the code and installs Terraform, Terragrunt, ArgoCD, kubectl, and other tooling for you
+- 🏗️ **Hub-Spoke Architecture**: Centralized CSOC hub with distributed provider-specific workloads
+- 🔐 **IAM Management**: Automated pod identity and cross-account role provisioningz
+- ☁️ **Multi-Cloud Orchestration**: Terraform/Terragrunt stand up the AWS CSOC hub, while KRO ResourceGraphDefinitions drive AWS, Azure, and Google Cloud spokes
+- 🌐 **Provider Controllers**: Deploy ACK, Google KCC, and Azure Service Operator in the hub to build cloud infrastructure in spoke accounts
+- 🔄 **GitOps via ArgoCD**: Branch commits flow into ArgoCD for continuous deployment across clusters
 - 🎯 **Resource Graphs**: KRO-powered reusable infrastructure patterns
 - 🛡️ **Security First**: IRSA, pod identities, least-privilege IAM policies
 - 📊 **Observability**: Built-in metrics and monitoring support
@@ -38,7 +40,7 @@ This platform enables you to deploy and manage Gen3 data commons across multiple
 ┌─────────────────────────────────────────────────────────────┐
 │                         HUB CLUSTER                         │
 │  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐  │
-│  │   ArgoCD    │  │  KRO Engine  │  │  ACK Controllers   │  │
+│  │   ArgoCD    │  │  KRO Engine  │  │ Cloud Controllers  │  │
 │  │ (GitOps)    │  │  (RGDs)      │  │  (IAM, EKS, etc.)  │  │
 │  └─────────────┘  └──────────────┘  └────────────────────┘  │
 │         │                │                      │           │
@@ -49,7 +51,7 @@ This platform enables you to deploy and manage Gen3 data commons across multiple
                            │ (Creates via KRO)
           ┌────────────────┼────────────────┐
           │                │                │
-    ┌─────▼─────┐    ┌─────▼─────┐   ┌─────▼─────┐
+    ┌─────↓─────┐    ┌─────↓─────┐   ┌─────↓─────┐
     │ SPOKE 1   │    │ SPOKE 2   │   │ SPOKE N   │
     │ (IAM Only)│    │ (IAM Only)│   │ (IAM Only)│
     │           │    │           │   │           │
@@ -70,10 +72,10 @@ Note: Spoke Terraform compositions only create IAM roles/policies.
 
 ### Component Overview
 
-- **Terraform/Terragrunt**: Infrastructure as Code for AWS resources, VPCs, EKS clusters, and IAM
+- **Terraform/Terragrunt**: Infrastructure as Code for the AWS-based CSOC hub (VPC, EKS, IAM) executed from the dev container
 - **ArgoCD**: Continuous deployment and application lifecycle management
 - **KRO**: Kubernetes Resource Orchestrator for defining infrastructure graphs
-- **ACK Controllers**: Manage AWS services directly from Kubernetes
+- **Cloud Provider Controllers**: AWS ACK, Google KCC, and Azure Service Operator manage AWS, Google Cloud, and Azure services directly from the CSOC hub cluster
 - **Pod Identities**: IRSA-based authentication for workloads
 
 ## Quick Start
@@ -83,7 +85,7 @@ Note: Spoke Terraform compositions only create IAM roles/policies.
 git clone https://github.com/YOUR_ORG/gen3-kro.git
 cd gen3-kro
 
-# 2. Build the development container
+# 2. Build the development container (installs Terraform, Terragrunt, ArgoCD CLI, kubectl)
 ./scripts/docker-build-push.sh
 
 # 3. Customize your configuration
@@ -268,8 +270,10 @@ kubectl get nodes
 # Check ArgoCD applications
 kubectl get applications -n argocd
 
-# Check ACK controllers
-kubectl get pods -n ack-system
+# Check provider controllers (namespaces depend on your configuration)
+kubectl get pods -n ack-system    # AWS ACK (default namespace)
+kubectl get pods -n kcc-system    # Google KCC (if enabled)
+kubectl get pods -n aso-system    # Azure Service Operator (if enabled)
 ```
 
 ### Step 6: Deploy Spoke Clusters (Optional)
@@ -290,6 +294,7 @@ See [Spoke README](terraform/combinations/spoke/README.md) for detailed spoke de
 | [Setup Docker](docs/setup-docker.md) | Docker development environment setup |
 | [Setup Terragrunt](docs/setup-terragrunt.md) | Infrastructure deployment with Terragrunt |
 | [Add Cluster Addons](docs/add-cluster-addons.md) | Adding and configuring cluster addons |
+| [Contribution Guide](docs/contributing.md) | Contribution workflow, modular layout, and extension points |
 | [Version Bump](docs/version-bump.md) | Semantic versioning and release management |
 | [Terraform Hub](terraform/combinations/hub/README.md) | Hub cluster Terraform composition |
 | [Terraform Spoke](terraform/combinations/spoke/README.md) | Spoke IAM Terraform composition |
@@ -317,8 +322,8 @@ The platform uses a hub-spoke model for centralized management:
 - Manages cross-account IAM
 
 **Spoke Deployment**:
-- IAM roles created via Terraform
-- Infrastructure (VPC, EKS) created via KRO from hub
+- AWS IAM roles created via Terraform (for ACK-managed spokes)
+- Provider infrastructure (VPC/EKS, GKE, AKS) created via KRO ResourceGraphs from the hub
 - Applications deployed via ArgoCD from hub
 
 ### Deployment Waves
@@ -327,8 +332,8 @@ ArgoCD deploys in phases:
 
 | Wave | Components | Purpose |
 |------|-----------|---------|
-| 0 | Platform addons | KRO, ACK controllers, External Secrets |
-| 1 | ResourceGraphDefinitions | Infrastructure schemas (VPC, EKS, etc.) |
+| 0 | Platform addons | KRO, provider controllers (ACK/KCC/ASO), External Secrets |
+| 1 | ResourceGraphDefinitions | Infrastructure schemas (AWS VPC/EKS, Azure/GCP placeholders) |
 | 2 | Graph instances | Actual infrastructure provisioning |
 | 3 | Applications | Gen3 data commons workloads |
 
@@ -352,20 +357,31 @@ cluster_compute_config = {
   instance_types = ["t3.large"]
 }
 
-# Enable ACK Controllers
+# Enable AWS ACK Controllers
 ack_configs = {
   ec2 = { enable_pod_identity = true, namespace = "ack-system", service_account = "ack-ec2-sa" }
   eks = { enable_pod_identity = true, namespace = "ack-system", service_account = "ack-eks-sa" }
 }
 ```
 
-### Adding ACK Controllers
+### Configuring Provider Controllers
 
-1. Create IAM policy: `iam/gen3/csoc/acks/SERVICE_NAME/internal-policy.json`
-2. Enable in Terragrunt: Add to `ack_configs`
-3. Apply changes: `terragrunt apply`
+**AWS ACK (built-in today)**
+- Create IAM policy: `iam/gen3/csoc/acks/SERVICE_NAME/internal-policy.json`
+- Enable in Terragrunt: add the service to `ack_configs`
+- Apply changes: `terragrunt apply`
 
-See [Adding Cluster Addons](docs/add-cluster-addons.md) for detailed instructions.
+**Google Config Connector (scaffolding provided)**
+- Add controller Helm chart information to `argocd/addons/hub/catalog.yaml` and enable it in `argocd/addons/hub/enablement.yaml`
+- Provide Google Cloud credentials as Kubernetes secrets referenced by the chart values
+- Define KRO ResourceGraphDefinitions under `argocd/graphs/google/` for the resources you want managed
+
+**Azure Service Operator (scaffolding provided)**
+- Mirror the pattern from AWS/Google by extending the hub addon catalog with the ASO chart
+- Supply Azure service principal credentials as secrets and reference them in addon values
+- Define ResourceGraphDefinitions for Azure resources under `argocd/graphs/azure/`
+
+See [Adding Cluster Addons](docs/add-cluster-addons.md) and [Contribution Guide](docs/contributing.md) for detailed instructions on wiring new controllers.
 
 ### Deploying to Different Regions
 
@@ -383,7 +399,7 @@ See [Adding Cluster Addons](docs/add-cluster-addons.md) for detailed instruction
 | ArgoCD app out of sync | `kubectl get application APP_NAME -n argocd -o yaml` |
 | Pod identity not working | Check service account annotation: `kubectl describe sa SA_NAME -n NAMESPACE` |
 | Terraform state lock | Force unlock: `terragrunt force-unlock LOCK_ID` |
-| ACK controller failing | Check IAM role: `aws iam get-role --role-name ROLE_NAME` |
+| Provider controller failing | Validate credentials (IAM role, service account secret) and logs: `kubectl logs DEPLOYMENT -n NAMESPACE` |
 
 ### Getting Help
 
@@ -409,6 +425,8 @@ Built using:
 - [ArgoCD](https://argo-cd.readthedocs.io/)
 - [KRO](https://kro.run/)
 - [AWS Controllers for Kubernetes (ACK)](https://aws-controllers-k8s.github.io/community/)
+- [Google Config Connector](https://cloud.google.com/config-connector/docs/overview)
+- [Azure Service Operator](https://azure.github.io/azure-service-operator/)
 - [Gen3](https://gen3.org/)
 
 ---

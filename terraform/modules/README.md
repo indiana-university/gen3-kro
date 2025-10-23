@@ -1,6 +1,6 @@
 # Terraform Modules
 
-This directory contains reusable Terraform modules for building the Gen3 KRO platform infrastructure. Each module is designed to be composable and can be used independently or as part of the hub/spoke combinations.
+This directory contains reusable Terraform modules for building the Gen3 KRO platform infrastructure. Each module is designed to be composable and can be used independently or as part of the hub/spoke combinations. The current module set provisions the AWS-based CSOC hub (VPC, EKS, IAM). Azure and Google Cloud resources are orchestrated through KRO ResourceGraphDefinitions and controller manifests in the `argocd/` tree.
 
 ## Module Overview
 
@@ -9,10 +9,10 @@ This directory contains reusable Terraform modules for building the Gen3 KRO pla
 | [argocd](#argocd) | Install and configure ArgoCD | Hub |
 | [eks-cluster](#eks-cluster) | Provision EKS clusters | Hub |
 | [vpc](#vpc) | Create VPC networking | Hub |
-| [pod-identity](#pod-identity) | EKS Pod Identity (IRSA) | Hub |
+| [pod-identity](#pod-identity) | EKS Pod Identity (IRSA) for ACK/addons | Hub |
 | [iam-policy](#iam-policy) | Load IAM policies from files | Hub, Spoke |
-| [cross-account-policy](#cross-account-policy) | Cross-account AssumeRole policies | Hub |
-| [spoke-role](#spoke-role) | IAM roles for spoke accounts (replaces ack-spoke-role) | Spoke |
+| [cross-account-policy](#cross-account-policy) | Cross-account AssumeRole policies (AWS) | Hub |
+| [spoke-role](#spoke-role) | AWS IAM roles for spoke accounts (replaces ack-spoke-role) | Spoke |
 | [spokes-configmap](#spokes-configmap) | ArgoCD configuration ConfigMaps | Hub, Spoke |
 
 ## Module Details
@@ -495,29 +495,29 @@ data:
 │     VPC     │
 └──────┬──────┘
        │
-       ▼
+       ↓
 ┌─────────────┐      ┌──────────────┐
 │ EKS Cluster │      │  IAM Policy  │
 └──────┬──────┘      └───────┬──────┘
        │                     │
        │    ┌────────────────┘
        │    │
-       ▼    ▼
+       ↓    ↓
 ┌──────────────────┐       ┌────────────────┐
 │  Pod Identity    │◀─────▶│  Spoke Role    │
 └────────┬─────────┘       └────────────────┘
          │
-         ▼
+         ↓
 ┌──────────────────────┐
 │ Cross-Account Policy │
 └──────────────────────┘
          │
-         ▼
+         ↓
 ┌──────────────────────┐
 │      ArgoCD          │
 └──────────────────────┘
          │
-         ▼
+         ↓
 ┌──────────────────────┐
 │ Spokes ConfigMap     │
 └──────────────────────┘

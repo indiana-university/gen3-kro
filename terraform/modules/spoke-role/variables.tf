@@ -9,15 +9,6 @@ variable "cluster_name" {
   type        = string
 }
 
-variable "service_type" {
-  description = "Type of service: 'acks' or 'addons'"
-  type        = string
-  validation {
-    condition     = contains(["acks", "addons"], var.service_type)
-    error_message = "service_type must be either 'acks' or 'addons'"
-  }
-}
-
 variable "service_name" {
   description = "Service name (e.g., 's3', 'argocd', 'external_secrets')"
   type        = string

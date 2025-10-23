@@ -1,0 +1,12 @@
+{
+  "Name": "External Secrets Operator",
+  "Description": "Custom role for External Secrets Operator to access Key Vault secrets",
+  "Actions": [
+    "Microsoft.KeyVault/vaults/secrets/read",
+    "Microsoft.KeyVault/vaults/secrets/getSecret/action"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": []
+}

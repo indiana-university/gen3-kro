@@ -5,7 +5,7 @@ variable "create" {
 }
 
 variable "service_name" {
-  description = "ACK service name (e.g., 'iam', 'ec2', 'eks')"
+  description = "Service name (e.g., 'iam', 'ec2', 'eks', 'external_secrets')"
   type        = string
 }
 

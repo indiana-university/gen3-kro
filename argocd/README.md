@@ -1,15 +1,16 @@
 # ArgoCD Configuration
 
-This directory contains ArgoCD ApplicationSets, configuration files, and deployment definitions for the Gen3 KRO platform's GitOps workflow.
+This directory contains ArgoCD ApplicationSets, configuration files, and deployment definitions for the Gen3 KRO platform's GitOps workflow. Every change committed to a tracked branch triggers ArgoCD to reconcile the corresponding ApplicationSets and sync hub and spoke clusters.
 
 ## Overview
 
-The Gen3 KRO platform uses ArgoCD for continuous deployment with a wave-based deployment strategy:
+The Gen3 KRO platform uses ArgoCD for continuous deployment with a wave-based deployment strategy and provider-specific controllers:
 
 - **Wave 0**: Platform addons (KRO, ACK controllers, External Secrets)
 - **Wave 1**: ResourceGraphDefinitions (infrastructure schemas)
 - **Wave 2**: Graph instances (infrastructure provisioning)
 - **Wave 3**: Application workloads (Gen3 commons)
+- **Controllers**: AWS ACK enabled by default; Google Config Connector and Azure Service Operator can be added via the addon catalog
 
 ## Directory Structure
 
@@ -32,11 +33,13 @@ argocd/
 │       ├── infrastructure/ # Infrastructure overlays
 │       ├── cluster-values/ # Cluster-specific values
 │       └── <gen3-instance>/ # Gen3 application configs
-├── graphs/                 # ResourceGraphDefinitions
-│   └── aws/
-│       ├── vpc-network-rgd.yaml
-│       ├── eks-cluster-rgd.yaml
-│       └── iam-roles-rgd.yaml
+├── graphs/                 # ResourceGraphDefinitions (AWS with Azure/GCP scaffolding)
+│   ├── aws/
+│   │   ├── vpc-network-rgd.yaml
+│   │   ├── eks-cluster-rgd.yaml
+│   │   └── iam-roles-rgd.yaml
+│   ├── azure/
+│   └── google/
 ├── charts/                 # Helm chart templates
 │   └── addons-appset/
 └── plans/                  # Deployment planning docs
@@ -64,7 +67,7 @@ The Gen3 KRO platform uses a **bootstrap ApplicationSet pattern** to manage all 
 │  Deploys: bootstrap ApplicationSet (single YAML)     │
 └───────────────────────┬──────────────────────────────┘
                         │
-                        ▼
+                        ↓
 ┌────────────────────────────────────────────────────────────┐
 │  Bootstrap ApplicationSet                                  │
 │  Type: Directory (recurse: true)                           │
@@ -72,7 +75,7 @@ The Gen3 KRO platform uses a **bootstrap ApplicationSet pattern** to manage all 
 └─┬────┬──────┬───────────┬──────────────┬──────────────────┘
   │    │      │           │              │
   │    │      │           │              │
-  ▼    ▼      ▼           ▼              ▼
+  ↓    ↓      ↓           ↓              ↓
 ┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
 │  hub-  │ │ spoke- │ │graphs  │ │  graph-  │ │   app-   │
 │addons  │ │addons  │ │  .yaml │ │instances │ │instances │
@@ -80,10 +83,16 @@ The Gen3 KRO platform uses a **bootstrap ApplicationSet pattern** to manage all 
 └────────┘ └────────┘ └────────┘ └──────────┘ └──────────┘
  Wave 0     Wave 0     Wave 1      Wave 2       Wave 3
     │          │          │            │            │
-    ▼          ▼          ▼            ▼            ▼
+    ↓          ↓          ↓            ↓            ↓
   Hub       Spoke       RGD      Infrastructure  Applications
  Addons     Addons   Definitions    Instances     (Gen3)
 ```
+
+## Provider Controller Addons
+
+- **AWS ACK** controllers are pre-integrated through the hub addon catalog. Enabling a controller requires the IAM role annotations that Terragrunt provisions in the hub composition.
+- **Google Config Connector** and **Azure Service Operator** use the same pattern: add their charts to `addons/hub/catalog.yaml`, toggle them in `addons/hub/enablement.yaml`, and supply credentials through the values file or referenced secrets.
+- **Branch-driven sync**: pushing to the main or release branches updates the catalog/enablement files, which in turn instructs ArgoCD to reconcile the controllers on the next sync loop.
 
 ## Configuration Files
 

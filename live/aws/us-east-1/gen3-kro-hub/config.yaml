@@ -1,12 +1,15 @@
 hub:
   alias: "gen3-csoc"
+  provider: "aws" # can be AWS, Google or Azure
   aws_profile: "boadeyem_tf"
   aws_region: "us-east-1"
+  cluster_name: "gen3-kro-csoc"
+  Project: "gen3" # used to name iam folder and in tags
+
   vpc:
     enable_vpc: true
     vpc_name: "gen3-kro-vpc"
     vpc_cidr: "10.0.0.0/16"
-    cluster_name: "gen3-kro-csoc"
     enable_nat_gateway: true
     single_nat_gateway: true
     # Explicit subnet configuration (5 AZs in us-east-1)
@@ -55,6 +58,13 @@ hub:
     policy_base_path: "iam"
   # Addon configuration (enabled addons)
   addon_configs:
+    # GitOps & Application Management
+    argocd:
+      enable_pod_identity: true
+      enable_argocd: true
+      namespace: "argocd"
+      service_account: "argocd-server-sa"
+      argocd_chart_version: "8.6.0"
     # Secrets Management
     external_secrets:
       enable_pod_identity: true
@@ -65,14 +75,7 @@ hub:
       attach_custom_policy: false
       namespace: "external-secrets"
       service_account: "external-secrets"
-    # GitOps & Application Management
-    argocd:
-      enable_pod_identity: true
-      enable_argocd: true
-      namespace: "argocd"
-      service_account: "argocd-server-sa"
-      argocd_chart_version: "8.6.0"
-  ack_configs:
+    # ACKs
     cloudtrail:
       enable_pod_identity: true
       namespace: "ack-system"
@@ -143,7 +146,6 @@ rgds:
     argocd_path: "argocd/graphs"
 # Base tags applied to all resources
 tags:
-  Project: "gen3-kro"
   Environment: "hub"
   ManagedBy: "terragrunt"
   Owner: "RDS Team"
@@ -153,6 +155,7 @@ paths:
 spokes:
   - alias: "spoke1"
     enabled: true # Re-enabled for deployment due to iam-policy module "known only after apply" issues
+    provider: "aws"  # Cloud provider for this spoke
     region: "us-east-1"
     profile: "boadeyem_tf"
     gitops:
@@ -163,6 +166,15 @@ spokes:
       repo_url: "https://github.com/indiana-university/gen3-kro.git"
       argo_path: "argocd/spokes"
     ack_configs:
+
+    tags:
+      Team: "TestingSpoke"
+      Purpose: "same-account-demo"
+    addon_configs:
+      argocd:
+        enable_pod_identity: true
+      external_secrets:
+        enable_pod_identity: true
       cloudtrail:
         enable_pod_identity: true
         # override_arn: "arn:aws:iam::123456789012:role/gen3-kro-hub-ack-cloudtrail"  # Optional: Use hub role instead of creating spoke role
@@ -208,11 +220,3 @@ spokes:
       wafv2:
         enable_pod_identity: true
         # override_arn: "arn:aws:iam::123456789012:role/gen3-kro-hub-ack-wafv2"
-    tags:
-      Team: "TestingSpoke"
-      Purpose: "same-account-demo"
-    addon_configs:
-      argocd:
-        enable_pod_identity: true
-      external_secrets:
-        enable_pod_identity: true

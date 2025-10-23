@@ -82,17 +82,29 @@ terraform/live/**/backend.tf
 terraform/live/**/kube_providers.tf
 
 # ┌─────────────────────────────────────────┐
-# │ 9. Miscellaneous                         │
+# │ 9. Miscellaneous                        │
 # └─────────────────────────────────────────┘
 # Backend HCL overrides (not terragrunt.hcl)
 **/backend.hcl
 **/backend-override.hcl
-
 # Project-specific ignores
 **/kro
+# # IAM policies: track only _default; ignore others
+# /iam/aws/**
+# !/iam/aws/
+# !/iam/aws/_default/
+# !/iam/aws/_default/**
+# /iam/azure/**
+# !/iam/azure/
+# !/iam/azure/_default/
+# !/iam/azure/_default/**
+# /iam/gcp/**
+# !/iam/gcp/
+# !/iam/gcp/_default/
+# !/iam/gcp/_default/**
+# # Legacy gen3 IAM paths (deprecated)
+# /iam/gen3/
 /cheat sheet - helm.md
 /cheat sheet - kubectl.md
-.github/*.md
-/gen3-kro-agg.ipynb
+.github/**/*.md
 /gen3-kro.code-workspace
-copilot-instructions.md

@@ -2,10 +2,6 @@ include {
   path = find_in_parent_folders("backend.hcl")
 }
 
-terraform {
-  source = "${get_repo_root()}/terraform//combinations/hub"
-}
-
 locals {
   ###################################################################################################################################################
   # DATA IMPORT SECTION - Imports variables from config.yaml
@@ -20,14 +16,25 @@ locals {
   spokes_config = lookup(local.config, "spokes", [])
 
   ###################################################################################################################################################
-  # FLATTENING SECTION - Takes nested variables and flattens them into individual names
+  # FLATTENING SECTION - Takes nested imported variables and flattens them into individual names
   ###################################################################################################################################################
 
   # Base configuration
-  cluster_name = lookup(lookup(local.hub_config, "vpc", {}), "cluster_name", lookup(local.hub_config, "cluster_name", ""))
+  hub_provider = lookup(local.hub_config, "provider", "aws")
   aws_region   = local.hub_config.aws_region
   aws_profile  = local.hub_config.aws_profile
   hub_alias    = local.hub_config.alias
+  project      = lookup(local.hub_config, "project", local.hub_config.alias)
+  cluster_name = lookup(local.hub_config, "cluster_name", "")
+}
+
+# Provider-aware terraform source
+terraform {
+  source = "${get_repo_root()}/terraform//combinations/${local.hub_provider}/hub"
+}
+
+locals {
+
 
   # VPC configuration from hub.vpc
   vpc_config                = lookup(local.hub_config, "vpc", {})
@@ -67,13 +74,8 @@ locals {
   iam_gitops_branch           = lookup(local.iam_gitops_config, "branch", "main")
   iam_gitops_policy_base_path = lookup(local.iam_gitops_config, "policy_base_path", "")
 
-  # Addon configurations from config.yaml only
-  # All addon configs are now sourced from config.yaml hub.addon_configs
-  # No merging with disabled-addons.yaml since that file has been removed
+  # Addon configurations from config.yaml
   addon_configs = lookup(local.hub_config, "addon_configs", {})
-
-  # ACK configurations from hub.ack_configs
-  hub_ack_configs = lookup(local.hub_config, "ack_configs", {})
 
   # Paths configuration
   outputs_dir            = lookup(local.paths_config, "outputs_dir", "./outputs")
@@ -90,7 +92,7 @@ locals {
   rgds_gitops_argocd_path = lookup(local.rgds_gitops_config, "argocd_path", "")
 
   ###################################################################################################################################################
-  # DERIVED VALUES SECTION - All other variables reference flattened names
+  # DERIVED VALUES SECTION - variables reference flattened section
   ###################################################################################################################################################
 
   # Filtered spokes (only enabled ones)
@@ -110,9 +112,8 @@ locals {
   )
 
   # Computed enablement flags
-  enable_ack         = length(local.hub_ack_configs) > 0
   enable_multi_acct  = length(local.spokes) > 0
-  enable_ack_spoke_roles = local.enable_multi_acct && local.enable_ack
+  enable_spoke_roles = local.enable_multi_acct && length(local.addon_configs) > 0
 
   # ArgoCD enablement from addon_configs
   argocd_config_obj  = lookup(local.addon_configs, "argocd", {})
@@ -176,8 +177,7 @@ locals {
   argocd_cluster = {
     cluster_name     = local.cluster_name
     secret_namespace = local.argocd_namespace
-    # Addons key is used by argocd module for labels (not metadata.labels)
-    # NOTE: enable_* flags removed - these are now handled by enablement.yaml files
+    # Addons key is used by argocd module for labels
     addons = {
       # Cluster Categorization
       fleet_member = "control-plane"
@@ -208,14 +208,6 @@ locals {
           # IAM Repository (for future IAM sync jobs)
           iam_repo_url = local.iam_repo_url_base
         },
-        # ACK controller namespace annotations
-        { for name, cfg in local.hub_ack_configs :
-          "ack_${name}_namespace" => lookup(cfg, "namespace", "ack-system")
-        },
-        # ACK controller service account annotations
-        { for name, cfg in local.hub_ack_configs :
-          "ack_${name}_service_account" => lookup(cfg, "service_account", "ack-${name}-sa")
-        },
         # Addon namespace annotations
         { for name, cfg in local.addon_configs :
           "${replace(name, "_", "-")}_namespace" => lookup(cfg, "namespace", name)
@@ -224,7 +216,7 @@ locals {
         { for name, cfg in local.addon_configs :
           "${replace(name, "_", "-")}_service_account" => lookup(cfg, "service_account", name)
         }
-        # Note: IAM role ARN annotations (ack_*_hub_role_arn, *_irsa_role_arn) will be added
+        # Note: IAM role ARN annotations (*_irsa_role_arn) will be added
         # by the argocd module or via a second terragrunt pass after pod identities are created.
         # For now, these are omitted to avoid circular dependencies.
       )
@@ -233,8 +225,7 @@ locals {
   }
 
   # ArgoCD ConfigMap data structure (will be populated with module outputs)
-  # This will be passed to the argocd module to create the ConfigMap
-  # Kubernetes provider configuration
+  # Kubernetes provider configuration (will be passed to the argocd module to create the ConfigMap)
   hub_exec_args_base = [
     "eks",
     "get-token",
@@ -246,12 +237,12 @@ locals {
 
   hub_exec_args = local.aws_profile != "" ? concat(local.hub_exec_args_base, ["--profile", local.aws_profile]) : local.hub_exec_args_base
 
-  # Try to load spoke ARN inputs from JSON files per spoke and controller
+  # Try to load spoke ARN inputs from JSON files per spoke and service
   spoke_arn_inputs = {
     for spoke in local.spokes : spoke.alias => {
-      for controller_name in keys(local.hub_ack_configs) : controller_name =>
+      for controller_name in keys(local.addon_configs) : controller_name =>
       try(
-        jsondecode(file("${local.repo_root}/terraform/combinations/iam/gen3-kro/${spoke.alias}/ack-spoke-arns-${controller_name}.json")),
+        jsondecode(file("${local.repo_root}/terraform/combinations/iam/${local.project}/${spoke.alias}/addons/${controller_name}.json")),
         null
       )
     }
@@ -261,7 +252,7 @@ locals {
 generate "data_sources" {
   path      = "data.auto.tf"
   if_exists = "overwrite_terragrunt"
-  contents  = <<-EOF
+  contents  = (local.hub_provider == "aws" ? <<-EOF
 data "aws_eks_cluster" "cluster" {
   count = var.enable_argocd && var.enable_eks_cluster ? 1 : 0
   name  = var.cluster_name
@@ -276,12 +267,32 @@ data "aws_eks_cluster_auth" "cluster" {
   depends_on = [module.eks_cluster]
 }
 EOF
+  : local.hub_provider == "azure" ? <<-EOF
+data "azurerm_kubernetes_cluster" "cluster" {
+  count               = var.enable_argocd && var.enable_aks_cluster ? 1 : 0
+  name                = var.cluster_name
+  resource_group_name = var.resource_group_name
+
+  depends_on = [module.aks_cluster]
+}
+EOF
+  : local.hub_provider == "gcp" ? <<-EOF
+data "google_container_cluster" "cluster" {
+  count    = var.enable_argocd && var.enable_gke_cluster ? 1 : 0
+  name     = var.cluster_name
+  location = var.region
+  project  = var.project_id
+
+  depends_on = [module.gke_cluster]
+}
+EOF
+  : "")
 }
 
 generate "providers" {
   path      = "providers.auto.tf"
   if_exists = "overwrite_terragrunt"
-  contents  = <<-EOF
+  contents  = (local.hub_provider == "aws" ? <<-EOF
 provider "aws" {
   region  = "${local.aws_region}"
   profile = "${local.aws_profile}"
@@ -291,7 +302,7 @@ provider "aws" {
   }
 }
 
-${join("\n\n", [for spoke in local.spokes : <<-SPOKE
+${join("\n\n", [for spoke in local.spokes : spoke.provider == "aws" ? <<-SPOKE
 provider "aws" {
   alias   = "${spoke.alias}"
   region  = "${spoke.region}"
@@ -302,8 +313,41 @@ provider "aws" {
   }
 }
 SPOKE
-])}
+: ""])}
 EOF
+  : local.hub_provider == "azure" ? <<-EOF
+provider "azurerm" {
+  features {}
+  subscription_id = "${lookup(local.hub_config, "subscription_id", "")}"
+  tenant_id       = "${lookup(local.hub_config, "tenant_id", "")}"
+}
+
+${join("\n\n", [for spoke in local.spokes : spoke.provider == "azure" ? <<-SPOKE
+provider "azurerm" {
+  alias           = "${spoke.alias}"
+  features {}
+  subscription_id = "${lookup(spoke, "subscription_id", "")}"
+  tenant_id       = "${lookup(spoke, "tenant_id", "")}"
+}
+SPOKE
+: ""])}
+EOF
+  : local.hub_provider == "gcp" ? <<-EOF
+provider "google" {
+  project = "${lookup(local.hub_config, "project_id", "")}"
+  region  = "${local.aws_region}"
+}
+
+${join("\n\n", [for spoke in local.spokes : spoke.provider == "gcp" ? <<-SPOKE
+provider "google" {
+  alias   = "${spoke.alias}"
+  project = "${lookup(spoke, "project_id", "")}"
+  region  = "${spoke.region}"
+}
+SPOKE
+: ""])}
+EOF
+  : "")
 }
 
 inputs = {
@@ -338,22 +382,17 @@ inputs = {
   # Addon configurations (structured from config.yaml)
   addon_configs = local.addon_configs
 
-  # ACK configurations (structured from config.yaml)
-  ack_configs = local.hub_ack_configs
-
   # Enable flags (computed)
-  enable_ack              = local.enable_ack
-  enable_multi_acct       = local.enable_multi_acct
-  enable_ack_spoke_roles  = local.enable_ack_spoke_roles
+  enable_multi_acct = local.enable_multi_acct
 
   # Spoke ARN inputs (loaded from JSON files or empty)
   spoke_arn_inputs = local.spoke_arn_inputs
 
   # IAM Git configuration
-  iam_git_repo_url = local.iam_git_url
-  iam_git_branch   = local.iam_git_branch
+  iam_git_repo_url = ""
+  iam_git_branch   = ""
   iam_base_path    = local.iam_base_path
-  iam_raw_base_url = local.iam_raw_base_url  # Raw file base URL for HTTP fetching
+  iam_raw_base_url = ""  # Disable HTTP fetching for IAM policies (local only)
   iam_repo_root    = local.repo_root  # Absolute path to repository root for local policy files
 
   # ArgoCD configuration
@@ -369,7 +408,7 @@ inputs = {
 generate "hub_kubernetes_provider" {
   path      = "kubernetes_provider.tf"
   if_exists = "overwrite_terragrunt"
-  contents  = (local.enable_argocd ? <<-EOF
+  contents  = (local.enable_argocd && local.hub_provider == "aws" ? <<-EOF
 provider "kubernetes" {
   host                   = try(data.aws_eks_cluster.cluster[0].endpoint, "")
   cluster_ca_certificate = try(base64decode(data.aws_eks_cluster.cluster[0].certificate_authority[0].data), "")
@@ -377,13 +416,32 @@ provider "kubernetes" {
   token = try(data.aws_eks_cluster_auth.cluster[0].token, "")
 }
 EOF
-: "")
+  : local.enable_argocd && local.hub_provider == "azure" ? <<-EOF
+provider "kubernetes" {
+  host                   = try(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].host, "")
+  cluster_ca_certificate = try(base64decode(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].cluster_ca_certificate), "")
+  client_certificate     = try(base64decode(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].client_certificate), "")
+  client_key             = try(base64decode(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].client_key), "")
+}
+EOF
+  : local.enable_argocd && local.hub_provider == "gcp" ? <<-EOF
+provider "kubernetes" {
+  host                   = try("https://${data.google_container_cluster.cluster[0].endpoint}", "")
+  cluster_ca_certificate = try(base64decode(data.google_container_cluster.cluster[0].master_auth[0].cluster_ca_certificate), "")
+  token                  = try(data.google_client_config.default[0].access_token, "")
+}
+
+data "google_client_config" "default" {
+  count = var.enable_argocd && var.enable_gke_cluster ? 1 : 0
+}
+EOF
+  : "")
 }
 
 generate "hub_helm_provider" {
   path      = "helm_provider.tf"
   if_exists = "overwrite_terragrunt"
-  contents  = (local.enable_argocd ? <<-EOF
+  contents  = (local.enable_argocd && local.hub_provider == "aws" ? <<-EOF
 provider "helm" {
   kubernetes = {
     host                   = try(data.aws_eks_cluster.cluster[0].endpoint, "")
@@ -392,46 +450,57 @@ provider "helm" {
   }
 }
 EOF
-: "")
+  : local.enable_argocd && local.hub_provider == "azure" ? <<-EOF
+provider "helm" {
+  kubernetes = {
+    host                   = try(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].host, "")
+    cluster_ca_certificate = try(base64decode(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].cluster_ca_certificate), "")
+    client_certificate     = try(base64decode(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].client_certificate), "")
+    client_key             = try(base64decode(data.azurerm_kubernetes_cluster.cluster[0].kube_config[0].client_key), "")
+  }
+}
+EOF
+  : local.enable_argocd && local.hub_provider == "gcp" ? <<-EOF
+provider "helm" {
+  kubernetes = {
+    host                   = try("https://${data.google_container_cluster.cluster[0].endpoint}", "")
+    cluster_ca_certificate = try(base64decode(data.google_container_cluster.cluster[0].master_auth[0].cluster_ca_certificate), "")
+    token                  = try(data.google_client_config.default[0].access_token, "")
+  }
+}
+EOF
+  : "")
 }
 
 generate "spokes" {
   path      = "spokes.tf"
   if_exists = "overwrite_terragrunt"
-  contents  = (local.enable_ack_spoke_roles ? join("\n\n", [
+  contents  = (local.enable_spoke_roles ? join("\n\n", [
     for spoke in local.spokes :
     <<-EOF
-# Local variables to collect hub pod identity ARNs
+# Local variables to collect hub ${spoke.provider == "aws" ? "pod identity" : "workload identity"} ARNs for ${spoke.alias}
 locals {
-  hub_pod_identity_arns_${spoke.alias} = {
-    ${join("\n    ", [for controller_name in keys(local.hub_ack_configs) : "\"${controller_name}\" = try(module.pod_identities[\"ack-${controller_name}\"].role_arn, \"\")"])}
-  }
-
-  hub_addon_pod_identity_arns_${spoke.alias} = {
-    ${join("\n    ", [for addon_name in keys(local.addon_configs) : "\"${addon_name}\" = try(module.pod_identities[\"${addon_name}\"].role_arn, \"\")"])}
+  hub_${spoke.provider == "aws" ? "pod" : spoke.provider == "azure" ? "managed" : "workload"}_identity_arns_${spoke.alias} = {
+    ${join("\n    ", [for addon_name in keys(local.addon_configs) : "\"${addon_name}\" = try(module.${spoke.provider == "aws" ? "pod" : spoke.provider == "azure" ? "managed" : "workload"}_identities[\"${addon_name}\"].${spoke.provider == "aws" ? "role_arn" : spoke.provider == "azure" ? "principal_id" : "member"}, \"\")"])}
   }
 }
 
 module "spoke_${spoke.alias}" {
-  source = "../../combinations/spoke"
+  source = "../../combinations/${spoke.provider}/spoke"
 
   providers = {
-    aws = aws.${spoke.alias}
+    ${spoke.provider == "aws" ? "aws" : spoke.provider == "azure" ? "azurerm" : "google"} = ${spoke.provider == "aws" ? "aws" : spoke.provider == "azure" ? "azurerm" : "google"}.${spoke.alias}
   }
 
   tags                  = ${jsonencode(merge(local.base_tags, lookup(spoke, "tags", {}), { Spoke = spoke.alias, caller_level = "spoke_${spoke.alias}" }))}
   cluster_name          = var.cluster_name
   spoke_alias           = "${spoke.alias}"
-
-  # ACK configuration
-  ack_configs           = ${jsonencode(lookup(spoke, "ack_configs", {}))}
-  hub_ack_configs       = ${jsonencode(local.hub_ack_configs)}
-  hub_pod_identity_arns = local.hub_pod_identity_arns_${spoke.alias}
+  provider              = "${spoke.provider}"
 
   # Addon configuration
   addon_configs                = ${jsonencode(lookup(spoke, "addon_configs", {}))}
   hub_addon_configs            = ${jsonencode(local.addon_configs)}
-  hub_addon_pod_identity_arns  = local.hub_addon_pod_identity_arns_${spoke.alias}
+  hub_${spoke.provider == "aws" ? "pod" : spoke.provider == "azure" ? "managed" : "workload"}_identity_arns        = local.hub_${spoke.provider == "aws" ? "pod" : spoke.provider == "azure" ? "managed" : "workload"}_identity_arns_${spoke.alias}
 
   # IAM Git configuration (same as hub)
   iam_git_repo_url  = var.iam_git_repo_url
@@ -440,7 +509,7 @@ module "spoke_${spoke.alias}" {
   iam_raw_base_url  = var.iam_raw_base_url
   iam_repo_root     = var.iam_repo_root
 
-  depends_on = [module.pod_identities]
+  depends_on = [module.${spoke.provider == "aws" ? "pod" : spoke.provider == "azure" ? "managed" : "workload"}_identities]
 }
 EOF
   ]) : "")
@@ -449,58 +518,26 @@ EOF
 generate "spoke_outputs" {
   path      = "spoke_outputs.tf"
   if_exists = "overwrite_terragrunt"
-  contents  = (local.enable_ack_spoke_roles && length(local.spokes) > 0 ? <<-EOF
+  contents  = (local.enable_spoke_roles && length(local.spokes) > 0 ? <<-EOF
 ###############################################################################
 # Spoke Role Outputs
-# Dynamically generated outputs for each spoke's ACK and addon roles
+# Dynamically generated outputs for each spoke's roles
 ###############################################################################
 
 ${join("\n\n", [for spoke in local.spokes : <<-SPOKE
 # Spoke: ${spoke.alias}
-output "spoke_${spoke.alias}_ack_roles" {
-  description = "All ACK roles for spoke ${spoke.alias} (created + override)"
-  value       = try(module.spoke_${spoke.alias}.ack_all_roles, {})
-}
-
-output "spoke_${spoke.alias}_addon_roles" {
-  description = "All addon roles for spoke ${spoke.alias} (created + override)"
-  value       = try(module.spoke_${spoke.alias}.addon_all_roles, {})
-}
-
-output "spoke_${spoke.alias}_ack_created_roles" {
-  description = "Created ACK roles for spoke ${spoke.alias}"
-  value       = try(module.spoke_${spoke.alias}.ack_spoke_roles, {})
-}
-
-output "spoke_${spoke.alias}_addon_created_roles" {
-  description = "Created addon roles for spoke ${spoke.alias}"
-  value       = try(module.spoke_${spoke.alias}.addon_spoke_roles, {})
-}
-
-output "spoke_${spoke.alias}_ack_override_arns" {
-  description = "ACK override ARNs for spoke ${spoke.alias}"
-  value       = try(module.spoke_${spoke.alias}.ack_override_arns, {})
-}
-
-output "spoke_${spoke.alias}_addon_override_arns" {
-  description = "Addon override ARNs for spoke ${spoke.alias}"
-  value       = try(module.spoke_${spoke.alias}.addon_override_arns, {})
+output "spoke_${spoke.alias}_roles" {
+  description = "All roles for spoke ${spoke.alias} (created + override)"
+  value       = try(module.spoke_${spoke.alias}.all_service_roles, {})
 }
 SPOKE
 ])}
 
 # Combined spoke roles output (all spokes)
-output "all_spoke_ack_roles" {
-  description = "All ACK roles across all spokes"
+output "all_spoke_roles" {
+  description = "All roles across all spokes"
   value = merge(
-${join(",\n", [for spoke in local.spokes : "    try(module.spoke_${spoke.alias}.ack_all_roles, {})"])}
-  )
-}
-
-output "all_spoke_addon_roles" {
-  description = "All addon roles across all spokes"
-  value = merge(
-${join(",\n", [for spoke in local.spokes : "    try(module.spoke_${spoke.alias}.addon_all_roles, {})"])}
+${join(",\n", [for spoke in local.spokes : "    try(module.spoke_${spoke.alias}.all_service_roles, {})"])}
   )
 }
 EOF

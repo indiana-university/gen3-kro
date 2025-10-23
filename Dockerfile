@@ -12,10 +12,15 @@ ARG TERRAGRUNT_VERSION=0.55.1
 ARG KUBECTL_VERSION=1.31.0
 ARG HELM_VERSION=3.14.0
 ARG YQ_VERSION=4.44.3
+ARG NODE_VERSION=22.21.0
 
 LABEL org.opencontainers.image.source="https://github.com/indiana-university/gen3-kro"
 LABEL org.opencontainers.image.description="Multi-account EKS platform with Terragrunt, ArgoCD, KRO, and AWS ACK"
 LABEL org.opencontainers.image.licenses="MIT"
+
+# Persist Node.js version in the runtime environment
+ENV NODE_VERSION=${NODE_VERSION}
+ENV PATH=/usr/local/lib/nodejs/node-v${NODE_VERSION}-linux-x64/bin:$PATH
 
 # Install base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -68,6 +73,13 @@ RUN curl -L "https://get.helm.sh/helm-v${HELM_VERSION}-linux-amd64.tar.gz" \
     && rm -rf /tmp/helm.tar.gz /tmp/linux-amd64 \
     && chmod +x /usr/local/bin/helm
 
+# Install Node.js (LTS 22.21.0)
+RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
+    -o /tmp/node.tar.xz \
+    && mkdir -p /usr/local/lib/nodejs \
+    && tar -xJf /tmp/node.tar.xz -C /usr/local/lib/nodejs \
+    && rm /tmp/node.tar.xz
+
 # Install AWS CLI v2 (latest)
 RUN curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" \
     -o /tmp/awscliv2.zip \
@@ -117,6 +129,8 @@ RUN echo "=== Installed Tools ===" && \
     echo "Helm: $(helm version --short)" && \
     echo "AWS CLI: $(aws --version)" && \
     echo "yq: $(yq --version)" && \
+    echo "Node.js: $(node --version)" && \
+    echo "npm: $(npm --version)" && \
     echo "======================="
 
 # Default command
