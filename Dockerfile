@@ -13,7 +13,6 @@ ARG KUBECTL_VERSION=1.34.1
 ARG HELM_VERSION=3.16.1
 ARG AWS_CLI_VERSION=2.15.17
 ARG YQ_VERSION=4.44.3
-ARG NODE_VERSION=25.0.0
 
 # Install base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -116,16 +115,6 @@ RUN echo "Downloading kustomize..."; \
 RUN kubectl completion bash > /etc/bash_completion.d/kubectl \
     && helm completion bash > /etc/bash_completion.d/helm
 
-# Install Node.js
-RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
-    -o /tmp/node.tar.xz \
-    && mkdir -p /usr/local/lib/nodejs \
-    && tar -xJf /tmp/node.tar.xz -C /usr/local/lib/nodejs \
-    && rm /tmp/node.tar.xz
-
-# Add Node.js to PATH
-ENV PATH=/usr/local/lib/nodejs/node-v${NODE_VERSION}-linux-x64/bin:$PATH
-
 # Create workspace directory
 RUN mkdir -p /workspaces
 
@@ -154,7 +143,6 @@ RUN echo '' >> /home/vscode/.bashrc \
     && echo 'echo "Helm: $(helm version --short)"' >> /home/vscode/.bashrc \
     && echo 'echo "AWS CLI: $(aws --version)"' >> /home/vscode/.bashrc \
     && echo 'echo "yq: $(yq --version)"' >> /home/vscode/.bashrc \
-    && echo 'echo "Node.js: $(node --version) | npm: $(npm --version)"' >> /home/vscode/.bashrc \
     && echo 'echo "======================="' >> /home/vscode/.bashrc \
     && echo 'echo ""' >> /home/vscode/.bashrc
 
