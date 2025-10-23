@@ -1,27 +1,25 @@
 # Gen3 KRO Platform
 
-A Kubernetes Resource Orchestration (KRO) platform for deploying and managing Gen3 data commons infrastructure using a hub-spoke architecture with Terraform, Terragrunt, and ArgoCD.
+Deploy your own Gen3 data commons infrastructure using a hub-spoke architecture with Kubernetes Resource Orchestration (KRO), managed by Terraform, Terragrunt, and ArgoCD.
 
 ## Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
 - [Quick Start](#quick-start)
-- [Repository Structure](#repository-structure)
 - [Prerequisites](#prerequisites)
 - [Getting Started](#getting-started)
 - [Documentation](#documentation)
-- [Contributing](#contributing)
 - [License](#license)
 
 ## Overview
 
-The Gen3 KRO Platform enables centralized management and deployment of Gen3 data commons across multiple AWS accounts and Kubernetes clusters. It implements a hub-spoke model where:
+This platform enables you to deploy and manage Gen3 data commons across multiple AWS accounts and Kubernetes clusters using a hub-spoke model:
 
-- **Hub Cluster**: Central control plane that manages infrastructure provisioning, policy orchestration, and GitOps operations
-- **Spoke Clusters**: Workload clusters running Gen3 applications and services
-- **KRO (Kubernetes Resource Orchestrator)**: Defines reusable infrastructure graphs that can be instantiated across spokes
-- **GitOps**: ArgoCD-driven continuous deployment from Git repositories
+- **Hub Cluster**: Central control plane managing infrastructure provisioning and GitOps operations
+- **Spoke Clusters**: Workload clusters running Gen3 applications
+- **KRO**: Defines reusable infrastructure graphs that can be instantiated across spokes
+- **GitOps**: ArgoCD-driven continuous deployment from your Git repository
 
 ### Key Features
 
@@ -37,16 +35,16 @@ The Gen3 KRO Platform enables centralized management and deployment of Gen3 data
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│                         HUB CLUSTER                              │
-│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐     │
-│  │   ArgoCD    │  │  KRO Engine  │  │  ACK Controllers   │     │
-│  │ (GitOps)    │  │  (RGDs)      │  │  (IAM, EKS, etc.)  │     │
-│  └─────────────┘  └──────────────┘  └────────────────────┘     │
-│         │                │                      │                │
-│         └────────────────┴──────────────────────┘                │
-│                          │                                       │
-└──────────────────────────┼───────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                         HUB CLUSTER                         │
+│  ┌─────────────┐  ┌──────────────┐  ┌────────────────────┐  │
+│  │   ArgoCD    │  │  KRO Engine  │  │  ACK Controllers   │  │
+│  │ (GitOps)    │  │  (RGDs)      │  │  (IAM, EKS, etc.)  │  │
+│  └─────────────┘  └──────────────┘  └────────────────────┘  │
+│         │                │                      │           │
+│         └────────────────┴──────────────────────┘           │
+│                          │                                  │
+└──────────────────────────┼──────────────────────────────────┘
                            │ GitOps Sync
                            │ (Creates via KRO)
           ┌────────────────┼────────────────┐
@@ -81,29 +79,31 @@ Note: Spoke Terraform compositions only create IAM roles/policies.
 ## Quick Start
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/indiana-university/gen3-kro.git
+# 1. Fork and clone this repository
+git clone https://github.com/YOUR_ORG/gen3-kro.git
 cd gen3-kro
 
 # 2. Build the development container
 ./scripts/docker-build-push.sh
 
-# 3. Deploy the hub cluster
+# 3. Customize your configuration
+# Edit: live/aws/us-east-1/gen3-kro-hub/terragrunt.hcl
+# Update: cluster names, VPC CIDRs, region, etc.
+
+# 4. Deploy your hub cluster
 cd live/aws/us-east-1/gen3-kro-hub
 terragrunt init
 terragrunt plan
 terragrunt apply
 
-# 4. Connect to the cluster
-../../../../../../scripts/connect-cluster.sh gen3-kro-hub
+# 5. Connect to your cluster
+aws eks update-kubeconfig --name YOUR_CLUSTER_NAME --region YOUR_REGION
 
-# 5. Verify ArgoCD is running
+# 6. Verify ArgoCD is running
 kubectl get applications -n argocd
 ```
 
-For detailed setup instructions, see:
-- [Docker Setup Guide](docs/setup-docker.md)
-- [Terragrunt Deployment Guide](docs/setup-terragrunt.md)
+See the [Getting Started](#getting-started) section for detailed deployment instructions.
 
 ## Repository Structure
 
@@ -152,65 +152,136 @@ For detailed setup instructions, see:
 
 ## Prerequisites
 
+Before deploying your own Gen3 KRO platform, ensure you have:
+
 ### Required Tools
 
-- **Docker**: For containerized development environment
-- **Terraform**: >= 1.5.0
-- **Terragrunt**: >= 0.48.0
-- **kubectl**: >= 1.28
-- **AWS CLI**: >= 2.0
-- **Git**: >= 2.30
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Docker | >= 20.10 | Development environment |
+| Git | >= 2.30 | Version control |
+| AWS CLI | >= 2.0 | AWS authentication |
+
+**Note**: Terraform, Terragrunt, kubectl, and other tools are included in the Docker container.
 
 ### AWS Requirements
 
-- AWS account with appropriate permissions
-- AWS CLI configured with credentials
-- IAM permissions to create:
-  - VPCs, subnets, route tables
-  - EKS clusters
-  - IAM roles and policies
-  - KMS keys
-  - S3 buckets (for Terraform state)
+- **AWS Account**: With appropriate permissions
+- **IAM Permissions**: Ability to create VPCs, EKS clusters, IAM roles/policies, S3 buckets
+- **AWS Credentials**: Configured locally (`~/.aws/credentials`)
+- **S3 Bucket**: For Terraform state (auto-created on first deployment)
+- **DynamoDB Table**: For state locking (optional but recommended)
 
 ### Knowledge Prerequisites
 
-- Kubernetes fundamentals
-- Terraform/Terragrunt basics
-- AWS IAM and networking concepts
-- Git and GitOps principles
+Basic familiarity with:
+- Kubernetes concepts (pods, services, namespaces)
+- Terraform/Infrastructure as Code
+- AWS services (VPC, EKS, IAM)
+- Git workflows
 
 ## Getting Started
 
-### 1. Environment Setup
+Follow these steps to deploy your own Gen3 KRO platform:
 
-See the [Docker Setup Guide](docs/setup-docker.md) for instructions on:
-- Building the development container
-- Configuring the dev environment
-- Required environment variables
+### Step 1: Fork and Clone
 
-### 2. Deploy Hub Cluster
+```bash
+# Fork this repository on GitHub to your organization
+# Then clone your fork
+git clone https://github.com/YOUR_ORG/gen3-kro.git
+cd gen3-kro
+```
 
-See the [Terragrunt Deployment Guide](docs/setup-terragrunt.md) for:
-- Hub cluster deployment
-- Spoke IAM provisioning
-- ArgoCD bootstrapping
-- Verification steps
+### Step 2: Build Development Environment
 
-### 3. Add Cluster Addons
+```bash
+# Build the Docker container with all tools
+./scripts/docker-build-push.sh
 
-See the [Adding Cluster Addons Guide](docs/add-cluster-addons.md) for:
-- Enabling ACK controllers
-- Adding platform addons
-- Configuring IAM roles
-- Updating ArgoCD configurations
+# Start the container (VS Code)
+code .
+# Click "Reopen in Container" when prompted
 
-### 4. Deploy Spoke Clusters
+# Or start manually
+docker run -it \
+  -v $(pwd):/workspace \
+  -v ~/.aws:/root/.aws:ro \
+  -v ~/.kube:/root/.kube \
+  gen3-kro:latest bash
+```
 
-Follow the deployment guide to:
-- Create spoke IAM roles and policies
-- Deploy spoke infrastructure via KRO
-- Register spokes with ArgoCD
-- Deploy Gen3 applications
+See [Docker Setup Guide](docs/setup-docker.md) for detailed instructions.
+
+### Step 3: Customize Configuration
+
+Edit `live/aws/us-east-1/gen3-kro-hub/terragrunt.hcl` to customize:
+
+```hcl
+inputs = {
+  # Change cluster name
+  cluster_name = "my-hub-cluster"
+  
+  # Update VPC configuration
+  vpc_cidr = "10.0.0.0/16"
+  
+  # Configure region
+  region = "us-east-1"
+  
+  # Update Git repository URL
+  argocd_cluster = {
+    metadata = {
+      annotations = {
+        hub_repo_url = "https://github.com/YOUR_ORG/gen3-kro.git"
+      }
+    }
+  }
+}
+```
+
+### Step 4: Deploy Hub Cluster
+
+```bash
+cd live/aws/us-east-1/gen3-kro-hub
+
+# Initialize Terragrunt
+terragrunt init
+
+# Review planned changes
+terragrunt plan
+
+# Deploy infrastructure (~20-30 minutes)
+terragrunt apply
+```
+
+See [Terragrunt Deployment Guide](docs/setup-terragrunt.md) for detailed deployment instructions.
+
+### Step 5: Verify Deployment
+
+```bash
+# Connect to your cluster
+aws eks update-kubeconfig --name my-hub-cluster --region us-east-1
+
+# Check nodes
+kubectl get nodes
+
+# Check ArgoCD applications
+kubectl get applications -n argocd
+
+# Check ACK controllers
+kubectl get pods -n ack-system
+```
+
+### Step 6: Deploy Spoke Clusters (Optional)
+
+If deploying multi-account spoke clusters:
+
+1. Create IAM policies for spoke: `iam/gen3/YOUR_SPOKE/`
+2. Deploy spoke IAM: `cd live/aws/us-east-1/YOUR_SPOKE-iam && terragrunt apply`
+3. Update hub with spoke ARNs
+4. Deploy spoke infrastructure via KRO from hub
+
+See [Spoke README](terraform/combinations/spoke/README.md) for detailed spoke deployment.
 
 ## Documentation
 
@@ -233,136 +304,92 @@ See `docs/diagrams/` for:
 - IAM policy flow
 - ArgoCD ApplicationSet hierarchy
 
-## Core Concepts
+## Architecture
+
+The platform uses a hub-spoke model for centralized management:
 
 ### Hub-Spoke Model
 
-The platform uses a centralized hub cluster that manages multiple spoke environments:
+**Hub Cluster** (Control Plane):
+- Runs ArgoCD for GitOps
+- Hosts KRO controller
+- Provisions spoke infrastructure
+- Manages cross-account IAM
 
-- **Hub Cluster**:
-  - Runs ArgoCD for GitOps
-  - Hosts KRO controller and ResourceGraphDefinitions
-  - Provisions spoke infrastructure via KRO
-  - Manages cross-account IAM policies
+**Spoke Deployment**:
+- IAM roles created via Terraform
+- Infrastructure (VPC, EKS) created via KRO from hub
+- Applications deployed via ArgoCD from hub
 
-- **Spoke Terraform Composition** (IAM Only):
-  - Creates IAM roles with trust policies to hub
-  - Loads IAM policies from `iam/` directory
-  - Manages cross-account role assumptions
-  - Does NOT create VPCs, EKS clusters, or workloads
+### Deployment Waves
 
-- **Spoke Infrastructure** (Created via KRO from Hub):
-  - VPCs, EKS clusters, and networking
-  - Gen3 application workloads
-  - Kubernetes resources and ACK instances
-  - Deployed via ArgoCD ApplicationSets from hub
+ArgoCD deploys in phases:
 
-### IAM Policy Flow
+| Wave | Components | Purpose |
+|------|-----------|---------|
+| 0 | Platform addons | KRO, ACK controllers, External Secrets |
+| 1 | ResourceGraphDefinitions | Infrastructure schemas (VPC, EKS, etc.) |
+| 2 | Graph instances | Actual infrastructure provisioning |
+| 3 | Applications | Gen3 data commons workloads |
 
-The system handles three IAM scenarios:
+## Customizing Your Deployment
 
-1. **Hub-Internal**: Spoke account = Hub account
-   - Hub pod identity attaches internal policies directly
-   - Spoke composition is NOT used
-   - All resources in single AWS account
+### Changing Cluster Configuration
 
-2. **Cross-Account**: Spoke account ≠ Hub account
-   - Hub: Pod identity with AssumeRole policy
-   - Spoke: IAM role (created by spoke composition) with trust to hub
-   - Hub ACK controllers assume spoke roles to manage spoke resources
+Edit your hub terragrunt.hcl to customize:
 
-3. **Override ARNs**: Pre-existing roles in spoke account
-   - Spoke composition skips role creation
-   - Uses externally managed roles
-   - ARNs passed to hub for cross-account policies
+```hcl
+# VPC Configuration
+vpc_cidr = "10.0.0.0/16"
+availability_zones = ["us-east-1a", "us-east-1b"]
 
-### GitOps Deployment Waves
+# EKS Configuration
+cluster_version = "1.32"
+cluster_compute_config = {
+  min_size       = 2
+  max_size       = 10
+  desired_size   = 3
+  instance_types = ["t3.large"]
+}
 
-ArgoCD deploys applications in waves:
-
-- **Wave 0**: Platform addons (KRO, ACK, External Secrets)
-- **Wave 1**: ResourceGraphDefinitions (infrastructure schemas)
-- **Wave 2**: Graph instances (infrastructure provisioning)
-- **Wave 3**: Application workloads (Gen3 commons)
-
-## Development Workflow
-
-### Making Changes
-
-1. **Update Configuration**: Modify Terraform, ArgoCD, or IAM configs
-2. **Plan Changes**: Run `terragrunt plan` to preview
-3. **Apply Changes**: Run `terragrunt apply` to deploy
-4. **Verify Sync**: Check ArgoCD applications sync successfully
-5. **Commit Changes**: Push to Git for GitOps tracking
-
-### Testing
-
-```bash
-# Initialize Terragrunt
-cd live/aws/us-east-1/gen3-kro-hub
-terragrunt init
-
-# Plan infrastructure changes
-terragrunt plan
-
-# Apply and show full output
-terragrunt apply
-
-# Validate ArgoCD applications
-kubectl get applications -n argocd
-kubectl get applicationsets -n argocd
+# Enable ACK Controllers
+ack_configs = {
+  ec2 = { enable_pod_identity = true, namespace = "ack-system", service_account = "ack-ec2-sa" }
+  eks = { enable_pod_identity = true, namespace = "ack-system", service_account = "ack-eks-sa" }
+}
 ```
 
-### Version Management
+### Adding ACK Controllers
 
-See [Version Bump Guide](docs/version-bump.md) for:
-- Semantic versioning strategy
-- Automated version bumping
-- Release tagging process
+1. Create IAM policy: `iam/gen3/csoc/acks/SERVICE_NAME/internal-policy.json`
+2. Enable in Terragrunt: Add to `ack_configs`
+3. Apply changes: `terragrunt apply`
+
+See [Adding Cluster Addons](docs/add-cluster-addons.md) for detailed instructions.
+
+### Deploying to Different Regions
+
+1. Create new directory: `live/aws/YOUR_REGION/YOUR_CLUSTER/`
+2. Copy and modify `terragrunt.hcl`
+3. Update region-specific configuration
+4. Deploy: `terragrunt init && terragrunt apply`
 
 ## Troubleshooting
 
 ### Common Issues
 
-**ArgoCD application out of sync**:
-```bash
-kubectl get application <app-name> -n argocd -o yaml
-# Check sync status and error messages
-```
+| Issue | Solution |
+|-------|----------|
+| ArgoCD app out of sync | `kubectl get application APP_NAME -n argocd -o yaml` |
+| Pod identity not working | Check service account annotation: `kubectl describe sa SA_NAME -n NAMESPACE` |
+| Terraform state lock | Force unlock: `terragrunt force-unlock LOCK_ID` |
+| ACK controller failing | Check IAM role: `aws iam get-role --role-name ROLE_NAME` |
 
-**Pod identity not working**:
-```bash
-kubectl describe sa <service-account> -n <namespace>
-# Verify eks.amazonaws.com/role-arn annotation
-```
+### Getting Help
 
-**Terraform state lock**:
-```bash
-# Check S3 backend for lock file
-aws s3 ls s3://<state-bucket>/locks/
-```
-
-### Logs and Reports
-
-Execution logs and verification reports are saved to:
-- `outputs/logs/`: Terraform and script logs
-- `outputs/reports/`: Verification and completion reports
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make changes following the repository structure
-4. Test changes in a dev environment
-5. Submit a pull request with detailed description
-
-### Code Standards
-
-- Follow Terraform best practices
-- Use Terragrunt for DRY configurations
-- Document all modules and variables
-- Write clear commit messages
-- Update relevant documentation
+- Check [documentation](docs/) for detailed guides
+- Review logs in `outputs/logs/` and `outputs/reports/`
+- Submit issues on GitHub
 
 ## License
 

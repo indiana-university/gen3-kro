@@ -1,13 +1,14 @@
 # Terragrunt Deployment Guide
 
-This guide explains how to deploy the Gen3 KRO platform infrastructure using Terragrunt.
+Learn how to deploy your own Gen3 KRO infrastructure using Terragrunt.
 
 ## Overview
 
-Terragrunt is a thin wrapper for Terraform that provides DRY (Don't Repeat Yourself) configurations and additional tooling for managing infrastructure at scale. The Gen3 KRO platform uses Terragrunt to deploy:
+This guide walks you through deploying your own hub-spoke infrastructure. Terragrunt provides DRY configurations and manages Terraform deployments across multiple environments.
 
-- **Hub Cluster**: Central control plane with ArgoCD, KRO, and ACK controllers
-- **Spoke IAM**: Cross-account IAM roles for spoke clusters
+**What You'll Deploy**:
+- **Hub Cluster**: Control plane with ArgoCD, KRO, and ACK controllers
+- **Spoke IAM** (optional): Cross-account IAM roles for spoke clusters
 
 ## Prerequisites
 
@@ -19,27 +20,29 @@ Terragrunt is a thin wrapper for Terraform that provides DRY (Don't Repeat Yours
 
 ## Directory Structure
 
+Your deployment configurations live in the `live/` directory:
+
 ```
 live/
 └── aws/
-    └── us-east-1/
-        ├── gen3-kro-hub/          # Hub cluster deployment
+    └── YOUR_REGION/
+        ├── YOUR_CLUSTER/          # Your hub cluster
         │   └── terragrunt.hcl
-        └── spoke1-iam/            # Spoke IAM deployment
+        └── YOUR_SPOKE-iam/        # Optional: Spoke IAM
             └── terragrunt.hcl
 ```
 
 ## Hub Cluster Deployment
 
-### 1. Navigate to Hub Directory
+### 1. Customize Your Configuration
+
+Navigate to your hub directory:
 
 ```bash
-cd /workspaces/gen3-kro/live/aws/us-east-1/gen3-kro-hub
+cd live/aws/us-east-1/YOUR_CLUSTER
 ```
 
-### 2. Review Configuration
-
-Inspect `terragrunt.hcl`:
+Edit `terragrunt.hcl` to customize your deployment:
 
 ```hcl
 terraform {
@@ -51,28 +54,29 @@ include "root" {
 }
 
 inputs = {
-  # Core
-  cluster_name    = "gen3-kro-hub"
+  # Core - Customize these
+  cluster_name    = "my-hub-cluster"          # Change this
   cluster_version = "1.32"
+  region          = "us-east-1"               # Change if needed
 
-  # VPC
+  # VPC - Customize network ranges
   enable_vpc            = true
-  vpc_name              = "gen3-kro-hub-vpc"
-  vpc_cidr              = "10.0.0.0/16"
+  vpc_name              = "my-hub-vpc"        # Change this
+  vpc_cidr              = "10.0.0.0/16"       # Customize as needed
   availability_zones    = ["us-east-1a", "us-east-1b"]
   private_subnet_cidrs  = ["10.0.1.0/24", "10.0.2.0/24"]
   public_subnet_cidrs   = ["10.0.101.0/24", "10.0.102.0/24"]
 
-  # EKS
+  # EKS - Adjust compute resources
   enable_eks_cluster = true
   cluster_compute_config = {
     min_size       = 2
     max_size       = 10
     desired_size   = 3
-    instance_types = ["t3.large"]
+    instance_types = ["t3.large"]             # Change if needed
   }
 
-  # ACK Controllers
+  # ACK Controllers - Enable what you need
   enable_ack = true
   ack_configs = {
     ec2 = { enable_pod_identity = true, namespace = "ack-system", service_account = "ack-ec2-sa" }
@@ -80,12 +84,12 @@ inputs = {
     iam = { enable_pod_identity = true, namespace = "ack-system", service_account = "ack-iam-sa" }
   }
 
-  # ArgoCD
+  # ArgoCD - Point to YOUR fork
   enable_argocd = true
   argocd_cluster = {
     metadata = {
       annotations = {
-        hub_repo_url      = "https://github.com/indiana-university/gen3-kro.git"
+        hub_repo_url      = "https://github.com/YOUR_ORG/gen3-kro.git"  # Change this!
         hub_repo_revision = "main"
         hub_repo_basepath = "argocd"
       }
@@ -96,12 +100,13 @@ inputs = {
   tags = {
     Environment = "production"
     ManagedBy   = "Terragrunt"
-    Project     = "Gen3-KRO"
+    Project     = "My-Gen3-KRO"               # Customize
+    Owner       = "your-email@example.com"    # Add your email
   }
 }
 ```
 
-### 3. Initialize Terragrunt
+### 2. Initialize Terragrunt
 
 ```bash
 terragrunt init
@@ -120,22 +125,20 @@ Initializing provider plugins...
 Terraform has been successfully initialized!
 ```
 
-### 4. Plan Infrastructure
+### 3. Plan Your Deployment
 
 ```bash
 terragrunt plan
 ```
 
-This generates an execution plan showing what Terraform will create.
+Review what will be created:
+- VPC with subnets and NAT gateways
+- EKS cluster control plane and node groups
+- IAM roles for pod identities
+- ArgoCD with bootstrap configuration
+- ConfigMaps for cluster settings
 
-Review the plan carefully:
-- **VPC resources**: VPC, subnets, route tables, NAT gateways
-- **EKS cluster**: Control plane, node group, OIDC provider
-- **IAM roles**: Pod identity roles for ACK controllers and addons
-- **ArgoCD**: Helm release, cluster secret, bootstrap ApplicationSets
-- **ConfigMaps**: Hub configuration for ArgoCD
-
-### 5. Apply Infrastructure
+### 4. Deploy Infrastructure
 
 ```bash
 terragrunt apply
@@ -165,59 +168,52 @@ cluster_name = "gen3-kro-hub"
 vpc_id = "vpc-0123456789abcdef0"
 ```
 
-### 6. Connect to Cluster
+### 5. Connect to Your Cluster
 
 ```bash
-# Update kubeconfig
-aws eks update-kubeconfig --name gen3-kro-hub --region us-east-1
+# Update kubeconfig with your cluster name
+aws eks update-kubeconfig --name my-hub-cluster --region us-east-1
 
 # Verify connection
 kubectl get nodes
-
-# Check ArgoCD
-kubectl get applications -n argocd
-kubectl get applicationsets -n argocd
 ```
 
-### 7. Verify Deployment
+### 6. Verify Deployment
 
-Run verification steps:
+Check that everything deployed successfully:
 
 ```bash
-# Check nodes are ready
+# Check cluster nodes (should see 3 nodes in Ready state)
 kubectl get nodes
-# Expected: 3 nodes in Ready state
 
-# Check ArgoCD applications
+# Check ArgoCD applications (should be Synced/Healthy)
 kubectl get applications -n argocd
-# Expected: Multiple applications in Synced/Healthy state
 
-# Check ACK controllers
+# Check ACK controllers (should be Running)
 kubectl get pods -n ack-system
-# Expected: ACK controller pods running
 
-# Check KRO controller (deployed by ArgoCD Wave 0)
+# Check KRO controller (deployed by ArgoCD)
 kubectl get pods -n kro-system
-# Expected: KRO controller pods running
 
-# Check ResourceGraphDefinitions (deployed by ArgoCD Wave 1)
+# Check ResourceGraphDefinitions
 kubectl get rgd
-# Expected: VPC, EKS, IAM RGDs
 ```
 
-## Spoke IAM Deployment
+Expected output shows all pods running and applications synced.
 
-After the hub is deployed, provision IAM roles for spoke clusters.
+## Spoke IAM Deployment (Optional)
+
+If you're deploying spoke clusters in different AWS accounts, you'll need to provision IAM roles first.
 
 ### 1. Navigate to Spoke IAM Directory
 
 ```bash
-cd /workspaces/gen3-kro/live/aws/us-east-1/spoke1-iam
+cd live/aws/us-east-1/YOUR_SPOKE-iam
 ```
 
-### 2. Review Configuration
+### 2. Customize Spoke Configuration
 
-Inspect `terragrunt.hcl`:
+Edit `terragrunt.hcl`:
 
 ```hcl
 terraform {
@@ -284,14 +280,14 @@ inputs = {
 
 ### 3. Create IAM Policies
 
-Before deploying, create IAM policy files:
+Create policy files for your spoke:
 
 ```bash
 # Create directories
-mkdir -p ../../../../iam/gen3/spoke1/acks/{ec2,eks,iam}
+mkdir -p iam/gen3/YOUR_SPOKE/acks/{ec2,eks,iam}
 
 # Create EC2 policy
-cat > ../../../../iam/gen3/spoke1/acks/ec2/internal-policy.json <<EOF
+cat > iam/gen3/YOUR_SPOKE/acks/ec2/internal-policy.json <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -309,7 +305,7 @@ cat > ../../../../iam/gen3/spoke1/acks/ec2/internal-policy.json <<EOF
 EOF
 
 # Create EKS policy
-cat > ../../../../iam/gen3/spoke1/acks/eks/internal-policy.json <<EOF
+cat > iam/gen3/YOUR_SPOKE/acks/eks/internal-policy.json <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -326,7 +322,7 @@ cat > ../../../../iam/gen3/spoke1/acks/eks/internal-policy.json <<EOF
 EOF
 
 # Create IAM policy
-cat > ../../../../iam/gen3/spoke1/acks/iam/internal-policy.json <<EOF
+cat > iam/gen3/YOUR_SPOKE/acks/iam/internal-policy.json <<EOF
 {
   "Version": "2012-10-17",
   "Statement": [
@@ -369,13 +365,13 @@ spoke_role_arns = {
 
 ### 5. Update Hub with Spoke ARNs
 
-After spoke IAM is created, update the hub to attach cross-account policies.
+After spoke IAM is created, update your hub to attach cross-account policies.
 
-Edit `live/aws/us-east-1/gen3-kro-hub/terragrunt.hcl`:
+Edit `live/aws/us-east-1/YOUR_CLUSTER/terragrunt.hcl`:
 
 ```hcl
-dependency "spoke1_iam" {
-  config_path = "../spoke1-iam"
+dependency "my_spoke_iam" {
+  config_path = "../YOUR_SPOKE-iam"
   skip_outputs = false
 }
 
@@ -384,8 +380,8 @@ inputs = {
 
   enable_multi_acct = true
   spoke_arn_inputs = {
-    spoke1 = {
-      for svc, arn in dependency.spoke1_iam.outputs.spoke_role_arns :
+    my_spoke = {
+      for svc, arn in dependency.my_spoke_iam.outputs.spoke_role_arns :
       svc => { role_arn = arn }
     }
   }
@@ -395,11 +391,11 @@ inputs = {
 Apply changes:
 
 ```bash
-cd ../gen3-kro-hub
+cd ../YOUR_CLUSTER
 terragrunt apply
 ```
 
-This attaches AssumeRole policies to hub pod identities.
+This attaches cross-account AssumeRole policies to your hub pod identities.
 
 ## Verification and Validation
 

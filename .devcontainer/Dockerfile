@@ -116,16 +116,16 @@ RUN kubectl completion bash > /etc/bash_completion.d/kubectl \
     && helm completion bash > /etc/bash_completion.d/helm
 
 # Create workspace directory
-RUN mkdir -p /workspaces/gen3-kro
+RUN mkdir -p /workspace
 
 # Set permissions for vscode user
-RUN chown -R vscode:vscode /workspaces
+RUN chown -R vscode:vscode /workspace
 
 # Switch to vscode user
 USER vscode
 
 # Set working directory
-WORKDIR /workspaces/gen3-kro
+WORKDIR /workspace
 
 # Add helpful aliases to .bashrc
 RUN echo 'alias k=kubectl' >> /home/vscode/.bashrc \

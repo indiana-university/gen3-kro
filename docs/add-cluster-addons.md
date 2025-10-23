@@ -29,10 +29,6 @@ s3:
 
 3. **Configure values** (`argocd/hub/addons/values.yaml`):
 ```yaml
-global:
-  roleArns:
-    s3: "arn:aws:iam::123456789012:role/hub-ack-s3"
-
 values:
   s3:
     serviceAccount:
@@ -382,9 +378,9 @@ inputs = {
 
 ### 1. Update Git Configuration
 
-```bash
-cd /workspaces/gen3-kro
+In your repository:
 
+```bash
 # Add addon to catalog
 vim argocd/hub/addons/catalog.yaml
 
@@ -423,7 +419,7 @@ git commit -m "Add S3 IAM policy for hub"
 ### 3. Update Terraform
 
 ```bash
-cd live/aws/us-east-1/gen3-kro-hub
+cd live/aws/us-east-1/YOUR_CLUSTER
 
 # Edit terragrunt.hcl to add s3 to ack_configs
 

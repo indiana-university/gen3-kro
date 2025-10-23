@@ -1,10 +1,10 @@
 # Docker Setup Guide
 
-This guide explains how to build and use the Gen3 KRO platform Docker development environment.
+Learn how to build and use the Docker development environment for your Gen3 KRO deployment.
 
 ## Overview
 
-The Gen3 KRO platform uses a Docker-based development environment that includes all necessary tools for infrastructure deployment and management. The container provides a consistent, reproducible environment across different systems.
+The Docker container provides a consistent development environment with all required tools (Terraform, Terragrunt, kubectl, AWS CLI, etc.) pre-installed. This ensures your deployment works consistently across different systems.
 
 ## Prerequisites
 
@@ -30,46 +30,40 @@ The development container includes:
 
 ## Quick Start
 
-### 1. Clone the Repository
+### 1. Clone Your Fork
 
 ```bash
-git clone https://github.com/indiana-university/gen3-kro.git
+# Clone your forked repository
+git clone https://github.com/YOUR_ORG/gen3-kro.git
 cd gen3-kro
 ```
 
 ### 2. Build the Container
 
-Using the provided script:
-
 ```bash
+# Build using the provided script
 ./scripts/docker-build-push.sh
-```
 
-Or manually:
-
-```bash
+# Or build manually
 docker build -t gen3-kro:latest .
 ```
 
 ### 3. Run the Container
 
-With VS Code Dev Containers extension:
+**Option A: VS Code Dev Container (Recommended)**
 
 ```bash
-# Open in VS Code
 code .
-
 # Click "Reopen in Container" when prompted
 ```
 
-Or manually:
+**Option B: Manual Docker Run**
 
 ```bash
 docker run -it \
-  -v $(pwd):/workspaces/gen3-kro \
+  -v $(pwd):/workspace \
   -v ~/.aws:/root/.aws:ro \
   -v ~/.kube:/root/.kube \
-  -v /var/run/docker.sock:/var/run/docker.sock \
   gen3-kro:latest \
   bash
 ```
@@ -128,51 +122,30 @@ Installs system packages and build tools.
        && rm -rf awscliv2.zip aws/
    ```
 
-## Volume Mounts
+## Container Configuration
 
-### Workspace Mount
+### Volume Mounts
 
-```bash
--v $(pwd):/workspaces/gen3-kro
-```
+The container uses these mount points:
 
-Mounts the repository into the container at `/workspaces/gen3-kro`. Changes are reflected on both host and container.
+| Host Path | Container Path | Purpose | Mode |
+|-----------|---------------|---------|------|
+| `$(pwd)` | `/workspace` | Your repository code | Read/Write |
+| `~/.aws` | `/root/.aws` | AWS credentials | Read-Only |
+| `~/.kube` | `/root/.kube` | Kubernetes config | Read/Write |
 
-### AWS Credentials
+### Environment Variables
 
-```bash
--v ~/.aws:/root/.aws:ro
-```
-
-Mounts AWS credentials read-only. Keep credentials on host, accessible in container.
-
-**Alternative**: Use AWS SSO or environment variables:
+Pass AWS configuration to the container:
 
 ```bash
 docker run -it \
   -e AWS_PROFILE=myprofile \
   -e AWS_REGION=us-east-1 \
+  -v $(pwd):/workspace \
   -v ~/.aws:/root/.aws:ro \
   gen3-kro:latest bash
 ```
-
-### Kubernetes Config
-
-```bash
--v ~/.kube:/root/.kube
-```
-
-Mounts kubeconfig for kubectl access to clusters.
-
-### Docker Socket
-
-```bash
--v /var/run/docker.sock:/var/run/docker.sock
-```
-
-Enables running Docker commands from within the container (Docker-in-Docker pattern).
-
-**Note**: This grants the container significant host access. Only use in trusted environments.
 
 ## VS Code Dev Container
 
@@ -346,55 +319,55 @@ BUILD_ARGS="--build-arg TERRAFORM_VERSION=1.6.0" \
 ### 1. Start Container
 
 ```bash
-# Using VS Code
+# Using VS Code Dev Container
 code .
-# Reopen in Container
+# Click "Reopen in Container"
 
 # Or manually
 docker run -it \
-  -v $(pwd):/workspaces/gen3-kro \
+  -v $(pwd):/workspace \
   -v ~/.aws:/root/.aws:ro \
   -v ~/.kube:/root/.kube \
   gen3-kro:latest bash
 ```
 
-### 2. Configure AWS
+### 2. Verify AWS Access
 
 Inside container:
 
 ```bash
-# Verify AWS access
+# Check AWS credentials
 aws sts get-caller-identity
 
-# Configure if needed
-aws configure --profile myprofile
+# Should show your AWS account ID and user/role
 ```
 
-### 3. Work with Infrastructure
+### 3. Deploy Infrastructure
 
 ```bash
-cd /workspaces/gen3-kro/live/aws/us-east-1/gen3-kro-hub
+# Navigate to your hub configuration
+cd /workspace/live/aws/YOUR_REGION/YOUR_CLUSTER
 
-# Initialize
+# Initialize Terragrunt
 terragrunt init
 
 # Plan changes
 terragrunt plan
 
-# Apply changes
+# Deploy
 terragrunt apply
 ```
 
-### 4. Access Kubernetes
+### 4. Access Your Cluster
 
 ```bash
-# Update kubeconfig
-aws eks update-kubeconfig --name gen3-kro-hub --region us-east-1
+# Update kubeconfig with your cluster name
+aws eks update-kubeconfig --name YOUR_CLUSTER_NAME --region YOUR_REGION
 
-# Verify access
+# Verify connection
 kubectl get nodes
 
-# Check ArgoCD applications
+# Check ArgoCD
 kubectl get applications -n argocd
 ```
 
@@ -489,8 +462,8 @@ RUN apt-get update && apt-get install -y ...
 # Occasionally changes - layer cached
 RUN wget <tool> && install ...
 
-# Frequently changes - not cached
-COPY . /workspaces/gen3-kro
+# Frequently changes - not cached (example - typically not needed)
+COPY . /workspace
 ```
 
 ### 3. Security
@@ -543,10 +516,9 @@ services:
   gen3-kro:
     build: .
     volumes:
-      - .:/workspaces/gen3-kro
+      - .:/workspace
       - ~/.aws:/root/.aws:ro
       - ~/.kube:/root/.kube
-      - /var/run/docker.sock:/var/run/docker.sock
     environment:
       - AWS_PROFILE=default
       - AWS_REGION=us-east-1
