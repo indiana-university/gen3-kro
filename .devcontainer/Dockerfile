@@ -116,12 +116,15 @@ RUN echo "Downloading kustomize..."; \
 RUN kubectl completion bash > /etc/bash_completion.d/kubectl \
     && helm completion bash > /etc/bash_completion.d/helm
 
-    # Install Node.js (LTS 22.21.0)
+# Install Node.js
 RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.xz" \
     -o /tmp/node.tar.xz \
     && mkdir -p /usr/local/lib/nodejs \
     && tar -xJf /tmp/node.tar.xz -C /usr/local/lib/nodejs \
     && rm /tmp/node.tar.xz
+
+# Add Node.js to PATH
+ENV PATH=/usr/local/lib/nodejs/node-v${NODE_VERSION}-linux-x64/bin:$PATH
 
 # Create workspace directory
 RUN mkdir -p /workspaces

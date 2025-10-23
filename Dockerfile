@@ -20,7 +20,6 @@ LABEL org.opencontainers.image.licenses="MIT"
 
 # Persist Node.js version in the runtime environment
 ENV NODE_VERSION=${NODE_VERSION}
-ENV PATH=/usr/local/lib/nodejs/node-v${NODE_VERSION}-linux-x64/bin:$PATH
 
 # Install base dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -108,6 +107,10 @@ RUN curl -fsSL "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-l
     && mkdir -p /usr/local/lib/nodejs \
     && tar -xJf /tmp/node.tar.xz -C /usr/local/lib/nodejs \
     && rm /tmp/node.tar.xz
+
+# Add Node.js to PATH
+ENV PATH=/usr/local/lib/nodejs/node-v${NODE_VERSION}-linux-x64/bin:$PATH
+
 # Create working directory
 WORKDIR /workspace
 
