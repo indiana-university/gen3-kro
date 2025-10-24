@@ -8,11 +8,6 @@ output "config_map_namespace" {
   value       = var.create && var.cluster_info != null ? kubernetes_config_map_v1.argocd_cluster_config[0].metadata[0].namespace : null
 }
 
-output "ack_controllers" {
-  description = "ACK controllers configuration"
-  value       = local.ack_controllers_map
-}
-
 output "addons" {
   description = "Addons configuration"
   value       = local.addons_map

@@ -1,16 +1,7 @@
 ###################################################################################################################################################
 # Generic IAM Policy Module
-# Loads IAM policies from Git or local filesystem for any service type (ACK, addon, ArgoCD, custom)
+# Loads IAM policies from Git or local filesystem for services (treated uniformly as addons)
 ###################################################################################################################################################
-
-variable "service_type" {
-  description = "Type of service: 'acks', 'addons'"
-  type        = string
-  validation {
-    condition     = contains(["acks", "addons"], var.service_type)
-    error_message = "service_type must be one of: acks, addons"
-  }
-}
 
 variable "service_name" {
   description = "Name of the service (e.g., 's3', 'ebs-csi', 'argocd')"
@@ -18,9 +9,19 @@ variable "service_name" {
 }
 
 variable "context" {
-  description = "Deployment context: 'hub' or spoke alias"
+  description = "Deployment context: 'csoc' for hub or spoke alias (e.g., 'spoke1')"
   type        = string
-  default     = "hub"
+  default     = "csoc"
+}
+
+variable "provider" {
+  description = "Cloud provider: 'aws', 'azure', or 'gcp'"
+  type        = string
+  default     = "aws"
+  validation {
+    condition     = contains(["aws", "azure", "gcp"], var.provider)
+    error_message = "Provider must be one of: aws, azure, gcp"
+  }
 }
 
 variable "iam_policy_repo_url" {

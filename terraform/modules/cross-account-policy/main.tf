@@ -34,7 +34,7 @@ data "aws_iam_policy_document" "cross_account" {
 resource "aws_iam_role_policy" "cross_account" {
   count = var.create && length(var.spoke_role_arns) > 0 ? 1 : 0
 
-  name   = "ack-${var.service_name}-cross-account-assume"
+  name   = "${var.service_name}-cross-account-assume"
   role   = local.hub_role_name
   policy = data.aws_iam_policy_document.cross_account[0].json
 }

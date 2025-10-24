@@ -10,9 +10,8 @@
 resource "aws_iam_role" "spoke" {
   count    = var.create ? 1 : 0
 
-  # For ACKs: spoke1-ack-s3-spoke-role
-  # For addons: spoke1-argocd-spoke-role (no ack prefix/suffix)
-  name = var.service_type == "acks" ? "${var.spoke_alias}-ack-${var.service_name}-spoke-role" : "${var.spoke_alias}-${var.service_name}-spoke-role"
+  # Role name format (unified): {spoke_alias}-{service_name}-spoke-role
+  name = "${var.spoke_alias}-${var.service_name}-spoke-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -25,7 +24,7 @@ resource "aws_iam_role" "spoke" {
     }]
   })
 
-  description = var.service_type == "acks" ? "Spoke role for ${var.cluster_name} ${var.service_name}-ack-controller in Spoke: ${var.spoke_alias}" : "Spoke role for ${var.cluster_name} ${var.service_name} addon in Spoke: ${var.spoke_alias}"
+  description = "Spoke role for ${var.cluster_name} ${var.service_name} in Spoke: ${var.spoke_alias}"
   tags        = var.tags
 }
 
@@ -37,9 +36,8 @@ resource "aws_iam_role" "spoke" {
 resource "aws_iam_role_policy" "spoke_inline" {
   count = var.create ? 1 : 0
 
-  # For ACKs: s3-ack-policy
-  # For addons: argocd-policy (no ack prefix/suffix)
-  name = var.service_type == "acks" ? "${var.service_name}-ack-policy" : "${var.service_name}-policy"
+  # Inline policy name (unified): {service_name}-policy
+  name = "${var.service_name}-policy"
   role = aws_iam_role.spoke[0].name
 
   # Use provided policy JSON or create minimal no-op policy if none provided

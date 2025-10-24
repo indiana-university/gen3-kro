@@ -3,95 +3,53 @@
 ###################################################################################################################################################
 
 locals {
-  # Build paths for policy files
-  # Pattern: {base_path}/gen3-kro/{context}/{service_type}/{service_name}/
-  context_base_path = "${var.iam_policy_base_path}/gen3-kro/${var.context}/${var.service_type}/${var.service_name}"
-  hub_base_path     = "${var.iam_policy_base_path}/gen3-kro/hub/${var.service_type}/${var.service_name}"
+  # Build filesystem paths for policy files
+  # Pattern: {base_path}/{provider}/{context}/{service_name}/
+  context_base_path  = "${var.iam_policy_base_path}/${var.provider}/${var.context}/${var.service_name}"
+  default_base_path  = "${var.iam_policy_base_path}/${var.provider}/_default/${var.service_name}"
 
-  # HTTP URLs for fetching from GitHub raw content
-  use_http = var.iam_raw_base_url != ""
-  http_hub_path = local.use_http ? "${var.iam_raw_base_url}/${local.hub_base_path}" : ""
-
-  # Local filesystem paths as fallback
+  # Local filesystem absolute paths
   local_context_path = var.repo_root_path != "" ? "${var.repo_root_path}/${local.context_base_path}" : "${path.root}/${local.context_base_path}"
-  local_hub_path     = var.repo_root_path != "" ? "${var.repo_root_path}/${local.hub_base_path}" : "${path.root}/${local.hub_base_path}"
+  local_default_path = var.repo_root_path != "" ? "${var.repo_root_path}/${local.default_base_path}" : "${path.root}/${local.default_base_path}"
+
+  # Policy file names vary by provider
+  policy_file_name = var.provider == "aws" ? "inline-policy.json" : (
+    var.provider == "azure" ? "role-definition.json" : "role.yaml"
+  )
 }
 
 ###################################################################################################################################################
 # HTTP Data Sources - Fetch policies from GitHub raw content URLs (primary source)
 ###################################################################################################################################################
-data "http" "inline_policy" {
-  count = local.use_http ? 1 : 0
-  url   = "${local.http_hub_path}/source-policy-inline.json"
-
-  request_headers = {
-    Accept = "application/json"
-  }
-
-  lifecycle {
-    postcondition {
-      condition     = self.status_code == 200 || self.status_code == 404
-      error_message = "HTTP request failed with status ${self.status_code}"
-    }
-  }
-}
-
-data "http" "managed_arns" {
-  count = local.use_http ? 1 : 0
-  url   = "${local.http_hub_path}/source-policy-arn.json"
-
-  request_headers = {
-    Accept = "application/json"
-  }
-
-  lifecycle {
-    postcondition {
-      condition     = self.status_code == 200 || self.status_code == 404
-      error_message = "HTTP request failed with status ${self.status_code}"
-    }
-  }
-}
-
-data "http" "override_policy" {
-  count = local.use_http ? 1 : 0
-  url   = "${local.http_hub_path}/overridepolicy.json"
-
-  request_headers = {
-    Accept = "application/json"
-  }
-
-  lifecycle {
-    postcondition {
-      condition     = self.status_code == 200 || self.status_code == 404
-      error_message = "HTTP request failed with status ${self.status_code}"
-    }
-  }
-}
+// HTTP fetching disabled: IAM policies are loaded from local filesystem only
 
 locals {
-  # Extract HTTP responses (null if 404 or not using HTTP)
-  http_inline_policy   = local.use_http && try(data.http.inline_policy[0].status_code, 0) == 200 ? data.http.inline_policy[0].response_body : null
-  http_managed_arns    = local.use_http && try(data.http.managed_arns[0].status_code, 0) == 200 ? try(jsondecode(data.http.managed_arns[0].response_body), {}) : {}
-  http_override_policy = local.use_http && try(data.http.override_policy[0].status_code, 0) == 200 ? data.http.override_policy[0].response_body : null
+  # Filesystem loading with _default fallback
+  fs_inline_policy_context = try(file("${local.local_context_path}/${local.policy_file_name}"), null)
+  fs_inline_policy_default = try(file("${local.local_default_path}/${local.policy_file_name}"), null)
 
-  # Filesystem fallback - only try if HTTP didn't succeed
-  fs_inline_policy   = local.http_inline_policy == null ? try(file("${local.local_hub_path}/source-policy-inline.json"), null) : null
-  fs_managed_arns    = length(local.http_managed_arns) == 0 ? try(jsondecode(file("${local.local_hub_path}/source-policy-arn.json")), {}) : {}
-  fs_override_policy = local.http_override_policy == null ? try(file("${local.local_hub_path}/overridepolicy.json"), null) : null
+  fs_managed_arns_context = try(jsondecode(file("${local.local_context_path}/source-policy-arn.json")), {})
+  fs_managed_arns_default = try(jsondecode(file("${local.local_default_path}/source-policy-arn.json")), {})
 
-  # Final policies (custom > http > filesystem)
-  final_inline_policy   = var.custom_inline_policy != null ? var.custom_inline_policy : (local.http_inline_policy != null ? local.http_inline_policy : local.fs_inline_policy)
-  final_policy_arns     = length(var.custom_managed_arns) > 0 ? var.custom_managed_arns : (length(local.http_managed_arns) > 0 ? local.http_managed_arns : local.fs_managed_arns)
-  final_override_policy = var.custom_override_policy != null ? var.custom_override_policy : (local.http_override_policy != null ? local.http_override_policy : local.fs_override_policy)
+  fs_override_policy_context = try(file("${local.local_context_path}/overridepolicy.json"), null)
+  fs_override_policy_default = try(file("${local.local_default_path}/overridepolicy.json"), null)
+
+  # Pick context first, then _default
+  fs_inline_policy   = local.fs_inline_policy_context != null ? local.fs_inline_policy_context : local.fs_inline_policy_default
+  fs_managed_arns    = length(local.fs_managed_arns_context) > 0 ? local.fs_managed_arns_context : local.fs_managed_arns_default
+  fs_override_policy = local.fs_override_policy_context != null ? local.fs_override_policy_context : local.fs_override_policy_default
+
+  # Final policies (custom > filesystem)
+  final_inline_policy   = var.custom_inline_policy != null ? var.custom_inline_policy : local.fs_inline_policy
+  final_policy_arns     = length(var.custom_managed_arns) > 0 ? var.custom_managed_arns : local.fs_managed_arns
+  final_override_policy = var.custom_override_policy != null ? var.custom_override_policy : local.fs_override_policy
 
   # Build output lists
   override_policy_documents = local.final_override_policy != null ? [local.final_override_policy] : []
 
-  # Track actual source used (custom, git, filesystem, or none)
+  # Track actual source used (custom, filesystem, or none)
   actual_source = var.custom_inline_policy != null || length(var.custom_managed_arns) > 0 ? "custom" : (
-    local.http_inline_policy != null || length(local.http_managed_arns) > 0 ? "git" : (
-      local.fs_inline_policy != null || length(local.fs_managed_arns) > 0 ? "filesystem" : "none"
-    )
+    local.fs_inline_policy != null || length(local.fs_managed_arns) > 0 ? "filesystem" : "none"
   )
 }
 
@@ -131,12 +89,12 @@ output "policy_source" {
 output "debug_paths" {
   description = "Debug: paths being checked for policy files"
   value = {
-    http_hub_path       = local.http_hub_path
-    local_hub_path      = local.local_hub_path
+    provider            = var.provider
+    context_path        = local.local_context_path
+    default_path        = local.local_default_path
+    policy_file_name    = local.policy_file_name
     repo_root_path      = var.repo_root_path
-    service_type        = var.service_type
     service_name        = var.service_name
-    http_inline_found   = local.http_inline_policy != null
     fs_inline_found     = local.fs_inline_policy != null
     final_inline_found  = local.final_inline_policy != null
     policy_source       = local.actual_source

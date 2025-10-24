@@ -16,22 +16,15 @@ variable "argocd_namespace" {
 }
 
 variable "pod_identities" {
-  description = "Map of pod identity outputs from hub/spoke combination (includes ACK and addon IAM roles)"
+  description = "Map of pod identity outputs from hub/spoke combination"
   type = map(object({
     role_arn      = string
     role_name     = string
     policy_arn    = optional(string)
-    service_type  = string
     service_name  = string
     policy_source = string
   }))
   default = {}
-}
-
-variable "ack_configs" {
-  description = "Map of ACK controller configurations from config.yaml"
-  type        = any
-  default     = {}
 }
 
 variable "addon_configs" {

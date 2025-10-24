@@ -12,14 +12,6 @@ variable "create" {
 ###################################################################################################################################################
 # Service Identification
 ###################################################################################################################################################
-variable "service_type" {
-  description = "Type of service (acks, addons)"
-  type        = string
-  validation {
-    condition     = contains(["acks", "addons"], var.service_type)
-    error_message = "service_type must be one of: acks, addons"
-  }
-}
 
 variable "service_name" {
   description = "Name of the service (e.g., 'iam', 'ec2' for ACK; 'aws-load-balancer-controller' for addon)"

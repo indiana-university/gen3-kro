@@ -8,33 +8,13 @@
 # Namespace: argocd (or var.argocd_namespace)
 #
 # Data Keys:
-# - ack.yaml: ACK controller configurations (namespace, serviceAccount, IAM roles)
-# - addons.yaml: Addon configurations (namespace, serviceAccount, IAM roles, extra config)
+# - addons.yaml: Service configurations (namespace, serviceAccount, IAM roles, extra config)
 # - cluster-info.yaml: EKS cluster details (endpoint, version, OIDC, VPC)
 # - gitops-context.yaml: GitOps repository and spoke information
 ################################################################################
 
 locals {
-  # Build ACK controllers configuration map
-  ack_controllers_map = {
-    for k, v in var.pod_identities :
-    replace(k, "ack-", "") => {
-      enabled        = true
-      namespace      = lookup(var.ack_configs[replace(k, "ack-", "")], "namespace", "ack-system")
-      serviceAccount = lookup(var.ack_configs[replace(k, "ack-", "")], "service_account", "ack-${replace(k, "ack-", "")}-controller")
-      hubRoleArn     = v.role_arn
-      policyArn      = v.policy_arn
-      # Add spoke role ARNs if configured
-      spokes = {
-        for spoke_alias, spoke_data in var.spokes :
-        spoke_alias => try(spoke_data.role_arns[replace(k, "ack-", "")], "")
-      }
-    }
-    if startswith(k, "ack-") && contains(keys(var.ack_configs), replace(k, "ack-", ""))
-  }
-
-  # Build addons configuration map
-  # Addons use direct names (no "addon-" prefix in keys)
+  # Build unified configuration map
   addons_map = {
     for k, v in var.pod_identities :
     k => merge(
@@ -52,7 +32,7 @@ locals {
         if !contains(["namespace", "service_account", "enable_pod_identity", "enable"], config_key)
       }
     )
-    if !startswith(k, "ack-") && contains(keys(var.addon_configs), k)
+    if contains(keys(var.addon_configs), k)
   }
 
   # Build cluster info map
@@ -90,7 +70,6 @@ resource "kubernetes_config_map_v1" "argocd_cluster_config" {
   }
 
   data = {
-    "ack.yaml"            = yamlencode(local.ack_controllers_map)
     "addons.yaml"         = yamlencode(local.addons_map)
     "cluster-info.yaml"   = local.cluster_info_map != null ? yamlencode(local.cluster_info_map) : yamlencode({})
     "gitops-context.yaml" = yamlencode(var.gitops_context)

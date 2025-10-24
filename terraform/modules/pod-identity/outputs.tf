@@ -36,10 +36,7 @@ output "policy_source" {
   value       = local.use_custom_policies ? "custom" : (local.use_loaded_policies ? "loaded" : "none")
 }
 
-output "service_type" {
-  description = "Type of service (ack, addon, argocd, custom)"
-  value       = var.service_type
-}
+
 
 output "service_name" {
   description = "Name of the service"
