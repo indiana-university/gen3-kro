@@ -43,7 +43,7 @@
         "GitHub.copilot",
         "GitHub.copilot-chat",
         "GitHub.copilot-labs",
-        "OpenAI.openai-vscode",
+        "openai.chatgpt",
         "eamodio.gitlens",
         "ms-vscode.makefile-tools"
       ]
