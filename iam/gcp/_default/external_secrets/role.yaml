@@ -1,9 +1,0 @@
-title: External Secrets Operator
-description: Custom role for External Secrets Operator to access Secret Manager
-stage: GA
-includedPermissions:
-  - secretmanager.secrets.get
-  - secretmanager.secrets.list
-  - secretmanager.versions.access
-  - secretmanager.versions.get
-  - secretmanager.versions.list
