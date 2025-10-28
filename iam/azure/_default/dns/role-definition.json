@@ -1,0 +1,12 @@
+{
+  "Name": "DNS Service Role",
+  "Description": "Permissions for Azure DNS management",
+  "Actions": [
+    "Microsoft.Network/dnsZones/*",
+    "Microsoft.Network/privateDnsZones/*"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

@@ -8,7 +8,9 @@
   "mounts": [
     // Kube and AWS credentials (Windows USERPROFILE if set)
     "source=${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
-    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached"
+    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached"
   ],
   "remoteUser": "vscode",
   "containerEnv": {
@@ -19,15 +21,13 @@
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
-        "files.exclude": {
-          "**/.terraform": true,
-          "**/.terragrunt-cache": true,
-          "**/node_modules": true
-        },
         "editor.tabSize": 2,
         "editor.insertSpaces": true,
         "files.trimTrailingWhitespace": true,
         "files.insertFinalNewline": true,
+        "files.associations": {
+          "*.hcl": "terragrunt"
+        },
         "[yaml]": {
           "editor.defaultFormatter": "redhat.vscode-yaml"
         },
@@ -36,16 +36,12 @@
         }
       },
       "extensions": [
-        "ms-azuretools.vscode-docker",
-        "ms-kubernetes-tools.vscode-kubernetes-tools",
-        "hashicorp.terraform",
-        "redhat.vscode-yaml",
-        "GitHub.copilot",
-        "GitHub.copilot-chat",
-        "GitHub.copilot-labs",
-        "openai.chatgpt",
-        "eamodio.gitlens",
-        "ms-vscode.makefile-tools"
+        "hashicorp.terraform",                // Terraform linting
+        "redhat.vscode-yaml",                 // YAML linting
+        "GitHub.copilot",                     // AI-assisted coding
+        "GitHub.copilot-chat",                // Interactive AI assistance
+        "openai.chatgpt",                     // AI-assisted coding
+        "4ops.terraform"                      // Terragrunt linting (partial)
       ]
     }
   },

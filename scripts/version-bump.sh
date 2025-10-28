@@ -7,7 +7,7 @@ set -euo pipefail
 # Usage: ./version-bump.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 VERSION_FILE="${REPO_ROOT}/.version"
 
 # Parse simple flags

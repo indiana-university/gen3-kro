@@ -1,0 +1,14 @@
+title: Cloud Storage Service Role
+description: Permissions for Cloud Storage bucket and object management
+stage: GA
+includedPermissions:
+  - storage.buckets.create
+  - storage.buckets.delete
+  - storage.buckets.get
+  - storage.buckets.list
+  - storage.buckets.update
+  - storage.objects.create
+  - storage.objects.delete
+  - storage.objects.get
+  - storage.objects.list
+  - storage.objects.update

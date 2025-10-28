@@ -5,7 +5,7 @@ set -euo pipefail
 # Build and optionally push docker image tagged with git tag/date/sha
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 cd "$REPO_ROOT"
 
 # Parse simple flags: --dry-run|-n

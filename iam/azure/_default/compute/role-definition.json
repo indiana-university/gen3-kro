@@ -1,0 +1,15 @@
+{
+  "Name": "Compute Service Role",
+  "Description": "Permissions for Azure VM management",
+  "Actions": [
+    "Microsoft.Compute/virtualMachines/*",
+    "Microsoft.Compute/disks/*",
+    "Microsoft.Compute/snapshots/*",
+    "Microsoft.Network/networkInterfaces/*",
+    "Microsoft.Network/networkSecurityGroups/*"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

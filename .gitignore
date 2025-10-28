@@ -34,6 +34,8 @@ crash.log
 collected_files.txt
 # ArgoCD credentials
 **/argocd-credentials*.txt
+**/credentials/**
+
 # Agent instruction files (not end-user docs)
 agent.md
 *-agent.md
@@ -60,7 +62,6 @@ terraform/**/*.tfvars
 **/*_override.tf.json
 **/.terraformrc
 **/terraform.rc
-**/backend.hcl
 # ┌─────────────────────────────────────────┐
 # │ 7. Application & Build Artifacts        │
 # └─────────────────────────────────────────┘
@@ -90,20 +91,16 @@ terraform/live/**/kube_providers.tf
 # Project-specific ignores
 **/kro
 # # IAM policies: track only _default; ignore others
-# /iam/aws/**
-# !/iam/aws/
-# !/iam/aws/_default/
-# !/iam/aws/_default/**
-# /iam/azure/**
-# !/iam/azure/
-# !/iam/azure/_default/
-# !/iam/azure/_default/**
-# /iam/gcp/**
-# !/iam/gcp/
-# !/iam/gcp/_default/
-# !/iam/gcp/_default/**
-# # Legacy gen3 IAM paths (deprecated)
-# /iam/gen3/
+/iam/aws/**
+!/iam/aws/_default
+!/iam/aws/_default/**
+/iam/azure/**
+!/iam/azure/_default
+!/iam/azure/_default/**
+/iam/gcp/**
+!/iam/gcp/_default
+!/iam/gcp/_default/**
+
 /cheat sheet - helm.md
 /cheat sheet - kubectl.md
 .github/**/*.md

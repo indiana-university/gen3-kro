@@ -1,0 +1,13 @@
+title: Cloud KMS Service Role
+description: Permissions for Cloud Key Management Service
+stage: GA
+includedPermissions:
+  - cloudkms.keyRings.create
+  - cloudkms.keyRings.get
+  - cloudkms.keyRings.list
+  - cloudkms.cryptoKeys.create
+  - cloudkms.cryptoKeys.get
+  - cloudkms.cryptoKeys.list
+  - cloudkms.cryptoKeys.update
+  - cloudkms.cryptoKeyVersions.useToEncrypt
+  - cloudkms.cryptoKeyVersions.useToDecrypt

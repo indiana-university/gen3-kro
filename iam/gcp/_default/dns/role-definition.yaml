@@ -1,0 +1,16 @@
+title: Cloud DNS Service Role
+description: Permissions for Cloud DNS zone and record management
+stage: GA
+includedPermissions:
+  - dns.changes.create
+  - dns.changes.get
+  - dns.changes.list
+  - dns.managedZones.create
+  - dns.managedZones.delete
+  - dns.managedZones.get
+  - dns.managedZones.list
+  - dns.managedZones.update
+  - dns.resourceRecordSets.create
+  - dns.resourceRecordSets.delete
+  - dns.resourceRecordSets.list
+  - dns.resourceRecordSets.update

@@ -1,0 +1,12 @@
+{
+  "Name": "SQL Database Service Role",
+  "Description": "Permissions for Azure SQL Database management",
+  "Actions": [
+    "Microsoft.Sql/servers/*",
+    "Microsoft.Sql/managedInstances/*"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

@@ -1,28 +1,60 @@
 #!/usr/bin/env bash
-# bootstrap/terragrunt-wrapper.sh
-# Wrapper for Terragrunt operations
+###############################################################################
+# Terragrunt Wrapper Script
+# Wrapper for Terragrunt operations with logging and dry-run support
+###############################################################################
 
 set -euo pipefail
 IFS=$'\n\t'
 
-# Script directory resolution
+###############################################################################
+# Configuration and Setup
+###############################################################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/scripts"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
-# Source logging library
 source "${SCRIPT_DIR}/lib-logging.sh"
 
-# Configuration
 LOG_DIR="${REPO_ROOT}/outputs/logs"
 
-# Create log directory
 mkdir -p "$LOG_DIR"
 
-# Set log file
 LOG_FILE="${LOG_DIR}/terragrunt-$(date +%Y%m%d-%H%M%S).log"
 export LOG_FILE
 
-# Parse global options: --dry-run, --verbose, --debug
+###############################################################################
+# Usage Information
+###############################################################################
+usage() {
+  cat <<EOF
+Usage: $(basename "$0") COMMAND [OPTIONS]
+
+COMMAND:
+  plan        Generate execution plan
+  apply       Apply changes
+  destroy     Destroy infrastructure
+  validate    Validate Terragrunt configuration
+  init        Initialize Terragrunt
+  output      Show outputs
+  show        Show current state
+
+OPTIONS:
+  -n, --dry-run    Show what would be executed without running
+  -v, --verbose    Enable verbose logging
+  --debug          Enable Terraform debug logging (TF_LOG=DEBUG)
+  -h, --help       Show this help message
+
+EXAMPLES:
+  $(basename "$0") plan
+  $(basename "$0") apply
+  $(basename "$0") --dry-run destroy
+
+EOF
+}
+
+###############################################################################
+# Argument Parsing
+###############################################################################
 DRY_RUN=0
 while [[ ${#} -gt 0 ]]; do
   case "$1" in
@@ -49,34 +81,9 @@ while [[ ${#} -gt 0 ]]; do
   esac
 done
 
-# Usage information
-usage() {
-  cat <<EOF
-Usage: $(basename "$0") COMMAND [OPTIONS]
-
-COMMAND:
-  plan        Generate execution plan
-  apply       Apply changes
-  destroy     Destroy infrastructure
-  validate    Validate Terragrunt configuration
-  init        Initialize Terragrunt
-  output      Show outputs
-  show        Show current state
-
-OPTIONS:
-  -v, --verbose    Enable verbose logging
-  --debug          Enable Terraform debug logging (TF_LOG=DEBUG)
-  -h, --help       Show this help message
-
-EXAMPLES:
-  $(basename "$0") plan
-  $(basename "$0") apply
-  $(basename "$0") destroy
-
-EOF
-}
-
-# Main execution
+###############################################################################
+# Main Execution Function
+###############################################################################
 main() {
   local command="$1"
   shift || true
@@ -91,11 +98,22 @@ main() {
       fi
       ;;
     apply)
-      log_info "Running Terragrunt apply..."
+      log_info "Applying Terragrunt stack..."
       if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt apply $* --auto-approve"
+        log_info "DRY RUN: would run: terragrunt apply --all $*"
       else
-        terragrunt apply "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+        terragrunt apply --all "$@" 2>&1 | tee -a "$LOG_FILE"
+        apply_exit_code=$?
+
+        # Automatically configure cluster access after successful apply
+        if [[ $apply_exit_code -eq 0 ]]; then
+          log_info "Apply successful, configuring cluster access..."
+          if [[ -f "${SCRIPT_DIR}/connect-cluster.sh" ]]; then
+            "${SCRIPT_DIR}/connect-cluster.sh"
+          else
+            log_warn "connect-cluster.sh not found, skipping cluster configuration"
+          fi
+        fi
       fi
       ;;
     destroy)
@@ -150,10 +168,16 @@ main() {
   esac
 }
 
-# Parse arguments
+###############################################################################
+# Script Entry Point
+###############################################################################
 if [ $# -eq 0 ]; then
   usage
   exit 1
 fi
 
 main "$@"
+
+###############################################################################
+# End of File
+###############################################################################

@@ -1,13 +1,17 @@
 #!/usr/bin/env bash
-# scripts/lib-logging.sh
-# Shared logging library for all scripts
+###############################################################################
+# Logging Library
+# Shared logging functions for all scripts
 #
 # Usage:
 #   source "$(dirname "${BASH_SOURCE[0]}")/lib-logging.sh"
 #   log_info "This is an info message"
 #   log_error "This is an error message"
+###############################################################################
 
-# Log file location (can be overridden by caller)
+###############################################################################
+# Configuration
+###############################################################################
 LOG_FILE="${LOG_FILE:-}"
 
 # ANSI color codes
@@ -18,7 +22,9 @@ readonly COLOR_GREEN='\033[0;32m'
 readonly COLOR_BLUE='\033[0;34m'
 readonly COLOR_CYAN='\033[0;36m'
 
-# Log function - internal use
+###############################################################################
+# Core Logging Function
+###############################################################################
 log() {
   local level="$1"; shift
   local color="$1"; shift
@@ -38,7 +44,9 @@ log() {
   fi
 }
 
-# Public logging functions
+###############################################################################
+# Public Logging Functions
+###############################################################################
 log_info() {
   log "INFO " "$COLOR_BLUE" "$@"
 }
@@ -65,7 +73,9 @@ log_debug() {
   fi
 }
 
-# Error handler - call with trap 'error_handler $LINENO' ERR
+###############################################################################
+# Error Handler
+###############################################################################
 error_handler() {
   local line_number="$1"
   log_error "Script failed at line ${line_number}"
@@ -73,5 +83,11 @@ error_handler() {
   exit 1
 }
 
-# Export functions for use in subshells
+###############################################################################
+# Export Functions
+###############################################################################
 export -f log log_info log_success log_warn log_error log_notice log_debug error_handler
+
+###############################################################################
+# End of File
+###############################################################################

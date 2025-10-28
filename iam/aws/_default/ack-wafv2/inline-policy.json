@@ -1,0 +1,30 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "WAFv2Management",
+      "Effect": "Allow",
+      "Action": [
+        "wafv2:CreateWebACL",
+        "wafv2:DeleteWebACL",
+        "wafv2:GetWebACL",
+        "wafv2:ListWebACLs",
+        "wafv2:UpdateWebACL",
+        "wafv2:CreateRuleGroup",
+        "wafv2:DeleteRuleGroup",
+        "wafv2:GetRuleGroup",
+        "wafv2:ListRuleGroups",
+        "wafv2:UpdateRuleGroup",
+        "wafv2:CreateIPSet",
+        "wafv2:DeleteIPSet",
+        "wafv2:GetIPSet",
+        "wafv2:ListIPSets",
+        "wafv2:UpdateIPSet",
+        "wafv2:TagResource",
+        "wafv2:UntagResource",
+        "wafv2:ListTagsForResource"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
