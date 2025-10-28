@@ -22,6 +22,33 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="${LOG_DIR}/terragrunt-$(date +%Y%m%d-%H%M%S).log"
 export LOG_FILE
 
+# Parse global options: --dry-run, --verbose, --debug
+DRY_RUN=0
+while [[ ${#} -gt 0 ]]; do
+  case "$1" in
+    --dry-run|-n)
+      DRY_RUN=1
+      shift
+      ;;
+    --verbose|-v)
+      VERBOSE=1
+      shift
+      ;;
+    --debug)
+      DEBUG=1
+      export TF_LOG=DEBUG
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 # Usage information
 usage() {
   cat <<EOF
@@ -57,31 +84,59 @@ main() {
   case "$command" in
     plan)
       log_info "Running Terragrunt plan..."
-      terragrunt plan "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt plan $*"
+      else
+        terragrunt plan "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     apply)
       log_info "Running Terragrunt apply..."
-      terragrunt apply "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt apply $* --auto-approve"
+      else
+        terragrunt apply "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     destroy)
       log_info "Running Terragrunt destroy..."
-      terragrunt destroy "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt destroy $* --auto-approve"
+      else
+        terragrunt destroy "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     validate)
       log_info "Validating Terragrunt configuration..."
-      terragrunt validate "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt validate $*"
+      else
+        terragrunt validate "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     init)
       log_info "Running Terragrunt init..."
-      terragrunt init "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt init $*"
+      else
+        terragrunt init "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     output)
       log_info "Getting Terragrunt outputs..."
-      terragrunt output "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt output $*"
+      else
+        terragrunt output "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     show)
       log_info "Showing Terragrunt state..."
-      terragrunt show "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt show $*"
+      else
+        terragrunt show "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     -h|--help)
       usage

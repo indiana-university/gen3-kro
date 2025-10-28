@@ -12,9 +12,31 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 # Source logging library
 source "${SCRIPT_DIR}/lib-logging.sh"
 
+# Default dry-run to off. Use --dry-run or -n to enable.
+DRY_RUN=0
+while [[ ${#} -gt 0 ]]; do
+  case "$1" in
+    --dry-run|-n)
+      DRY_RUN=1
+      shift
+      ;;
+    --verbose|-v)
+      VERBOSE=1
+      shift
+      ;;
+    --debug)
+      DEBUG=1
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
 # Configuration
 LOG_DIR="${REPO_ROOT}/outputs/logs"
-TERRAGRUNT_DIR="${REPO_ROOT}/live/aws/us-east-1/gen3-kro-hub"
+TERRAGRUNT_DIR="${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev"
 
 # Create directories
 mkdir -p "$LOG_DIR"
@@ -49,21 +71,26 @@ log_info "AWS Profile: $AWS_PROFILE"
 
 # Update kubeconfig
 log_info "Updating kubeconfig..."
-aws eks update-kubeconfig \
-  --name "$CLUSTER_NAME" \
-  --region "$AWS_REGION" \
-  --profile "$AWS_PROFILE" \
-  --alias "$CLUSTER_NAME"
-
-log_success "✓ Kubeconfig updated successfully"
-log_info "Context: $CLUSTER_NAME"
-
-# Verify connectivity
-log_info "Verifying kubectl connectivity..."
-if kubectl cluster-info --context "$CLUSTER_NAME" >/dev/null 2>&1; then
-  log_success "✓ Successfully connected to cluster"
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  log_info "DRY RUN: would run: aws eks update-kubeconfig --name \"$CLUSTER_NAME\" --region \"$AWS_REGION\" --profile \"$AWS_PROFILE\" --alias \"$CLUSTER_NAME\""
+  log_info "DRY RUN: would verify kubectl connectivity: kubectl cluster-info --context \"$CLUSTER_NAME\""
 else
-  log_warn "Could not verify cluster connectivity"
+  aws eks update-kubeconfig \
+    --name "$CLUSTER_NAME" \
+    --region "$AWS_REGION" \
+    --profile "$AWS_PROFILE" \
+    --alias "$CLUSTER_NAME"
+
+  log_success "✓ Kubeconfig updated successfully"
+  log_info "Context: $CLUSTER_NAME"
+
+  # Verify connectivity
+  log_info "Verifying kubectl connectivity..."
+  if kubectl cluster-info --context "$CLUSTER_NAME" >/dev/null 2>&1; then
+    log_success "✓ Successfully connected to cluster"
+  else
+    log_warn "Could not verify cluster connectivity"
+  fi
 fi
 
 # Get ArgoCD credentials if available
