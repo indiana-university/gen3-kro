@@ -92,7 +92,7 @@ To customize permissions for a specific environment:
    ```bash
    # For csoc hub
    mkdir -p iam/<provider>/<csoc_alias>/csoc/<addon_name>
-   
+
    # For spoke
    mkdir -p iam/<provider>/<csoc_alias>/<spoke_alias>/<addon_name>
    ```
@@ -101,7 +101,7 @@ To customize permissions for a specific environment:
    ```bash
    # For csoc hub
    cp iam/<provider>/_default/<addon_name>/inline-policy.json iam/<provider>/<csoc_alias>/csoc/<addon_name>/inline-policy.json
-   
+
    # For spoke
    cp iam/<provider>/_default/<addon_name>/inline-policy.json iam/<provider>/<csoc_alias>/<spoke_alias>/<addon_name>/inline-policy.json
    ```
@@ -464,7 +464,7 @@ Before applying customizations to production:
 - **Branch for features**: Create feature branches for significant customizations
 - **Review before merge**: Use pull requests for code review
 
-See [`contributing.md`](contributing.md) for contribution guidelines.
+See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for contribution guidelines.
 
 ---
 **Last updated:** 2025-10-28

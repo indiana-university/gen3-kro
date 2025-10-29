@@ -117,7 +117,7 @@ argocd app list
 - **[Setup Guide](docs/guides/setup.md)**: Step-by-step onboarding for new contributors
 - **[Customization Guide](docs/guides/customization.md)**: Overriding modules, adjusting IAM policies, extending KRO graphs
 - **[Operations Guide](docs/guides/operations.md)**: Day-2 operations (planning, applying, syncing, troubleshooting)
-- **[Contribution Guide](docs/guides/contributing.md)**: Branching conventions, linting, PR checklist, documentation standards
+- **[Contribution Guide](CONTRIBUTING.md)**: Branching conventions, linting, PR checklist, documentation standards
 
 ## Day-2 Operations
 
@@ -148,7 +148,7 @@ See [`docs/operations.md`](docs/guides/operations.md) for troubleshooting drift,
 ## Contributing
 
 We welcome contributions! Please review:
-- [Contribution guidelines](docs/guides/contributing.md) for branching conventions and PR requirements
+- [Contribution guidelines](CONTRIBUTING.md) for branching conventions and PR requirements
 - [Terraform module standards](terraform/catalog/modules/README.md) for authoring new modules
 
 Lint and format before committing:

@@ -40,7 +40,7 @@ Provider version constraints are defined in each module's `versions.tf`.
 
 ## Testing Workflow
 
-For comprehensive testing standards and validation procedures, see [`docs/guides/contributing.md`](../../docs/guides/contributing.md#testing-requirements).
+For comprehensive testing standards and validation procedures, see [`CONTRIBUTING.md`](../../CONTRIBUTING.md#testing-requirements).
 
 **Quick validation:**
 
