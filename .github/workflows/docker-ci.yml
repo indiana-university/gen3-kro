@@ -48,8 +48,8 @@ jobs:
             VERSION="${GITHUB_REF_NAME}"
           else
             # Run version bump script which handles logic correctly
-            chmod +x bootstrap/scripts/version-bump.sh
-            ./bootstrap/scripts/version-bump.sh
+            chmod +x scripts/version-bump.sh
+            ./scripts/version-bump.sh
             VERSION=$(cat .version)
             VERSION="v${VERSION}"
           fi
@@ -87,7 +87,7 @@ jobs:
         uses: docker/build-push-action@v4
         with:
           context: .
-          file: .devcontainer/Dockerfile
+          file: Dockerfile
           push: true
           tags: ${{ steps.vars.outputs.IMAGE_TAGS }}
           # enable BuildKit inline cache

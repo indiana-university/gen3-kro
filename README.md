@@ -8,7 +8,15 @@
 
 `gen3-kro` provides a hub-and-spoke architecture for deploying and managing Gen3 data commons infrastructure. The platform provisions cloud resources (VPCs, Kubernetes clusters, IAM roles) via Terragrunt-managed Terraform modules, then bootstraps GitOps-driven continuous delivery using ArgoCD, cloud-specific controllers, and Kubernetes Resource Orchestrator (KRO) ResourceGraphDefinitions.
 
-Note: Currently, only AWS cross-account deployment has been fully tested.
+**Testing Status:**
+- ✅ **AWS cross-account deployment**: Fully tested and production-ready
+- 🚧 **Azure deployment**: Implementation complete, testing pending
+- 🚧 **Google Cloud deployment**: Implementation complete, testing pending
+- 🚧 **Cross-provider scenarios**: Pending validation
+
+**Important Notes:**
+- **KRO Controller**: Currently in pre-1.0 minor releases (0.x). Major 1.0 release planned before 2026.
+- **Terragrunt**: Pre-1.0 minor releases (0.x). Production-stable despite version numbering.
 
 **Key features:**
 - **Multi-cloud support**: AWS (EKS), Azure (AKS), Google Cloud (GKE)
