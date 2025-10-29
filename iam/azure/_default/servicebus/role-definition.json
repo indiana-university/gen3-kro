@@ -1,0 +1,14 @@
+{
+  "Name": "Service Bus Service Role",
+  "Description": "Permissions for Azure Service Bus management",
+  "Actions": [
+    "Microsoft.ServiceBus/namespaces/*"
+  ],
+  "NotActions": [],
+  "DataActions": [
+    "Microsoft.ServiceBus/namespaces/messages/send/action",
+    "Microsoft.ServiceBus/namespaces/messages/receive/action"
+  ],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

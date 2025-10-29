@@ -1,0 +1,14 @@
+{
+  "Name": "External Secrets Service Role",
+  "Description": "Permissions for External Secrets to access Azure Key Vault",
+  "Actions": [
+    "Microsoft.KeyVault/vaults/read",
+    "Microsoft.KeyVault/vaults/secrets/read"
+  ],
+  "NotActions": [],
+  "DataActions": [
+    "Microsoft.KeyVault/vaults/secrets/getSecret/action"
+  ],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

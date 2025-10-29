@@ -1,0 +1,14 @@
+{
+  "Name": "Azure Monitor Service Role",
+  "Description": "Permissions for Azure Monitor logging and metrics",
+  "Actions": [
+    "Microsoft.Insights/DiagnosticSettings/*",
+    "Microsoft.Insights/Logs/*",
+    "Microsoft.Insights/Metrics/*",
+    "Microsoft.OperationalInsights/workspaces/*"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

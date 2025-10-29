@@ -1,0 +1,10 @@
+title: ArgoCD Service Role
+description: Permissions for ArgoCD to access Secret Manager and GKE clusters
+stage: GA
+includedPermissions:
+  - secretmanager.secrets.get
+  - secretmanager.secrets.list
+  - secretmanager.versions.access
+  - container.clusters.get
+  - container.clusters.list
+  - container.operations.get

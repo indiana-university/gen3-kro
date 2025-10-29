@@ -1,0 +1,35 @@
+# Default values for addon-appset chart
+
+# Path (in repo) to the addon catalog directory (addons/csoc/catalog by default)
+# The ApplicationSet will read all .yaml files from this directory
+catalogPath: "addons/csoc/catalog"
+
+# Path (in repo) to the enablement file (addons/csoc/enablement.yaml by default)
+enablementPath: "addons/csoc/enablement.yaml"
+
+# Path (in repo) to the values file used by addons
+valuesPath: "addons/csoc/values.yaml"
+
+# Information about the hub repo that will be passed in by the caller (hub ApplicationSet)
+# These are intentionally left blank and expected to be set by the parent ApplicationSet via values.
+hubRepoURL: ""
+hubRepoRevision: ""
+hubRepoBasePath: ""
+partOf: "addons"
+appSetName: "addons"
+fleetMember: "control-plane"
+
+# Annotations or metadata passed through to generated Application(s)
+annotations: {}
+
+# Defaults for rendered ApplicationSet behavior
+appProject: "default"
+syncOptions:
+  - CreateNamespace=true
+  - ServerSideApply=true
+retry:
+  limit: 3
+  backoff:
+    duration: 5s
+    factor: 2
+    maxDuration: 3m

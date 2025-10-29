@@ -1,0 +1,12 @@
+title: Cloud Logging Service Role
+description: Permissions for Cloud Logging operations
+stage: GA
+includedPermissions:
+  - logging.logEntries.create
+  - logging.logEntries.list
+  - logging.logs.list
+  - logging.sinks.create
+  - logging.sinks.delete
+  - logging.sinks.get
+  - logging.sinks.list
+  - logging.sinks.update

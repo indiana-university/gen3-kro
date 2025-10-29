@@ -1,0 +1,175 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="Deployment Sequence" id="deployment-sequence">
+    <mxGraphModel dx="1434" dy="796" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="827">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="Gen3 KRO Platform Deployment Sequence" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="320" y="40" width="520" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Terraform Bootstrap -->
+        <mxCell id="terraform-bootstrap" value="STEP 1: Terraform Bootstrap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="120" width="1000" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="terraform-vpc" value="VPC&#xa;Creation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="120" y="160" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="terraform-eks" value="EKS&#xa;Cluster" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="260" y="160" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="terraform-iam" value="IAM&#xa;Policies" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="400" y="160" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="terraform-pod" value="Pod&#xa;Identities" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="540" y="160" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="terraform-argocd" value="ArgoCD&#xa;Install" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="680" y="160" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="terraform-configmap" value="ConfigMap&#xa;Creation" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="820" y="160" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Wave 0 -->
+        <mxCell id="wave0" value="WAVE 0: Platform Addons (ArgoCD)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="260" width="1000" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave0-kro" value="KRO&#xa;Controller" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="300" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave0-ack" value="ACK&#xa;Controllers" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="260" y="300" width="180" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave0-external" value="External&#xa;Secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="480" y="300" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave0-kyverno" value="Kyverno&#xa;Policies" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="620" y="300" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave0-metrics" value="Metrics&#xa;Server" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="760" y="300" width="100" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Wave 1 -->
+        <mxCell id="wave1" value="WAVE 1: ResourceGraphDefinitions (ArgoCD)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="400" width="1000" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave1-vpc" value="VPC&#xa;RGD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;" vertex="1" parent="1">
+          <mxGeometry x="120" y="440" width="120" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave1-eks" value="EKS Cluster&#xa;RGD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;" vertex="1" parent="1">
+          <mxGeometry x="280" y="440" width="120" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave1-efs" value="EFS&#xa;RGD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;" vertex="1" parent="1">
+          <mxGeometry x="440" y="440" width="120" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave1-iam" value="IAM Roles&#xa;RGD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;" vertex="1" parent="1">
+          <mxGeometry x="600" y="440" width="120" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Wave 2 -->
+        <mxCell id="wave2" value="WAVE 2: Infrastructure Instances (ArgoCD → KRO → ACK)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="540" width="1000" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave2-spoke1" value="Spoke1&#xa;Infrastructure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;" vertex="1" parent="1">
+          <mxGeometry x="120" y="580" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave2-spoke2" value="Spoke2&#xa;Infrastructure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;" vertex="1" parent="1">
+          <mxGeometry x="300" y="580" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave2-aws" value="AWS Resources&#xa;(VPC, EKS, IAM)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;" vertex="1" parent="1">
+          <mxGeometry x="520" y="580" width="200" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Wave 3 -->
+        <mxCell id="wave3" value="WAVE 3: Application Workloads (ArgoCD → Spokes)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="680" width="1000" height="100" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave3-gen3-1" value="Gen3&#xa;Instance 1" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4b3e8;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="120" y="720" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave3-gen3-2" value="Gen3&#xa;Instance 2" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4b3e8;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="300" y="720" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="wave3-gen3-n" value="Gen3&#xa;Instance N" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4b3e8;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="480" y="720" width="140" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows -->
+        <mxCell id="arrow1" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#FF0000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="40" y="220" as="sourcePoint"/>
+            <mxPoint x="40" y="260" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow2" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#FF0000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="40" y="360" as="sourcePoint"/>
+            <mxPoint x="40" y="400" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow3" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#FF0000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="40" y="500" as="sourcePoint"/>
+            <mxPoint x="40" y="540" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow4" value="" style="endArrow=classic;html=1;strokeWidth=3;strokeColor=#FF0000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="40" y="640" as="sourcePoint"/>
+            <mxPoint x="40" y="680" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Time Labels -->
+        <mxCell id="time1" value="~20 min" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1100" y="160" width="60" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="time2" value="~5 min" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1100" y="300" width="60" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="time3" value="~2 min" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1100" y="440" width="60" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="time4" value="~10 min" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1100" y="580" width="60" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="time5" value="~5 min" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=12;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="1100" y="720" width="60" height="30" as="geometry"/>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

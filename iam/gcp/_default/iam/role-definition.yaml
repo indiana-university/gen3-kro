@@ -1,0 +1,18 @@
+title: IAM Service Role
+description: Permissions for Identity and Access Management
+stage: GA
+includedPermissions:
+  - iam.serviceAccounts.create
+  - iam.serviceAccounts.delete
+  - iam.serviceAccounts.get
+  - iam.serviceAccounts.list
+  - iam.serviceAccounts.update
+  - iam.serviceAccounts.getIamPolicy
+  - iam.serviceAccounts.setIamPolicy
+  - iam.roles.create
+  - iam.roles.delete
+  - iam.roles.get
+  - iam.roles.list
+  - iam.roles.update
+  - resourcemanager.projects.getIamPolicy
+  - resourcemanager.projects.setIamPolicy

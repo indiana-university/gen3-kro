@@ -12,37 +12,33 @@ spec:
   - matrix:
       generators:
         - git:
-            repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+            repoURL: '{{.metadata.annotations.rgds_repo_url}}'
             revision: '{{.metadata.annotations.branch}}'
             directories:
-              - path: '{{.metadata.annotations.spokes_path}}/*'
+              - path: '{{.metadata.annotations.rgds_path}}/*'
         - clusters:
             selector:
               matchLabels:
                 fleet_member: control-plane
   template:
     metadata:
-      name: '{{ .path.basename }}-graph-instances'
+      name: '{{- if .path }}{{ .path.basename }}-graph-instances{{- else }}{{ .name }}-graph-instances{{- end }}'
       labels:
         app: graph-instances
-        cluster: '{{ .path.basename }}'
+        cluster: '{{- if .path }}{{ .path.basename }}{{- else }}{{ .name }}{{- end }}'
       annotations:
         argocd.argoproj.io/sync-wave: "2"
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+        repoURL: '{{.metadata.annotations.rgds_repo_url}}'
         targetRevision: '{{.metadata.annotations.branch}}'
-        path: '{{ .path.path }}/infrastructure'
+        path: '{{- if .path }}{{ .path.path }}/infrastructure{{- else }}{{ .name }}/infrastructure{{- end }}'
         kustomize:
           commonLabels:
-            cluster: '{{ .path.basename }}'
+            cluster: '{{- if .path }}{{ .path.basename }}{{- else }}{{ .name }}{{- end }}'
       destination:
         server: '{{ .server }}'
         namespace: default
-      syncPolicy:
-        automated:
-          selfHeal: true
-          prune: true
-        syncOptions:
-          - CreateNamespace=false
+    automated:
+      enabled: true

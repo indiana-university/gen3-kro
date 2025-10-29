@@ -1,0 +1,14 @@
+title: Cloud Monitoring Service Role
+description: Permissions for Cloud Monitoring metrics and alerts
+stage: GA
+includedPermissions:
+  - monitoring.metricDescriptors.create
+  - monitoring.metricDescriptors.get
+  - monitoring.metricDescriptors.list
+  - monitoring.timeSeries.create
+  - monitoring.timeSeries.list
+  - monitoring.alertPolicies.create
+  - monitoring.alertPolicies.delete
+  - monitoring.alertPolicies.get
+  - monitoring.alertPolicies.list
+  - monitoring.alertPolicies.update

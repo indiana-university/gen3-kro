@@ -1,0 +1,281 @@
+<mxfile host="app.diagrams.net">
+  <diagram name="ArgoCD ApplicationSet Hierarchy" id="argocd-applicationset-hierarchy">
+    <mxGraphModel dx="1434" dy="896" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1169" pageHeight="1200">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+
+        <!-- Title -->
+        <mxCell id="title" value="ArgoCD ApplicationSet Hierarchy" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=20;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="380" y="40" width="400" height="40" as="geometry"/>
+        </mxCell>
+
+        <!-- Bootstrap ApplicationSet -->
+        <mxCell id="bootstrap" value="bootstrap-applicationset&#xa;(Root Bootstrap)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="440" y="120" width="280" height="60" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="bootstrap-desc" value="Generator: Git (argocd/bootstrap/)&#xa;Wave: 0&#xa;Creates: All child ApplicationSets" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="750" y="120" width="250" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Level 1: Child ApplicationSets -->
+        <mxCell id="level1-hub-addons" value="hub-addons-applicationset" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="120" y="240" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="level1-graphs" value="graphs-applicationset" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="360" y="240" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="level1-graph-instances" value="graph-instances-applicationset" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="600" y="240" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="level1-app-instances" value="app-instances-applicationset" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="840" y="240" width="200" height="50" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrows from bootstrap -->
+        <mxCell id="arrow-boot-1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="480" y="180" as="sourcePoint"/>
+            <mxPoint x="220" y="240" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-boot-2" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="540" y="180" as="sourcePoint"/>
+            <mxPoint x="460" y="240" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-boot-3" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="620" y="180" as="sourcePoint"/>
+            <mxPoint x="700" y="240" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <mxCell id="arrow-boot-4" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="680" y="180" as="sourcePoint"/>
+            <mxPoint x="940" y="240" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Hub Addons Details -->
+        <mxCell id="hub-addons-box" value="Hub Addons (Wave 0)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;verticalAlign=top;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="340" width="280" height="280" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hub-addon-kro" value="kro" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="110" y="380" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hub-addon-ack" value="ack-s3-controller" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="110" y="420" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hub-addon-ack2" value="ack-dynamodb-controller" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="110" y="460" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hub-addon-external" value="external-secrets" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="110" y="500" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hub-addon-kyverno" value="kyverno" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="110" y="540" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hub-addon-metrics" value="metrics-server" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="110" y="580" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="hub-addons-gen" value="Generator: Matrix&#xa;(cluster × catalog.yaml)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="100" y="350" width="240" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow hub addons -->
+        <mxCell id="arrow-hub-1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="220" y="290" as="sourcePoint"/>
+            <mxPoint x="220" y="340" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Graphs Details -->
+        <mxCell id="graphs-box" value="ResourceGraphDefinitions (Wave 1)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;verticalAlign=top;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="400" y="340" width="280" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-vpc" value="vpc-network-rgd" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="430" y="380" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-eks-cluster" value="eks-cluster-rgd" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="430" y="420" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-eks-basic" value="eks-basic-rgd" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="430" y="460" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-custom" value="[custom-rgd]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=11;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="430" y="500" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graphs-gen" value="Generator: Git&#xa;(argocd/graphs/aws/)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="420" y="350" width="240" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow graphs -->
+        <mxCell id="arrow-graphs-1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="460" y="290" as="sourcePoint"/>
+            <mxPoint x="540" y="340" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Graph Instances Details -->
+        <mxCell id="graph-inst-box" value="Infrastructure Instances (Wave 2)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;verticalAlign=top;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="720" y="340" width="280" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-inst-spoke1" value="spoke1-infrastructure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="750" y="380" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-inst-spoke2" value="spoke2-infrastructure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="750" y="420" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-inst-custom" value="[custom-infrastructure]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=11;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="750" y="460" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-inst-note" value="Creates: VPC, EKS, IAM, EFS&#xa;via ACK controllers" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="750" y="500" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="graph-inst-gen" value="Generator: Git&#xa;(argocd/graphs/instances/)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="350" width="240" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow graph instances -->
+        <mxCell id="arrow-graph-inst-1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="700" y="290" as="sourcePoint"/>
+            <mxPoint x="860" y="340" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- App Instances Details -->
+        <mxCell id="app-inst-box" value="Application Instances (Wave 3)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;verticalAlign=top;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="720" y="580" width="280" height="200" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="app-inst-spoke1" value="spoke1-app-gen3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4b3e8;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="750" y="620" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="app-inst-spoke2" value="spoke2-app-gen3" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4b3e8;strokeColor=#9673a6;fontSize=11" vertex="1" parent="1">
+          <mxGeometry x="750" y="660" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="app-inst-custom" value="[custom-application]" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4b3e8;strokeColor=#9673a6;fontSize=11;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="750" y="700" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="app-inst-note" value="Deploys: Gen3 workloads&#xa;to spoke clusters" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="750" y="740" width="220" height="30" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="app-inst-gen" value="Generator: Matrix&#xa;(cluster × spoke/*/values.yaml)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=10;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="740" y="590" width="240" height="20" as="geometry"/>
+        </mxCell>
+
+        <!-- Arrow app instances -->
+        <mxCell id="arrow-app-inst-1" value="" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="940" y="290" as="sourcePoint"/>
+            <mxPoint x="860" y="580" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+        <!-- Spoke Addons (optional branch) -->
+        <mxCell id="spoke-addons-note" value="Note: spoke-addons-applicationset&#xa;(optional, Wave 0 for spoke clusters)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;fontSize=11;fontStyle=2;dashed=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="660" width="280" height="60" as="geometry"/>
+        </mxCell>
+
+        <!-- Configuration Files Box -->
+        <mxCell id="config-box" value="Configuration Sources" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;fontSize=14;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="820" width="920" height="160" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-catalog" value="catalog.yaml&#xa;(Available addons)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="110" y="860" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-enablement" value="enablement.yaml&#xa;(Enabled addons)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="260" y="860" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-values" value="values.yaml&#xa;(Addon configuration)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="410" y="860" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-cluster-values" value="cluster-values/&#xa;(Cluster-specific)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="560" y="860" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-spoke-values" value="spokes/*/values.yaml&#xa;(Spoke config)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="710" y="860" width="120" height="50" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="config-note" value="All ApplicationSets use Git generators to discover and sync configurations from these files" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontSize=11;fontStyle=2" vertex="1" parent="1">
+          <mxGeometry x="110" y="930" width="720" height="30" as="geometry"/>
+        </mxCell>
+
+        <!-- Legend -->
+        <mxCell id="legend-box" value="Legend" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f5f5f5;strokeColor=#666666;verticalAlign=top;fontSize=12;fontStyle=1" vertex="1" parent="1">
+          <mxGeometry x="80" y="1020" width="920" height="80" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-bootstrap" value="Bootstrap" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="110" y="1060" width="90" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-appset" value="ApplicationSet" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="220" y="1060" width="100" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-addon" value="Addon" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="340" y="1060" width="80" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-rgd" value="RGD" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#b1ddf0;strokeColor=#10739e;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="440" y="1060" width="80" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-infra" value="Infrastructure" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fad7ac;strokeColor=#b46504;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="540" y="1060" width="100" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-app" value="Application" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d4b3e8;strokeColor=#9673a6;fontSize=10" vertex="1" parent="1">
+          <mxGeometry x="660" y="1060" width="90" height="25" as="geometry"/>
+        </mxCell>
+
+        <mxCell id="legend-arrow" value="Creates/Deploys" style="endArrow=classic;html=1;strokeWidth=2;strokeColor=#000000;fontSize=10" edge="1" parent="1">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <mxPoint x="800" y="1072" as="sourcePoint"/>
+            <mxPoint x="880" y="1072" as="targetPoint"/>
+          </mxGeometry>
+        </mxCell>
+
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

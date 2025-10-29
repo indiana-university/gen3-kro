@@ -1,0 +1,16 @@
+{
+  "Name": "Key Vault Service Role",
+  "Description": "Permissions for Azure Key Vault management",
+  "Actions": [
+    "Microsoft.KeyVault/vaults/*",
+    "Microsoft.KeyVault/locations/*"
+  ],
+  "NotActions": [],
+  "DataActions": [
+    "Microsoft.KeyVault/vaults/keys/*",
+    "Microsoft.KeyVault/vaults/secrets/*",
+    "Microsoft.KeyVault/vaults/certificates/*"
+  ],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

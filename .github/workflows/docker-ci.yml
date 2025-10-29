@@ -2,8 +2,8 @@ name: Build and Push Docker Image
 
 on:
   push:
-    branches: [ main, staging, jimi-container ]
-    tags: ['v*.*.*', 'v*.*.*', 'v*.*.*']
+    branches: [ main, jimi-container ]
+    tags: ['v*.*.*']
   workflow_dispatch:
 
 jobs:
@@ -47,9 +47,9 @@ jobs:
           if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
             VERSION="${GITHUB_REF_NAME}"
           else
-            # Auto-increment patch version for main branch pushes
-            chmod +x .github/workflows/version-bump.sh
-            ./.github/workflows/version-bump.sh
+            # Run version bump script which handles logic correctly
+            chmod +x bootstrap/scripts/version-bump.sh
+            ./bootstrap/scripts/version-bump.sh
             VERSION=$(cat .version)
             VERSION="v${VERSION}"
           fi

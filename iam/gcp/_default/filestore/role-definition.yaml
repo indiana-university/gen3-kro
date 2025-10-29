@@ -1,0 +1,13 @@
+title: Filestore Service Role
+description: Permissions for Cloud Filestore NFS management
+stage: GA
+includedPermissions:
+  - file.instances.create
+  - file.instances.delete
+  - file.instances.get
+  - file.instances.list
+  - file.instances.update
+  - file.backups.create
+  - file.backups.delete
+  - file.backups.get
+  - file.backups.list

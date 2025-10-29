@@ -1,0 +1,16 @@
+title: Pub/Sub Service Role
+description: Permissions for Cloud Pub/Sub topic and subscription management
+stage: GA
+includedPermissions:
+  - pubsub.topics.create
+  - pubsub.topics.delete
+  - pubsub.topics.get
+  - pubsub.topics.list
+  - pubsub.topics.publish
+  - pubsub.topics.update
+  - pubsub.subscriptions.create
+  - pubsub.subscriptions.delete
+  - pubsub.subscriptions.get
+  - pubsub.subscriptions.list
+  - pubsub.subscriptions.consume
+  - pubsub.subscriptions.update

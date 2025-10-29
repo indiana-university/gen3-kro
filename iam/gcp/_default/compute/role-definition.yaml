@@ -1,0 +1,18 @@
+title: Compute Engine Service Role
+description: Permissions for Compute Engine instance management
+stage: GA
+includedPermissions:
+  - compute.instances.create
+  - compute.instances.delete
+  - compute.instances.get
+  - compute.instances.list
+  - compute.instances.start
+  - compute.instances.stop
+  - compute.instances.update
+  - compute.disks.create
+  - compute.disks.delete
+  - compute.disks.get
+  - compute.disks.list
+  - compute.networks.get
+  - compute.subnetworks.use
+  - compute.subnetworks.useExternalIp
