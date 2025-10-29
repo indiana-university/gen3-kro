@@ -1,0 +1,81 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# scripts/docker-build-push.sh
+# Build and optionally push docker image tagged with git tag/date/sha
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+cd "$REPO_ROOT"
+
+# Parse simple flags: --dry-run|-n
+DRY_RUN=0
+while [[ ${#} -gt 0 ]]; do
+  case "$1" in
+    --dry-run|-n)
+      DRY_RUN=1
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: $(basename "$0") [--dry-run]"
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+DOCKER_REPO="${DOCKER_REPO:-jayadeyemi/gen3-kro}"
+VERSION_FILE="${REPO_ROOT}/.version"
+
+# Read version from file or default
+if [[ -f "$VERSION_FILE" ]]; then
+  VERSION="v$(cat "$VERSION_FILE")"
+else
+  VERSION="v0.0.0"
+fi
+
+GIT_SHA="$(git rev-parse --short HEAD)"
+DATE="$(date +%Y%m%d)"
+TAG="${VERSION}-${DATE}-g${GIT_SHA}"
+
+echo "[docker-build-push] Repository: ${DOCKER_REPO}"
+echo "[docker-build-push] Tag: ${TAG}"
+
+echo "[docker-build-push] Building image..."
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  echo "[docker-build-push] DRY RUN: would build image: ${DOCKER_REPO}:${TAG}"
+else
+  docker build -t "${DOCKER_REPO}:${TAG}" .
+fi
+
+if [[ "${DOCKER_PUSH:-false}" == "true" ]]; then
+  if [[ -n "${DOCKER_USERNAME:-}" ]]; then
+    echo "[docker-build-push] Logging into Docker registry as ${DOCKER_USERNAME}"
+    echo "${DOCKER_PASSWORD:-}" | docker login --username "${DOCKER_USERNAME}" --password-stdin
+  else
+    echo "[docker-build-push] DOCKER_USERNAME not set; will attempt to push with existing docker credentials"
+  fi
+  echo "[docker-build-push] Pushing ${DOCKER_REPO}:${TAG}"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "[docker-build-push] DRY RUN: would push ${DOCKER_REPO}:${TAG}"
+  else
+    docker push "${DOCKER_REPO}:${TAG}"
+  fi
+
+  if [[ "${DOCKER_TAG_LATEST:-false}" == "true" ]]; then
+    echo "[docker-build-push] Tagging and pushing :latest"
+    if [[ "$DRY_RUN" -eq 1 ]]; then
+      echo "[docker-build-push] DRY RUN: would tag ${DOCKER_REPO}:${TAG} -> ${DOCKER_REPO}:latest and push"
+    else
+      docker tag "${DOCKER_REPO}:${TAG}" "${DOCKER_REPO}:latest"
+      docker push "${DOCKER_REPO}:latest"
+    fi
+  fi
+else
+  echo "[docker-build-push] DOCKER_PUSH not enabled; image available locally as ${DOCKER_REPO}:${TAG}"
+fi
+
+echo "[docker-build-push] Done"
+exit 0

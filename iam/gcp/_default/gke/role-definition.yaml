@@ -1,0 +1,18 @@
+title: GKE Service Role
+description: Permissions for Google Kubernetes Engine cluster management
+stage: GA
+includedPermissions:
+  - container.clusters.create
+  - container.clusters.delete
+  - container.clusters.get
+  - container.clusters.list
+  - container.clusters.update
+  - container.operations.get
+  - container.operations.list
+  - container.nodes.get
+  - container.nodes.list
+  - container.nodePools.create
+  - container.nodePools.delete
+  - container.nodePools.get
+  - container.nodePools.list
+  - container.nodePools.update

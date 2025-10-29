@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "OpenSearchManagement",
+      "Effect": "Allow",
+      "Action": [
+        "es:CreateDomain",
+        "es:DeleteDomain",
+        "es:DescribeDomain",
+        "es:DescribeDomainConfig",
+        "es:ListDomainNames",
+        "es:UpdateDomainConfig",
+        "es:AddTags",
+        "es:RemoveTags",
+        "es:ListTags"
+      ],
+      "Resource": "*"
+    }
+  ]
+}
