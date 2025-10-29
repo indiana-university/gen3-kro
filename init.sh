@@ -1,183 +1,118 @@
 #!/usr/bin/env bash
 ###############################################################################
 # Terragrunt Wrapper Script
-# Wrapper for Terragrunt operations with logging and dry-run support
+# Simple wrapper for Terragrunt stack operations
 ###############################################################################
 
 set -euo pipefail
-IFS=$'\n\t'
 
 ###############################################################################
-# Configuration and Setup
+# Configuration
 ###############################################################################
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/scripts"
-REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+STACK_DIR="${STACK_DIR:-${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev}"
 
-source "${SCRIPT_DIR}/lib-logging.sh"
+# Verify stack directory exists
+if [[ ! -f "${STACK_DIR}/terragrunt.stack.hcl" ]]; then
+  echo "ERROR: Stack directory not found or missing terragrunt.stack.hcl: ${STACK_DIR}"
+  echo "Set STACK_DIR environment variable to specify a different location"
+  exit 1
+fi
 
+# Setup logging
 LOG_DIR="${REPO_ROOT}/outputs/logs"
-
 mkdir -p "$LOG_DIR"
-
 LOG_FILE="${LOG_DIR}/terragrunt-$(date +%Y%m%d-%H%M%S).log"
-export LOG_FILE
+
+echo "Stack directory: ${STACK_DIR}"
+echo "Log file: ${LOG_FILE}"
+echo ""
 
 ###############################################################################
 # Usage Information
 ###############################################################################
 usage() {
   cat <<EOF
-Usage: $(basename "$0") COMMAND [OPTIONS]
+Usage: $(basename "$0") COMMAND
 
 COMMAND:
-  plan        Generate execution plan
-  apply       Apply changes
+  plan        Preview infrastructure changes
+  apply       Deploy infrastructure
   destroy     Destroy infrastructure
-  validate    Validate Terragrunt configuration
-  init        Initialize Terragrunt
-  output      Show outputs
-  show        Show current state
+  output      Show stack outputs
+  validate    Validate configuration
 
-OPTIONS:
-  -n, --dry-run    Show what would be executed without running
-  -v, --verbose    Enable verbose logging
-  --debug          Enable Terraform debug logging (TF_LOG=DEBUG)
-  -h, --help       Show this help message
+ENVIRONMENT VARIABLES:
+  STACK_DIR   Path to stack directory (default: live/aws/us-east-1/gen3-kro-dev)
 
 EXAMPLES:
   $(basename "$0") plan
   $(basename "$0") apply
-  $(basename "$0") --dry-run destroy
+  STACK_DIR=/path/to/stack $(basename "$0") plan
 
 EOF
 }
 
 ###############################################################################
-# Argument Parsing
-###############################################################################
-DRY_RUN=0
-while [[ ${#} -gt 0 ]]; do
-  case "$1" in
-    --dry-run|-n)
-      DRY_RUN=1
-      shift
-      ;;
-    --verbose|-v)
-      VERBOSE=1
-      shift
-      ;;
-    --debug)
-      DEBUG=1
-      export TF_LOG=DEBUG
-      shift
-      ;;
-    --help|-h)
-      usage
-      exit 0
-      ;;
-    *)
-      break
-      ;;
-  esac
-done
-
-###############################################################################
-# Main Execution Function
-###############################################################################
-main() {
-  local command="$1"
-  shift || true
-
-  case "$command" in
-    plan)
-      log_info "Running Terragrunt plan..."
-      if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt plan $*"
-      else
-        terragrunt plan "$@" 2>&1 | tee -a "$LOG_FILE"
-      fi
-      ;;
-    apply)
-      log_info "Applying Terragrunt stack..."
-      if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt apply --all $*"
-      else
-        terragrunt apply --all "$@" 2>&1 | tee -a "$LOG_FILE"
-        apply_exit_code=$?
-
-        # Automatically configure cluster access after successful apply
-        if [[ $apply_exit_code -eq 0 ]]; then
-          log_info "Apply successful, configuring cluster access..."
-          if [[ -f "${SCRIPT_DIR}/connect-cluster.sh" ]]; then
-            "${SCRIPT_DIR}/connect-cluster.sh"
-          else
-            log_warn "connect-cluster.sh not found, skipping cluster configuration"
-          fi
-        fi
-      fi
-      ;;
-    destroy)
-      log_info "Running Terragrunt destroy..."
-      if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt destroy $* --auto-approve"
-      else
-        terragrunt destroy "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
-      fi
-      ;;
-    validate)
-      log_info "Validating Terragrunt configuration..."
-      if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt validate $*"
-      else
-        terragrunt validate "$@" 2>&1 | tee -a "$LOG_FILE"
-      fi
-      ;;
-    init)
-      log_info "Running Terragrunt init..."
-      if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt init $*"
-      else
-        terragrunt init "$@" 2>&1 | tee -a "$LOG_FILE"
-      fi
-      ;;
-    output)
-      log_info "Getting Terragrunt outputs..."
-      if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt output $*"
-      else
-        terragrunt output "$@" 2>&1 | tee -a "$LOG_FILE"
-      fi
-      ;;
-    show)
-      log_info "Showing Terragrunt state..."
-      if [[ "$DRY_RUN" -eq 1 ]]; then
-        log_info "DRY RUN: would run: terragrunt show $*"
-      else
-        terragrunt show "$@" 2>&1 | tee -a "$LOG_FILE"
-      fi
-      ;;
-    -h|--help)
-      usage
-      exit 0
-      ;;
-    *)
-      log_error "Unknown command: $command"
-      usage
-      exit 1
-      ;;
-  esac
-}
-
-###############################################################################
-# Script Entry Point
+# Main Execution
 ###############################################################################
 if [ $# -eq 0 ]; then
   usage
   exit 1
 fi
 
-main "$@"
+COMMAND="$1"
+shift || true
 
-###############################################################################
-# End of File
-###############################################################################
+# Change to stack directory
+cd "${STACK_DIR}"
+
+# Execute command
+case "$COMMAND" in
+  plan)
+    echo "Running terragrunt plan..."
+    terragrunt plan -all "$@" 2>&1 | tee -a "$LOG_FILE"
+    ;;
+  apply)
+    echo "Running terragrunt apply..."
+    terragrunt apply -all "$@" 2>&1 | tee -a "$LOG_FILE"
+    APPLY_EXIT_CODE=$?
+
+    # Automatically configure cluster access after successful apply
+    if [[ $APPLY_EXIT_CODE -eq 0 ]]; then
+      echo ""
+      echo "✓ Apply successful! Configuring cluster access..."
+      if [[ -f "${REPO_ROOT}/scripts/connect-cluster.sh" ]]; then
+        STACK_DIR="${STACK_DIR}" "${REPO_ROOT}/scripts/connect-cluster.sh"
+      else
+        echo "Warning: connect-cluster.sh not found, skipping cluster configuration"
+      fi
+    fi
+    exit $APPLY_EXIT_CODE
+    ;;
+  destroy)
+    echo "Running terragrunt destroy..."
+    terragrunt destroy -all "$@" 2>&1 | tee -a "$LOG_FILE"
+    ;;
+  validate)
+    echo "Running terragrunt validate..."
+    terragrunt validate -all "$@" 2>&1 | tee -a "$LOG_FILE"
+    ;;
+  output)
+    echo "Running terragrunt output..."
+    terragrunt output "$@" 2>&1 | tee -a "$LOG_FILE"
+    ;;
+  -h|--help|help)
+    usage
+    exit 0
+    ;;
+  *)
+    echo "ERROR: Unknown command: $COMMAND"
+    usage
+    exit 1
+    ;;
+esac
+
+echo ""
+echo "Log saved to: ${LOG_FILE}"
+

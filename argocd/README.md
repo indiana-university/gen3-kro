@@ -60,8 +60,8 @@ The `argocd` Terraform module (called by `terraform/catalog/combinations/csoc/<p
 3. **Deploys bootstrap ApplicationSets**: uses the templated manifest in `terraform/catalog/combinations/csoc/bootstrap` to deploy components from `argocd/bootstrap/*.yaml` to ArgoCD namespace
 
 **Key Terraform outputs:**
-- `argocd_server_endpoint`: ArgoCD UI URL
-- `argocd_admin_password`: Initial admin password (retrieved via `terragrunt output -raw argocd_admin_password`)
+- `argocd_server_endpoint`: ArgoCD UI URL (retrieved from Kubernetes service)
+- `argocd_admin_password`: Initial admin password (retrieved from Kubernetes secret)
 
 ### 2. ApplicationSet Sync
 

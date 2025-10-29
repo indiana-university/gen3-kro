@@ -6,7 +6,7 @@ Shell scripts for common Gen3-KRO operational tasks, including cluster connectiv
 
 | Script | Purpose | Inputs | Destructive | Logging |
 |--------|---------|--------|-------------|---------|
-| `connect-cluster.sh` | Configure kubectl and ArgoCD CLI to connect to deployed EKS/AKS/GKE cluster | None (reads Terragrunt outputs) | No | `outputs/logs/connect-cluster-*.log` |
+| `connect-cluster.sh` | Configure kubectl and ArgoCD CLI to connect to deployed EKS/AKS/GKE cluster | None (reads secrets.yaml and Kubernetes) | No | `outputs/logs/connect-cluster-*.log` |
 | `docker-build-push.sh` | Build and push Docker images to container registry | `IMAGE_NAME`, `IMAGE_TAG`, `REGISTRY` (env vars or args) | Yes (pushes to registry) | `outputs/logs/docker-build-*.log` |
 | `version-bump.sh` | Increment semantic version in project files | `[major\|minor\|patch]` (default: `patch`) | Yes (modifies files, creates git tag) | `outputs/logs/version-bump-*.log` |
 | `init.sh` | Wrapper for Terragrunt operations (plan, apply, destroy) | `[plan\|apply\|destroy\|validate\|output]` | Yes (apply/destroy modify infrastructure) | `outputs/logs/terragrunt-*.log` |
@@ -26,18 +26,19 @@ Shell scripts for common Gen3-KRO operational tasks, including cluster connectiv
 ```
 
 **Prerequisites:**
-- Cluster deployed via Terragrunt (csoc unit must be applied)
+- Cluster deployed via Terragrunt (./init.sh apply must have been run)
 - Cloud provider CLI authenticated (AWS CLI, Azure CLI, or gcloud)
-- Terragrunt outputs available in `live/<provider>/<region>/<env>/`
+- secrets.yaml configured in your stack directory
 
 **Operations performed:**
-1. Extracts cluster name and region from Terragrunt outputs
+1. Reads cluster name and region from secrets.yaml
 2. Runs provider-specific kubeconfig update command:
    - **AWS**: `aws eks update-kubeconfig --name <cluster> --region <region>`
    - **Azure**: `az aks get-credentials --resource-group <rg> --name <cluster>`
    - **GCP**: `gcloud container clusters get-credentials <cluster> --region <region>`
-3. Retrieves ArgoCD admin password from `outputs/argo/admin-password.txt`
-4. Logs in to ArgoCD CLI: `argocd login <endpoint> --username admin --password <password>`
+3. Retrieves ArgoCD admin password from Kubernetes secret
+4. Retrieves ArgoCD LoadBalancer URL from Kubernetes service
+5. Logs in to ArgoCD CLI: `argocd login <endpoint> --username admin --password <password>`
 
 **Output:**
 - Updates `~/.kube/config`
