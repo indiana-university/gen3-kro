@@ -157,4 +157,4 @@ variable "opensearch_iam_policy" {
 See [`docs/guides/customization.md`](../../../docs/guides/customization.md) for complete workflows.
 
 ---
-**Last updated:** 2025-10-26
+**Last updated:** 2025-10-28

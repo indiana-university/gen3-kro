@@ -208,4 +208,4 @@ See [`docs/guides/operations.md`](../../../../docs/guides/operations.md) for com
 - **NAT Gateway**: Single NAT gateway (cost optimization for dev) - set `single_nat_gateway: false` for high availability
 
 ---
-**Last updated:** 2025-10-27
+**Last updated:** 2025-10-28

@@ -117,7 +117,7 @@ The container executes these tasks after creation:
 
 2. Clone repository and open in VS Code:
    ```bash
-   git clone https://github.com/uc-cdis/gen3-kro.git
+   git clone https://github.com/indiana-university/gen3-kro.git
    cd gen3-kro
    code .
    ```
@@ -202,4 +202,4 @@ docker build --no-cache .
 See [`docs/guides/setup.md`](../docs/guides/setup.md) for detailed first-time setup instructions.
 
 ---
-**Last updated:** 2025-10-26
+**Last updated:** 2025-10-28

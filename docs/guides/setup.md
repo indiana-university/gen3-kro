@@ -195,7 +195,7 @@ csoc:
       create_namespace: true
 
   gitops:
-    org_name: uc-cdis           # Your GitHub organization
+    org_name: indiana-university           # Your GitHub organization
     repo_name: gen3-kro         # Your repository name
     github_url: github.com
     branch: main
