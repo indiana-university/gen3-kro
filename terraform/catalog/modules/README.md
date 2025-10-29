@@ -221,4 +221,4 @@ To add a new module:
 See [`docs/guides/customization.md`](../../../docs/guides/customization.md) for detailed workflows.
 
 ---
-**Last updated:** 2025-10-26
+**Last updated:** 2025-10-28

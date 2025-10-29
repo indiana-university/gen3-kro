@@ -250,4 +250,4 @@ For full stack testing, use live environments (see [`live/README.md`](../../live
 Units are typically invoked via `terragrunt <command> --all` at the stack level, which handles dependency ordering automatically.
 
 ---
-**Last updated:** 2025-10-26
+**Last updated:** 2025-10-28

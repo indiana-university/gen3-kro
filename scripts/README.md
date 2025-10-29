@@ -266,4 +266,4 @@ log_info "Script completed"
 See [`docs/guides/operations.md`](../docs/guides/operations.md) for operational workflows using these scripts.
 
 ---
-**Last updated:** 2025-10-26
+**Last updated:** 2025-10-28
