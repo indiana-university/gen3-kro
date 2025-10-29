@@ -1,0 +1,14 @@
+{
+  "Name": "Storage Service Role",
+  "Description": "Permissions for Azure Storage account and blob management",
+  "Actions": [
+    "Microsoft.Storage/storageAccounts/*"
+  ],
+  "NotActions": [],
+  "DataActions": [
+    "Microsoft.Storage/storageAccounts/blobServices/containers/*",
+    "Microsoft.Storage/storageAccounts/blobServices/generateUserDelegationKey/action"
+  ],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

@@ -1,0 +1,15 @@
+{
+  "Name": "ArgoCD Service Role",
+  "Description": "Permissions for ArgoCD to access Azure Key Vault secrets and AKS clusters",
+  "Actions": [
+    "Microsoft.KeyVault/vaults/secrets/read",
+    "Microsoft.ContainerService/managedClusters/read",
+    "Microsoft.ContainerService/managedClusters/listClusterAdminCredential/action"
+  ],
+  "NotActions": [],
+  "DataActions": [
+    "Microsoft.KeyVault/vaults/secrets/getSecret/action"
+  ],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

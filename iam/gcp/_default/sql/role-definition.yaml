@@ -1,0 +1,15 @@
+title: Cloud SQL Service Role
+description: Permissions for Cloud SQL instance management
+stage: GA
+includedPermissions:
+  - cloudsql.instances.create
+  - cloudsql.instances.delete
+  - cloudsql.instances.get
+  - cloudsql.instances.list
+  - cloudsql.instances.update
+  - cloudsql.instances.connect
+  - cloudsql.databases.create
+  - cloudsql.databases.delete
+  - cloudsql.databases.get
+  - cloudsql.databases.list
+  - cloudsql.databases.update

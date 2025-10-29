@@ -12,10 +12,10 @@ spec:
   - matrix:
       generators:
         - git:
-            repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+            repoURL: '{{.metadata.annotations.rgds_repo_url}}'
             revision: '{{.metadata.annotations.branch}}'
             directories:
-              - path: '{{.metadata.annotations.spokes_path}}/*'
+              - path: '{{.metadata.annotations.rgds_path}}/*'
         - clusters:
             selector:
               matchLabels:
@@ -31,7 +31,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.spokes_repo_url}}'
+        repoURL: '{{.metadata.annotations.rgds_repo_url}}'
         targetRevision: '{{.metadata.annotations.branch}}'
         path: '{{- if .path }}{{ .path.path }}/infrastructure{{- else }}{{ .name }}/infrastructure{{- end }}'
         kustomize:
@@ -40,9 +40,5 @@ spec:
       destination:
         server: '{{ .server }}'
         namespace: default
-      syncPolicy:
-        automated:
-          selfHeal: true
-          prune: true
-        syncOptions:
-          - CreateNamespace=false
+    automated:
+      enabled: true

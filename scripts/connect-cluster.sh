@@ -1,25 +1,52 @@
 #!/usr/bin/env bash
-# scripts/connect-cluster.sh
+###############################################################################
+# Connect Cluster Script
 # Updates kubeconfig to connect to the EKS cluster using Terragrunt outputs
+###############################################################################
 
 set -euo pipefail
 IFS=$'\n\t'
 
-# Script directory resolution
+###############################################################################
+# Configuration and Setup
+###############################################################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
-# Source logging library
 source "${SCRIPT_DIR}/lib-logging.sh"
 
-# Configuration
-LOG_DIR="${REPO_ROOT}/outputs/logs"
-TERRAGRUNT_DIR="${REPO_ROOT}/live/aws/us-east-1/gen3-kro-hub"
+###############################################################################
+# Argument Parsing
+###############################################################################
+DRY_RUN=0
+while [[ ${#} -gt 0 ]]; do
+  case "$1" in
+    --dry-run|-n)
+      DRY_RUN=1
+      shift
+      ;;
+    --verbose|-v)
+      VERBOSE=1
+      shift
+      ;;
+    --debug)
+      DEBUG=1
+      shift
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
-# Create directories
+###############################################################################
+# Main Execution
+###############################################################################
+LOG_DIR="${REPO_ROOT}/outputs/logs"
+TERRAGRUNT_DIR="${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev"
+
 mkdir -p "$LOG_DIR"
 
-# Set log file
 LOG_FILE="${LOG_DIR}/connect-cluster-$(date +%Y%m%d-%H%M%S).log"
 export LOG_FILE
 
@@ -27,10 +54,11 @@ log_info "========================================="
 log_info "Connect to EKS Cluster - gen3-kro"
 log_info "========================================="
 
-# Change to terragrunt directory
+###############################################################################
+# Retrieve Cluster Information
+###############################################################################
 cd "$TERRAGRUNT_DIR"
 
-# Get cluster name and region from Terragrunt outputs
 log_info "Retrieving cluster information from Terragrunt..."
 
 CLUSTER_NAME=$(terragrunt output -raw cluster_name 2>/dev/null || echo "")
@@ -47,26 +75,35 @@ log_info "Cluster Name: $CLUSTER_NAME"
 log_info "AWS Region: $AWS_REGION"
 log_info "AWS Profile: $AWS_PROFILE"
 
-# Update kubeconfig
+###############################################################################
+# Update Kubeconfig
+###############################################################################
 log_info "Updating kubeconfig..."
-aws eks update-kubeconfig \
-  --name "$CLUSTER_NAME" \
-  --region "$AWS_REGION" \
-  --profile "$AWS_PROFILE" \
-  --alias "$CLUSTER_NAME"
-
-log_success "✓ Kubeconfig updated successfully"
-log_info "Context: $CLUSTER_NAME"
-
-# Verify connectivity
-log_info "Verifying kubectl connectivity..."
-if kubectl cluster-info --context "$CLUSTER_NAME" >/dev/null 2>&1; then
-  log_success "✓ Successfully connected to cluster"
+if [[ "$DRY_RUN" -eq 1 ]]; then
+  log_info "DRY RUN: would run: aws eks update-kubeconfig --name \"$CLUSTER_NAME\" --region \"$AWS_REGION\" --profile \"$AWS_PROFILE\" --alias \"$CLUSTER_NAME\""
+  log_info "DRY RUN: would verify kubectl connectivity: kubectl cluster-info --context \"$CLUSTER_NAME\""
 else
-  log_warn "Could not verify cluster connectivity"
+  aws eks update-kubeconfig \
+    --name "$CLUSTER_NAME" \
+    --region "$AWS_REGION" \
+    --profile "$AWS_PROFILE" \
+    --alias "$CLUSTER_NAME"
+
+  log_success "✓ Kubeconfig updated successfully"
+  log_info "Context: $CLUSTER_NAME"
+
+  # Verify connectivity
+  log_info "Verifying kubectl connectivity..."
+  if kubectl cluster-info --context "$CLUSTER_NAME" >/dev/null 2>&1; then
+    log_success "✓ Successfully connected to cluster"
+  else
+    log_warn "Could not verify cluster connectivity"
+  fi
 fi
 
-# Get ArgoCD credentials if available
+###############################################################################
+# ArgoCD Access Information
+###############################################################################
 log_info ""
 log_info "Retrieving ArgoCD access information..."
 ARGOCD_PASSWORD=$(terragrunt output -raw argocd_admin_password 2>/dev/null || echo "")
@@ -102,3 +139,7 @@ if [[ -n "$ARGOCD_PASSWORD" ]]; then
     log_info "  URL: https://$ARGOCD_LB_URL"
   fi
 fi
+
+###############################################################################
+# End of File
+###############################################################################

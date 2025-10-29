@@ -1,14 +1,14 @@
 # Default values for addon-appset chart
 
-# Path (in repo) to the addon catalog directory (addons/hub/catalog by default)
+# Path (in repo) to the addon catalog directory (addons/csoc/catalog by default)
 # The ApplicationSet will read all .yaml files from this directory
-catalogPath: "addons/hub/catalog"
+catalogPath: "addons/csoc/catalog"
 
-# Path (in repo) to the enablement file (addons/hub/enablement.yaml by default)
-enablementPath: "addons/hub/enablement.yaml"
+# Path (in repo) to the enablement file (addons/csoc/enablement.yaml by default)
+enablementPath: "addons/csoc/enablement.yaml"
 
 # Path (in repo) to the values file used by addons
-valuesPath: "addons/hub/values.yaml"
+valuesPath: "addons/csoc/values.yaml"
 
 # Information about the hub repo that will be passed in by the caller (hub ApplicationSet)
 # These are intentionally left blank and expected to be set by the parent ApplicationSet via values.

@@ -1,0 +1,9 @@
+title: External Secrets Service Role
+description: Permissions for External Secrets to access Secret Manager
+stage: GA
+includedPermissions:
+  - secretmanager.secrets.get
+  - secretmanager.secrets.list
+  - secretmanager.versions.access
+  - secretmanager.versions.get
+  - secretmanager.versions.list

@@ -1,0 +1,13 @@
+{
+  "Name": "AKS Service Role",
+  "Description": "Permissions for Azure Kubernetes Service management",
+  "Actions": [
+    "Microsoft.ContainerService/managedClusters/*",
+    "Microsoft.ContainerService/locations/*",
+    "Microsoft.Network/virtualNetworks/subnets/join/action"
+  ],
+  "NotActions": [],
+  "DataActions": [],
+  "NotDataActions": [],
+  "AssignableScopes": ["/subscriptions/*"]
+}

@@ -1,28 +1,30 @@
 #!/usr/bin/env bash
-# bootstrap/terragrunt-wrapper.sh
-# Wrapper for Terragrunt operations
+###############################################################################
+# Terragrunt Wrapper Script
+# Wrapper for Terragrunt operations with logging and dry-run support
+###############################################################################
 
 set -euo pipefail
 IFS=$'\n\t'
 
-# Script directory resolution
+###############################################################################
+# Configuration and Setup
+###############################################################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)/scripts"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
-# Source logging library
 source "${SCRIPT_DIR}/lib-logging.sh"
 
-# Configuration
 LOG_DIR="${REPO_ROOT}/outputs/logs"
 
-# Create log directory
 mkdir -p "$LOG_DIR"
 
-# Set log file
 LOG_FILE="${LOG_DIR}/terragrunt-$(date +%Y%m%d-%H%M%S).log"
 export LOG_FILE
 
-# Usage information
+###############################################################################
+# Usage Information
+###############################################################################
 usage() {
   cat <<EOF
 Usage: $(basename "$0") COMMAND [OPTIONS]
@@ -37,6 +39,7 @@ COMMAND:
   show        Show current state
 
 OPTIONS:
+  -n, --dry-run    Show what would be executed without running
   -v, --verbose    Enable verbose logging
   --debug          Enable Terraform debug logging (TF_LOG=DEBUG)
   -h, --help       Show this help message
@@ -44,12 +47,43 @@ OPTIONS:
 EXAMPLES:
   $(basename "$0") plan
   $(basename "$0") apply
-  $(basename "$0") destroy
+  $(basename "$0") --dry-run destroy
 
 EOF
 }
 
-# Main execution
+###############################################################################
+# Argument Parsing
+###############################################################################
+DRY_RUN=0
+while [[ ${#} -gt 0 ]]; do
+  case "$1" in
+    --dry-run|-n)
+      DRY_RUN=1
+      shift
+      ;;
+    --verbose|-v)
+      VERBOSE=1
+      shift
+      ;;
+    --debug)
+      DEBUG=1
+      export TF_LOG=DEBUG
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
+
+###############################################################################
+# Main Execution Function
+###############################################################################
 main() {
   local command="$1"
   shift || true
@@ -57,31 +91,70 @@ main() {
   case "$command" in
     plan)
       log_info "Running Terragrunt plan..."
-      terragrunt plan "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt plan $*"
+      else
+        terragrunt plan "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     apply)
-      log_info "Running Terragrunt apply..."
-      terragrunt apply "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+      log_info "Applying Terragrunt stack..."
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt apply --all $*"
+      else
+        terragrunt apply --all "$@" 2>&1 | tee -a "$LOG_FILE"
+        apply_exit_code=$?
+
+        # Automatically configure cluster access after successful apply
+        if [[ $apply_exit_code -eq 0 ]]; then
+          log_info "Apply successful, configuring cluster access..."
+          if [[ -f "${SCRIPT_DIR}/connect-cluster.sh" ]]; then
+            "${SCRIPT_DIR}/connect-cluster.sh"
+          else
+            log_warn "connect-cluster.sh not found, skipping cluster configuration"
+          fi
+        fi
+      fi
       ;;
     destroy)
       log_info "Running Terragrunt destroy..."
-      terragrunt destroy "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt destroy $* --auto-approve"
+      else
+        terragrunt destroy "$@" --auto-approve 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     validate)
       log_info "Validating Terragrunt configuration..."
-      terragrunt validate "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt validate $*"
+      else
+        terragrunt validate "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     init)
       log_info "Running Terragrunt init..."
-      terragrunt init "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt init $*"
+      else
+        terragrunt init "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     output)
       log_info "Getting Terragrunt outputs..."
-      terragrunt output "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt output $*"
+      else
+        terragrunt output "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     show)
       log_info "Showing Terragrunt state..."
-      terragrunt show "$@" 2>&1 | tee -a "$LOG_FILE"
+      if [[ "$DRY_RUN" -eq 1 ]]; then
+        log_info "DRY RUN: would run: terragrunt show $*"
+      else
+        terragrunt show "$@" 2>&1 | tee -a "$LOG_FILE"
+      fi
       ;;
     -h|--help)
       usage
@@ -95,10 +168,16 @@ main() {
   esac
 }
 
-# Parse arguments
+###############################################################################
+# Script Entry Point
+###############################################################################
 if [ $# -eq 0 ]; then
   usage
   exit 1
 fi
 
 main "$@"
+
+###############################################################################
+# End of File
+###############################################################################

@@ -1,647 +1,191 @@
-# ArgoCD Configuration
+# ArgoCD GitOps
 
-This directory contains ArgoCD ApplicationSets, configuration files, and deployment definitions for the Gen3 KRO platform's GitOps workflow.
+GitOps deployment manifests for bootstrapping Gen3 platform addons and KRO ResourceGraphDefinitions across hub and spoke clusters using ArgoCD ApplicationSets.
 
-## Overview
+## Architecture
 
-The Gen3 KRO platform uses ArgoCD for continuous deployment with a wave-based deployment strategy:
+we uses a hierarchical GitOps topology:
 
-- **Wave 0**: Platform addons (KRO, ACK controllers, External Secrets)
-- **Wave 1**: ResourceGraphDefinitions (infrastructure schemas)
-- **Wave 2**: Graph instances (infrastructure provisioning)
-- **Wave 3**: Application workloads (Gen3 commons)
+1. **Terraform deploys ArgoCD**: The `argocd` Terraform module installs ArgoCD in the hub cluster and creates initial ApplicationSets from `argocd/bootstrap/`
+2. **argocd/bootstrap/**: contains:
+   - **csoc-addons**: Hub cluster addons (KRO, ACK controllers, ExternalSecrets, any other components - add here)
+   - **spoke-addons**: Spoke cluster addons (view only addons for spoke, possibly with resource adoption capabilities)
+   - **graphs**: KRO ResourceGraphDefinitions for application declarative infrastructure (VPCs, clusters, databases)
+3. **Catalog-driven configuration**: ApplicationSets read addon definitions from `argocd/addons/csoc/catalog.yaml` and values from `argocd/addons/csoc/values.yaml`
 
 ## Directory Structure
 
 ```
 argocd/
-├── bootstrap/              # Bootstrap ApplicationSets (deployed by Terraform)
-│   ├── hub-addons.yaml    # Wave 0: Hub cluster addons
-│   ├── spoke-addons.yaml  # Wave 0: Spoke cluster addons
-│   ├── graphs.yaml        # Wave 1: ResourceGraphDefinitions
-│   ├── graph-instances.yaml # Wave 2: Infrastructure instances
-│   └── app-instances.yaml # Wave 3: Application workloads
-├── hub/                    # Hub cluster configuration
-│   └── addons/
-│       ├── catalog.yaml   # Addon chart metadata
-│       ├── enablement.yaml # Addon toggles
-│       └── values.yaml    # Addon Helm values
-├── spokes/                 # Spoke cluster configurations
-│   └── <spoke-name>/
-│       ├── addons/        # Spoke-specific addon config
-│       ├── infrastructure/ # Infrastructure overlays
-│       ├── cluster-values/ # Cluster-specific values
-│       └── <gen3-instance>/ # Gen3 application configs
-├── graphs/                 # ResourceGraphDefinitions
-│   └── aws/
-│       ├── vpc-network-rgd.yaml
-│       ├── eks-cluster-rgd.yaml
-│       └── iam-roles-rgd.yaml
-├── charts/                 # Helm chart templates
-│   └── addons-appset/
-└── plans/                  # Deployment planning docs
+├── bootstrap/                   # App-of-apps ApplicationSets (deployed by Terraform)
+│   ├── csoc-addons.yaml         # Hub addon ApplicationSet
+│   ├── spoke-addons.yaml        # Spoke addon ApplicationSet
+│   ├── graphs.yaml              # KRO graph ApplicationSet
+│   ├── app-instances.yaml       # App instance deployments
+│   └── graph-instances.yaml     # Graph instance deployments
+├── addons/
+│   └── csoc/                    # Hub addon catalog and configuration
+│       ├── catalog.yaml         # Available addons (Helm chart sources, versions)
+│       ├── enablement.yaml      # Which addons to deploy
+│       └── values.yaml          # Addon-specific Helm values
+├── graphs/                      # KRO ResourceGraphDefinitions
+│   ├── aws/
+│   │   ├── eks-basic-rgd.yaml
+│   │   ├── eks-cluster-rgd.yaml
+│   │   └── vpc-network-rgd.yaml
+│   ├── azure/
+│   ├── google/
+│   └── instances/               # Graph instance definitions
+├── spokes/                      # Spoke-specific overlays
+│   └── <spoke_alias>/           # Per-spoke configuration
+│       ├── values.yaml          # Spoke-level overrides
+│       ├── addons/              # Spoke-specific addon configurations
+│       ├── cluster-values/      # Kubernetes cluster values
+│       └── infrastructure/      # Infrastructure definitions
+└── charts/                      # Helm chart templates
+    └── addons-appset/           # ApplicationSet Helm chart
+        ├── Chart.yaml
+        ├── values.yaml
+        └── templates/
 ```
 
-## ApplicationSet Hierarchy
+## Bootstrap Flow
 
-### Bootstrap Process
+### 1. Terraform Invocation
 
-The Gen3 KRO platform uses a **bootstrap ApplicationSet pattern** to manage all ArgoCD ApplicationSets:
+The `argocd` Terraform module (called by `terraform/catalog/combinations/csoc/<provider>/main.tf`) performs:
 
-1. **Terraform** deploys a single bootstrap ApplicationSet (from `terraform/combinations/hub/applicationsets.yaml`)
-2. **Bootstrap ApplicationSet** uses a directory generator with `recurse: true` to sync `argocd/bootstrap/` directory
-3. **Five Child ApplicationSets** are created from YAML files in the bootstrap directory:
-   - `hub-addons.yaml` - Platform addons for hub cluster (Wave 0)
-   - `spoke-addons.yaml` - Platform addons for spoke clusters (Wave 0)
-   - `graphs.yaml` - ResourceGraphDefinitions (Wave 1)
-   - `graph-instances.yaml` - Infrastructure instances (Wave 2)
-   - `app-instances.yaml` - Application workloads (Wave 3)
-4. **Each child ApplicationSet** deploys resources according to its wave number and generator configuration
+1. **Install ArgoCD Helm chart**: Deploys ArgoCD server, repo-server, application-controller to `argocd` namespace
+2. **Create cluster secret**: Registers hub cluster with ArgoCD (enables self-management)
+3. **Deploys bootstrap ApplicationSets**: uses the templated manifest in `terraform/catalog/combinations/csoc/bootstrap` to deploy components from `argocd/bootstrap/*.yaml` to ArgoCD namespace
 
-```
-┌──────────────────────────────────────────────────────┐
-│  Terraform (Hub Combination)                         │
-│  Deploys: bootstrap ApplicationSet (single YAML)     │
-└───────────────────────┬──────────────────────────────┘
-                        │
-                        ▼
-┌────────────────────────────────────────────────────────────┐
-│  Bootstrap ApplicationSet                                  │
-│  Type: Directory (recurse: true)                           │
-│  Syncs: argocd/bootstrap/*.yaml → Creates 5 ApplicationSets│
-└─┬────┬──────┬───────────┬──────────────┬──────────────────┘
-  │    │      │           │              │
-  │    │      │           │              │
-  ▼    ▼      ▼           ▼              ▼
-┌────────┐ ┌────────┐ ┌────────┐ ┌──────────┐ ┌──────────┐
-│  hub-  │ │ spoke- │ │graphs  │ │  graph-  │ │   app-   │
-│addons  │ │addons  │ │  .yaml │ │instances │ │instances │
-│ .yaml  │ │ .yaml  │ │        │ │  .yaml   │ │  .yaml   │
-└────────┘ └────────┘ └────────┘ └──────────┘ └──────────┘
- Wave 0     Wave 0     Wave 1      Wave 2       Wave 3
-    │          │          │            │            │
-    ▼          ▼          ▼            ▼            ▼
-  Hub       Spoke       RGD      Infrastructure  Applications
- Addons     Addons   Definitions    Instances     (Gen3)
-```
+**Key Terraform outputs:**
+- `argocd_server_endpoint`: ArgoCD UI URL
+- `argocd_admin_password`: Initial admin password (retrieved via `terragrunt output -raw argocd_admin_password`)
 
-## Configuration Files
+### 2. ApplicationSet Sync
 
-### Hub Addon Configuration
+ArgoCD ApplicationSet controller evaluates generators and creates individual `Application` resources:
 
-#### catalog.yaml
+**csoc-addons ApplicationSet** (`bootstrap/csoc-addons.yaml`):
+- **Generators**: Matrix of hub clusters (`fleet_member=control-plane`) × addon catalog (`addons/csoc/catalog.yaml`)
+- **Filters**: Only deploys addons listed in `addons/csoc/enablement.yaml`
+- **Sources**: Helm chart (from catalog) + values repository (from `addons/csoc/values.yaml`)
+- **Sync waves**: KRO deployed in wave `-1` (must be ready before ResourceGraphDefinitions), all others in wave `0`
 
-Defines addon metadata: Helm repository URLs, chart versions, and chart names.
+**app-instances ApplicationSet** (`bootstrap/app-instances.yaml`):
+- **Generators**: Git files matching `spokes/<spoke_alias>/*/values.yaml`
+- **Purpose**: Deploy application instances to spoke clusters based on spoke-specific configurations
+
+**graphs ApplicationSet** (`bootstrap/graphs.yaml`):
+- **Generators**: Git files matching `graphs/<provider>/*.yaml`
+- **Purpose**: Deploy KRO ResourceGraphDefinitions for declarative infrastructure provisioning
+
+**graph-instances ApplicationSet** (`bootstrap/graph-instances.yaml`):
+- **Generators**: Git files matching `graphs/instances/*.yaml`
+- **Purpose**: Deploy instantiated KRO ResourceGraph instances
+
+**spoke-addons ApplicationSet** (`bootstrap/spoke-addons.yaml`):
+- **Generators**: Matrix of spoke clusters (`fleet_member=spoke`) × spoke addon catalogs at `spokes/<spoke_alias>/addons/`
+- **Purpose**: Deploy subset of hub capabilities to spoke environments for specific use cases
+
+### 3. Addon Deployment
+
+Each addon Application syncs its Helm chart with values from the repository. Example addon flow:
+
+1. ArgoCD pulls `<addon_name>` Helm chart from the specified source URL (can be an OCI registry or Git repository)
+2. Merges values from `addons/csoc/values.yaml` (e.g., IAM role ARN, resource limits)
+3. Deploys to target namespace
+4. Annotates ServiceAccount with IAM role for Pod Identity
+
+## Addon Catalog
+
+`addons/csoc/catalog.yaml` defines available addons as a YAML array:
 
 ```yaml
-items:
-  - addon: ec2
-    repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
-    revision: v1.7.0
-    chartPath: ec2-chart
+- addon: kro
+  repoURL: oci://ghcr.io/kro-run/kro/kro
+  revision: 0.4.1
+  chart: kro
+  sync_wave: "-1"
 
-  - addon: kro
-    repoURL: https://kro-run.github.io/kro
-    revision: 0.1.0
-    chartPath: kro
-
-  - addon: external-secrets
-    repoURL: https://charts.external-secrets.io
-    revision: 0.9.13
-    chartPath: external-secrets
+- addon: ack-s3
+  repoURL: oci://public.ecr.aws/aws-controllers-k8s/s3-chart
+  revision: 1.0.18
+  chart: s3-chart
+  sync_wave: "0"
 ```
 
-#### enablement.yaml
-
-Controls which addons are deployed on the hub cluster.
+`addons/csoc/enablement.yaml` controls which addons are active:
 
 ```yaml
-cluster: hub
 enablement:
-  ec2:
+  # KRO - Required first for ResourceGraphDefinitions
+  <addon-name>:
     enabled: true
-  eks:
-    enabled: true
-  kro:
-    enabled: true  # Must be enabled on hub
-  external-secrets:
+
+  # ACK Controllers - All enabled for hub
+  <controller-name>:
     enabled: true
 ```
 
-#### values.yaml
+Note: The values.yaml file provides templated addon-specific configuration (currently in development).
 
-Provides Helm values for each addon.
+## Secrets Strategy
+
+ArgoCD Application manifests **do not** directly contain sensitive provider information. These are passed via Kubernetes Secrets.
+
+1. **ExternalSecrets Operator**: Syncs secrets from cloud provider secret managers (AWS Secrets Manager, Azure Key Vault, GCP Secret Manager) to Kubernetes Secrets
+2. **Helm value references**: Addons are configured to reference existing Secret resources (created by ExternalSecrets)
+
+## Sync Operations
+
+ApplicationSets enable automatic synchronization:
 
 ```yaml
-global:
-  roleArns:
-    ec2: "arn:aws:iam::123456789012:role/hub-ack-ec2"
-    eks: "arn:aws:iam::123456789012:role/hub-ack-eks"
-  namespaces:
-    ack: "ack-system"
-
-values:
-  ec2:
-    serviceAccount:
-      annotations:
-        eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.ec2}}"
-    resources:
-      limits:
-        cpu: 200m
-        memory: 256Mi
-      requests:
-        cpu: 100m
-        memory: 128Mi
-```
-
-### Spoke Configuration
-
-Each spoke has its own directory: `spokes/<spoke-name>/`
-
-#### addons/
-
-Spoke-specific addon configuration (overrides hub defaults).
-
-**enablement.yaml**:
-```yaml
-cluster: spoke1
-enablement:
-  ec2:
-    enabled: true
-  eks:
-    enabled: false  # Spokes typically don't need EKS controller
-  kro:
-    enabled: false  # KRO only runs on hub
-```
-
-**values.yaml**:
-```yaml
-global:
-  roleArns:
-    ec2: "arn:aws:iam::987654321098:role/spoke1-ec2"
-
-values:
-  ec2:
-    serviceAccount:
-      annotations:
-        eks.amazonaws.com/role-arn: "{{.Values.global.roleArns.ec2}}"
-```
-
-#### infrastructure/
-
-Kustomize overlays for infrastructure provisioning.
-
-**kustomization.yaml**:
-```yaml
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-bases:
-  - ../../../shared/instances
-patches:
-  - path: values.yaml
-    target:
-      kind: EksCluster
-```
-
-**values.yaml**:
-```yaml
-apiVersion: v1alpha1
-kind: EksCluster
-metadata:
-  name: spoke1-cluster
 spec:
-  name: spoke1
-  accountId: "987654321098"
-  region: us-west-2
-  vpc:
-    vpcCidr: "10.1.0.0/16"
+  template:
+    spec:
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
 ```
 
-#### <gen3-instance>/
+## Health Checks
 
-Gen3 application configurations.
+ArgoCD monitors resource health using built-in and custom health checks. Common statuses:
 
-**templates/app.yaml**:
-```yaml
-apiVersion: argoproj.io/v1alpha1
-kind: Application
-metadata:
-  name: gen3-covid19prod
-  namespace: argocd
-spec:
-  project: default
-  sources:
-    - path: helm/gen3
-      repoURL: https://github.com/uc-cdis/gen3-helm
-      targetRevision: main
-      helm:
-        releaseName: gen3-covid19prod
-        valueFiles:
-          - $values/values/values.yaml
-    - repoURL: https://github.com/indiana-university/gen3-kro.git
-      targetRevision: main
-      ref: values
-  destination:
-    server: "https://kubernetes.default.svc"
-    namespace: covid19prod-helm
-  syncPolicy:
-    automated: {}
-```
+- **Healthy**: Resource is running and ready
+- **Progressing**: Resource is being created/updated
+- **Degraded**: Resource has warnings or non-fatal errors
+- **Suspended**: Resource is intentionally paused
 
-## Wave-Based Deployment
-
-### Wave 0: Addons
-
-**File**: `bootstrap/hub-addons.yaml`, `bootstrap/spoke-addons.yaml`
-
-**Purpose**: Deploy platform prerequisites
-
-**Addons**:
-- **KRO** (hub only): Required for ResourceGraphDefinitions
-- **ACK Controllers**: AWS resource management
-- **External Secrets**: Secret management
-- **Kyverno**: Policy enforcement
-
-**Generator Strategy**: 3-way merge
-1. Catalog: Defines available addons
-2. Enablement: Determines which are enabled
-3. Values: Provides configuration
-
-**Critical**: KRO must complete before Wave 1
-
-### Wave 1: Graphs
-
-**File**: `bootstrap/graphs.yaml`
-
-**Purpose**: Deploy ResourceGraphDefinitions (CRDs)
-
-**Target**: Hub cluster only
-
-**Resources**: `argocd/graphs/aws/*.yaml`
-- VPC network RGD
-- EKS cluster RGD
-- IAM roles RGD
-
-**Dependency**: Requires KRO from Wave 0
-
-### Wave 2: Graph Instances
-
-**File**: `bootstrap/graph-instances.yaml`
-
-**Purpose**: Deploy infrastructure instances
-
-**Target**: Hub cluster (instances provision spoke infrastructure)
-
-**Resources**: `argocd/spokes/*/infrastructure/`
-
-**Process**:
-1. ArgoCD deploys instance manifests to hub
-2. KRO processes instances against RGDs
-3. ACK controllers provision AWS resources in spoke accounts
-4. Spoke clusters become available
-
-**Dependency**: Requires RGDs from Wave 1
-
-### Wave 3: App Instances
-
-**File**: `bootstrap/app-instances.yaml`
-
-**Purpose**: Deploy Gen3 workloads
-
-**Target**: Spoke clusters
-
-**Resources**: `argocd/spokes/*/<gen3-instance>/`
-
-**Dependency**: Requires spoke clusters from Wave 2
-
-## ApplicationSet Patterns
-
-### Git Directory Generator
-
-Discovers spokes dynamically:
-
-```yaml
-generators:
-  - git:
-      repoURL: https://github.com/indiana-university/gen3-kro.git
-      revision: main
-      directories:
-        - path: argocd/spokes/*
-```
-
-### Cluster Generator
-
-Targets specific cluster types:
-
-```yaml
-generators:
-  - clusters:
-      selector:
-        matchLabels:
-          fleet_member: control-plane  # Hub only
-```
-
-```yaml
-generators:
-  - clusters:
-      selector:
-        matchLabels:
-          fleet_member: spoke  # Spokes only
-```
-
-### Matrix Generator
-
-Combines generators:
-
-```yaml
-generators:
-  - matrix:
-      generators:
-        - git:
-            directories:
-              - path: argocd/spokes/*
-        - clusters:
-            selector:
-              matchLabels:
-                fleet_member: control-plane
-```
-
-### Merge Generator
-
-3-way merge for addons:
-
-```yaml
-generators:
-  - merge:
-      mergeKeys:
-        - addon
-      generators:
-        - git:
-            files:
-              - path: argocd/hub/addons/catalog.yaml
-        - git:
-            files:
-              - path: argocd/hub/addons/enablement.yaml
-        - git:
-            files:
-              - path: argocd/hub/addons/values.yaml
-```
-
-## Adding Components
-
-### Add New Spoke
-
-1. **Create directory**:
-   ```bash
-   mkdir -p argocd/spokes/spoke2/{addons,infrastructure,cluster-values}
-   ```
-
-2. **Copy structure from existing spoke**:
-   ```bash
-   cp -r argocd/spokes/spoke1/addons argocd/spokes/spoke2/
-   cp -r argocd/spokes/spoke1/infrastructure argocd/spokes/spoke2/
-   ```
-
-3. **Update configuration**:
-   - `addons/enablement.yaml`: Set cluster name
-   - `addons/values.yaml`: Update IAM role ARNs
-   - `infrastructure/values.yaml`: Set account ID, region, VPC CIDR
-
-4. **Commit and push**:
-   ```bash
-   git add argocd/spokes/spoke2
-   git commit -m "Add spoke2 cluster configuration"
-   git push
-   ```
-
-5. **ArgoCD auto-discovers** spoke2 within minutes
-
-### Add New Addon
-
-1. **Add to catalog** (`hub/addons/catalog.yaml`):
-   ```yaml
-   - addon: new-addon
-     repoURL: https://charts.example.com
-     revision: 1.0.0
-     chartPath: new-addon
-   ```
-
-2. **Enable in hub** (`hub/addons/enablement.yaml`):
-   ```yaml
-   new-addon:
-     enabled: true
-   ```
-
-3. **Add values** (`hub/addons/values.yaml`):
-   ```yaml
-   new-addon:
-     namespace: new-addon-system
-     config:
-       key: value
-   ```
-
-4. **Optionally enable in spokes**:
-   ```bash
-   # Edit spokes/*/addons/enablement.yaml
-   ```
-
-5. **Commit and push**
-
-### Add New ResourceGraphDefinition
-
-1. **Create RGD file**:
-   ```bash
-   cat > argocd/graphs/aws/new-resource-rgd.yaml <<EOF
-   apiVersion: kro.run/v1alpha1
-   kind: ResourceGraph
-   metadata:
-     name: newresource
-   spec:
-     # ... RGD definition ...
-   EOF
-   ```
-
-2. **Commit and push**
-
-3. **ArgoCD deploys** to hub in Wave 1
-
-## Verification
-
-### Check ApplicationSets
-
+View application health:
 ```bash
-kubectl get applicationsets -n argocd
-```
-
-Expected:
-- `hub-addons`
-- `spoke-addons`
-- `graphs`
-- `graph-instances`
-- `app-instances`
-
-### Check Generated Applications
-
-```bash
-kubectl get applications -n argocd
-```
-
-Expected format:
-- `hub-<addon-name>` (Wave 0)
-- `<spoke>-<addon-name>` (Wave 0)
-- `<rgd-name>-hub` (Wave 1)
-- `<spoke>-graph-instances` (Wave 2)
-- `<spoke>-<gen3-instance>` (Wave 3)
-
-### Check Sync Status
-
-```bash
-kubectl get applications -n argocd -o custom-columns=\
-NAME:.metadata.name,\
-SYNC:.status.sync.status,\
-HEALTH:.status.health.status,\
-WAVE:.metadata.annotations."argocd\.argoproj\.io/sync-wave"
-```
-
-All should be:
-- SYNC: `Synced`
-- HEALTH: `Healthy`
-
-### Check Logs
-
-```bash
-# ApplicationSet controller logs
-kubectl logs -n argocd -l app.kubernetes.io/name=argocd-applicationset-controller
-
-# Application controller logs
-kubectl logs -n argocd -l app.kubernetes.io/name=argocd-application-controller
+argocd app get <csoc-addon-name>
+argocd app list --selector argocd.argoproj.io/instance=<instance-name>
 ```
 
 ## Troubleshooting
 
-### Application Out of Sync
+**ApplicationSet not creating Applications:**
+- Check generator output: `kubectl describe applicationset <applicationset-name> -n argocd`
+- Verify cluster labels: `kubectl get secret -n argocd -l argocd.argoproj.io/secret-type=cluster -o yaml`
 
-**Symptom**: Application stuck in `OutOfSync` state
+**Application stuck in Progressing:**
+- View sync status: `argocd app get <app-name>`
+- Check resource events: `kubectl describe <resource> -n <namespace>`
 
-**Check**:
-```bash
-kubectl describe application <app-name> -n argocd
-kubectl get application <app-name> -n argocd -o yaml | grep -A 20 status
-```
+**Addon deployment failures:**
+- View Helm release status: `helm list -n <namespace>`
+- Check pod logs: `kubectl logs -n <namespace> <pod-name>`
 
-**Common Causes**:
-- Git repository inaccessible
-- Invalid YAML syntax
-- Missing dependencies
-- Resource conflicts
+**Secrets not syncing:**
+- Verify ExternalSecrets operator is healthy: `kubectl get pods -n external-secrets`
+- Check SecretStore configuration: `kubectl get secretstore -n <namespace>`
 
-**Solution**:
-```bash
-# Force refresh
-argocd app get <app-name> --refresh
+See [`docs/guides/operations.md`](../docs/guides/operations.md) for detailed troubleshooting workflows.
 
-# Manual sync
-argocd app sync <app-name>
-```
-
-### Generator Not Finding Resources
-
-**Symptom**: Expected applications not created
-
-**Check**:
-```bash
-kubectl get applicationset <appset-name> -n argocd -o yaml
-```
-
-Look at `status.conditions` for errors
-
-**Common Causes**:
-- Incorrect Git path
-- Wrong cluster label selector
-- Merge generator key mismatch
-
-**Solution**: Verify generator configuration matches actual repo structure
-
-### Wave Dependencies Not Working
-
-**Symptom**: Wave N deploys before Wave N-1 completes
-
-**Check**:
-```bash
-kubectl get applications -n argocd --sort-by=.metadata.annotations."argocd\.argoproj\.io/sync-wave"
-```
-
-**Solution**: Ensure `sync-wave` annotations are correct in ApplicationSet metadata
-
-### KRO Instance Not Reconciling
-
-**Symptom**: Graph instance stuck in `Pending` state
-
-**Check**:
-```bash
-kubectl describe ekscluster <instance-name>
-kubectl logs -n kro-system -l app=kro-controller
-```
-
-**Common Causes**:
-- RGD not installed (Wave 1 incomplete)
-- ACK controller not running (Wave 0 incomplete)
-- IAM permissions missing
-
-## Best Practices
-
-### 1. Use Sync Waves
-
-Always annotate ApplicationSets with sync waves:
-
-```yaml
-metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
-```
-
-### 2. Keep Configurations DRY
-
-Use kustomize overlays to avoid duplication:
-- Base: `argocd/shared/instances/`
-- Overlays: `argocd/spokes/*/infrastructure/`
-
-### 3. Use Cluster Labels
-
-Label cluster secrets for targeting:
-
-```yaml
-metadata:
-  labels:
-    fleet_member: control-plane  # or: spoke
-    environment: production
-```
-
-### 4. Validate Before Commit
-
-```bash
-# Validate YAML
-kubectl apply --dry-run=client -f argocd/bootstrap/
-
-# Validate kustomize
-kustomize build argocd/spokes/spoke1/infrastructure/
-
-# Lint Helm values
-helm lint --values argocd/hub/addons/values.yaml
-```
-
-### 5. Use Git Branches
-
-- `main`: Production configurations
-- `staging`: Testing configurations
-- Feature branches: Development
-
-Update ArgoCD cluster secret `targetRevision` annotation to switch branches.
-
-## See Also
-
-- [Terragrunt Deployment Guide](../docs/setup-terragrunt.md)
-- [Adding Cluster Addons Guide](../docs/add-cluster-addons.md)
-- [Hub Combination](../terraform/combinations/hub/README.md)
-- [ArgoCD Documentation](https://argo-cd.readthedocs.io/)
-- [KRO Documentation](https://kro.run/)
+---
+**Last updated:** 2025-10-28

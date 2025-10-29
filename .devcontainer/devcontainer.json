@@ -1,32 +1,33 @@
 {
   "name": "gen3-kro-dev",
   "build": {
-    "dockerfile": "Dockerfile",
+    "dockerfile": "../Dockerfile",
     "context": ".."
   },
-  "workspaceFolder": "/workspace",
+  "workspaceFolder": "/workspaces",
   "mounts": [
+    // Kube and AWS credentials (Windows USERPROFILE if set)
     "source=${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
-    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached"
+    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached"
   ],
   "remoteUser": "vscode",
   "containerEnv": {
     "KUBECONFIG": "/home/vscode/.kube/config"
   },
-  "postCreateCommand": "bash -c 'sudo chown -R vscode:vscode /workspace && git config --global --add safe.directory /workspace && \n  # Create required output directories\n  mkdir -p /workspace/outputs/logs && \n  mkdir -p /workspace/outputs/argo && \n  echo \"Dev container setup complete!\" && \n  # Attempt to load kubeconfig and ArgoCD creds if AWS is configured and script exists\n  if [[ -f /workspace/bootstrap/scripts/connect-cluster.sh ]]; then \n    if command -v aws >/dev/null 2>&1 && [[ -n \"${AWS_PROFILE:-}\" || -f /home/vscode/.aws/credentials ]]; then \n      echo \"Running connect-cluster.sh (will be skipped if prerequisites are missing)...\" && \n      bash /workspace/bootstrap/scripts/connect-cluster.sh || true; \n    else \n      echo \"AWS CLI or credentials not found; skipping connect-cluster.sh.\"; \n    fi \n  fi'",
+  "postCreateCommand": "bash -c 'sudo chown -R vscode:vscode /workspaces && git config --global --add safe.directory /workspaces && \n  # Create required output directories\n  mkdir -p /workspaces/outputs/logs && \n  mkdir -p /workspaces/outputs/argo && \n  echo \"Dev container setup complete!\" && \n  # Attempt to load kubeconfig and ArgoCD creds if AWS is configured and script exists\n  if [[ -f /workspaces/bootstrap/scripts/connect-cluster.sh ]]; then \n    if command -v aws >/dev/null 2>&1 && [[ -n \"${AWS_PROFILE:-}\" || -f /home/vscode/.aws/credentials ]]; then \n      echo \"Running connect-cluster.sh (will be skipped if prerequisites are missing)...\" && \n      bash /workspaces/bootstrap/scripts/connect-cluster.sh || true; \n    else \n      echo \"AWS CLI or credentials not found; skipping connect-cluster.sh.\"; \n    fi \n  fi'",
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
-        "files.exclude": {
-          "**/.terraform": true,
-          "**/.terragrunt-cache": true,
-          "**/node_modules": true
-        },
         "editor.tabSize": 2,
         "editor.insertSpaces": true,
         "files.trimTrailingWhitespace": true,
         "files.insertFinalNewline": true,
+        "files.associations": {
+          "*.hcl": "terragrunt"
+        },
         "[yaml]": {
           "editor.defaultFormatter": "redhat.vscode-yaml"
         },
@@ -35,17 +36,12 @@
         }
       },
       "extensions": [
-        "ms-azuretools.vscode-docker",
-        "ms-kubernetes-tools.vscode-kubernetes-tools",
-        "hashicorp.terraform",
-        "redhat.vscode-yaml",
-        "GitHub.copilot",
-        "GitHub.copilot-chat",
-        "GitHub.copilot-labs",
-        "OpenAI.openai-vscode",
-
-        "eamodio.gitlens",
-        "ms-vscode.makefile-tools"
+        "hashicorp.terraform",                // Terraform linting
+        "redhat.vscode-yaml",                 // YAML linting
+        "GitHub.copilot",                     // AI-assisted coding
+        "GitHub.copilot-chat",                // Interactive AI assistance
+        "openai.chatgpt",                     // AI-assisted coding
+        "4ops.terraform"                      // Terragrunt linting (partial)
       ]
     }
   },

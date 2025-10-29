@@ -7,8 +7,26 @@ set -euo pipefail
 # Usage: ./version-bump.sh
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
-REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd -P)"
+REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 VERSION_FILE="${REPO_ROOT}/.version"
+
+# Parse simple flags
+DRY_RUN=0
+while [[ ${#} -gt 0 ]]; do
+  case "$1" in
+    --dry-run|-n)
+      DRY_RUN=1
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: $(basename "$0") [--dry-run]"
+      exit 0
+      ;;
+    *)
+      break
+      ;;
+  esac
+done
 
 # Initialize version file if it doesn't exist
 if [[ ! -f "$VERSION_FILE" ]]; then
@@ -46,7 +64,11 @@ elif [[ "$CURRENT_VERSION" == "$LATEST_TAG" ]]; then
   echo "Auto-bumping patch version: ${CURRENT_VERSION} → ${NEW_VERSION}"
 
   # Update version file
-  echo "$NEW_VERSION" > "$VERSION_FILE"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "DRY RUN: would update $VERSION_FILE to ${NEW_VERSION}"
+  else
+    echo "$NEW_VERSION" > "$VERSION_FILE"
+  fi
   SHOULD_BUMP=true
 else
   # Version file already has a different version than latest tag
@@ -60,14 +82,17 @@ TAG_NAME="v${NEW_VERSION}"
 
 if $SHOULD_BUMP; then
   echo "Creating tag: ${TAG_NAME}"
-
-  if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
-    echo "ERROR: Tag ${TAG_NAME} already exists!"
-    echo "Version in .version file may need manual correction."
-    exit 1
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    echo "DRY RUN: would create git tag: ${TAG_NAME}"
   else
-    git tag -a "$TAG_NAME" -m "Release ${NEW_VERSION}"
-    echo "✓ Created tag: ${TAG_NAME}"
+    if git rev-parse "$TAG_NAME" >/dev/null 2>&1; then
+      echo "ERROR: Tag ${TAG_NAME} already exists!"
+      echo "Version in .version file may need manual correction."
+      exit 1
+    else
+      git tag -a "$TAG_NAME" -m "Release ${NEW_VERSION}"
+      echo "✓ Created tag: ${TAG_NAME}"
+    fi
   fi
 else
   echo "No version bump needed - version unchanged."
