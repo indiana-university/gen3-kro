@@ -1,6 +1,7 @@
-# gen3-kro
+# Gen3-KRO
 
-A platform for deploying Gen3 data commons that provisions cloud resources in a provider account via Terragrunt-managed Terraform modules, then bootstraps created Kubernetes clusters with cloud-specific controllers (ASO, ACKs, Config Connector) and KRO through a GitOps-driven continuous delivery (ArgoCD-managed). The csoc then uses boilerplate KRO resource graphs to deploy multiple customizable instances of the application infrastructure in the destination cloud account using their respective controllers.
+ This is a platform for deploying cloud resources in a provider account via Terragrunt-managed Terraform modules, then bootstraps created Kubernetes clusters with cloud-specific controllers (ASO, ACKs, Config Connector) and KRO through a GitOps-driven continuous delivery (ArgoCD-managed). The csoc then uses boilerplate KRO resource graphs to deploy multiple customizable instances of the application infrastructure in the destination cloud account using their respective controllers.
+The application we deploy in this repository is the Gen3 data commons platform.
 
 ## Overview
 
