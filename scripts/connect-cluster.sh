@@ -12,6 +12,8 @@ IFS=$'\n\t'
 ###############################################################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+LOG_DIR="${REPO_ROOT}/outputs/logs"
+STACK_DIR="${STACK_DIR:-${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev}"
 
 source "${SCRIPT_DIR}/lib-logging.sh"
 
@@ -42,9 +44,6 @@ done
 ###############################################################################
 # Main Execution
 ###############################################################################
-LOG_DIR="${REPO_ROOT}/outputs/logs"
-STACK_DIR="${STACK_DIR:-${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev}"
-
 mkdir -p "$LOG_DIR"
 
 LOG_FILE="${LOG_DIR}/connect-cluster-$(date +%Y%m%d-%H%M%S).log"
