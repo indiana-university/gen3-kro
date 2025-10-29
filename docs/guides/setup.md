@@ -259,10 +259,11 @@ cd /workspaces/gen3-kro  # Repository root
 ```
 
 This script:
-1. Extracts cluster name and region from Terragrunt outputs
+1. Reads cluster name and region from secrets.yaml
 2. Updates `~/.kube/config` with cluster credentials
-3. Retrieves ArgoCD admin password from `outputs/argo/admin-password.txt`
-4. Logs in to ArgoCD CLI
+3. Retrieves ArgoCD admin password from Kubernetes secret
+4. Retrieves ArgoCD LoadBalancer URL from Kubernetes service
+5. Logs in to ArgoCD CLI
 
 Verify connectivity:
 ```bash

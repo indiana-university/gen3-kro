@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ###############################################################################
 # Connect Cluster Script
-# Updates kubeconfig to connect to the EKS cluster using Terragrunt outputs
+# Updates kubeconfig to connect to the EKS cluster and configures ArgoCD access
 ###############################################################################
 
 set -euo pipefail
@@ -43,7 +43,7 @@ done
 # Main Execution
 ###############################################################################
 LOG_DIR="${REPO_ROOT}/outputs/logs"
-TERRAGRUNT_DIR="${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev"
+STACK_DIR="${STACK_DIR:-${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev}"
 
 mkdir -p "$LOG_DIR"
 
@@ -55,19 +55,26 @@ log_info "Connect to EKS Cluster - gen3-kro"
 log_info "========================================="
 
 ###############################################################################
-# Retrieve Cluster Information
+# Retrieve Cluster Information from secrets.yaml
 ###############################################################################
-cd "$TERRAGRUNT_DIR"
+SECRETS_FILE="${STACK_DIR}/secrets.yaml"
 
-log_info "Retrieving cluster information from Terragrunt..."
+if [[ ! -f "$SECRETS_FILE" ]]; then
+  log_error "Secrets file not found: $SECRETS_FILE"
+  log_info "Make sure you have created secrets.yaml in your stack directory"
+  exit 1
+fi
 
-CLUSTER_NAME=$(terragrunt output -raw cluster_name 2>/dev/null || echo "")
-AWS_REGION="us-east-1"  # Hard-coded for now, can make dynamic later
-AWS_PROFILE=$(terragrunt output -raw aws_profile 2>/dev/null || echo "default")
+log_info "Reading cluster configuration from secrets.yaml..."
+
+# Parse secrets.yaml to get cluster info
+CLUSTER_NAME=$(grep -A 2 "csoc:" "$SECRETS_FILE" | grep "cluster_name:" | awk '{print $2}' | tr -d '"' || echo "")
+AWS_REGION=$(grep -A 5 "provider:" "$SECRETS_FILE" | grep "region:" | head -1 | awk '{print $2}' | tr -d '"' || echo "us-east-1")
+AWS_PROFILE=$(grep -A 5 "provider:" "$SECRETS_FILE" | grep "profile:" | head -1 | awk '{print $2}' | tr -d '"' || echo "")
 
 if [[ -z "$CLUSTER_NAME" ]]; then
-  log_error "Could not retrieve cluster name from Terragrunt outputs"
-  log_info "Make sure you have run 'terragrunt apply' first"
+  log_error "Could not retrieve cluster name from secrets.yaml"
+  log_info "Make sure your secrets.yaml is properly configured"
   exit 1
 fi
 
@@ -79,15 +86,29 @@ log_info "AWS Profile: $AWS_PROFILE"
 # Update Kubeconfig
 ###############################################################################
 log_info "Updating kubeconfig..."
+
+# Build AWS CLI command with optional profile
+AWS_CMD="aws eks update-kubeconfig --name \"$CLUSTER_NAME\" --region \"$AWS_REGION\" --alias \"$CLUSTER_NAME\""
+if [[ -n "$AWS_PROFILE" ]]; then
+  AWS_CMD="$AWS_CMD --profile \"$AWS_PROFILE\""
+fi
+
 if [[ "$DRY_RUN" -eq 1 ]]; then
-  log_info "DRY RUN: would run: aws eks update-kubeconfig --name \"$CLUSTER_NAME\" --region \"$AWS_REGION\" --profile \"$AWS_PROFILE\" --alias \"$CLUSTER_NAME\""
+  log_info "DRY RUN: would run: $AWS_CMD"
   log_info "DRY RUN: would verify kubectl connectivity: kubectl cluster-info --context \"$CLUSTER_NAME\""
 else
-  aws eks update-kubeconfig \
-    --name "$CLUSTER_NAME" \
-    --region "$AWS_REGION" \
-    --profile "$AWS_PROFILE" \
-    --alias "$CLUSTER_NAME"
+  if [[ -n "$AWS_PROFILE" ]]; then
+    aws eks update-kubeconfig \
+      --name "$CLUSTER_NAME" \
+      --region "$AWS_REGION" \
+      --profile "$AWS_PROFILE" \
+      --alias "$CLUSTER_NAME"
+  else
+    aws eks update-kubeconfig \
+      --name "$CLUSTER_NAME" \
+      --region "$AWS_REGION" \
+      --alias "$CLUSTER_NAME"
+  fi
 
   log_success "✓ Kubeconfig updated successfully"
   log_info "Context: $CLUSTER_NAME"
@@ -106,19 +127,42 @@ fi
 ###############################################################################
 log_info ""
 log_info "Retrieving ArgoCD access information..."
-ARGOCD_PASSWORD=$(terragrunt output -raw argocd_admin_password 2>/dev/null || echo "")
-ARGOCD_LB_URL=$(terragrunt output -raw argocd_loadbalancer_url 2>/dev/null || echo "")
+
+# Get ArgoCD password from Kubernetes secret (not Terragrunt output)
+ARGOCD_PASSWORD=$(kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" 2>/dev/null | base64 -d 2>/dev/null || echo "")
+
+# Get ArgoCD LoadBalancer hostname from Kubernetes service
+ARGOCD_LB_URL=$(kubectl -n argocd get svc argo-cd-argocd-server -o jsonpath='{.status.loadBalancer.ingress[0].hostname}' 2>/dev/null || echo "")
 
 if [[ -n "$ARGOCD_PASSWORD" ]]; then
   log_success "✓ ArgoCD Admin Password: $ARGOCD_PASSWORD"
+
+  # Save password to outputs directory for future reference
+  mkdir -p "${REPO_ROOT}/outputs/argo"
+  echo "$ARGOCD_PASSWORD" > "${REPO_ROOT}/outputs/argo/admin-password.txt"
+  echo "$ARGOCD_LB_URL" >> "${REPO_ROOT}/outputs/argo/admin-password.txt"
+  chmod 600 "${REPO_ROOT}/outputs/argo/admin-password.txt"
+  log_info "  (saved to outputs/argo/admin-password.txt)"
 else
-  log_info "ArgoCD password not available (might not be deployed yet)"
+  log_info "ArgoCD password not available (ArgoCD might not be deployed yet)"
 fi
 
-if [[ -n "$ARGOCD_LB_URL" && "$ARGOCD_LB_URL" != "null" ]]; then
+if [[ -n "$ARGOCD_LB_URL" ]]; then
   log_success "✓ ArgoCD LoadBalancer URL: https://$ARGOCD_LB_URL"
+  log_info "  Username: admin"
+  log_info "  Password: $ARGOCD_PASSWORD"
+
+  # Try to login to ArgoCD CLI
+  if command -v argocd >/dev/null 2>&1 && [[ -n "$ARGOCD_PASSWORD" ]]; then
+    log_info "Logging in to ArgoCD CLI..."
+    if argocd login "$ARGOCD_LB_URL" --username admin --password "$ARGOCD_PASSWORD" --insecure >/dev/null 2>&1; then
+      log_success "✓ ArgoCD CLI logged in successfully"
+    else
+      log_warn "Could not login to ArgoCD CLI (server might still be starting)"
+    fi
+  fi
 else
-  log_info "ArgoCD LoadBalancer URL not available (using port-forward instead)"
+  log_info "ArgoCD LoadBalancer not available (using port-forward instead)"
   log_info "To access ArgoCD via port-forward:"
   log_info "  kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:443"
   log_info "  Then visit: https://localhost:8080"
