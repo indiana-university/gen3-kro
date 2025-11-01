@@ -167,7 +167,7 @@ locals {
             {
               # Create service account annotations for each addon
               for k, v in module.managed_identities :
-              "${replace(k, "-", "")}_service_account" => lookup(var.addon_configs[k], "service_account", k)
+              "${replace(k, "-", "_")}_service_account" => lookup(var.addon_configs[k], "service_account", k)
             },
             {
               # Create hub identity client ID annotations

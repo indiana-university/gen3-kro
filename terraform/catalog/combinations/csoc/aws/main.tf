@@ -180,12 +180,12 @@ locals {
             {
               # Create service account annotations for each addon
               for k, v in module.pod_identities :
-              "${replace(k, "-", "")}_service_account" => lookup(var.addon_configs[k], "unknown_service_account", k)
+              "${replace(k, "-", "_")}_service_account" => lookup(var.addon_configs[k], "unknown_service_account", k)
             },
             {
               # Create hub role ARN annotations for ACK controllers
               for k, v in module.pod_identities :
-              "${replace(k, "-", "")}_hub_role_arn" => v.role_arn
+              "${replace(k, "-", "_")}_hub_role_arn" => v.role_arn
             },
           )
         }
