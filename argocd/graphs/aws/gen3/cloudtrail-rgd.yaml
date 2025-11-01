@@ -1,0 +1,49 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gen3cloudtrail.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Gen3CloudTrail
+    spec:
+      name: string
+      region: string
+      s3BucketName: string
+      includeGlobalServiceEvents: boolean | default=true
+      isMultiRegionTrail: boolean | default=true
+      enableLogFileValidation: boolean | default=true
+      cloudWatchLogsLogGroupARN: string | default=""
+      cloudWatchLogsRoleARN: string | default=""
+      kmsKeyID: string | default=""
+    status:
+      trailARN: ${trail.status.ackResourceMetadata.arn}
+      trailName: ${trail.status.name}
+
+  resources:
+  - id: trail
+    template:
+      apiVersion: cloudtrail.services.k8s.aws/v1alpha1
+      kind: Trail
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.name}
+        s3BucketName: ${schema.spec.s3BucketName}
+        includeGlobalServiceEvents: ${schema.spec.includeGlobalServiceEvents}
+        isMultiRegionTrail: ${schema.spec.isMultiRegionTrail}
+        enableLogFileValidation: ${schema.spec.enableLogFileValidation}
+        cloudWatchLogsLogGroupARN: ${schema.spec.cloudWatchLogsLogGroupARN}
+        cloudWatchLogsRoleARN: ${schema.spec.cloudWatchLogsRoleARN}
+        kmsKeyID: ${schema.spec.kmsKeyID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}
+          - key: "Environment"
+            value: "gen3"

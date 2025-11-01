@@ -1,0 +1,88 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gen3opensearch.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Gen3OpenSearch
+    spec:
+      name: string
+      region: string
+      vpcID: string
+      subnetIDs: string[]
+      engineVersion: string | default="OpenSearch_2.11"
+      instanceType: string | default="t3.small.search"
+      instanceCount: number | default=1
+      volumeSize: number | default=10
+    status:
+      domainARN: ${domain.status.ackResourceMetadata.arn}
+      domainName: ${domain.status.domainName}
+      endpoint: ${domain.status.endpoint}
+      kibanaEndpoint: ${domain.status.endpoints.kibana}
+
+  resources:
+  - id: securityGroup
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: SecurityGroup
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-opensearch-sg
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.name}-opensearch-sg
+        description: "Gen3 OpenSearch security group"
+        vpcID: ${schema.spec.vpcID}
+        ingressRules:
+          - fromPort: 443
+            toPort: 443
+            ipProtocol: tcp
+            ipRanges:
+              - cidrIP: 10.0.0.0/8
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-opensearch-sg
+          - key: "Environment"
+            value: "gen3"
+  - id: domain
+    template:
+      apiVersion: opensearchservice.services.k8s.aws/v1alpha1
+      kind: Domain
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-opensearch
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.name}-opensearch
+        engineVersion: ${schema.spec.engineVersion}
+        clusterConfig:
+          instanceType: ${schema.spec.instanceType}
+          instanceCount: ${schema.spec.instanceCount}
+          dedicatedMasterEnabled: false
+          zoneAwarenessEnabled: false
+        ebsOptions:
+          ebsEnabled: true
+          volumeSize: ${schema.spec.volumeSize}
+          volumeType: gp3
+        vpcOptions:
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs:
+            - ${securityGroup.status.id}
+        encryptionAtRestOptions:
+          enabled: true
+        nodeToNodeEncryptionOptions:
+          enabled: true
+        domainEndpointOptions:
+          enforceHTTPS: true
+          tlsSecurityPolicy: Policy-Min-TLS-1-2-2019-07
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-opensearch
+          - key: "Environment"
+            value: "gen3"
