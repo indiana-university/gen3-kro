@@ -57,8 +57,8 @@ spec:
         addon: '{{.addon}}'
         fleet-member: control-plane
       annotations:
-        # KRO must be installed first (wave -1), other addons in wave 0
-        argocd.argoproj.io/sync-wave: '{{if eq .addon "kro"}}"-1"{{else}}"0"{{end}}'
+        # KRO must be installed first (wave -1), cloud controllers at wave 0
+        argocd.argoproj.io/sync-wave: '{{if eq .addon "kro"}}"-1"{{else if or (hasPrefix "ack-" .addon) (hasPrefix "gcc-" .addon) (hasPrefix "aso-" .addon)}}"0"{{else}}"0"{{end}}'
     spec:
       project: default
       sources:
@@ -81,10 +81,20 @@ spec:
               # ACK controller common configuration
               aws:
                 region: {{.metadata.annotations.aws_region}}
+              {{- /* build a few possible annotation keys to be tolerant of different cluster secret naming */}}
+              {{- $ann := .metadata.annotations }}
+              {{- $addon := .addon }}
+              {{- $noDash := replace $addon "-" "" }}
+              {{- $trim := trimPrefix "ack-" $addon }}
+              {{- $saKey1 := printf "ack_%s_service_account" $trim }}
+              {{- $saKey2 := printf "%s_service_account" $noDash }}
+              {{- $roleKey1 := printf "ack_%s_hub_role_arn" $trim }}
+              {{- $roleKey2 := printf "%s_hub_role_arn" $noDash }}
+              {{- $roleKey3 := printf "%s_irsa_role_arn" $noDash }}
               serviceAccount:
-                name: {{index .metadata.annotations (printf "ack_%s_service_account" (trimPrefix "ack-" .addon))}}
+                name: {{- if hasKey $ann $saKey1 -}}{{ index $ann $saKey1 -}}{{- else if hasKey $ann $saKey2 -}}{{ index $ann $saKey2 -}}{{- else -}}{{- /* fall back to empty -*/ }}{{- end }}
                 annotations:
-                  eks.amazonaws.com/role-arn: {{index .metadata.annotations (printf "ack_%s_hub_role_arn" (trimPrefix "ack-" .addon))}}
+                  eks.amazonaws.com/role-arn: {{- if hasKey $ann $roleKey1 -}}{{ index $ann $roleKey1 -}}{{- else if hasKey $ann $roleKey2 -}}{{ index $ann $roleKey2 -}}{{- else if hasKey $ann $roleKey3 -}}{{ index $ann $roleKey3 -}}{{- else -}}{{- /* leave blank if not present */ }}{{- end }}
               {{- end }}
         # Values repository reference for valueFiles
         - repoURL: '{{.metadata.annotations.hub_repo_url}}'
@@ -102,8 +112,11 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
         retry:
-          limit: 3
+          limit: 5
           backoff:
             duration: 5s
             factor: 2
