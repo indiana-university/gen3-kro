@@ -15,7 +15,7 @@ spec:
             repoURL: '{{.metadata.annotations.rgds_repo_url}}'
             revision: '{{.metadata.annotations.branch}}'
             directories:
-              - path: '{{.metadata.annotations.rgds_path}}/*'
+              - path: '{{.metadata.annotations.hub_repo_basepath}}/graphs/instances/*'
         - clusters:
             selector:
               matchLabels:
@@ -31,14 +31,27 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.rgds_repo_url}}'
+        repoURL: '{{.metadata.annotations.hub_repo_url}}'
         targetRevision: '{{.metadata.annotations.branch}}'
-        path: '{{- if .path }}{{ .path.path }}/infrastructure{{- else }}{{ .name }}/infrastructure{{- end }}'
+        path: '{{- if .path }}{{ .path.path }}/infrastructure{{- else }}{{ .metadata.annotations.hub_repo_basepath }}/graphs/instances/{{ .name }}/infrastructure{{- end }}'
         kustomize:
           commonLabels:
             cluster: '{{- if .path }}{{ .path.basename }}{{- else }}{{ .name }}{{- end }}'
       destination:
         server: '{{ .server }}'
         namespace: default
-    automated:
-      enabled: true
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 5m

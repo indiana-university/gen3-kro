@@ -16,10 +16,10 @@ spec:
             matchLabels:
               fleet_member: control-plane
       - git:
-          repoURL: '{{.metadata.annotations.rgds_repo_url}}'
+          repoURL: '{{.metadata.annotations.hub_repo_url}}'
           revision: '{{.metadata.annotations.branch}}'
           files:
-            - path: '{{.metadata.annotations.rgds_path}}/graphs/**/*.yaml'
+            - path: '{{.metadata.annotations.hub_repo_basepath}}/graphs/**/*.yaml'
   template:
     metadata:
       name: '{{- if .path }}{{ .path.filenameNormalized }}-{{ .name }}{{- else }}{{ .name }}{{- end }}'
@@ -29,11 +29,24 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.rgds_repo_url}}'
+        repoURL: '{{.metadata.annotations.hub_repo_url}}'
         targetRevision: '{{.metadata.annotations.branch}}'
-        path: '{{- if .path }}{{ .path.path }}{{- else }}{{ .metadata.annotations.rgds_path }}/graphs/{{ .name }}{{- end }}'
+        path: '{{- if .path }}{{ .path.path }}{{- else }}{{ .metadata.annotations.hub_repo_basepath }}/graphs/{{ .name }}{{- end }}'
       destination:
         name: '{{.name}}'
         namespace: default
       syncPolicy:
-        automated: {}
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+          - RespectIgnoreDifferences=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 5m
