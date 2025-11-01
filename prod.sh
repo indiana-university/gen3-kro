@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 ###############################################################################
-# Terragrunt Wrapper Script
-# Simple wrapper for Terragrunt stack operations
+# Terragrunt Wrapper Script - Production Version
+# Uses branch from secrets.yaml as-is (no auto-update)
 ###############################################################################
 
 set -euo pipefail
@@ -33,21 +33,34 @@ echo ""
 ###############################################################################
 usage() {
   cat <<EOF
-Usage: $(basename "$0") COMMAND
+Usage: $(basename "$0") [COMMAND] [OPTIONS]
 
-COMMAND:
+Production version - uses branch from secrets.yaml without modification.
+
+Terragrunt wrapper that sets up logging and working directory.
+Passes all commands and flags directly to Terragrunt.
+
+COMMON COMMANDS:
+  init        Initialize Terragrunt stack
   plan        Preview infrastructure changes
   apply       Deploy infrastructure
   destroy     Destroy infrastructure
   output      Show stack outputs
   validate    Validate configuration
+  run-all     Run command across all modules
+  
+  Any other Terragrunt command is also supported
 
 ENVIRONMENT VARIABLES:
   STACK_DIR   Path to stack directory (default: live/aws/us-east-1/gen3-kro-dev)
 
 EXAMPLES:
+  $(basename "$0") init
   $(basename "$0") plan
   $(basename "$0") apply
+  $(basename "$0") run-all apply
+  $(basename "$0") run-all plan
+  $(basename "$0") state list
   STACK_DIR=/path/to/stack $(basename "$0") plan
 
 EOF
@@ -61,58 +74,39 @@ if [ $# -eq 0 ]; then
   exit 1
 fi
 
+# Handle help flags
+if [[ "$1" == "-h" || "$1" == "--help" || "$1" == "help" ]]; then
+  usage
+  exit 0
+fi
+
+# All arguments are passed to terragrunt
 COMMAND="$1"
-shift || true
 
 # Change to stack directory
 cd "${STACK_DIR}"
 
-# Execute command
-case "$COMMAND" in
-  plan)
-    echo "Running terragrunt plan..."
-    terragrunt plan -all "$@" 2>&1 | tee -a "$LOG_FILE"
-    ;;
-  apply)
-    echo "Running terragrunt apply..."
-    terragrunt apply -all "$@" 2>&1 | tee -a "$LOG_FILE"
-    APPLY_EXIT_CODE=$?
+# Execute terragrunt with all arguments, with special handling for apply
+if [[ "$COMMAND" == "apply" ]] || [[ "$COMMAND" == "run-all" && "${2:-}" == "apply" ]]; then
+  echo "Running terragrunt $@..."
+  terragrunt "$@" 2>&1 | tee -a "$LOG_FILE"
+  APPLY_EXIT_CODE=$?
 
-    # Automatically configure cluster access after successful apply
-    if [[ $APPLY_EXIT_CODE -eq 0 ]]; then
-      echo ""
-      echo "✓ Apply successful! Configuring cluster access..."
-      if [[ -f "${REPO_ROOT}/scripts/connect-cluster.sh" ]]; then
-        STACK_DIR="${STACK_DIR}" "${REPO_ROOT}/scripts/connect-cluster.sh"
-      else
-        echo "Warning: connect-cluster.sh not found, skipping cluster configuration"
-      fi
+  # Automatically configure cluster access after successful apply
+  if [[ $APPLY_EXIT_CODE -eq 0 ]]; then
+    echo ""
+    echo "✓ Apply successful! Configuring cluster access..."
+    if [[ -f "${REPO_ROOT}/scripts/connect-cluster.sh" ]]; then
+      STACK_DIR="${STACK_DIR}" "${REPO_ROOT}/scripts/connect-cluster.sh"
+    else
+      echo "Warning: connect-cluster.sh not found, skipping cluster configuration"
     fi
-    exit $APPLY_EXIT_CODE
-    ;;
-  destroy)
-    echo "Running terragrunt destroy..."
-    terragrunt destroy -all "$@" 2>&1 | tee -a "$LOG_FILE"
-    ;;
-  validate)
-    echo "Running terragrunt validate..."
-    terragrunt validate -all "$@" 2>&1 | tee -a "$LOG_FILE"
-    ;;
-  output)
-    echo "Running terragrunt output..."
-    terragrunt output "$@" 2>&1 | tee -a "$LOG_FILE"
-    ;;
-  -h|--help|help)
-    usage
-    exit 0
-    ;;
-  *)
-    echo "ERROR: Unknown command: $COMMAND"
-    usage
-    exit 1
-    ;;
-esac
+  fi
+  exit $APPLY_EXIT_CODE
+else
+  echo "Running terragrunt $@..."
+  terragrunt "$@" 2>&1 | tee -a "$LOG_FILE"
+fi
 
 echo ""
 echo "Log saved to: ${LOG_FILE}"
-

@@ -98,7 +98,7 @@ locals {
 ###############################################################################
   addon_configs = lookup(local.csoc_config, "addon_configs", {})
 
-  outputs_dir            = lookup(local.paths_config, "outputs_dir", "./outputs")
+  outputs_dir            = lookup(local.paths_config, "outputs_dir", "../../../../../../../../../../outputs")
   terraform_state_bucket = local.state_bucket
   terraform_locks_table  = lookup(local.csoc_provider_config, "terraform_locks_table", "")
 
