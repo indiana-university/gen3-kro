@@ -1,0 +1,69 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gen3efs.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Gen3EFS
+    spec:
+      name: string
+      region: string
+      vpcID: string
+      subnetIDs: string[]
+      performanceMode: string | default="generalPurpose"
+      throughputMode: string | default="bursting"
+      encrypted: boolean | default=true
+      kmsKeyID: string | default=""
+    status:
+      fileSystemARN: ${fileSystem.status.ackResourceMetadata.arn}
+      fileSystemID: ${fileSystem.status.fileSystemID}
+      mountTargetIDs: ${mountTargets.status.mountTargetIDs}
+
+  resources:
+  - id: securityGroup
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: SecurityGroup
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-efs-sg
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.name}-efs-sg
+        description: "Gen3 EFS security group"
+        vpcID: ${schema.spec.vpcID}
+        ingressRules:
+          - fromPort: 2049
+            toPort: 2049
+            ipProtocol: tcp
+            ipRanges:
+              - cidrIP: 10.0.0.0/8
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-efs-sg
+          - key: "Environment"
+            value: "gen3"
+  - id: fileSystem
+    template:
+      apiVersion: efs.services.k8s.aws/v1alpha1
+      kind: FileSystem
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        performanceMode: ${schema.spec.performanceMode}
+        throughputMode: ${schema.spec.throughputMode}
+        encrypted: ${schema.spec.encrypted}
+        kmsKeyID: ${schema.spec.kmsKeyID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}
+          - key: "Environment"
+            value: "gen3"
