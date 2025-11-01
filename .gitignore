@@ -89,7 +89,6 @@ terraform/live/**/kube_providers.tf
 **/backend.hcl
 **/backend-override.hcl
 # Project-specific ignores
-**/kro
 # # IAM policies: track only _default; ignore others
 /iam/aws/**
 !/iam/aws/_default
