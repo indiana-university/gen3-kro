@@ -6,7 +6,7 @@ locals {
   services_needing_roles = {
     for addon_name, addon_config in var.addon_configs :
     addon_name => {
-      hub_principal_id = lookup(var.csoc_pod_identity_arns, addon_name, "")
+      csoc_principal_id = lookup(var.csoc_pod_identity_arns, addon_name, "")
     }
     if lookup(addon_config, "enable_identity", false) &&
     lookup(var.csoc_pod_identity_arns, addon_name, "") != ""
@@ -40,7 +40,7 @@ module "service_role" {
 
   service_name                      = each.key
   spoke_alias                       = var.spoke_alias
-  hub_managed_identity_principal_id = each.value.hub_principal_id
+  csoc_managed_identity_principal_id = each.value.csoc_principal_id
   scope                             = "/subscriptions/${var.subscription_id}"
   role_definition_name              = "Contributor"
   custom_role_definition_id         = ""
@@ -78,7 +78,7 @@ module "argocd_configmap" {
         policy_arn    = "" # Not applicable for Azure
         service_name  = k
         policy_source = "spoke_created"
-        principal_id  = lookup(local.services_needing_roles[k], "hub_principal_id", "")
+        principal_id  = lookup(local.services_needing_roles[k], "csoc_principal_id", "")
       }
     },
     {

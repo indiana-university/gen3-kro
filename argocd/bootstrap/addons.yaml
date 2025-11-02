@@ -5,7 +5,7 @@
 #
 # Structure:
 # - addons.yaml (this file) -> Deploys ApplicationSets
-#   - csoc-addons.yaml -> Generates CSOC/hub addon Applications
+#   - csoc-addons.yaml -> Generates CSOC addon Applications
 #   - spoke-addons.yaml -> Generates spoke addon Applications (if applicable)
 #
 apiVersion: argoproj.io/v1alpha1

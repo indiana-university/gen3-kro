@@ -1,12 +1,12 @@
-# Addon Enablement Configuration for Hub Cluster
-cluster: gen3-kro-hub-staging
+# Addon Enablement Configuration for CSOC Cluster
+cluster: gen3-csoc-dev
 
 enablement:
   # KRO - Required first for ResourceGraphDefinitions
   kro:
     enabled: true
 
-  # ACK Controllers - All enabled for hub
+  # ACK Controllers - All enabled for CSOC
   ack-cloudtrail:
     enabled: true
   ack-cloudwatchlogs:

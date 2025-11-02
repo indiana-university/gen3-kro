@@ -17,8 +17,8 @@ spec:
                 matchLabels:
                   fleet_member: {{ default "control-plane" .Values.fleetMember }}
           - git:
-              repoURL: '{{ default $vals.hubRepoURL .Values.hubRepoURL }}'
-              revision: '{{ default $vals.hubRepoRevision .Values.hubRepoRevision }}'
+              repoURL: '{{ default $vals.csocRepoURL .Values.csocRepoURL }}'
+              revision: '{{ default $vals.csocRepoRevision .Values.csocRepoRevision }}'
               files:
                 - path: '{{ default $vals.catalogPath .Values.catalogPath }}'
   template:
@@ -47,13 +47,13 @@ spec:
                 tag: {{`{{`}}.revision{{`}}`}}
               {{`{{-`}} end {{`}}`}}
               {{`{{-`}} if hasPrefix "ack-" .addon {{`}}`}}
-              {{`{{-`}} with .metadata.annotations.hub_aws_region {{`}}`}}
+              {{`{{-`}} with .metadata.annotations.csoc_aws_region {{`}}`}}
               aws:
                 region: {{`{{`}} . {{`}}`}}
               {{`{{-`}} end {{`}}`}}
               {{`{{-`}} end {{`}}`}}
-        - repoURL: '{{ default $vals.hubRepoURL .Values.hubRepoURL }}'
-          targetRevision: '{{ default $vals.hubRepoRevision .Values.hubRepoRevision }}'
+        - repoURL: '{{ default $vals.csocRepoURL .Values.csocRepoURL }}'
+          targetRevision: '{{ default $vals.csocRepoRevision .Values.csocRepoRevision }}'
           ref: values
       destination:
         name: '{{`{{`}}.name{{`}}`}}'

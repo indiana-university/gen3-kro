@@ -18,8 +18,8 @@ variable "service_name" {
   type        = string
 }
 
-variable "hub_managed_identity_principal_id" {
-  description = "Principal ID of hub managed identity"
+variable "csoc_managed_identity_principal_id" {
+  description = "Principal ID of CSOC managed identity"
   type        = string
 }
 

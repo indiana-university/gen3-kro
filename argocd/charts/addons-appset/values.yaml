@@ -10,11 +10,11 @@ enablementPath: "addons/csoc/enablement.yaml"
 # Path (in repo) to the values file used by addons
 valuesPath: "addons/csoc/values.yaml"
 
-# Information about the hub repo that will be passed in by the caller (hub ApplicationSet)
+# Information about the CSOC repo that will be passed in by the caller (CSOC ApplicationSet)
 # These are intentionally left blank and expected to be set by the parent ApplicationSet via values.
-hubRepoURL: ""
-hubRepoRevision: ""
-hubRepoBasePath: ""
+csocRepoURL: ""
+csocRepoRevision: ""
+csocRepoBasePath: ""
 partOf: "addons"
 appSetName: "addons"
 fleetMember: "control-plane"

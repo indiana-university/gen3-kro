@@ -152,14 +152,14 @@ module "managed_identities" {
 
 ###############################################################################
 locals {
-  hub_gitops_context = merge(
+  csoc_gitops_context = merge(
     {
       provider             = "azure"
       region               = var.location
       azure_region         = var.location
-      hub_repo_url         = try(var.argocd_cluster.metadata.annotations.hub_repo_url, "")
-      hub_repo_revision    = try(var.argocd_cluster.metadata.annotations.hub_repo_revision, "main")
-      hub_repo_basepath    = try(var.argocd_cluster.metadata.annotations.hub_repo_basepath, "argocd")
+      csoc_repo_url        = try(var.argocd_cluster.metadata.annotations.csoc_repo_url, "")
+      csoc_repo_revision   = try(var.argocd_cluster.metadata.annotations.csoc_repo_revision, "main")
+      csoc_repo_basepath   = try(var.argocd_cluster.metadata.annotations.csoc_repo_basepath, "argocd")
       addons_repo_url      = try(var.argocd_cluster.metadata.annotations.addons_repo_url, "")
       addons_repo_revision = try(var.argocd_cluster.metadata.annotations.addons_repo_revision, "main")
       addons_repo_basepath = try(var.argocd_cluster.metadata.annotations.addons_repo_basepath, "argocd")
@@ -184,7 +184,7 @@ locals {
     "inline_policy"
   ]
 
-  hub_addons_config = {
+  csoc_addons_config = {
     for addon_name, addon_config in var.addon_configs : addon_name => merge(
       {
         namespace      = lookup(addon_config, "namespace", addon_name)
@@ -206,8 +206,8 @@ locals {
   argocd_cluster_annotations_enhanced = merge(
     try(var.argocd_cluster.metadata.annotations, {}),
     {
-      "csoc.kro.dev/addons-config"  = yamlencode(local.hub_addons_config)
-      "csoc.kro.dev/gitops-context" = yamlencode(local.hub_gitops_context)
+      "csoc.kro.dev/addons-config"  = yamlencode(local.csoc_addons_config)
+      "csoc.kro.dev/gitops-context" = yamlencode(local.csoc_gitops_context)
     }
   )
 
@@ -256,9 +256,9 @@ module "argocd" {
 }
 
 ###############################################################################
-# Hub ConfigMap
+# CSOC ConfigMap
 ###############################################################################
-module "hub_configmap" {
+module "csoc_configmap" {
   source = "../../../modules/configmap"
 
   create           = var.enable_vpc && var.enable_k8s_cluster && var.enable_argocd
@@ -299,7 +299,7 @@ module "hub_configmap" {
     tenant_id       = try(data.azurerm_client_config.current.tenant_id, "")
   }
 
-  gitops_context = local.hub_gitops_context
+  gitops_context = local.csoc_gitops_context
 
   spokes = {}
 

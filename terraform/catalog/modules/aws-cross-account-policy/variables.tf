@@ -8,13 +8,13 @@ variable "service_name" {
   type        = string
 }
 
-variable "hub_pod_identity_role_arn" {
-  description = "ARN of the hub pod identity IAM role to attach the policy to"
+variable "csoc_pod_identity_role_arn" {
+  description = "ARN of the CSOC pod identity IAM role to attach the policy to"
   type        = string
 }
 
 variable "spoke_role_arns" {
-  description = "List of spoke role ARNs that the hub pod identity can assume"
+  description = "List of spoke role ARNs that the CSOC pod identity can assume"
   type        = list(string)
   default     = []
 }
