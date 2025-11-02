@@ -63,7 +63,7 @@ spec:
           chart: '{{.chart}}'
           helm:
             valueFiles:
-              - $values/{{.metadata.annotations.addons_repo_basepath}}/addons/csoc/values.yaml
+              - $values/argocd/addons/csoc/values.yaml
             values: |
               {{- $addonsConfig := dict }}
               {{- with (index .metadata.annotations "csoc.kro.dev/addons-config") }}
