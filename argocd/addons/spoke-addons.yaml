@@ -1,7 +1,7 @@
 # # Spoke Addons ApplicationSet
 # #
 # # This ApplicationSet deploys cluster addons (KRO, ACK controllers, and platform components)
-# # to spoke clusters only (excludes hub/control-plane).
+# # to spoke clusters only (excludes CSOC/control-plane).
 # #
 # # Data Sources:
 # # 1. Cluster Secret Annotations (from CSOC, propagated to spokes):
@@ -84,7 +84,7 @@
 #               aws:
 #                 region: {{.values.addonsConfigMap.data.gitops-context.aws_region}}
 #               # Get service account and role ARN from spoke ConfigMap addons
-#               # Note: Spoke ConfigMap contains CSOC hub's pod identity role ARNs (not spoke roles)
+#               # Note: Spoke ConfigMap contains CSOC's pod identity role ARNs (not spoke roles)
 #               {{- $addonConfig := index .values.addonsConfigMap.data.addons .addon }}
 #               serviceAccount:
 #                 name: {{$addonConfig.serviceAccount}}

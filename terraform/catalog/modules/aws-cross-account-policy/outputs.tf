@@ -23,7 +23,7 @@ output "service_name" {
   value       = var.service_name
 }
 
-output "hub_role_name" {
-  description = "Name of the hub IAM role (extracted from ARN)"
-  value       = local.hub_role_name
+output "csoc_role_name" {
+  description = "Name of the CSOC IAM role (extracted from ARN)"
+  value       = local.csoc_role_name
 }

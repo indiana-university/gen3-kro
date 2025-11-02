@@ -23,8 +23,8 @@ variable "project_id" {
   type        = string
 }
 
-variable "hub_service_account_email" {
-  description = "Email of hub service account"
+variable "csoc_service_account_email" {
+  description = "Email of CSOC service account"
   type        = string
 }
 

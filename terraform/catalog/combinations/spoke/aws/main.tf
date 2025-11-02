@@ -59,13 +59,13 @@ module "argocd_configmap" {
   # The hub's pod identities will assume the spoke roles via cross-account policies
   pod_identities = merge(
     {
-      # Services with created spoke roles: use hub's pod identity role ARN
+      # Services with created spoke roles: use CSOC's pod identity role ARN
       for k, v in module.service_role : k => {
-        role_arn      = lookup(var.csoc_pod_identity_arns, k, "")  # Hub's pod identity role ARN
+        role_arn      = lookup(var.csoc_pod_identity_arns, k, "")  # CSOC's pod identity role ARN
         role_name     = split("/", lookup(var.csoc_pod_identity_arns, k, "unknown"))[length(split("/", lookup(var.csoc_pod_identity_arns, k, "unknown"))) - 1]
         policy_arn    = ""
         service_name  = k
-        policy_source = "hub_pod_identity"
+        policy_source = "csoc_pod_identity"
       }
     },
     {

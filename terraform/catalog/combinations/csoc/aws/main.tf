@@ -144,9 +144,9 @@ module "cross_account_policy" {
 
   create = var.enable_multi_acct && lookup(each.value, "enable_identity", false) && length(local.spoke_role_arns_by_controller[each.key]) > 0
 
-  service_name              = each.key
-  hub_pod_identity_role_arn = try(module.pod_identities[each.key].role_arn, "")
-  spoke_role_arns           = local.spoke_role_arns_by_controller[each.key]
+  service_name                = each.key
+  csoc_pod_identity_role_arn = try(module.pod_identities[each.key].role_arn, "")
+  spoke_role_arns             = local.spoke_role_arns_by_controller[each.key]
 
   tags = merge(
     var.tags,
@@ -165,7 +165,7 @@ module "cross_account_policy" {
 # Enhance ArgoCD config and apps with default values
 ###############################################################################
 locals {
-  hub_gitops_context = merge(
+  csoc_gitops_context = merge(
     {
       provider             = "aws"
       region               = try(data.aws_region.current.id, "")
@@ -197,7 +197,7 @@ locals {
     "inline_policy"
   ]
 
-  hub_addons_config = {
+  csoc_addons_config = {
     for addon_name, addon_config in var.addon_configs : addon_name => merge(
       {
         namespace      = lookup(addon_config, "namespace", addon_name)
@@ -219,8 +219,8 @@ locals {
   argocd_cluster_annotations_enhanced = merge(
     try(var.argocd_cluster.metadata.annotations, {}),
     {
-      "csoc.kro.dev/addons-config"  = yamlencode(local.hub_addons_config)
-      "csoc.kro.dev/gitops-context" = yamlencode(local.hub_gitops_context)
+      "csoc.kro.dev/addons-config"  = yamlencode(local.csoc_addons_config)
+      "csoc.kro.dev/gitops-context" = yamlencode(local.csoc_gitops_context)
     }
   )
 
@@ -283,9 +283,9 @@ module "argocd" {
 }
 
 ###############################################################################
-# Hub ConfigMap
+# CSOC ConfigMap
 ###############################################################################
-module "hub_configmap" {
+module "csoc_configmap" {
   source = "../../../modules/configmap"
 
   create           = var.enable_vpc && var.enable_k8s_cluster && var.enable_argocd
@@ -322,7 +322,7 @@ module "hub_configmap" {
     public_subnets            = var.enable_vpc ? module.vpc.public_subnets : []
   }
 
-  gitops_context = local.hub_gitops_context
+  gitops_context = local.csoc_gitops_context
 
   spokes = {}
 

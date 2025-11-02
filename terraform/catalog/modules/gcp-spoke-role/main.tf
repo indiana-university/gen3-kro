@@ -3,7 +3,7 @@ resource "google_project_iam_member" "this" {
 
   project = var.project_id
   role    = var.roles[count.index]
-  member  = "serviceAccount:${var.hub_service_account_email}"
+  member  = "serviceAccount:${var.csoc_service_account_email}"
 }
 
 resource "google_project_iam_member" "custom_role" {
@@ -11,5 +11,5 @@ resource "google_project_iam_member" "custom_role" {
 
   project = var.project_id
   role    = "projects/${var.project_id}/roles/${var.custom_role_id}"
-  member  = "serviceAccount:${var.hub_service_account_email}"
+  member  = "serviceAccount:${var.csoc_service_account_email}"
 }

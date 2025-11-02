@@ -102,16 +102,16 @@ output "argocd_installed" {
 }
 
 ###############################################################################
-# Hub ConfigMap Outputs
+# CSOC ConfigMap Outputs
 ###############################################################################
-output "hub_configmap_name" {
-  description = "Name of the hub ConfigMap"
-  value       = try(module.hub_configmap.config_map_name, "")
+output "csoc_configmap_name" {
+  description = "Name of the CSOC ConfigMap"
+  value       = try(module.csoc_configmap.config_map_name, "")
 }
 
-output "hub_configmap_namespace" {
-  description = "Namespace of the hub ConfigMap"
-  value       = try(module.hub_configmap.config_map_namespace, "")
+output "csoc_configmap_namespace" {
+  description = "Namespace of the CSOC ConfigMap"
+  value       = try(module.csoc_configmap.config_map_namespace, "")
 }
 
 ###############################################################################

@@ -1,7 +1,7 @@
-# Hub Addons ApplicationSet
+# CSOC Addons ApplicationSet
 #
 # This ApplicationSet deploys cluster addons (KRO, ACK controllers, and platform components)
-# to hub/control-plane clusters only.
+# to CSOC/control-plane clusters only.
 #
 # Data Sources:
 # 1. Cluster Secret Annotations (from CSOC):
@@ -14,7 +14,7 @@
 #    - Defines available addons with their Helm chart sources and versions
 #
 # 3. Enablement Configuration: addons/csoc/enablement.yaml
-#    - Controls which addons are deployed to hub clusters
+#    - Controls which addons are deployed to CSOC clusters
 #
 # 4. Values Configuration: addons/csoc/values.yaml
 #    - Provides addon-specific configuration (resource limits, role ARNs, etc.)

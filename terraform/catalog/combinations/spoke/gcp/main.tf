@@ -6,7 +6,7 @@ locals {
   services_needing_roles = {
     for addon_name, addon_config in var.addon_configs :
     addon_name => {
-      hub_sa_email = lookup(var.csoc_pod_identity_arns, addon_name, "")
+      csoc_sa_email = lookup(var.csoc_pod_identity_arns, addon_name, "")
     }
     if lookup(addon_config, "enable_identity", false) &&
     lookup(var.csoc_pod_identity_arns, addon_name, "") != ""
@@ -41,7 +41,7 @@ module "service_role" {
   spoke_alias               = var.spoke_alias
   service_name              = each.key
   project_id                = var.project_id
-  hub_service_account_email = each.value.hub_sa_email
+  csoc_service_account_email = each.value.csoc_sa_email
   roles                     = ["roles/viewer"]
   custom_role_id            = ""
 
@@ -68,7 +68,7 @@ module "argocd_configmap" {
         policy_arn            = "" # Not applicable for GCP
         service_name          = k
         policy_source         = "spoke_created"
-        service_account_email = lookup(local.services_needing_roles[k], "hub_sa_email", "")
+        service_account_email = lookup(local.services_needing_roles[k], "csoc_sa_email", "")
       }
     },
     {

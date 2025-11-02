@@ -148,14 +148,14 @@ output "argocd_release_name" {
   value       = var.enable_argocd ? try(module.argocd.argocd[0].name, null) : null
 }
 
-output "argocd_hub_configmap_name" {
-  description = "Name of the hub ConfigMap created for ArgoCD"
-  value       = var.enable_argocd ? try(module.hub_configmap.config_map_name, "") : ""
+output "argocd_csoc_configmap_name" {
+  description = "Name of the CSOC ConfigMap created for ArgoCD"
+  value       = var.enable_argocd ? try(module.csoc_configmap.config_map_name, "") : ""
 }
 
-output "argocd_hub_configmap_namespace" {
-  description = "Namespace of the hub ConfigMap created for ArgoCD"
-  value       = var.enable_argocd ? try(module.hub_configmap.config_map_namespace, "") : ""
+output "argocd_csoc_configmap_namespace" {
+  description = "Namespace of the CSOC ConfigMap created for ArgoCD"
+  value       = var.enable_argocd ? try(module.csoc_configmap.config_map_namespace, "") : ""
 }
 
 output "argocd_cluster_secret" {
