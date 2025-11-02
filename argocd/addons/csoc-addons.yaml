@@ -43,14 +43,7 @@ spec:
               revision: '{{.metadata.annotations.addons_repo_revision}}'
               files:
                 - path: 'argocd/addons/csoc/catalog.yaml'
-          # Enablement configuration to toggle addons per cluster
-          - git:
-              repoURL: '{{.metadata.annotations.addons_repo_url}}'
-              revision: '{{.metadata.annotations.addons_repo_revision}}'
-              files:
-                - path: 'argocd/addons/csoc/enablement.yaml'
   template:
-    when: '{{- $enabledMap := default (dict) .enablement -}}{{- if and (hasKey $enabledMap .addon) ((index $enabledMap .addon).enabled) -}}true{{- else -}}false{{- end -}}'
     metadata:
       name: 'csoc-{{.addon}}'
       labels:
