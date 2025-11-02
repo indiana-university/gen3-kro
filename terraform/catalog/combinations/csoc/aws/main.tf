@@ -162,34 +162,65 @@ module "cross_account_policy" {
 
 ###############################################################################
 # ArgoCD Enhancement Locals
-# Enhance ArgoCD cluster and config with dynamic annotations from pod identities
+# Enhance ArgoCD config and apps with default values
 ###############################################################################
 locals {
-  argocd_cluster_enhanced = merge(
-    var.argocd_cluster,
+  hub_gitops_context = merge(
     {
-      metadata = merge(
-        lookup(var.argocd_cluster, "metadata", {}),
-        {
-          annotations = merge(
-            lookup(lookup(var.argocd_cluster, "metadata", {}), "annotations", {}),
-            {
-              # Add AWS region annotation for ACK controllers
-              aws_region = try(data.aws_region.current.id, "")
-            },
-            {
-              # Create service account annotations for each addon
-              for k, v in module.pod_identities :
-              "${replace(k, "-", "_")}_service_account" => lookup(var.addon_configs[k], "unknown_service_account", k)
-            },
-            {
-              # Create hub role ARN annotations for ACK controllers
-              for k, v in module.pod_identities :
-              "${replace(k, "-", "_")}_hub_role_arn" => v.role_arn
-            },
-          )
-        }
-      )
+      provider             = "aws"
+      region               = try(data.aws_region.current.id, "")
+      aws_region           = try(data.aws_region.current.id, "")
+      csoc_repo_url        = try(var.argocd_cluster.metadata.annotations.csoc_repo_url, "")
+      csoc_repo_revision   = try(var.argocd_cluster.metadata.annotations.csoc_repo_revision, "main")
+      csoc_repo_basepath   = try(var.argocd_cluster.metadata.annotations.csoc_repo_basepath, "argocd")
+      addons_repo_url      = try(var.argocd_cluster.metadata.annotations.addons_repo_url, "")
+      addons_repo_revision = try(var.argocd_cluster.metadata.annotations.addons_repo_revision, "main")
+      addons_repo_basepath = try(var.argocd_cluster.metadata.annotations.addons_repo_basepath, "argocd")
+    },
+    {}
+  )
+
+  addon_config_excluded_keys = [
+    "namespace",
+    "service_account",
+    "enable_identity",
+    "enable",
+    "enabled",
+    "enable_argocd",
+    "argocd_chart_version",
+    "create_permission",
+    "attach_custom_policy",
+    "kms_key_arns",
+    "secrets_manager_arns",
+    "ssm_parameter_arns",
+    "parameter_store_arns",
+    "inline_policy"
+  ]
+
+  hub_addons_config = {
+    for addon_name, addon_config in var.addon_configs : addon_name => merge(
+      {
+        namespace      = lookup(addon_config, "namespace", addon_name)
+        serviceAccount = lookup(addon_config, "service_account", addon_name)
+      },
+      lookup(addon_config, "enable_identity", false) ? {
+        roleArn   = try(module.pod_identities[addon_name].role_arn, "")
+        roleName  = try(module.pod_identities[addon_name].role_name, "")
+        policyArn = try(module.pod_identities[addon_name].policy_arn, "")
+      } : {},
+      {
+        for config_key, config_val in addon_config :
+        config_key => config_val
+        if !contains(local.addon_config_excluded_keys, config_key)
+      }
+    )
+  }
+
+  argocd_cluster_annotations_enhanced = merge(
+    try(var.argocd_cluster.metadata.annotations, {}),
+    {
+      "csoc.kro.dev/addons-config"  = yamlencode(local.hub_addons_config)
+      "csoc.kro.dev/gitops-context" = yamlencode(local.hub_gitops_context)
     }
   )
 
@@ -205,6 +236,32 @@ locals {
       bootstrap = file("${path.module}/../bootstrap/applicationsets.yaml")
     },
     var.argocd_apps
+  )
+
+  # Cluster info for ArgoCD cluster secret
+  argocd_cluster_info = {
+    name   = var.cluster_name
+    server = try(module.eks_cluster.cluster_endpoint, "https://kubernetes.default.svc")
+    region = try(data.aws_region.current.id, "")
+    eks = {
+      version         = try(module.eks_cluster.cluster_version, "")
+      endpoint        = try(module.eks_cluster.cluster_endpoint, "")
+      oidcProvider    = try(module.eks_cluster.oidc_provider, "")
+      oidcProviderArn = try(module.eks_cluster.oidc_provider_arn, "")
+    }
+  }
+
+  argocd_cluster_enhanced = merge(
+    var.argocd_cluster,
+    {
+      cluster_info = local.argocd_cluster_info
+      metadata = merge(
+        try(var.argocd_cluster.metadata, {}),
+        {
+          annotations = local.argocd_cluster_annotations_enhanced
+        }
+      )
+    }
   )
 }
 
@@ -229,12 +286,13 @@ module "argocd" {
 # Hub ConfigMap
 ###############################################################################
 module "hub_configmap" {
-  source = "../../../modules/spokes-configmap"
+  source = "../../../modules/configmap"
 
   create           = var.enable_vpc && var.enable_k8s_cluster && var.enable_argocd
   context          = var.csoc_alias
   cluster_name     = var.cluster_name
   argocd_namespace = var.argocd_namespace
+  outputs_dir      = var.argocd_outputs_dir
 
   pod_identities = {
     for k, v in module.pod_identities : k => {
@@ -264,12 +322,7 @@ module "hub_configmap" {
     public_subnets            = var.enable_vpc ? module.vpc.public_subnets : []
   }
 
-  gitops_context = {
-    hub_repo_url      = try(var.argocd_cluster.metadata.annotations.hub_repo_url, "")
-    hub_repo_revision = try(var.argocd_cluster.metadata.annotations.hub_repo_revision, "main")
-    hub_repo_basepath = try(var.argocd_cluster.metadata.annotations.hub_repo_basepath, "argocd")
-    aws_region        = try(data.aws_region.current.id, "")
-  }
+  gitops_context = local.hub_gitops_context
 
   spokes = {}
 

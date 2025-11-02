@@ -67,6 +67,24 @@ variable "spoke_iam_policies" {
 ###############################################################################
 # ArgoCD and Cluster Information Variables
 ###############################################################################
+variable "enable_argocd" {
+  description = "Whether ArgoCD is enabled in the CSOC cluster"
+  type        = bool
+  default     = false
+}
+
+variable "enable_vpc" {
+  description = "Whether VPC is enabled in the CSOC cluster"
+  type        = bool
+  default     = true
+}
+
+variable "enable_k8s_cluster" {
+  description = "Whether Kubernetes cluster is enabled in the CSOC cluster"
+  type        = bool
+  default     = true
+}
+
 variable "argocd_namespace" {
   description = "Namespace where ArgoCD is deployed"
   type        = string
@@ -95,3 +113,14 @@ variable "cluster_info" {
   })
 }
 
+variable "outputs_dir" {
+  description = "Directory to write output files"
+  type        = string
+  default     = ""
+}
+
+variable "csoc_cluster_secret_annotations" {
+  description = "Annotations from the CSOC cluster secret to include in spoke gitops-context"
+  type        = map(string)
+  default     = {}
+}

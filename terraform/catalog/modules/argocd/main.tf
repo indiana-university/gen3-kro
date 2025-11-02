@@ -69,19 +69,14 @@ locals {
     },
     try(var.cluster.addons, {})
   )
-  argocd_annotations = merge(
-    {
-      cluster_name = local.cluster_name
-    },
-    {
-      for k, v in try(var.cluster.metadata.annotations, {}) :
-      k => (
-        # Kubernetes annotations must be strings
-        # Convert non-string values to strings, objects to YAML
-        can(tostring(v)) && !can(keys(v)) ? tostring(v) : yamlencode(v)
-      )
-    }
-  )
+  argocd_annotations = {
+    for k, v in try(var.cluster.metadata.annotations, {}) :
+    k => (
+      # Kubernetes annotations must be strings
+      # Convert non-string values to strings, objects to YAML
+      can(tostring(v)) && !can(keys(v)) ? tostring(v) : yamlencode(v)
+    )
+  }
 }
 
 locals {
@@ -101,11 +96,16 @@ locals {
       annotations = local.argocd_annotations
       labels      = local.argocd_labels
     }
-    stringData = {
-      name   = local.cluster_name
-      server = try(var.cluster.server, "https://kubernetes.default.svc")
-      config = try(var.cluster.config, local.config)
-    }
+    stringData = merge(
+      {
+        name   = local.cluster_name
+        server = try(var.cluster.server, "https://kubernetes.default.svc")
+        config = try(var.cluster.config, local.config)
+      },
+      try(var.cluster.cluster_info, null) != null ? {
+        "cluster-info" = yamlencode(try(var.cluster.cluster_info, {}))
+      } : {}
+    )
   }
 }
 

@@ -41,10 +41,10 @@ enablement:
   # Platform Components
   external-secrets:
     enabled: true
-  kyverno:
-    enabled: true
-  kyverno-policies:
-    enabled: true
+  # kyverno:
+  #   enabled: true
+  # kyverno-policies:
+  #   enabled: true
   metrics-server:
     enabled: true
   kube-state-metrics:

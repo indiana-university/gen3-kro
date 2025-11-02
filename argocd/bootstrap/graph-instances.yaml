@@ -11,15 +11,15 @@ spec:
   generators:
   - matrix:
       generators:
-        - git:
-            repoURL: '{{.metadata.annotations.rgds_repo_url}}'
-            revision: '{{.metadata.annotations.branch}}'
-            directories:
-              - path: '{{.metadata.annotations.hub_repo_basepath}}/graphs/instances/*'
         - clusters:
             selector:
               matchLabels:
                 fleet_member: control-plane
+        - git:
+            repoURL: '{{.metadata.annotations.rgds_repo_url}}'
+            revision: '{{.metadata.annotations.csoc_repo_revision}}'
+            directories:
+              - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/instances/*'
   template:
     metadata:
       name: '{{- if .path }}{{ .path.basename }}-graph-instances{{- else }}{{ .name }}-graph-instances{{- end }}'
@@ -31,9 +31,9 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.hub_repo_url}}'
-        targetRevision: '{{.metadata.annotations.branch}}'
-        path: '{{- if .path }}{{ .path.path }}/infrastructure{{- else }}{{ .metadata.annotations.hub_repo_basepath }}/graphs/instances/{{ .name }}/infrastructure{{- end }}'
+        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        path: '{{- if .path }}{{ .path.path }}{{- else }}{{ .metadata.annotations.csoc_repo_basepath }}/graphs/instances/{{ .name }}{{- end }}'
         kustomize:
           commonLabels:
             cluster: '{{- if .path }}{{ .path.basename }}{{- else }}{{ .name }}{{- end }}'
@@ -49,6 +49,7 @@ spec:
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
           - RespectIgnoreDifferences=true
+          - Replace=true  # Allow replacing resources including CRDs during sync
         retry:
           limit: 5
           backoff:

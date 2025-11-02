@@ -121,8 +121,12 @@ inputs = {
   # Addon configurations (structured from config.yaml)
   addon_configs = values.addon_configs
 
-  # ArgoCD namespace
+  # ArgoCD configuration
+  enable_argocd    = values.enable_argocd
   argocd_namespace = values.argocd_namespace
+
+  # Outputs directory
+  outputs_dir = values.outputs_dir
 
   # Enable flags (computed)
   enable_multi_acct = values.enable_multi_acct
@@ -133,17 +137,18 @@ inputs = {
   # IAM policies (loaded from repository files)
   spoke_iam_policies = values.spoke_iam_policies
 
-  # CSOC outputs (from dependency)
-  csoc_cluster_name              = dependency.csoc.outputs.cluster_name
-  csoc_cluster_endpoint          = dependency.csoc.outputs.cluster_endpoint
-  csoc_cluster_version           = dependency.csoc.outputs.cluster_version
-  csoc_oidc_provider             = dependency.csoc.outputs.oidc_provider
-  csoc_oidc_provider_arn         = dependency.csoc.outputs.oidc_provider_arn
-  csoc_cluster_security_group_id = dependency.csoc.outputs.cluster_security_group_id
-  csoc_vpc_id                    = dependency.csoc.outputs.vpc_id
-  csoc_private_subnets           = dependency.csoc.outputs.private_subnets
-  csoc_public_subnets            = dependency.csoc.outputs.public_subnets
-  csoc_addons_pod_identity_roles = dependency.csoc.outputs.addons_pod_identity_roles
+  # CSOC outputs (from dependency) - use try() to handle when cluster is disabled
+  csoc_cluster_name              = try(dependency.csoc.outputs.cluster_name, "")
+  csoc_cluster_endpoint          = try(dependency.csoc.outputs.cluster_endpoint, "")
+  csoc_cluster_version           = try(dependency.csoc.outputs.cluster_version, "")
+  csoc_oidc_provider             = try(dependency.csoc.outputs.oidc_provider, "")
+  csoc_oidc_provider_arn         = try(dependency.csoc.outputs.oidc_provider_arn, "")
+  csoc_cluster_security_group_id = try(dependency.csoc.outputs.cluster_security_group_id, "")
+  csoc_vpc_id                    = try(dependency.csoc.outputs.vpc_id, "")
+  csoc_private_subnets           = try(dependency.csoc.outputs.private_subnets, [])
+  csoc_public_subnets            = try(dependency.csoc.outputs.public_subnets, [])
+  csoc_addons_pod_identity_roles = try(dependency.csoc.outputs.addons_pod_identity_roles, {})
+  csoc_cluster_secret_annotations = try(dependency.csoc.outputs.argocd_cluster_secret_metadata.annotations, {})
 }
 
 generate "data" {
@@ -233,7 +238,13 @@ module "spoke_${spoke.alias}" {
   spoke_iam_policies      = lookup(var.spoke_iam_policies, "${spoke.alias}", {})
 
   # ArgoCD configuration
+  enable_argocd           = var.enable_argocd
+  enable_vpc              = var.enable_vpc
+  enable_k8s_cluster      = var.enable_k8s_cluster
   argocd_namespace        = var.argocd_namespace
+
+  # Outputs directory
+  outputs_dir             = var.outputs_dir
 
   # Region and cluster info
   region                  = data.aws_region.current.id
@@ -250,6 +261,9 @@ module "spoke_${spoke.alias}" {
     private_subnets           = var.csoc_private_subnets
     public_subnets            = var.csoc_public_subnets
   }
+
+  # GitOps context from CSOC cluster secret
+  csoc_cluster_secret_annotations = var.csoc_cluster_secret_annotations
 }
 
 %{endfor~}
@@ -298,9 +312,33 @@ variable "addon_configs" {
   type        = any
 }
 
+variable "enable_argocd" {
+  description = "Whether ArgoCD is enabled in the CSOC cluster"
+  type        = bool
+  default     = false
+}
+
+variable "enable_vpc" {
+  description = "Whether VPC is enabled in the CSOC cluster"
+  type        = bool
+  default     = true
+}
+
+variable "enable_k8s_cluster" {
+  description = "Whether Kubernetes cluster is enabled in the CSOC cluster"
+  type        = bool
+  default     = true
+}
+
 variable "argocd_namespace" {
   description = "ArgoCD namespace"
   type        = string
+}
+
+variable "outputs_dir" {
+  description = "Directory to write output files"
+  type        = string
+  default     = ""
 }
 
 variable "cluster_name" {
@@ -361,6 +399,12 @@ variable "csoc_cluster_endpoint" {
 variable "csoc_oidc_provider_arn" {
   description = "CSOC OIDC provider ARN"
   type        = string
+}
+
+variable "csoc_cluster_secret_annotations" {
+  description = "Annotations from the CSOC cluster secret for GitOps context"
+  type        = map(string)
+  default     = {}
 }
 EOF
 }

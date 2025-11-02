@@ -68,9 +68,10 @@ The `argocd` Terraform module (called by `terraform/catalog/combinations/csoc/<p
 ArgoCD ApplicationSet controller evaluates generators and creates individual `Application` resources:
 
 **csoc-addons ApplicationSet** (`bootstrap/csoc-addons.yaml`):
-- **Generators**: Matrix of hub clusters (`fleet_member=control-plane`) × addon catalog (`addons/csoc/catalog.yaml`)
+- **Generators**: Matrix of hub clusters (`fleet_member=control-plane`) × addon catalog (`addons/csoc/catalog.yaml`) × enablement config (`addons/csoc/enablement.yaml`)
 - **Filters**: Only deploys addons listed in `addons/csoc/enablement.yaml`
-- **Sources**: Helm chart (from catalog) + values repository (from `addons/csoc/values.yaml`)
+- **Config data**: Cluster secrets carry `csoc.kro.dev/addons-config` and `csoc.kro.dev/gitops-context` annotations (populated by Terraform) so runtime IAM roles, regions, and service accounts stay out of Git
+- **Sources**: Helm chart (from catalog) + values repository (from `addons/csoc/values.yaml`), with inline overrides built from the secret annotations
 - **Sync waves**: KRO deployed in wave `-1` (must be ready before ResourceGraphDefinitions), all others in wave `0`
 
 **app-instances ApplicationSet** (`bootstrap/app-instances.yaml`):
@@ -94,7 +95,7 @@ ArgoCD ApplicationSet controller evaluates generators and creates individual `Ap
 Each addon Application syncs its Helm chart with values from the repository. Example addon flow:
 
 1. ArgoCD pulls `<addon_name>` Helm chart from the specified source URL (can be an OCI registry or Git repository)
-2. Merges values from `addons/csoc/values.yaml` (e.g., IAM role ARN, resource limits)
+2. Merges values from `addons/csoc/values.yaml`, then overrides dynamic fields with the cluster-secret annotations (`csoc.kro.dev/addons-config`)
 3. Deploys to target namespace
 4. Annotates ServiceAccount with IAM role for Pod Identity
 

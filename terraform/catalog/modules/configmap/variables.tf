@@ -35,7 +35,7 @@ variable "addon_configs" {
 }
 
 variable "cluster_info" {
-  description = "EKS cluster information for ConfigMap"
+  description = "Cluster information for ConfigMap (cloud provider agnostic)"
   type = object({
     cluster_name              = string
     cluster_endpoint          = string
@@ -48,6 +48,11 @@ variable "cluster_info" {
     vpc_id                    = optional(string)
     private_subnets           = optional(list(string))
     public_subnets            = optional(list(string))
+    # Azure specific
+    subscription_id           = optional(string)
+    tenant_id                 = optional(string)
+    # GCP specific
+    project_id                = optional(string)
   })
 }
 
@@ -59,4 +64,10 @@ variable "gitops_context" {
 variable "spokes" {
   description = "Map of spoke configurations with IAM role ARNs per controller"
   type        = any
+}
+
+variable "outputs_dir" {
+  description = "Directory to write output files"
+  type        = string
+  default     = ""
 }

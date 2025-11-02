@@ -182,6 +182,33 @@ output "argocd_server_url" {
   } : null
 }
 
+output "argocd_helm_release" {
+  description = "Complete ArgoCD Helm release object"
+  value       = var.enable_argocd ? try(module.argocd.argocd[0], null) : null
+  sensitive   = true
+}
+
+output "argocd_helm_metadata" {
+  description = "ArgoCD Helm release metadata"
+  value = var.enable_argocd ? try({
+    name       = module.argocd.argocd[0].name
+    namespace  = module.argocd.argocd[0].namespace
+    version    = module.argocd.argocd[0].version
+    chart      = module.argocd.argocd[0].chart
+    repository = module.argocd.argocd[0].repository
+    status     = module.argocd.argocd[0].status
+  }, null) : null
+}
+
+output "argocd_cluster_secret_metadata" {
+  description = "ArgoCD cluster secret metadata - always available for spokes to consume"
+  value = {
+    name        = var.cluster_name
+    namespace   = var.argocd_cluster.secret_namespace
+    annotations = var.argocd_cluster.metadata.annotations
+  }
+}
+
 ###############################################################################
 # End of File
 ###############################################################################

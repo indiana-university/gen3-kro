@@ -424,5 +424,10 @@ generate "outputs" {
     description = "Map of addon pod identity role ARNs"
     value       = module.csoc.addons_pod_identity_roles
   }
+
+  output "argocd_cluster_secret_metadata" {
+    description = "ArgoCD cluster secret metadata for spoke consumption"
+    value       = module.csoc.argocd_cluster_secret_metadata
+  }
 EOF
 }
