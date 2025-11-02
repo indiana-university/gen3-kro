@@ -100,17 +100,17 @@
   chart: external-secrets
   sync_wave: "0"
 
-- addon: kyverno
-  repoURL: https://kyverno.github.io/kyverno/
-  revision: 3.5.2
-  chart: kyverno
-  sync_wave: "0"
+# - addon: kyverno
+#   repoURL: https://kyverno.github.io/kyverno/
+#   revision: 3.5.2
+#   chart: kyverno
+#   sync_wave: "0"
 
-- addon: kyverno-policies
-  repoURL: https://kyverno.github.io/kyverno/
-  revision: 3.5.2
-  chart: kyverno-policies
-  sync_wave: "0"
+# - addon: kyverno-policies
+#   repoURL: https://kyverno.github.io/kyverno/
+#   revision: 3.5.2
+#   chart: kyverno-policies
+#   sync_wave: "0"
 
 - addon: metrics-server
   repoURL: https://kubernetes-sigs.github.io/metrics-server/

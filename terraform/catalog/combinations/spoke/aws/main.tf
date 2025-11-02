@@ -47,24 +47,29 @@ module "service_role" {
 # ArgoCD ConfigMap per Spoke
 ###############################################################################
 module "argocd_configmap" {
-  source = "../../../modules/spokes-configmap"
+  source = "../../../modules/configmap"
 
-  create           = true
+  create           = var.enable_argocd && var.enable_vpc && var.enable_k8s_cluster
   context          = var.spoke_alias
   cluster_name     = var.cluster_name
   argocd_namespace = var.argocd_namespace
+  outputs_dir      = var.outputs_dir
 
+  # For multi-account: ConfigMap contains hub's pod identity role ARNs
+  # The hub's pod identities will assume the spoke roles via cross-account policies
   pod_identities = merge(
     {
+      # Services with created spoke roles: use hub's pod identity role ARN
       for k, v in module.service_role : k => {
-        role_arn      = v.role_arn
-        role_name     = v.role_name
+        role_arn      = lookup(var.csoc_pod_identity_arns, k, "")  # Hub's pod identity role ARN
+        role_name     = split("/", lookup(var.csoc_pod_identity_arns, k, "unknown"))[length(split("/", lookup(var.csoc_pod_identity_arns, k, "unknown"))) - 1]
         policy_arn    = ""
         service_name  = k
-        policy_source = "spoke_created"
+        policy_source = "hub_pod_identity"
       }
     },
     {
+      # Services with override ARNs: use the override ARN directly
       for k, v in local.services_using_override : k => {
         role_arn      = lookup(v, "override_arn", "")
         role_name     = split("/", lookup(v, "override_arn", "unknown"))[length(split("/", lookup(v, "override_arn", "unknown"))) - 1]
@@ -75,16 +80,17 @@ module "argocd_configmap" {
     }
   )
 
-  addon_configs = var.addon_configs
+  addon_configs = var.csoc_addon_configs
 
   cluster_info = var.cluster_info
 
-  gitops_context = {
-    spoke_alias  = var.spoke_alias
-    spoke_region = var.region
-    git_repo     = ""
-    git_branch   = ""
-  }
+  gitops_context = merge(
+    var.csoc_cluster_secret_annotations,
+    {
+      spoke_alias  = var.spoke_alias
+      spoke_region = var.region
+    }
+  )
 
   spokes = {}
 

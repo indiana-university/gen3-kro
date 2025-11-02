@@ -10,11 +10,12 @@ locals {
   }
 
   # Merge CSOC role ARNs into enabled services configuration
-  all_enabled_services = {
+  # Only process if ArgoCD, VPC, and cluster are all enabled
+  all_enabled_services = (var.enable_argocd && var.enable_vpc && var.enable_k8s_cluster) ? {
     for k, v in local.enabled_addons : k => merge(v, {
       csoc_role_arn = lookup(var.csoc_pod_identity_arns, k, "")
     })
-  }
+  } : {}
 
   # Services that need new IAM roles created (no override ARN provided)
   services_needing_roles = {

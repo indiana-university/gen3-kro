@@ -16,22 +16,22 @@ spec:
             matchLabels:
               fleet_member: control-plane
       - git:
-          repoURL: '{{.metadata.annotations.hub_repo_url}}'
-          revision: '{{.metadata.annotations.branch}}'
-          files:
-            - path: '{{.metadata.annotations.hub_repo_basepath}}/graphs/**/*.yaml'
+          repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+          revision: '{{.metadata.annotations.csoc_repo_revision}}'
+          directories:
+            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/*/*'
   template:
     metadata:
-      name: '{{- if .path }}{{ .path.filenameNormalized }}-{{ .name }}{{- else }}{{ .name }}{{- end }}'
+      name: '{{- if .path }}{{ .path.path | replace "/" "-" | replace "argocd-graphs-" "" }}-{{ .name }}{{- else }}{{ .name }}-graphs{{- end }}'
       labels:
         app.kubernetes.io/part-of: graphs
         cluster: '{{.name}}'
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.hub_repo_url}}'
-        targetRevision: '{{.metadata.annotations.branch}}'
-        path: '{{- if .path }}{{ .path.path }}{{- else }}{{ .metadata.annotations.hub_repo_basepath }}/graphs/{{ .name }}{{- end }}'
+        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        path: '{{- if .path }}{{ .path.path }}{{- else }}{{ .metadata.annotations.csoc_repo_basepath }}/graphs/{{ .name }}{{- end }}'
       destination:
         name: '{{.name}}'
         namespace: default
@@ -44,6 +44,7 @@ spec:
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
           - RespectIgnoreDifferences=true
+          - Replace=true  # Allow replacing resources including CRDs during sync
         retry:
           limit: 5
           backoff:

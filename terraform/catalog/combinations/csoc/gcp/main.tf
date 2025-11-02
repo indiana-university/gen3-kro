@@ -128,31 +128,61 @@ module "workload_identities" {
 
 ###############################################################################
 locals {
-  argocd_cluster_enhanced = merge(
-    var.argocd_cluster,
+  hub_gitops_context = merge(
     {
-      metadata = merge(
-        lookup(var.argocd_cluster, "metadata", {}),
-        {
-          annotations = merge(
-            lookup(lookup(var.argocd_cluster, "metadata", {}), "annotations", {}),
-            {
-              # Add GCP region annotation
-              gcp_region = var.region
-            },
-            {
-              # Create service account annotations for each addon
-              for k, v in module.workload_identities :
-              "${replace(k, "-", "")}_service_account" => lookup(var.addon_configs[k], "service_account", k)
-            },
-            {
-              # Create hub service account email annotations
-              for k, v in module.workload_identities :
-              "${replace(k, "-", "")}_hub_sa_email" => v.service_account_email
-            },
-          )
-        }
-      )
+      provider             = "gcp"
+      region               = var.region
+      gcp_region           = var.region
+      hub_repo_url         = try(var.argocd_cluster.metadata.annotations.hub_repo_url, "")
+      hub_repo_revision    = try(var.argocd_cluster.metadata.annotations.hub_repo_revision, "main")
+      hub_repo_basepath    = try(var.argocd_cluster.metadata.annotations.hub_repo_basepath, "argocd")
+      addons_repo_url      = try(var.argocd_cluster.metadata.annotations.addons_repo_url, "")
+      addons_repo_revision = try(var.argocd_cluster.metadata.annotations.addons_repo_revision, "main")
+      addons_repo_basepath = try(var.argocd_cluster.metadata.annotations.addons_repo_basepath, "argocd")
+    },
+    {}
+  )
+
+  addon_config_excluded_keys = [
+    "namespace",
+    "service_account",
+    "enable_identity",
+    "enable",
+    "enabled",
+    "enable_argocd",
+    "argocd_chart_version",
+    "create_permission",
+    "attach_custom_policy",
+    "kms_key_arns",
+    "secrets_manager_arns",
+    "ssm_parameter_arns",
+    "parameter_store_arns",
+    "inline_policy"
+  ]
+
+  hub_addons_config = {
+    for addon_name, addon_config in var.addon_configs : addon_name => merge(
+      {
+        namespace      = lookup(addon_config, "namespace", addon_name)
+        serviceAccount = lookup(addon_config, "service_account", addon_name)
+      },
+      lookup(addon_config, "enable_identity", false) ? {
+        serviceAccountEmail = try(module.workload_identities[addon_name].service_account_email, "")
+        serviceAccountName  = try(module.workload_identities[addon_name].service_account_name, "")
+      } : {},
+      {
+        for config_key, config_val in addon_config :
+        config_key => config_val
+        if !contains(local.addon_config_excluded_keys, config_key)
+      }
+    )
+  }
+
+  argocd_cluster_annotations_enhanced = merge(
+    try(var.argocd_cluster.metadata.annotations, {}),
+    {
+      "csoc.kro.dev/addons-config"  = yamlencode(local.hub_addons_config)
+      "csoc.kro.dev/gitops-context" = yamlencode(local.hub_gitops_context)
     }
   )
 
@@ -168,6 +198,18 @@ locals {
       bootstrap = file("${path.module}/../bootstrap/applicationsets.yaml")
     },
     var.argocd_apps
+  )
+
+  argocd_cluster_enhanced = merge(
+    var.argocd_cluster,
+    {
+      metadata = merge(
+        try(var.argocd_cluster.metadata, {}),
+        {
+          annotations = local.argocd_cluster_annotations_enhanced
+        }
+      )
+    }
   )
 }
 
@@ -192,7 +234,7 @@ module "argocd" {
 # Hub ConfigMap
 ###############################################################################
 module "hub_configmap" {
-  source = "../../../modules/spokes-configmap"
+  source = "../../../modules/configmap"
 
   create           = var.enable_vpc && var.enable_k8s_cluster && var.enable_argocd
   context          = var.csoc_alias
@@ -226,17 +268,13 @@ module "hub_configmap" {
     vpc_id                    = var.enable_vpc ? module.vpc.network_name : var.existing_vpc_id
     private_subnets           = var.enable_vpc ? module.vpc.subnet_names : var.existing_subnet_ids
     public_subnets            = []
+    # GCP specific
+    project_id = var.project_id
   }
 
-  gitops_context = {
-    hub_repo_url      = try(var.argocd_cluster.metadata.annotations.hub_repo_url, "")
-    hub_repo_revision = try(var.argocd_cluster.metadata.annotations.hub_repo_revision, "main")
-    hub_repo_basepath = try(var.argocd_cluster.metadata.annotations.hub_repo_basepath, "argocd")
-    gcp_region        = var.region
-  }
+  gitops_context = local.hub_gitops_context
 
   spokes = {}
 
   depends_on = [module.gke_cluster, module.workload_identities, module.argocd]
 }
-

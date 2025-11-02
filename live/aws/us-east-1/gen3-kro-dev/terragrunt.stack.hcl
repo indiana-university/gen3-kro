@@ -146,7 +146,7 @@ locals {
 # ArgoCD Configuration
 ###############################################################################
   argocd_config_obj    = lookup(local.addon_configs, "argocd", {})
-  enable_argocd        = lookup(local.argocd_config_obj, "enable_identity", false)
+  enable_argocd        = lookup(local.argocd_config_obj, "enable_argocd", false)
   argocd_namespace     = lookup(local.argocd_config_obj, "namespace", "argocd")
   argocd_chart_version = lookup(local.argocd_config_obj, "argocd_chart_version", "8.6.0")
 
@@ -229,22 +229,10 @@ locals {
           branch               = local.csoc_gitops_branch
           bootstrap_path       = local.csoc_gitops_bootstrap_path
 
-          # Hub/Csoc ApplicationSet references (for ArgoCD ApplicationSet)
-          hub_repo_url      = local.csoc_repo_url
-          hub_repo_revision = local.csoc_gitops_branch
-          hub_repo_basepath = "argocd"
-
           # Cluster Information (static)
           csoc_cluster_name = local.cluster_name
           csoc_alias        = local.csoc_alias
           csoc_region       = local.region
-        },
-        # Addon namespace annotations
-        { for name, cfg in local.addon_configs :
-          "${replace(name, "_", "-")}_namespace" => lookup(cfg, "namespace", name)
-        },
-        { for name, cfg in local.addon_configs :
-          "${replace(name, "_", "-")}_service_account" => lookup(cfg, "service_account", name)
         }
       )
     }
@@ -472,8 +460,14 @@ unit "spokes" {
     # Addon configurations (csoc addons for reference)
     addon_configs = local.addon_configs
 
-    # ArgoCD namespace
-    argocd_namespace = local.argocd_namespace
+    # ArgoCD configuration
+    enable_argocd        = local.enable_argocd
+    enable_vpc           = local.enable_vpc
+    enable_k8s_cluster   = local.enable_k8s_cluster
+    argocd_namespace     = local.argocd_namespace
+
+    # Outputs directory
+    outputs_dir = local.outputs_dir
 
     # Enable flags (computed)
     enable_multi_acct = local.enable_multi_acct

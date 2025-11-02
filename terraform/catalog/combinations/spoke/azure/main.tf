@@ -62,12 +62,13 @@ module "service_role" {
 # ArgoCD ConfigMap per Spoke
 ###############################################################################
 module "argocd_configmap" {
-  source = "../../../modules/spokes-configmap"
+  source = "../../../modules/configmap"
 
-  create           = true
+  create           = var.enable_argocd && var.enable_vpc && var.enable_k8s_cluster
   context          = var.spoke_alias
   cluster_name     = var.cluster_name
   argocd_namespace = var.argocd_namespace
+  outputs_dir      = var.outputs_dir
 
   pod_identities = merge(
     {
@@ -91,16 +92,17 @@ module "argocd_configmap" {
     }
   )
 
-  addon_configs = var.addon_configs
+  addon_configs = var.csoc_addon_configs
 
   cluster_info = var.cluster_info
 
-  gitops_context = {
-    spoke_alias  = var.spoke_alias
-    spoke_region = var.region
-    git_repo     = ""
-    git_branch   = ""
-  }
+  gitops_context = merge(
+    var.csoc_cluster_secret_annotations,
+    {
+      spoke_alias  = var.spoke_alias
+      spoke_region = var.region
+    }
+  )
 
   spokes = {}
 
