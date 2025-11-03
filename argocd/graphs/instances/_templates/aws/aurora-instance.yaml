@@ -1,0 +1,19 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3Aurora
+metadata:
+  name: gen3aurora
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  vpcID: ""  # Will be populated by VPC instance
+  subnetIDs: []  # Will be populated by VPC instance
+  engine: aurora-postgresql
+  engineVersion: "15.4"
+  instanceClass: db.r5.large
+  instanceCount: 2
+  databaseName: gen3db
+  masterUsername: gen3admin
+  backupRetentionPeriod: 7
+  preferredBackupWindow: "03:00-04:00"
+  preferredMaintenanceWindow: "sun:04:00-sun:05:00"

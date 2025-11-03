@@ -1,0 +1,11 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3GCPStorageBucket
+metadata:
+  name: gen3gcpstoragebucket
+  namespace: default
+spec:
+  name: gen3-gcp-base-storage
+  project: my-gcp-project
+  location: US
+  storageClass: "STANDARD"
+  versioning: true

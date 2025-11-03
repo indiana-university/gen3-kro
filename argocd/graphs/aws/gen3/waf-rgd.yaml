@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3waf.kro.run
+  name: gen3-waf.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "1"
@@ -18,7 +18,7 @@ spec:
     status:
       webACLARN: ${webACL.status.ackResourceMetadata.arn}
       webACLID: ${webACL.status.id}
-      webACLName: ${webACL.status.name}
+      webACLName: ${webACL.spec.name}
 
   resources:
   - id: webACL

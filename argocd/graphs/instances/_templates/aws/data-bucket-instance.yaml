@@ -1,0 +1,12 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3DataBucket
+metadata:
+  name: gen3databucket
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  bucketName: gen3-base-data
+  versioning: true
+  encryption: true
+  publicAccess: false

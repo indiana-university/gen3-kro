@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3vpc.kro.run
+  name: gen3-vpc.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "-1"
@@ -20,7 +20,6 @@ spec:
         privateSubnet2Cidr: string | default="10.0.12.0/24"
     status:
       vpcID: ${vpc.status.vpcID}
-      vpcCidr: ${schema.spec.cidr.vpcCidr}
       publicSubnet1ID: ${publicSubnet1.status.subnetID}
       publicSubnet2ID: ${publicSubnet2.status.subnetID}
       privateSubnet1ID: ${privateSubnet1.status.subnetID}

@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3AzureAKS
+metadata:
+  name: gen3azureaks
+  namespace: default
+spec:
+  name: gen3-azure-base
+  location: eastus
+  resourceGroup: gen3-resources
+  vnetName: gen3-azure-base-vnet
+  subnetName: gen3-azure-base-subnet
+  kubernetesVersion: "1.31"
+  nodeCount: 2
+  nodeVMSize: "Standard_DS2_v2"

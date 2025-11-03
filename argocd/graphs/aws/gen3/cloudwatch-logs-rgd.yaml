@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3cloudwatchlogs.kro.run
+  name: gen3-cloudwatchlogs.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
@@ -12,11 +12,12 @@ spec:
     spec:
       name: string
       region: string
-      retentionInDays: number | default=30
+      logGroupName: string
+      retentionInDays: integer | default=30
       kmsKeyID: string | default=""
     status:
       logGroupARN: ${logGroup.status.ackResourceMetadata.arn}
-      logGroupName: ${logGroup.status.logGroupName}
+      logGroupName: ${logGroup.spec.name}
 
   resources:
   - id: logGroup
@@ -29,8 +30,8 @@ spec:
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
       spec:
-        logGroupName: ${schema.spec.name}
-        retentionInDays: ${schema.spec.retentionInDays}
+        name: ${schema.spec.logGroupName}
+        retentionDays: ${schema.spec.retentionInDays}
         kmsKeyID: ${schema.spec.kmsKeyID}
         tags:
           Name: ${schema.spec.name}

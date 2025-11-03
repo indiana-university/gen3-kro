@@ -1,0 +1,10 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3KMS
+metadata:
+  name: gen3kms
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  description: "Gen3 encryption key"
+  keyRotation: true

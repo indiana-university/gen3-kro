@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3elasticache.kro.run
+  name: gen3-elasticache.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "1"
@@ -13,15 +13,15 @@ spec:
       name: string
       region: string
       vpcID: string
-      subnetIDs: string[]
+      subnetIDs: "[]string"
       engine: string | default="redis"
       engineVersion: string | default="7.0"
       nodeType: string | default="cache.t3.micro"
-      numCacheNodes: number | default=1
+      numCacheNodes: integer | default=1
     status:
       cacheClusterARN: ${cacheCluster.status.ackResourceMetadata.arn}
-      cacheClusterID: ${cacheCluster.status.cacheClusterID}
-      subnetGroupName: ${cacheSubnetGroup.status.cacheSubnetGroupName}
+      cacheClusterID: ${cacheCluster.spec.cacheClusterID}
+      subnetGroupName: ${cacheSubnetGroup.spec.cacheSubnetGroupName}
       endpoint: ${cacheCluster.status.configurationEndpoint.address}
       port: ${cacheCluster.status.configurationEndpoint.port}
 
@@ -81,8 +81,8 @@ spec:
         engine: ${schema.spec.engine}
         engineVersion: ${schema.spec.engineVersion}
         numCacheNodes: ${schema.spec.numCacheNodes}
-        cacheSubnetGroupName: ${cacheSubnetGroup.status.cacheSubnetGroupName}
-        vpcSecurityGroupIDs:
+        cacheSubnetGroupName: ${cacheSubnetGroup.spec.cacheSubnetGroupName}
+        securityGroupIDs:
           - ${securityGroup.status.id}
         tags:
           - key: "Name"

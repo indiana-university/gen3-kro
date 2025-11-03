@@ -99,6 +99,10 @@ module "iam_policies" {
 
   service_name       = each.key
   policy_inline_json = each.value
+
+  # Azure placeholder replacement
+  subscription_id = data.azurerm_client_config.current.subscription_id
+  tenant_id       = data.azurerm_client_config.current.tenant_id
 }
 
 ###############################################################################

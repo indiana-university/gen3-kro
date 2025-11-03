@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3cloudtrail.kro.run
+  name: gen3-cloudtrail.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "1"
@@ -21,7 +21,7 @@ spec:
       kmsKeyID: string | default=""
     status:
       trailARN: ${trail.status.ackResourceMetadata.arn}
-      trailName: ${trail.status.name}
+      trailName: ${trail.spec.name}
 
   resources:
   - id: trail

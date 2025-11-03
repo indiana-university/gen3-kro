@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3AzurePostgreSQL
+metadata:
+  name: gen3azurepostgresql
+  namespace: default
+spec:
+  name: gen3-azure-base
+  location: eastus
+  resourceGroup: gen3-resources
+  vnetName: gen3-azure-base-vnet
+  subnetName: gen3-azure-base-subnet
+  version: "16"
+  skuName: "Standard_B1ms"
+  storageSizeGB: 32

@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3route53.kro.run
+  name: gen3-route53.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
@@ -18,9 +18,9 @@ spec:
       vpcRegion: string | default=""
       comment: string | default="Gen3 hosted zone"
     status:
-      hostedZoneID: ${hostedZone.status.hostedZoneID}
+      hostedZoneID: ${hostedZone.status.id}
       hostedZoneARN: ${hostedZone.status.ackResourceMetadata.arn}
-      nameServers: ${hostedZone.status.nameServers}
+      nameServers: ${hostedZone.status.delegationSet.nameServers}
 
   resources:
   - id: hostedZone
