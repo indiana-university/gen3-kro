@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3opensearch.kro.run
+  name: gen3-opensearch.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "1"
@@ -13,16 +13,15 @@ spec:
       name: string
       region: string
       vpcID: string
-      subnetIDs: string[]
+      subnetIDs: "[]string"
       engineVersion: string | default="OpenSearch_2.11"
       instanceType: string | default="t3.small.search"
-      instanceCount: number | default=1
-      volumeSize: number | default=10
+      instanceCount: integer | default=1
+      volumeSize: integer | default=10
     status:
       domainARN: ${domain.status.ackResourceMetadata.arn}
-      domainName: ${domain.status.domainName}
+      domainName: ${domain.spec.name}
       endpoint: ${domain.status.endpoint}
-      kibanaEndpoint: ${domain.status.endpoints.kibana}
 
   resources:
   - id: securityGroup

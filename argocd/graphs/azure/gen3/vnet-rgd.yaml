@@ -1,0 +1,114 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gen3-azure-vnet.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Gen3AzureVnet
+    spec:
+      name: string
+      location: string
+      resourceGroup: string
+      addressSpace: string | default="10.0.0.0/16"
+      subnets:
+        publicSubnet1Cidr: string | default="10.0.1.0/24"
+        publicSubnet2Cidr: string | default="10.0.2.0/24"
+        privateSubnet1Cidr: string | default="10.0.11.0/24"
+        privateSubnet2Cidr: string | default="10.0.12.0/24"
+    status:
+      vnetID: ${vnet.status.id}
+      vnetName: ${vnet.status.name}
+      publicSubnet1ID: ${publicSubnet1.status.id}
+      publicSubnet2ID: ${publicSubnet2.status.id}
+      privateSubnet1ID: ${privateSubnet1.status.id}
+      privateSubnet2ID: ${privateSubnet2.status.id}
+
+  resources:
+  - id: resourceGroup
+    template:
+      apiVersion: resources.azure.com/v1api20200601
+      kind: ResourceGroup
+      metadata:
+        name: ${schema.spec.resourceGroup}
+        namespace: ${schema.spec.name}
+      spec:
+        azureName: ${schema.spec.resourceGroup}
+        location: ${schema.spec.location}
+        tags:
+          environment: gen3
+          managedBy: kro
+
+  - id: vnet
+    template:
+      apiVersion: network.azure.com/v1api20201101
+      kind: VirtualNetwork
+      metadata:
+        name: ${schema.spec.name}-vnet
+        namespace: ${schema.spec.name}
+      spec:
+        azureName: ${schema.spec.name}-vnet
+        location: ${schema.spec.location}
+        owner:
+          name: ${resourceGroup.metadata.name}
+        addressSpace:
+          addressPrefixes:
+            - ${schema.spec.addressSpace}
+        tags:
+          Name: ${schema.spec.name}-vnet
+          Environment: gen3
+
+  - id: publicSubnet1
+    template:
+      apiVersion: network.azure.com/v1api20201101
+      kind: VirtualNetworksSubnet
+      metadata:
+        name: ${schema.spec.name}-public-subnet-1
+        namespace: ${schema.spec.name}
+      spec:
+        azureName: ${schema.spec.name}-public-subnet-1
+        owner:
+          name: ${vnet.metadata.name}
+        addressPrefix: ${schema.spec.subnets.publicSubnet1Cidr}
+
+  - id: publicSubnet2
+    template:
+      apiVersion: network.azure.com/v1api20201101
+      kind: VirtualNetworksSubnet
+      metadata:
+        name: ${schema.spec.name}-public-subnet-2
+        namespace: ${schema.spec.name}
+      spec:
+        azureName: ${schema.spec.name}-public-subnet-2
+        owner:
+          name: ${vnet.metadata.name}
+        addressPrefix: ${schema.spec.subnets.publicSubnet2Cidr}
+
+  - id: privateSubnet1
+    template:
+      apiVersion: network.azure.com/v1api20201101
+      kind: VirtualNetworksSubnet
+      metadata:
+        name: ${schema.spec.name}-private-subnet-1
+        namespace: ${schema.spec.name}
+      spec:
+        azureName: ${schema.spec.name}-private-subnet-1
+        owner:
+          name: ${vnet.metadata.name}
+        addressPrefix: ${schema.spec.subnets.privateSubnet1Cidr}
+
+  - id: privateSubnet2
+    template:
+      apiVersion: network.azure.com/v1api20201101
+      kind: VirtualNetworksSubnet
+      metadata:
+        name: ${schema.spec.name}-private-subnet-2
+        namespace: ${schema.spec.name}
+      spec:
+        azureName: ${schema.spec.name}-private-subnet-2
+        owner:
+          name: ${vnet.metadata.name}
+        addressPrefix: ${schema.spec.subnets.privateSubnet2Cidr}

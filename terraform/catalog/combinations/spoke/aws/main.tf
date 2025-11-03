@@ -1,4 +1,9 @@
 ###############################################################################
+# Data Sources
+###############################################################################
+data "aws_caller_identity" "current" {}
+
+###############################################################################
 # Unified IAM Policy Module
 ###############################################################################
 module "service_policy" {
@@ -8,6 +13,10 @@ module "service_policy" {
 
   service_name       = each.key
   policy_inline_json = each.value
+
+  # AWS Account ID replacement (spoke account, csoc passed separately)
+  account_id      = data.aws_caller_identity.current.account_id
+  csoc_account_id = var.csoc_account_id
 }
 
 ###############################################################################

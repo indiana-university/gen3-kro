@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3ElastiCache
+metadata:
+  name: gen3elasticache
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  vpcID: ""  # Will be populated by VPC instance
+  subnetIDs: []  # Will be populated by VPC instance
+  engine: redis
+  engineVersion: "7.0"
+  nodeType: cache.t3.micro
+  numCacheNodes: 1

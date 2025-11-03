@@ -17,6 +17,8 @@ enablement:
     enabled: true
   ack-eks:
     enabled: true
+  ack-elasticache:
+    enabled: true
   ack-iam:
     enabled: true
   ack-kms:

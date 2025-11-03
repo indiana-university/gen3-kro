@@ -19,10 +19,12 @@ spec:
           repoURL: '{{.metadata.annotations.csoc_repo_url}}'
           revision: '{{.metadata.annotations.csoc_repo_revision}}'
           directories:
-            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/*/*'
+            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/aws/*'
+            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/azure/*'
+            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/google/*'
   template:
     metadata:
-      name: '{{- if .path }}{{ .path.path | replace "/" "-" | replace "argocd-graphs-" "" }}-{{ .name }}{{- else }}{{ .name }}-graphs{{- end }}'
+      name: '{{- if .path }}{{ .path.path | regexFind "(?:aws|azure|google)/.*" | replace "/" "-" }}-graphs{{- else }}{{ .name }}-graphs{{- end }}'
       labels:
         app.kubernetes.io/part-of: graphs
         cluster: '{{.name}}'
@@ -45,6 +47,7 @@ spec:
           - SkipDryRunOnMissingResource=true
           - RespectIgnoreDifferences=true
           - Replace=true  # Allow replacing resources including CRDs during sync
+          - PrunePropagationPolicy=foreground
         retry:
           limit: 5
           backoff:

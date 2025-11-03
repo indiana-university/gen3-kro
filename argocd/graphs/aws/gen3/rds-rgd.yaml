@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3rds.kro.run
+  name: gen3-rds.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "1"
@@ -13,18 +13,18 @@ spec:
       name: string
       region: string
       vpcID: string
-      subnetIDs: string[]
+      subnetIDs: "[]string"
       engine: string | default="postgres"
       engineVersion: string | default="15.4"
-      instanceClass: string | default="db.t3.micro"
-      allocatedStorage: number | default=20
+      instanceClass: string | default="db.t3.medium"
+      allocatedStorage: integer | default=20
       databaseName: string
     status:
       dbInstanceARN: ${dbInstance.status.ackResourceMetadata.arn}
-      dbInstanceID: ${dbInstance.status.dbInstanceIdentifier}
+      dbInstanceID: ${dbInstance.spec.dbInstanceIdentifier}
       endpoint: ${dbInstance.status.endpoint.address}
       port: ${dbInstance.status.endpoint.port}
-      subnetGroupName: ${dbSubnetGroup.status.dbSubnetGroupName}
+      subnetGroupName: ${dbSubnetGroup.spec.name}
 
   resources:
   - id: dbSubnetGroup
@@ -84,7 +84,7 @@ spec:
         allocatedStorage: ${schema.spec.allocatedStorage}
         dbName: ${schema.spec.databaseName}
         masterUsername: "gen3admin"
-        dbSubnetGroupName: ${dbSubnetGroup.status.dbSubnetGroupName}
+        dbSubnetGroupName: ${dbSubnetGroup.spec.name}
         vpcSecurityGroupIDs:
           - ${securityGroup.status.id}
         publiclyAccessible: false

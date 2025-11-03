@@ -64,6 +64,12 @@ variable "spoke_iam_policies" {
   default     = {}
 }
 
+variable "csoc_account_id" {
+  description = "CSOC AWS Account ID for placeholder replacement in policies"
+  type        = string
+  default     = null
+}
+
 ###############################################################################
 # ArgoCD and Cluster Information Variables
 ###############################################################################

@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3aurora.kro.run
+  name: gen3-aurora.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "1"
@@ -13,22 +13,21 @@ spec:
       name: string
       region: string
       vpcID: string
-      subnetIDs: string[]
+      subnetIDs: "[]string"
       engine: string | default="aurora-postgresql"
       engineVersion: string | default="15.4"
       instanceClass: string | default="db.r5.large"
-      instanceCount: number | default=2
+      instanceCount: integer | default=2
       databaseName: string
       masterUsername: string | default="gen3admin"
-      backupRetentionPeriod: number | default=7
+      backupRetentionPeriod: integer | default=7
       preferredBackupWindow: string | default="03:00-04:00"
       preferredMaintenanceWindow: string | default="sun:04:00-sun:05:00"
     status:
       clusterARN: ${cluster.status.ackResourceMetadata.arn}
-      clusterID: ${cluster.status.dbClusterIdentifier}
+      clusterID: ${cluster.spec.dbClusterIdentifier}
       clusterEndpoint: ${cluster.status.endpoint}
       readerEndpoint: ${cluster.status.readerEndpoint}
-      port: ${cluster.status.port}
 
   resources:
   - id: dbSubnetGroup
@@ -86,7 +85,7 @@ spec:
         engineVersion: ${schema.spec.engineVersion}
         databaseName: ${schema.spec.databaseName}
         masterUsername: ${schema.spec.masterUsername}
-        dbSubnetGroupName: ${dbSubnetGroup.status.dbSubnetGroupName}
+        dbSubnetGroupName: ${dbSubnetGroup.spec.name}
         vpcSecurityGroupIDs:
           - ${securityGroup.status.id}
         backupRetentionPeriod: ${schema.spec.backupRetentionPeriod}

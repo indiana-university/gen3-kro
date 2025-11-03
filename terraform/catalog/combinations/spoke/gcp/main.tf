@@ -26,6 +26,10 @@ module "service_policy" {
 
   service_name       = each.key
   policy_inline_json = each.value
+
+  # GCP placeholder replacement
+  project_id     = data.google_project.current.project_id
+  project_number = data.google_project.current.number
 }
 
 ###############################################################################

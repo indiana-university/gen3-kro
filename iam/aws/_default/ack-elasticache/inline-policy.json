@@ -1,0 +1,41 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:*",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "ec2:CreateSecurityGroup",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:DeleteSecurityGroup",
+        "kms:DescribeCustomKeyStores",
+        "kms:ListKeys",
+        "kms:DeleteCustomKeyStore",
+        "kms:GenerateRandom",
+        "kms:UpdateCustomKeyStore",
+        "kms:ListAliases",
+        "kms:DisconnectCustomKeyStore",
+        "kms:CreateKey",
+        "kms:ConnectCustomKeyStore",
+        "kms:CreateCustomKeyStore",
+        "logs:DescribeResourcePolicies",
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "kms:*",
+      "Resource": [
+        "arn:aws:kms:*:<ACCOUNT_ID>:key/*",
+        "arn:aws:kms:*:<ACCOUNT_ID>:alias/*"
+      ]
+    }
+  ]
+}

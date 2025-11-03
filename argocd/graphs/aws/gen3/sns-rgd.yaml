@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3sns.kro.run
+  name: gen3-sns.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
@@ -13,12 +13,9 @@ spec:
       name: string
       region: string
       displayName: string | default=""
-      subscriptions: object[] | default=[]
-        # - protocol: string (email, sqs, lambda, etc.)
-        #   endpoint: string
     status:
       topicARN: ${topic.status.ackResourceMetadata.arn}
-      topicName: ${topic.status.topicName}
+      topicName: ${topic.spec.name}
 
   resources:
   - id: topic

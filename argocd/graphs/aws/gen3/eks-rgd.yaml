@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3eks.kro.run
+  name: gen3-eks.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "2"
@@ -13,15 +13,15 @@ spec:
       name: string
       region: string
       vpcID: string
-      subnetIDs: string[]
-      version: string | default="1.28"
-      nodeGroupInstanceTypes: string[] | default=["t3.medium"]
-      nodeGroupDesiredSize: number | default=2
-      nodeGroupMinSize: number | default=1
-      nodeGroupMaxSize: number | default=4
+      subnetIDs: "[]string"
+      version: string | default="1.31"
+      nodeGroupInstanceTypes: "[]string | default=[\"t3.medium\"]"
+      nodeGroupDesiredSize: integer | default=2
+      nodeGroupMinSize: integer | default=1
+      nodeGroupMaxSize: integer | default=4
     status:
       clusterARN: ${cluster.status.ackResourceMetadata.arn}
-      clusterName: ${cluster.status.name}
+      clusterName: ${cluster.spec.name}
       clusterEndpoint: ${cluster.status.endpoint}
       clusterCertificateAuthority: ${cluster.status.certificateAuthority.data}
       nodeGroupARN: ${nodeGroup.status.ackResourceMetadata.arn}
@@ -141,7 +141,7 @@ spec:
           services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.name}-eks-nodegroup
-        clusterName: ${cluster.status.name}
+        clusterName: ${cluster.spec.name}
         nodeRole: ${nodeRole.status.ackResourceMetadata.arn}
         subnets: ${schema.spec.subnetIDs}
         scalingConfig:

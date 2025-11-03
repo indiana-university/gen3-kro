@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3efs.kro.run
+  name: gen3-efs.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "1"
@@ -13,7 +13,7 @@ spec:
       name: string
       region: string
       vpcID: string
-      subnetIDs: string[]
+      subnetIDs: "[]string"
       performanceMode: string | default="generalPurpose"
       throughputMode: string | default="bursting"
       encrypted: boolean | default=true
@@ -21,7 +21,6 @@ spec:
     status:
       fileSystemARN: ${fileSystem.status.ackResourceMetadata.arn}
       fileSystemID: ${fileSystem.status.fileSystemID}
-      mountTargetIDs: ${mountTargets.status.mountTargetIDs}
 
   resources:
   - id: securityGroup

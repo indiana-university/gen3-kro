@@ -1,0 +1,13 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3CloudSQL
+metadata:
+  name: gen3cloudsql
+  namespace: default
+spec:
+  name: gen3-gcp-base
+  project: my-gcp-project
+  region: us-central1
+  vpcName: gen3-gcp-base-vpc
+  databaseVersion: "POSTGRES_15"
+  tier: "db-f1-micro"
+  diskSize: 20

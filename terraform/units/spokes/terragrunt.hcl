@@ -236,6 +236,7 @@ module "spoke_${spoke.alias}" {
 
   # IAM policies for this spoke
   spoke_iam_policies      = lookup(var.spoke_iam_policies, "${spoke.alias}", {})
+  csoc_account_id         = data.aws_caller_identity.current.account_id
 
   # ArgoCD configuration
   enable_argocd           = var.enable_argocd
