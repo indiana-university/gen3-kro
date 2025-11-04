@@ -6,5 +6,8 @@ metadata:
   labels:
     app.kubernetes.io/name: argocd-cm
     app.kubernetes.io/part-of: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"
+
 data:
     kustomize.buildOptions: --load-restrictor LoadRestrictionsNone

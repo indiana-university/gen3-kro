@@ -6,7 +6,7 @@ resources:
   - ../../../graphs/instances/gen3/test
 
 configMapGenerator:
-  - name: test-values
+  - name: config-values
     behavior: merge
     envs:
       - values.env
