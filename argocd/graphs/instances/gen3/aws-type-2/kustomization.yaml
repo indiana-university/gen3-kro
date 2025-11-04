@@ -21,7 +21,7 @@ resources:
   - ../../_base/aws/irsa-role-instance.yaml
 
 configMapGenerator:
-  - name: config-values
+  - name: spoke-values
     envs: [../_default_values/aws-type-2.env]
 
 labels:

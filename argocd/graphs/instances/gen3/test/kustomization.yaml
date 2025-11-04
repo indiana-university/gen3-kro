@@ -6,7 +6,7 @@ resources:
   - ../../_base/aws/vpc-instance.yaml
 
 configMapGenerator:
-  - name: config-values
+  - name: spoke-values
     envs: [../_default_values/test.env]
 
 labels:
