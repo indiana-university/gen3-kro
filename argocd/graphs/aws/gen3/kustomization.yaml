@@ -3,6 +3,7 @@ kind: Kustomization
 
 # AWS Gen3 ResourceGraphDefinitions
 resources:
+  - argocd-configmap.yaml
   - aurora-rgd.yaml
   - cloudtrail-rgd.yaml
   - cloudwatch-logs-rgd.yaml
