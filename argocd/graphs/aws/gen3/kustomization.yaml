@@ -1,0 +1,23 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# AWS Gen3 ResourceGraphDefinitions
+resources:
+  - aurora-rgd.yaml
+  - cloudtrail-rgd.yaml
+  - cloudwatch-logs-rgd.yaml
+  - data-bucket-rgd.yaml
+  - efs-rgd.yaml
+  - eks-rgd.yaml
+  - elasticache-rgd.yaml
+  - irsa-role-rgd.yaml
+  - kms-rgd.yaml
+  - opensearch-rgd.yaml
+  - rds-rgd.yaml
+  - route53-rgd.yaml
+  - s3bucket-rgd.yaml
+  - secretsmanager-rgd.yaml
+  - sns-rgd.yaml
+  - sqs-rgd.yaml
+  - vpc-rgd.yaml
+  - waf-rgd.yaml
