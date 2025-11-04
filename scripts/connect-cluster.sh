@@ -183,6 +183,18 @@ if [[ -n "$ARGOCD_PASSWORD" ]]; then
   fi
 fi
 
+# Add port-forward instructions (without log prefix for easy copy)
+log_info ""
+log_info "Port-Forward Commands (copy and paste):"
+log_info "========================================="
+echo ""
+echo "# ArgoCD UI (https://localhost:8080)"
+echo "kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:443"
+echo ""
+echo "# ArgoCD API/CLI (localhost:8081)"
+echo "kubectl port-forward -n argocd svc/argo-cd-argocd-server 8081:443"
+echo ""
+
 ###############################################################################
 # End of File
 ###############################################################################

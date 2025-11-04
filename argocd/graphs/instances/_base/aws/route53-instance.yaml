@@ -1,0 +1,15 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3Route53
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: gen3route53
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  zoneName: gen3.example.com
+  privateZone: false
+  vpcID: ""
+  vpcRegion: ""
+  comment: Gen3 hosted zone

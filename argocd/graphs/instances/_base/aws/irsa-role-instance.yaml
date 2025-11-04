@@ -1,0 +1,17 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3IRSARole
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: gen3fenceirsa
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  clusterName: gen3-base
+  namespace: default
+  serviceAccountName: fence
+  accountID: ""  # AWS Account ID - to be populated by overlay
+  oidcProvider: ""  # OIDC provider URL - to be populated by overlay
+  policyARNs: []
+  inlinePolicyDocument: ""

@@ -1,94 +1,19 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: spoke1-infrastructure
-
+# Spoke1 infrastructure - uses test flavor (VPC only)
 resources:
-  - ../../../graphs/instances/test
-  - values.yaml
+  - ../../../graphs/instances/gen3/test
 
-# Use replacements to inject values from ConfigMap into resources
-replacements:
-  # VPC spec.name replacement
-  - source:
-      kind: ConfigMap
-      name: spoke1-config
-      fieldPath: data.vpc_name
-    targets:
-      - select:
-          kind: Gen3Vpc
-        fieldPaths:
-          - spec.name
-
-  # VPC CIDR replacements
-  - source:
-      kind: ConfigMap
-      name: spoke1-config
-      fieldPath: data.vpc_cidr
-    targets:
-      - select:
-          kind: Gen3Vpc
-        fieldPaths:
-          - spec.cidr.vpcCidr
-
-  - source:
-      kind: ConfigMap
-      name: spoke1-config
-      fieldPath: data.public_subnet1_cidr
-    targets:
-      - select:
-          kind: Gen3Vpc
-        fieldPaths:
-          - spec.cidr.publicSubnet1Cidr
-
-  - source:
-      kind: ConfigMap
-      name: spoke1-config
-      fieldPath: data.public_subnet2_cidr
-    targets:
-      - select:
-          kind: Gen3Vpc
-        fieldPaths:
-          - spec.cidr.publicSubnet2Cidr
-
-  - source:
-      kind: ConfigMap
-      name: spoke1-config
-      fieldPath: data.private_subnet1_cidr
-    targets:
-      - select:
-          kind: Gen3Vpc
-        fieldPaths:
-          - spec.cidr.privateSubnet1Cidr
-
-  - source:
-      kind: ConfigMap
-      name: spoke1-config
-      fieldPath: data.private_subnet2_cidr
-    targets:
-      - select:
-          kind: Gen3Vpc
-        fieldPaths:
-          - spec.cidr.privateSubnet2Cidr
-
-  # Replace namespace name in the Namespace resource
-  - source:
-      kind: ConfigMap
-      name: spoke1-config
-      fieldPath: data.gen3_namespace
-    targets:
-      - select:
-          kind: Namespace
-          name: default
-        fieldPaths:
-          - metadata.name
+configMapGenerator:
+  - name: test-values
+    behavior: merge
+    envs:
+      - values.env
+    options:
+      disableNameSuffixHash: true
 
 labels:
   - pairs:
       spoke: spoke1
-      environment: development
-      tenant: spoke1
-
-commonAnnotations:
-  argocd.argoproj.io/sync-wave: "1"
-  spoke: spoke1
+      deployed-by: kustomize

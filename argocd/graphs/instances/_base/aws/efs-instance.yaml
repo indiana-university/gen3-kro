@@ -1,0 +1,16 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3EFS
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  name: gen3efs
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  vpcID: ""  # Will be populated by VPC instance
+  subnetIDs: []  # Will be populated by VPC instance
+  performanceMode: generalPurpose
+  throughputMode: bursting
+  encrypted: true
+  kmsKeyID: ""

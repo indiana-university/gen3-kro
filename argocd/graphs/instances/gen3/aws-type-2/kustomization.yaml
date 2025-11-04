@@ -1,15 +1,30 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-namespace: default
-
 resources:
-  - namespace.yaml
-  - vpc-instance.yaml
+  - ../../_base/aws/namespace.yaml
+  - ../../_base/aws/vpc-instance.yaml
+  - ../../_base/aws/kms-instance.yaml
+  - ../../_base/aws/cloudwatch-logs-instance.yaml
+  - ../../_base/aws/cloudtrail-instance.yaml
+  - ../../_base/aws/sns-instance.yaml
+  - ../../_base/aws/sqs-instance.yaml
+  - ../../_base/aws/secretsmanager-instance.yaml
+  - ../../_base/aws/data-bucket-instance.yaml
+  - ../../_base/aws/efs-instance.yaml
+  - ../../_base/aws/route53-instance.yaml
+  - ../../_base/aws/waf-instance.yaml
+  - ../../_base/aws/eks-instance.yaml
+  - ../../_base/aws/aurora-instance.yaml
+  - ../../_base/aws/elasticache-instance.yaml
+  - ../../_base/aws/opensearch-instance.yaml
+  - ../../_base/aws/irsa-role-instance.yaml
 
-commonLabels:
-  app.kubernetes.io/managed-by: kustomize
-  app.kubernetes.io/part-of: gen3-infrastructure
+configMapGenerator:
+  - name: config-values
+    envs: [../_default_values/aws-type-2.env]
 
-commonAnnotations:
-  argocd.argoproj.io/sync-options: "SkipDryRunOnMissingResource=true"
+labels:
+  - pairs: {flavor: aws-type-2, environment: production, app.kubernetes.io/managed-by: kustomize}
+
+commonAnnotations: {managed-by: gen3-kro, flavor: aws-type-2}

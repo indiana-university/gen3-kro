@@ -1,0 +1,16 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3OpenSearch
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  name: gen3opensearch
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  vpcID: ""  # Populated by overlay
+  subnetIDs: []  # Populated by overlay
+  engineVersion: "OpenSearch_2.11"
+  instanceType: "t3.medium.search"
+  instanceCount: 2
+  volumeSize: 100

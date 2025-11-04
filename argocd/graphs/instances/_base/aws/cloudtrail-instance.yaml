@@ -1,0 +1,17 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3CloudTrail
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: gen3cloudtrail
+  namespace: default
+spec:
+  name: gen3-base
+  region: us-east-1
+  s3BucketName: gen3-base-cloudtrail
+  includeGlobalServiceEvents: true
+  isMultiRegionTrail: true
+  enableLogFileValidation: true
+  cloudWatchLogsLogGroupARN: ""
+  cloudWatchLogsRoleARN: ""
+  kmsKeyID: ""
