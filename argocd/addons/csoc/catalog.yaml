@@ -2,130 +2,130 @@
   repoURL: oci://ghcr.io/kro-run/kro/kro
   revision: 0.4.1
   chart: kro
-  sync_wave: "-1"
+  sync_wave: "-3"
 
 - addon: ack-cloudtrail
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart
   revision: 1.1.1
   chart: cloudtrail-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-cloudwatchlogs
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudwatchlogs-chart
   revision: 1.1.1
   chart: cloudwatchlogs-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-ec2
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
   revision: 1.7.0
   chart: ec2-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-efs
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/efs-chart
   revision: 1.1.1
   chart: efs-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-eks
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
   revision: 1.9.3
   chart: eks-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-elasticache
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/elasticache-chart
   revision: 1.2.3
   chart: elasticache-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-iam
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/iam-chart
   revision: 1.5.2
   chart: iam-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-kms
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/kms-chart
   revision: 1.1.0
   chart: kms-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-opensearchservice
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/opensearchservice-chart
   revision: 1.1.1
   chart: opensearchservice-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-rds
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/rds-chart
   revision: 1.6.2
   chart: rds-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-route53
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/route53-chart
   revision: 1.1.1
   chart: route53-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-s3
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/s3-chart
   revision: 1.1.1
   chart: s3-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-secretsmanager
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/secretsmanager-chart
   revision: 1.1.1
   chart: secretsmanager-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-sns
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/sns-chart
   revision: 1.2.2
   chart: sns-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-sqs
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/sqs-chart
   revision: 1.2.1
   chart: sqs-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: ack-wafv2
   repoURL: oci://public.ecr.aws/aws-controllers-k8s/wafv2-chart
   revision: 1.1.1
   chart: wafv2-chart
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: external-secrets
   repoURL: https://charts.external-secrets.io
   revision: 0.20.2
   chart: external-secrets
-  sync_wave: "0"
+  sync_wave: "-3"
 
 # - addon: kyverno
 #   repoURL: https://kyverno.github.io/kyverno/
 #   revision: 3.5.2
 #   chart: kyverno
-#   sync_wave: "0"
+#   sync_wave: "-3"
 
 # - addon: kyverno-policies
 #   repoURL: https://kyverno.github.io/kyverno/
 #   revision: 3.5.2
 #   chart: kyverno-policies
-#   sync_wave: "0"
+#   sync_wave: "-3"
 
 - addon: metrics-server
   repoURL: https://kubernetes-sigs.github.io/metrics-server/
   revision: 3.13.0
   chart: metrics-server
-  sync_wave: "0"
+  sync_wave: "-3"
 
 - addon: kube-state-metrics
   repoURL: https://prometheus-community.github.io/helm-charts
   revision: 6.3.0
   chart: kube-state-metrics
-  sync_wave: "0"
+  sync_wave: "-3"
