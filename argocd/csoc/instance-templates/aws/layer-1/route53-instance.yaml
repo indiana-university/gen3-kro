@@ -1,0 +1,15 @@
+apiVersion: kro.run/v1alpha1
+kind: Route53
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: route53
+  namespace: default
+spec:
+  name: base
+  region: us-east-1
+  zoneName: base.example.com
+  privateZone: false
+  vpcID: ""
+  vpcRegion: ""
+  comment:  hosted zone

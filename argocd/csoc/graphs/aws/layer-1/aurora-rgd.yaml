@@ -1,0 +1,101 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aurora.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Aurora
+    spec:
+      name: string
+      region: string
+      vpcID: string
+      subnetIDs: "[]string"
+      engine: string | default="aurora-postgresql"
+      engineVersion: string | default="15.4"
+      instanceClass: string | default="db.r5.large"
+      instanceCount: integer | default=2
+      databaseName: string
+      masterUsername: string | default="admin"
+      backupRetentionPeriod: integer | default=7
+      preferredBackupWindow: string | default="03:00-04:00"
+      preferredMaintenanceWindow: string | default="sun:04:00-sun:05:00"
+    status:
+      clusterARN: ${cluster.status.ackResourceMetadata.arn}
+      clusterID: ${cluster.spec.dbClusterIdentifier}
+      clusterEndpoint: ${cluster.status.endpoint}
+      readerEndpoint: ${cluster.status.readerEndpoint}
+
+  resources:
+  - id: dbSubnetGroup
+    template:
+      apiVersion: rds.services.k8s.aws/v1alpha1
+      kind: DBSubnetGroup
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-aurora-subnet-group
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.name}-aurora-subnet-group
+        description: "Aurora cluster subnet group"
+        subnetIDs: ${schema.spec.subnetIDs}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-aurora-subnet-group
+          - key: "Environment"
+            value: "dev"
+  - id: securityGroup
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: SecurityGroup
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-aurora-sg
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.name}-aurora-sg
+        description: "Aurora cluster security group"
+        vpcID: ${schema.spec.vpcID}
+        ingressRules:
+          - fromPort: 5432
+            toPort: 5432
+            ipProtocol: tcp
+            ipRanges:
+              - cidrIP: 10.0.0.0/8
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-aurora-sg
+  - id: cluster
+    template:
+      apiVersion: rds.services.k8s.aws/v1alpha1
+      kind: DBCluster
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-aurora
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        dbClusterIdentifier: ${schema.spec.name}-aurora
+        engine: ${schema.spec.engine}
+        engineVersion: ${schema.spec.engineVersion}
+        databaseName: ${schema.spec.databaseName}
+        masterUsername: ${schema.spec.masterUsername}
+        dbSubnetGroupName: ${dbSubnetGroup.spec.name}
+        vpcSecurityGroupIDs:
+          - ${securityGroup.status.id}
+        backupRetentionPeriod: ${schema.spec.backupRetentionPeriod}
+        preferredBackupWindow: ${schema.spec.preferredBackupWindow}
+        preferredMaintenanceWindow: ${schema.spec.preferredMaintenanceWindow}
+        storageEncrypted: true
+        enableCloudwatchLogsExports:
+          - postgresql
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-aurora
+          - key: "Environment"
+            value: "dev"

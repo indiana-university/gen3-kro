@@ -1,0 +1,49 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: sqs.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: SQS
+    spec:
+      name: string
+      region: string
+      queueName: string
+      visibilityTimeout: integer | default=30
+      messageRetentionPeriod: integer | default=345600
+      maxMessageSize: integer | default=262144
+      delaySeconds: integer | default=0
+      receiveMessageWaitTimeSeconds: integer | default=0
+      fifoQueue: boolean | default=false
+      contentBasedDeduplication: boolean | default=false
+    status:
+      queueARN: ${queue.status.ackResourceMetadata.arn}
+      queueURL: ${queue.status.queueURL}
+      queueName: ${queue.spec.queueName}
+
+  resources:
+  - id: queue
+    template:
+      apiVersion: sqs.services.k8s.aws/v1alpha1
+      kind: Queue
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        queueName: ${schema.spec.name}
+        visibilityTimeout: ${schema.spec.visibilityTimeout}
+        messageRetentionPeriod: ${schema.spec.messageRetentionPeriod}
+        maximumMessageSize: ${schema.spec.maxMessageSize}
+        delaySeconds: ${schema.spec.delaySeconds}
+        receiveMessageWaitTimeSeconds: ${schema.spec.receiveMessageWaitTimeSeconds}
+        fifoQueue: ${schema.spec.fifoQueue}
+        contentBasedDeduplication: ${schema.spec.contentBasedDeduplication}
+        tags:
+          Name: ${schema.spec.name}
+          Environment: dev

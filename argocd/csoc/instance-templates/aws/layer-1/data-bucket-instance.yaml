@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: DataBucket
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: databucket
+  namespace: default
+spec:
+  name: base
+  region: us-east-1
+  bucketName: base-data
+  versioning: true
+  encryption: true
+  publicAccess: false

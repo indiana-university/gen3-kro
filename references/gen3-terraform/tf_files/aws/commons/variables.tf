@@ -9,7 +9,7 @@ variable "iam_role_name" {
 variable "vpc_cidr_block" {
   default = "172.24.17.0/20"
 }
-  
+
 variable "vpc_flow_logs" {
   default = false
 }
@@ -53,7 +53,7 @@ variable "db_password_fence" {
 
 variable "db_password_peregrine" {
   default = ""
-  sensitive = true  
+  sensitive = true
 }
 
 variable "db_password_sheepdog" {
@@ -226,35 +226,35 @@ variable "indexd_ha" {
 }
 
 variable "fence_maintenance_window"{
-  default = "SAT:09:00-SAT:09:59" 
+  default = "SAT:09:00-SAT:09:59"
 }
 
 variable "sheepdog_maintenance_window"{
-  default = "SAT:10:00-SAT:10:59" 
+  default = "SAT:10:00-SAT:10:59"
 }
 
 variable "indexd_maintenance_window"{
-  default = "SAT:11:00-SAT:11:59" 
+  default = "SAT:11:00-SAT:11:59"
 }
 
 variable "fence_backup_retention_period" {
-  default = "4" 
+  default = "4"
 }
 
 variable "sheepdog_backup_retention_period" {
-  default = "4" 
+  default = "4"
 }
 
 variable "indexd_backup_retention_period" {
-  default = "4" 
+  default = "4"
 }
 
 variable "fence_backup_window" {
-  default = "06:00-06:59" 
+  default = "06:00-06:59"
 }
 
 variable "sheepdog_backup_window" {
-  default = "07:00-07:59" 
+  default = "07:00-07:59"
 }
 
 variable "indexd_backup_window" {
@@ -262,7 +262,7 @@ variable "indexd_backup_window" {
 }
 
 variable "engine_version" {
-  default = "13" 
+  default = "13"
 }
 
 variable "fence_auto_minor_version_upgrade" {
@@ -504,7 +504,7 @@ variable "worker_drive_size" {
 }
 
 variable "eks_version" {
-  default = "1.31"
+  default = "1.33"
 }
 
 variable "workers_subnet_size" {
@@ -612,7 +612,7 @@ variable "sns_topic_arn" {
 }
 
 # the key that was used to encrypt the FIPS enabled AMI
-# This is needed to ASG can decrypt the ami 
+# This is needed to ASG can decrypt the ami
 variable "fips_ami_kms" {
   default = "arn:aws:kms:us-east-1:707767160287:key/mrk-697897f040ef45b0aa3cebf38a916f99"
 }
@@ -791,7 +791,7 @@ variable "deploy_rds_check_lambda" {
 
 variable "use_asg" {
   default = true
-} 
+}
 
 variable "use_karpenter" {
   default = false
@@ -1202,7 +1202,7 @@ variable "custom_rule_groups" {
   type = list(object({
     name              = string
     priority          = number
-    arn               = string 
+    arn               = string
     count             = optional(bool, false)
     override_to_count = optional(list(string), [])
   }))

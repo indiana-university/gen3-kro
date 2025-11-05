@@ -1,0 +1,11 @@
+apiVersion: kro.run/v1alpha1
+kind: SNS
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: sns
+  namespace: default
+spec:
+  name: base
+  region: us-east-1
+  displayName:  Notifications

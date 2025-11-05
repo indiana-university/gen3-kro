@@ -1,0 +1,11 @@
+apiVersion: kro.run/v1alpha1
+kind: GCPStorageBucket
+metadata:
+  name: gcpstoragebucket
+  namespace: default
+spec:
+  name: gcp-base-storage
+  project: my-gcp-project
+  location: US
+  storageClass: "STANDARD"
+  versioning: true

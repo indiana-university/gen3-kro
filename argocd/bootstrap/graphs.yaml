@@ -19,9 +19,9 @@ spec:
           repoURL: '{{.metadata.annotations.csoc_repo_url}}'
           revision: '{{.metadata.annotations.csoc_repo_revision}}'
           directories:
-            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/aws/*'
-            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/azure/*'
-            - path: '{{.metadata.annotations.csoc_repo_basepath}}/graphs/google/*'
+            - path: '{{.metadata.annotations.csoc_repo_basepath}}/csoc/graphs/aws/*'
+            - path: '{{.metadata.annotations.csoc_repo_basepath}}/csoc/graphs/azure/*'
+            - path: '{{.metadata.annotations.csoc_repo_basepath}}/csoc/graphs/gcp/*'
   template:
     metadata:
       name: '{{- if .path }}{{ .path.path | regexFind "(?:aws|azure|google)/.*" | replace "/" "-" }}-graphs{{- else }}{{ .name }}-graphs{{- end }}'
@@ -33,7 +33,7 @@ spec:
       source:
         repoURL: '{{.metadata.annotations.csoc_repo_url}}'
         targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
-        path: '{{- if .path }}{{ .path.path }}{{- else }}{{ .metadata.annotations.csoc_repo_basepath }}/graphs/{{ .name }}{{- end }}'
+        path: '{{- if .path }}{{ .path.path }}{{- else }}{{ .metadata.annotations.csoc_repo_basepath }}/csoc/graphs/{{ .name }}{{- end }}'
       destination:
         name: '{{.name}}'
         namespace: default

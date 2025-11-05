@@ -1,0 +1,38 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: cloudwatchlogs.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: CloudWatchLogs
+    spec:
+      name: string
+      region: string
+      logGroupName: string
+      retentionInDays: integer | default=30
+      kmsKeyID: string | default=""
+    status:
+      logGroupARN: ${logGroup.status.ackResourceMetadata.arn}
+      logGroupName: ${logGroup.spec.name}
+
+  resources:
+  - id: logGroup
+    template:
+      apiVersion: cloudwatchlogs.services.k8s.aws/v1alpha1
+      kind: LogGroup
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.logGroupName}
+        retentionDays: ${schema.spec.retentionInDays}
+        kmsKeyID: ${schema.spec.kmsKeyID}
+        tags:
+          Name: ${schema.spec.name}
+          Environment: "dev"

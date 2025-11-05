@@ -1,0 +1,231 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../csoc/_kustomize_flavors/aws-type-2
+
+configMapGenerator:
+  - name: spoke-values
+    behavior: merge
+    envs: [values.env]
+    # merge behavior at level-2 allows example to override base values
+
+replacements:
+  # Sync Wave Annotations
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_namespace}
+    targets: [{select: {kind: Namespace}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_vpc}
+    targets: [{select: {kind: Vpc}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_eks}
+    targets: [{select: {kind: EKS}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_aurora}
+    targets: [{select: {kind: Aurora}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_elasticache}
+    targets: [{select: {kind: ElastiCache}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_opensearch}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_data_bucket}
+    targets: [{select: {kind: DataBucket}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_kms}
+    targets: [{select: {kind: KMS}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_efs}
+    targets: [{select: {kind: EFS}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_waf}
+    targets: [{select: {kind: WAF}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_cloudtrail}
+    targets: [{select: {kind: CloudTrail}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_route53}
+    targets: [{select: {kind: Route53}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
+
+  # Common Fields
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.namespace_name}
+    targets:
+      - {select: {kind: Namespace}, fieldPaths: [metadata.name]}
+      - {select: {kind: Vpc}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: EKS}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: Aurora}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: ElastiCache}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: OpenSearch}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: DataBucket}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: KMS}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: EFS}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: WAF}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: CloudTrail}, fieldPaths: [metadata.namespace]}
+      - {select: {kind: Route53}, fieldPaths: [metadata.namespace]}
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.region}
+    targets:
+      - {select: {kind: Vpc}, fieldPaths: [spec.region]}
+      - {select: {kind: EKS}, fieldPaths: [spec.region]}
+      - {select: {kind: Aurora}, fieldPaths: [spec.region]}
+      - {select: {kind: ElastiCache}, fieldPaths: [spec.region]}
+      - {select: {kind: OpenSearch}, fieldPaths: [spec.region]}
+      - {select: {kind: DataBucket}, fieldPaths: [spec.region]}
+      - {select: {kind: KMS}, fieldPaths: [spec.region]}
+      - {select: {kind: EFS}, fieldPaths: [spec.region]}
+      - {select: {kind: WAF}, fieldPaths: [spec.region]}
+      - {select: {kind: CloudTrail}, fieldPaths: [spec.region]}
+      - {select: {kind: Route53}, fieldPaths: [spec.region]}
+
+  # VPC
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_metadata_name}
+    targets: [{select: {kind: Vpc}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_name}
+    targets: [{select: {kind: Vpc}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_cidr}
+    targets: [{select: {kind: Vpc}, fieldPaths: [spec.cidr.vpcCidr]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_public_subnet1_cidr}
+    targets: [{select: {kind: Vpc}, fieldPaths: [spec.cidr.publicSubnet1Cidr]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_public_subnet2_cidr}
+    targets: [{select: {kind: Vpc}, fieldPaths: [spec.cidr.publicSubnet2Cidr]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_private_subnet1_cidr}
+    targets: [{select: {kind: Vpc}, fieldPaths: [spec.cidr.privateSubnet1Cidr]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_private_subnet2_cidr}
+    targets: [{select: {kind: Vpc}, fieldPaths: [spec.cidr.privateSubnet2Cidr]}]
+
+  # EKS
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.eks_metadata_name}
+    targets: [{select: {kind: EKS}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.eks_name}
+    targets: [{select: {kind: EKS}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.eks_version}
+    targets: [{select: {kind: EKS}, fieldPaths: [spec.version]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.eks_node_instance_types}
+    targets: [{select: {kind: EKS}, fieldPaths: ['spec.nodeGroupInstanceTypes[0]'], options: {create: true}}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.eks_node_desired_size}
+    targets: [{select: {kind: EKS}, fieldPaths: [spec.nodeGroupDesiredSize]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.eks_node_min_size}
+    targets: [{select: {kind: EKS}, fieldPaths: [spec.nodeGroupMinSize]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.eks_node_max_size}
+    targets: [{select: {kind: EKS}, fieldPaths: [spec.nodeGroupMaxSize]}]
+
+  # Aurora
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_metadata_name}
+    targets: [{select: {kind: Aurora}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_name}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_engine}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.engine]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_engine_version}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.engineVersion]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_instance_class}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.instanceClass]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_instance_count}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.instanceCount]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_database_name}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.databaseName]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_master_username}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.masterUsername]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_backup_retention_period}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.backupRetentionPeriod]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_preferred_backup_window}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.preferredBackupWindow]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.aurora_preferred_maintenance_window}
+    targets: [{select: {kind: Aurora}, fieldPaths: [spec.preferredMaintenanceWindow]}]
+
+  # ElastiCache
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.elasticache_metadata_name}
+    targets: [{select: {kind: ElastiCache}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.elasticache_name}
+    targets: [{select: {kind: ElastiCache}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.elasticache_engine}
+    targets: [{select: {kind: ElastiCache}, fieldPaths: [spec.engine]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.elasticache_engine_version}
+    targets: [{select: {kind: ElastiCache}, fieldPaths: [spec.engineVersion]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.elasticache_node_type}
+    targets: [{select: {kind: ElastiCache}, fieldPaths: [spec.nodeType]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.elasticache_num_cache_nodes}
+    targets: [{select: {kind: ElastiCache}, fieldPaths: [spec.numCacheNodes]}]
+
+  # OpenSearch
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.opensearch_metadata_name}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.opensearch_name}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.opensearch_domain_name}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [spec.domainName]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.opensearch_version}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [spec.version]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.opensearch_instance_type}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [spec.instanceType]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.opensearch_instance_count}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [spec.instanceCount]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.opensearch_volume_size}
+    targets: [{select: {kind: OpenSearch}, fieldPaths: [spec.volumeSize]}]
+
+  # DataBucket
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.data_bucket_metadata_name}
+    targets: [{select: {kind: DataBucket}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.data_bucket_name}
+    targets: [{select: {kind: DataBucket}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.data_bucket_bucket_name}
+    targets: [{select: {kind: DataBucket}, fieldPaths: [spec.bucketName]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.data_bucket_versioning}
+    targets: [{select: {kind: DataBucket}, fieldPaths: [spec.versioning]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.data_bucket_encryption}
+    targets: [{select: {kind: DataBucket}, fieldPaths: [spec.encryption]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.data_bucket_public_access}
+    targets: [{select: {kind: DataBucket}, fieldPaths: [spec.publicAccess]}]
+
+  # KMS
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.kms_metadata_name}
+    targets: [{select: {kind: KMS}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.kms_name}
+    targets: [{select: {kind: KMS}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.kms_description}
+    targets: [{select: {kind: KMS}, fieldPaths: [spec.description]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.kms_key_rotation}
+    targets: [{select: {kind: KMS}, fieldPaths: [spec.keyRotation]}]
+
+  # EFS
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.efs_metadata_name}
+    targets: [{select: {kind: EFS}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.efs_name}
+    targets: [{select: {kind: EFS}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.efs_performance_mode}
+    targets: [{select: {kind: EFS}, fieldPaths: [spec.performanceMode]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.efs_throughput_mode}
+    targets: [{select: {kind: EFS}, fieldPaths: [spec.throughputMode]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.efs_encrypted}
+    targets: [{select: {kind: EFS}, fieldPaths: [spec.encrypted]}]
+
+  # WAF
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.waf_metadata_name}
+    targets: [{select: {kind: WAF}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.waf_name}
+    targets: [{select: {kind: WAF}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.waf_scope}
+    targets: [{select: {kind: WAF}, fieldPaths: [spec.scope]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.waf_description}
+    targets: [{select: {kind: WAF}, fieldPaths: [spec.description]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.waf_default_action}
+    targets: [{select: {kind: WAF}, fieldPaths: [spec.defaultAction]}]
+
+  # CloudTrail
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.cloudtrail_metadata_name}
+    targets: [{select: {kind: CloudTrail}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.cloudtrail_name}
+    targets: [{select: {kind: CloudTrail}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.cloudtrail_s3_bucket_name}
+    targets: [{select: {kind: CloudTrail}, fieldPaths: [spec.s3BucketName]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.cloudtrail_include_global_service_events}
+    targets: [{select: {kind: CloudTrail}, fieldPaths: [spec.includeGlobalServiceEvents]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.cloudtrail_is_multi_region_trail}
+    targets: [{select: {kind: CloudTrail}, fieldPaths: [spec.isMultiRegionTrail]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.cloudtrail_enable_log_file_validation}
+    targets: [{select: {kind: CloudTrail}, fieldPaths: [spec.enableLogFileValidation]}]
+
+  # Route53
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.route53_metadata_name}
+    targets: [{select: {kind: Route53}, fieldPaths: [metadata.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.route53_name}
+    targets: [{select: {kind: Route53}, fieldPaths: [spec.name]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.route53_zone_name}
+    targets: [{select: {kind: Route53}, fieldPaths: [spec.zoneName]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.route53_private_zone}
+    targets: [{select: {kind: Route53}, fieldPaths: [spec.privateZone]}]
+  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.route53_comment}
+    targets: [{select: {kind: Route53}, fieldPaths: [spec.comment]}]
+
+labels:
+  - pairs: {example: aws-type-2, deployed-by: kustomize}
+    includeSelectors: false

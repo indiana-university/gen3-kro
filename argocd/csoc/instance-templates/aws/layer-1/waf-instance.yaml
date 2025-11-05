@@ -1,0 +1,13 @@
+apiVersion: kro.run/v1alpha1
+kind: WAF
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+  name: waf
+  namespace: default
+spec:
+  name: base
+  region: us-east-1
+  scope: REGIONAL
+  description:  WAF Web ACL
+  defaultAction: ALLOW
