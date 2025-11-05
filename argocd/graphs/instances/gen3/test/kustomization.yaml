@@ -8,6 +8,8 @@ resources:
 configMapGenerator:
   - name: spoke-values
     envs: [../_default_values/test.env]
+    options:
+      disableNameSuffixHash: true
 
 labels:
   - pairs: {flavor: test, environment: testing, app.kubernetes.io/managed-by: kustomize}
