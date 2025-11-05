@@ -1,0 +1,16 @@
+apiVersion: kro.run/v1alpha1
+kind: EFS
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+  name: efs
+  namespace: default
+spec:
+  name: base
+  region: us-east-1
+  vpcID: ""  # Will be populated by VPC instance
+  subnetIDs: []  # Will be populated by VPC instance
+  performanceMode: generalPurpose
+  throughputMode: bursting
+  encrypted: true
+  kmsKeyID: ""

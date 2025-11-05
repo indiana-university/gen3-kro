@@ -47,7 +47,7 @@ dependency "csoc" {
   mock_outputs = values.csoc_provider == "aws" ? {
     cluster_name                       = "mock-cluster-name"
     cluster_endpoint                   = "https://mock-endpoint.eks.amazonaws.com"
-    cluster_version                    = "1.31"
+    cluster_version                    = "1.33"
     cluster_arn                        = "arn:aws:eks:us-east-1:123456789012:cluster/mock-cluster"
     cluster_security_group_id          = "sg-mock123"
     cluster_certificate_authority_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvakNDQWVhZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJME1EY3lOREUxTVRnek1Wb1hEVE0wTURjeU1qRTFNVGd6TVZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTG1lCjBGdW9xdVlDZjhIY0RlSjRyQmZBd0RBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
@@ -61,7 +61,7 @@ dependency "csoc" {
     } : values.csoc_provider == "azure" ? {
     cluster_name                       = "mock-aks-cluster"
     cluster_endpoint                   = "https://mock-aks.azure.com"
-    cluster_version                    = "1.31"
+    cluster_version                    = "1.33"
     cluster_arn                        = "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/mock-rg/providers/Microsoft.ContainerService/managedClusters/mock-aks"
     cluster_security_group_id          = "nsg-mock123"
     cluster_certificate_authority_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvakNDQWVhZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJME1EY3lOREUxTVRnek1Wb1hEVE0wTURjeU1qRTFNVGd6TVZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTG1lCjBGdW9xdVlDZjhIY0RlSjRyQmZBd0RBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="
@@ -75,7 +75,7 @@ dependency "csoc" {
     } : {
     cluster_name                       = "mock-gke-cluster"
     cluster_endpoint                   = "https://mock-gke.googleapis.com"
-    cluster_version                    = "1.31"
+    cluster_version                    = "1.33"
     cluster_arn                        = "projects/mock-project/locations/us-central1/clusters/mock-gke-cluster"
     cluster_security_group_id          = "mock-firewall-123"
     cluster_certificate_authority_data = "LS0tLS1CRUdJTiBDRVJUSUZJQ0FURS0tLS0tCk1JSUMvakNDQWVhZ0F3SUJBZ0lCQURBTkJna3Foa2lHOXcwQkFRc0ZBREFWTVJNd0VRWURWUVFERXdwcmRXSmwKY201bGRHVnpNQjRYRFRJME1EY3lOREUxTVRnek1Wb1hEVE0wTURjeU1qRTFNVGd6TVZvd0ZURVRNQkVHQTFVRQpBeE1LYTNWaVpYSnVaWFJsY3pDQ0FTSXdEUVlKS29aSWh2Y05BUUVCQlFBRGdnRVBBRENDQVFvQ2dnRUJBTG1lCjBGdW9xdVlDZjhIY0RlSjRyQmZBd0RBPT0KLS0tLS1FTkQgQ0VSVElGSUNBVEUtLS0tLQo="

@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: SQS
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "3"
+  name: sqs
+  namespace: default
+spec:
+  name: base
+  region: us-east-1
+  queueName: base-queue
+  visibilityTimeout: 30
+  messageRetentionPeriod: 345600
+  fifoQueue: false

@@ -20,18 +20,6 @@ spec:
             revision: '{{.metadata.annotations.csoc_repo_revision}}'
             directories:
               - path: '{{.metadata.annotations.csoc_repo_basepath}}/spokes/*/infrastructure'
-  # For testing: Also deploy spoke1 infrastructure to control-plane
-  - matrix:
-      generators:
-        - clusters:
-            selector:
-              matchLabels:
-                fleet_member: control-plane
-        - git:
-            repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-            revision: '{{.metadata.annotations.csoc_repo_revision}}'
-            directories:
-              - path: '{{.metadata.annotations.csoc_repo_basepath}}/spokes/spoke1/infrastructure'
   template:
     metadata:
       name: '{{ .path.path | dir | base }}-infrastructure'

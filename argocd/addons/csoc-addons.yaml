@@ -10,13 +10,13 @@
 #    - csoc.kro.dev/addons-config (YAML map of addon identities and settings)
 #    - csoc.kro.dev/gitops-context (repository + region context)
 #
-# 2. Addon Catalog (addons/csoc/catalog.yaml):
+# 2. Addon Catalog (argocd/addons/catalog.yaml):
 #    - Defines available addons with their Helm chart sources and versions
 #
-# 3. Enablement Configuration: addons/csoc/enablement.yaml
+# 3. Enablement Configuration: argocd/addons/enablement.yaml
 #    - Controls which addons are deployed to CSOC clusters
 #
-# 4. Values Configuration: addons/csoc/values.yaml
+# 4. Values Configuration: argocd/addons/values/*.yaml
 #    - Provides addon-specific configuration (resource limits, role ARNs, etc.)
 #
 apiVersion: argoproj.io/v1alpha1
@@ -42,7 +42,7 @@ spec:
               repoURL: '{{.metadata.annotations.addons_repo_url}}'
               revision: '{{.metadata.annotations.addons_repo_revision}}'
               files:
-                - path: 'argocd/addons/csoc/catalog.yaml'
+                - path: 'argocd/addons/catalog.yaml'
   template:
     metadata:
       name: 'csoc-{{.addon}}'
@@ -69,7 +69,7 @@ spec:
             skipCrds: false
             # Load per-addon values file
             valueFiles:
-              - $values/argocd/addons/csoc/values/{{.addon}}.yaml
+              - $values/argocd/addons/values/{{.addon}}.yaml
             # Inline values from cluster annotations
             values: |
               {{- $addonsConfig := dict }}

@@ -1,0 +1,11 @@
+apiVersion: kro.run/v1alpha1
+kind: AzureStorageAccount
+metadata:
+  name: azurestorageaccount
+  namespace: default
+spec:
+  name: azurebase
+  location: eastus
+  resourceGroup: resources
+  accountTier: "Standard"
+  replicationType: "LRS"

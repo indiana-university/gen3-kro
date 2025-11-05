@@ -1,0 +1,27 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../../instance-templates/aws/namespace.yaml
+  - ../../../instance-templates/aws/vpc-instance.yaml
+  - ../../../instance-templates/aws/kms-instance.yaml
+  - ../../../instance-templates/aws/cloudwatch-logs-instance.yaml
+  - ../../../instance-templates/aws/sns-instance.yaml
+  - ../../../instance-templates/aws/sqs-instance.yaml
+  - ../../../instance-templates/aws/secretsmanager-instance.yaml
+  - ../../../instance-templates/aws/data-bucket-instance.yaml
+  - ../../../instance-templates/aws/efs-instance.yaml
+  - ../../../instance-templates/aws/eks-instance.yaml
+  - ../../../instance-templates/aws/rds-instance.yaml
+  - ../../../instance-templates/aws/elasticache-instance.yaml
+  - ../../../instance-templates/aws/opensearch-instance.yaml
+  - ../../../instance-templates/aws/irsa-role-instance.yaml
+
+configMapGenerator:
+  - name: spoke-values
+    envs: [../_flavor_defaults/aws-type-1.env]
+
+labels:
+  - pairs: {flavor: aws-type-1, environment: development, app.kubernetes.io/managed-by: kustomize}
+
+commonAnnotations: {managed-by: kro, flavor: aws-type-1}

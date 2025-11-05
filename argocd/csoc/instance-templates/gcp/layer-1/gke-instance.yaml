@@ -1,0 +1,16 @@
+apiVersion: kro.run/v1alpha1
+kind: GKE
+metadata:
+  name: gke
+  namespace: default
+spec:
+  name: gcp-base
+  project: my-gcp-project
+  region: us-central1
+  vpcName: gcp-base-vpc
+  subnetName: gcp-base-subnet
+  kubernetesVersion: "1.33"
+  initialNodeCount: 2
+  machineType: "e2-medium"
+  minNodeCount: 1
+  maxNodeCount: 4

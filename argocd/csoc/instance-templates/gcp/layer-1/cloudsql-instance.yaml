@@ -1,0 +1,13 @@
+apiVersion: kro.run/v1alpha1
+kind: CloudSQL
+metadata:
+  name: cloudsql
+  namespace: default
+spec:
+  name: gcp-base
+  project: my-gcp-project
+  region: us-central1
+  vpcName: gcp-base-vpc
+  databaseVersion: "POSTGRES_15"
+  tier: "db-f1-micro"
+  diskSize: 20

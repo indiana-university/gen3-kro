@@ -1,0 +1,75 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gcp-gke.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "-1"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: GKE
+    spec:
+      name: string
+      project: string
+      region: string
+      vpcName: string
+      subnetName: string
+      kubernetesVersion: string | default="1.33"
+      initialNodeCount: integer | default=2
+      machineType: string | default="e2-medium"
+      minNodeCount: integer | default=1
+      maxNodeCount: integer | default=4
+    status:
+      clusterID: ${cluster.status.id}
+      clusterEndpoint: ${cluster.status.endpoint}
+      clusterSelfLink: ${cluster.status.selfLink}
+
+  resources:
+  - id: cluster
+    template:
+      apiVersion: container.cnrm.cloud.google.com/v1beta1
+      kind: ContainerCluster
+      metadata:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.name}
+      spec:
+        location: ${schema.spec.location}
+        initialNodeCount: ${schema.spec.initialNodeCount}
+        networkRef:
+          name: ${schema.spec.networkName}
+        subnetworkRef:
+          name: ${schema.spec.subnetworkName}
+        addonsConfig:
+          httpLoadBalancing:
+            disabled: false
+          horizontalPodAutoscaling:
+            disabled: false
+        workloadIdentityConfig:
+          workloadPool: ${schema.spec.project}.svc.id.goog
+        nodeConfig:
+          machineType: ${schema.spec.machineType}
+          oauthScopes:
+            - https://www.googleapis.com/auth/cloud-platform
+          workloadMetadataConfig:
+            mode: GKE_METADATA
+
+  - id: nodePool
+    template:
+      apiVersion: container.cnrm.cloud.google.com/v1beta1
+      kind: ContainerNodePool
+      metadata:
+        name: ${schema.spec.name}-pool
+        namespace: ${schema.spec.name}
+      spec:
+        location: ${schema.spec.location}
+        clusterRef:
+          name: ${cluster.metadata.name}
+        initialNodeCount: ${schema.spec.initialNodeCount}
+        autoscaling:
+          minNodeCount: ${schema.spec.minNodeCount}
+          maxNodeCount: ${schema.spec.maxNodeCount}
+        nodeConfig:
+          machineType: ${schema.spec.machineType}
+          oauthScopes:
+            - https://www.googleapis.com/auth/cloud-platform
