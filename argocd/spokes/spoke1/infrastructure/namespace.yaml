@@ -3,7 +3,7 @@ kind: Namespace
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: default
+  name: spoke1
   labels:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/part-of: infrastructure

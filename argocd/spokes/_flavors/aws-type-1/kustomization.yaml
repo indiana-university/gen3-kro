@@ -2,13 +2,24 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../../csoc/_kustomize_flavors/aws-type-1
+  - ../../../instance-templates/namespace.yaml
+  - ../../../instance-templates/aws/layer-1/vpc-instance.yaml
+  - ../../../instance-templates/aws/layer-1/kms-instance.yaml
+  - ../../../instance-templates/aws/layer-1/cloudwatch-logs-instance.yaml
+  - ../../../instance-templates/aws/layer-1/sns-instance.yaml
+  - ../../../instance-templates/aws/layer-1/sqs-instance.yaml
+  - ../../../instance-templates/aws/layer-1/secretsmanager-instance.yaml
+  - ../../../instance-templates/aws/layer-1/data-bucket-instance.yaml
+  - ../../../instance-templates/aws/layer-1/efs-instance.yaml
+  - ../../../instance-templates/aws/layer-1/eks-instance.yaml
+  - ../../../instance-templates/aws/layer-1/rds-instance.yaml
+  - ../../../instance-templates/aws/layer-1/elasticache-instance.yaml
+  - ../../../instance-templates/aws/layer-1/opensearch-instance.yaml
+  - ../../../instance-templates/aws/layer-1/irsa-role-instance.yaml
 
 configMapGenerator:
   - name: spoke-values
-    behavior: merge
     envs: [values.env]
-    # merge behavior at level-2 allows example to override base values
 
 replacements:
   # Sync Wave Annotations

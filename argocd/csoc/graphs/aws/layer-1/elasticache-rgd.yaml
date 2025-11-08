@@ -4,7 +4,7 @@ metadata:
   name: elasticache.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,8 +12,11 @@ spec:
     spec:
       name: string
       region: string
+      environment: string | default="dev"
+      tags: "map[string]string | default={}"
       vpcID: string
       subnetIDs: "[]string"
+      ingressCIDR: string | default="10.0.0.0/8"
       engine: string | default="redis"
       engineVersion: string | default="7.0"
       nodeType: string | default="cache.t3.micro"
@@ -43,7 +46,7 @@ spec:
           - key: "Name"
             value: ${schema.spec.name}-cache-subnet-group
           - key: "Environment"
-            value: "dev"
+            value: ${schema.spec.environment}
   - id: securityGroup
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
@@ -62,10 +65,12 @@ spec:
             toPort: 6379
             ipProtocol: tcp
             ipRanges:
-              - cidrIP: 10.0.0.0/8
+              - cidrIP: ${schema.spec.ingressCIDR}
         tags:
           - key: "Name"
             value: ${schema.spec.name}-cache-sg
+          - key: "Environment"
+            value: ${schema.spec.environment}
   - id: cacheCluster
     template:
       apiVersion: elasticache.services.k8s.aws/v1alpha1
@@ -88,4 +93,4 @@ spec:
           - key: "Name"
             value: ${schema.spec.name}-cache
           - key: "Environment"
-            value: "dev"
+            value: ${schema.spec.environment}

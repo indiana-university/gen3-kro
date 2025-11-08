@@ -1,0 +1,416 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gen3-infrastructure.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Gen3Infrastructure
+    spec:
+      name: string
+      region: string
+      environment: string | default="dev"
+      tags: "map[string]string | default={}"
+
+      # VPC Configuration
+      vpc:
+        cidr:
+          vpcCidr: string | default="10.0.0.0/16"
+          publicSubnet1Cidr: string | default="10.0.1.0/24"
+          publicSubnet2Cidr: string | default="10.0.2.0/24"
+          privateSubnet1Cidr: string | default="10.0.11.0/24"
+          privateSubnet2Cidr: string | default="10.0.12.0/24"
+
+      # EKS Configuration
+      eks:
+        enabled: boolean | default=true
+        version: string | default="1.33"
+        nodeGroupInstanceTypes: "[]string | default=[\"t3.large\"]"
+        nodeGroupDesiredSize: integer | default=3
+        nodeGroupMinSize: integer | default=2
+        nodeGroupMaxSize: integer | default=6
+
+      # RDS Configuration
+      rds:
+        enabled: boolean | default=true
+        engine: string | default="postgres"
+        engineVersion: string | default="15.4"
+        instanceClass: string | default="db.t3.medium"
+        allocatedStorage: integer | default=100
+        databaseName: string | default="gen3"
+        ingressCIDR: string | default="10.0.0.0/8"
+
+      # Aurora Configuration (alternative to RDS)
+      aurora:
+        enabled: boolean | default=false
+        engine: string | default="aurora-postgresql"
+        engineVersion: string | default="15.4"
+        instanceClass: string | default="db.r5.large"
+        instanceCount: integer | default=2
+        databaseName: string | default="gen3"
+        ingressCIDR: string | default="10.0.0.0/8"
+
+      # ElastiCache Configuration
+      elasticache:
+        enabled: boolean | default=true
+        engine: string | default="redis"
+        engineVersion: string | default="7.0"
+        nodeType: string | default="cache.t3.micro"
+        numCacheNodes: integer | default=1
+        ingressCIDR: string | default="10.0.0.0/8"
+
+      # EFS Configuration
+      efs:
+        enabled: boolean | default=false
+        performanceMode: string | default="generalPurpose"
+        throughputMode: string | default="bursting"
+        encrypted: boolean | default=true
+        kmsKeyID: string | default=""
+        ingressCIDR: string | default="10.0.0.0/8"
+
+      # S3 Data Bucket Configuration
+      dataBucket:
+        enabled: boolean | default=true
+        bucketName: string
+        versioning: boolean | default=true
+        encryption: boolean | default=true
+        publicAccess: boolean | default=false
+
+      # KMS Configuration
+      kms:
+        enabled: boolean | default=true
+        description: string | default="Gen3 encryption key"
+        enableKeyRotation: boolean | default=true
+
+      # OpenSearch Configuration
+      opensearch:
+        enabled: boolean | default=false
+        engineVersion: string | default="OpenSearch_2.11"
+        instanceType: string | default="t3.small.search"
+        instanceCount: integer | default=1
+        volumeSize: integer | default=10
+        ingressCIDR: string | default="10.0.0.0/8"
+
+      # Route53 Configuration
+      route53:
+        enabled: boolean | default=false
+        zoneName: string | default=""
+        privateZone: boolean | default=false
+        comment: string | default="Gen3 hosted zone"
+
+      # CloudTrail Configuration
+      cloudtrail:
+        enabled: boolean | default=false
+        s3BucketName: string | default=""
+        includeGlobalServiceEvents: boolean | default=true
+        isMultiRegionTrail: boolean | default=true
+
+      # WAF Configuration
+      waf:
+        enabled: boolean | default=false
+        scope: string | default="REGIONAL"
+        description: string | default="Gen3 WAF Web ACL"
+        defaultAction: string | default="ALLOW"
+
+    status:
+      # VPC Outputs
+      vpcID: ${vpc.status.vpcID}
+      publicSubnet1ID: ${vpc.status.publicSubnet1ID}
+      publicSubnet2ID: ${vpc.status.publicSubnet2ID}
+      privateSubnet1ID: ${vpc.status.privateSubnet1ID}
+      privateSubnet2ID: ${vpc.status.privateSubnet2ID}
+      internetGatewayID: ${vpc.status.internetGatewayID}
+
+      # EKS Outputs (conditional)
+      eksClusterARN: ${eks.status.clusterARN}
+      eksClusterName: ${eks.status.clusterName}
+      eksClusterEndpoint: ${eks.status.clusterEndpoint}
+
+      # Database Outputs (conditional - RDS or Aurora)
+      dbInstanceARN: ${rds.status.dbInstanceARN}
+      dbEndpoint: ${rds.status.endpoint}
+
+      # ElastiCache Outputs (conditional)
+      cacheClusterID: ${elasticache.status.cacheClusterID}
+      cacheEndpoint: ${elasticache.status.endpoint}
+
+      # EFS Outputs (conditional)
+      efsFileSystemID: ${efs.status.fileSystemID}
+
+      # S3 Outputs (conditional)
+      dataBucketARN: ${dataBucket.status.bucketARN}
+      dataBucketName: ${dataBucket.status.bucketName}
+
+      # KMS Outputs (conditional)
+      kmsKeyARN: ${kms.status.keyARN}
+      kmsKeyID: ${kms.status.keyID}
+
+  resources:
+  # Layer 1: VPC (foundational - no dependencies)
+  - id: vpc
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: Vpc
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-vpc
+        annotations:
+          argocd.argoproj.io/sync-wave: "1"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        cidr: ${schema.spec.vpc.cidr}
+
+  # Layer 2: KMS (independent resource)
+  - id: kms
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: KMS
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-kms
+        annotations:
+          argocd.argoproj.io/sync-wave: "2"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        description: ${schema.spec.kms.description}
+        enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
+
+  # Layer 3: EKS (depends on VPC)
+  - id: eks
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: EKS
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-eks
+        annotations:
+          argocd.argoproj.io/sync-wave: "3"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        version: ${schema.spec.eks.version}
+        nodeGroupInstanceTypes: ${schema.spec.eks.nodeGroupInstanceTypes}
+        nodeGroupDesiredSize: ${schema.spec.eks.nodeGroupDesiredSize}
+        nodeGroupMinSize: ${schema.spec.eks.nodeGroupMinSize}
+        nodeGroupMaxSize: ${schema.spec.eks.nodeGroupMaxSize}
+
+  # Layer 3: RDS (depends on VPC)
+  - id: rds
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: RDS
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-rds
+        annotations:
+          argocd.argoproj.io/sync-wave: "3"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.rds.ingressCIDR}
+        engine: ${schema.spec.rds.engine}
+        engineVersion: ${schema.spec.rds.engineVersion}
+        instanceClass: ${schema.spec.rds.instanceClass}
+        allocatedStorage: ${schema.spec.rds.allocatedStorage}
+        databaseName: ${schema.spec.rds.databaseName}
+
+  # Layer 3: Aurora (alternative to RDS - depends on VPC)
+  - id: aurora
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: Aurora
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-aurora
+        annotations:
+          argocd.argoproj.io/sync-wave: "3"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.aurora.ingressCIDR}
+        engine: ${schema.spec.aurora.engine}
+        engineVersion: ${schema.spec.aurora.engineVersion}
+        instanceClass: ${schema.spec.aurora.instanceClass}
+        instanceCount: ${schema.spec.aurora.instanceCount}
+        databaseName: ${schema.spec.aurora.databaseName}
+
+  # Layer 3: ElastiCache (depends on VPC)
+  - id: elasticache
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: ElastiCache
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-elasticache
+        annotations:
+          argocd.argoproj.io/sync-wave: "3"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.elasticache.ingressCIDR}
+        engine: ${schema.spec.elasticache.engine}
+        engineVersion: ${schema.spec.elasticache.engineVersion}
+        nodeType: ${schema.spec.elasticache.nodeType}
+        numCacheNodes: ${schema.spec.elasticache.numCacheNodes}
+
+  # Layer 3: EFS (depends on VPC)
+  - id: efs
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: EFS
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-efs
+        annotations:
+          argocd.argoproj.io/sync-wave: "3"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.efs.ingressCIDR}
+        performanceMode: ${schema.spec.efs.performanceMode}
+        throughputMode: ${schema.spec.efs.throughputMode}
+        encrypted: ${schema.spec.efs.encrypted}
+        kmsKeyID: ${schema.spec.efs.kmsKeyID}
+
+  # Layer 3: OpenSearch (depends on VPC)
+  - id: opensearch
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: OpenSearch
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-opensearch
+        annotations:
+          argocd.argoproj.io/sync-wave: "3"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.opensearch.ingressCIDR}
+        engineVersion: ${schema.spec.opensearch.engineVersion}
+        instanceType: ${schema.spec.opensearch.instanceType}
+        instanceCount: ${schema.spec.opensearch.instanceCount}
+        volumeSize: ${schema.spec.opensearch.volumeSize}
+
+  # Layer 2: Data Bucket (independent)
+  - id: dataBucket
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: DataBucket
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-data-bucket
+        annotations:
+          argocd.argoproj.io/sync-wave: "2"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        bucketName: ${schema.spec.dataBucket.bucketName}
+        versioning: ${schema.spec.dataBucket.versioning}
+        encryption: ${schema.spec.dataBucket.encryption}
+        publicAccess: ${schema.spec.dataBucket.publicAccess}
+
+  # Layer 2: Route53 (independent)
+  - id: route53
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: Route53
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-route53
+        annotations:
+          argocd.argoproj.io/sync-wave: "2"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        zoneName: ${schema.spec.route53.zoneName}
+        privateZone: ${schema.spec.route53.privateZone}
+        vpcID: ${vpc.status.vpcID}
+        vpcRegion: ${schema.spec.region}
+        comment: ${schema.spec.route53.comment}
+
+  # Layer 2: CloudTrail (may depend on S3 bucket)
+  - id: cloudtrail
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: CloudTrail
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-cloudtrail
+        annotations:
+          argocd.argoproj.io/sync-wave: "4"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        s3BucketName: ${schema.spec.cloudtrail.s3BucketName}
+        includeGlobalServiceEvents: ${schema.spec.cloudtrail.includeGlobalServiceEvents}
+        isMultiRegionTrail: ${schema.spec.cloudtrail.isMultiRegionTrail}
+
+  # Layer 4: WAF (may depend on other resources)
+  - id: waf
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: WAF
+      metadata:
+        namespace: ${schema.spec.name}
+        name: ${schema.spec.name}-waf
+        annotations:
+          argocd.argoproj.io/sync-wave: "4"
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        scope: ${schema.spec.waf.scope}
+        description: ${schema.spec.waf.description}
+        defaultAction: ${schema.spec.waf.defaultAction}

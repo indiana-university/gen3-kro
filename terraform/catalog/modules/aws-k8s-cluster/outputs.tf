@@ -54,6 +54,11 @@ output "account_id" {
   value       = var.create ? data.aws_caller_identity.current[0].account_id : null
 }
 
+output "region" {
+  description = "AWS Region where the cluster is deployed"
+  value       = var.region
+}
+
 output "cluster_info" {
   description = "Consolidated cluster information"
   value = var.create ? {

@@ -3,10 +3,10 @@ kind: Vpc
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: vpc
-  namespace: default
+  name: spoke1-test
+  namespace: spoke1
 spec:
-  name: base
+  name: spoke1-gen3-vpc
   region: us-east-1
   environment: dev
   tags: {}

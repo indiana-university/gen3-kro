@@ -4,7 +4,7 @@ metadata:
   name: data-bucket.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,6 +12,8 @@ spec:
     spec:
       name: string
       region: string
+      environment: string | default="dev"
+      tags: "map[string]string | default={}"
       bucketName: string
       versioning: boolean | default=true
       encryption: boolean | default=true
@@ -41,7 +43,7 @@ spec:
             - key: "Name"
               value: ${schema.spec.bucketName}
             - key: "Environment"
-              value: "dev"
+              value: ${schema.spec.environment}
             - key: "Purpose"
               value: "data-storage"
 
@@ -61,7 +63,7 @@ spec:
             - key: "Name"
               value: ${schema.spec.bucketName}-logs
             - key: "Environment"
-              value: "dev"
+              value: ${schema.spec.environment}
             - key: "Purpose"
               value: "access-logs"
 

@@ -8,6 +8,8 @@ metadata:
 spec:
   name: base
   region: us-east-1
+  environment: dev
+  tags: {}
   queueName: base-queue
   visibilityTimeout: 30
   messageRetentionPeriod: 345600

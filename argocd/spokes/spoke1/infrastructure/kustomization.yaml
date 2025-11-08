@@ -1,48 +1,11 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Spoke1 infrastructure - uses test flavor (VPC only)
+
 resources:
-  - ../../../graphs/instances/gen3/test
+  - ./namespace.yaml
+  - ./vpc-instance.yaml
 
-
-configMapGenerator:
-  - name: spoke-values
-    behavior: merge
-    envs: [values.env]
-    # merge behavior at level-2 allows example to override base values
-
-replacements:
-  # Sync Wave Annotations
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_namespace}
-    targets: [{select: {kind: Namespace}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.sync_wave_vpc}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [metadata.annotations.argocd\.argoproj\.io/sync-wave]}]
-
-  # Common Fields
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.namespace_name}
-    targets:
-      - {select: {kind: Namespace}, fieldPaths: [metadata.name]}
-      - {select: {kind: Gen3Vpc}, fieldPaths: [metadata.namespace]}
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.region}
-    targets:
-      - {select: {kind: Gen3Vpc}, fieldPaths: [spec.region]}
-
-  # VPC
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_metadata_name}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [metadata.name]}]
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_name}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [spec.name]}]
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_cidr}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [spec.cidr.vpcCidr]}]
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_public_subnet1_cidr}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [spec.cidr.publicSubnet1Cidr]}]
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_public_subnet2_cidr}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [spec.cidr.publicSubnet2Cidr]}]
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_private_subnet1_cidr}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [spec.cidr.privateSubnet1Cidr]}]
-  - source: {kind: ConfigMap, name: spoke-values, fieldPath: data.vpc_private_subnet2_cidr}
-    targets: [{select: {kind: Gen3Vpc}, fieldPaths: [spec.cidr.privateSubnet2Cidr]}]
 
 labels:
   - pairs: {spoke: spoke1, deployed-by: kustomize}

@@ -2,7 +2,23 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  - ../../../csoc/_kustomize_flavors/aws-type-2
+  - ../../../instance-templates/namespace.yaml
+  - ../../../instance-templates/aws/layer-1/vpc-instance.yaml
+  - ../../../instance-templates/aws/layer-1/kms-instance.yaml
+  - ../../../instance-templates/aws/layer-1/cloudwatch-logs-instance.yaml
+  - ../../../instance-templates/aws/layer-1/cloudtrail-instance.yaml
+  - ../../../instance-templates/aws/layer-1/sns-instance.yaml
+  - ../../../instance-templates/aws/layer-1/sqs-instance.yaml
+  - ../../../instance-templates/aws/layer-1/secretsmanager-instance.yaml
+  - ../../../instance-templates/aws/layer-1/data-bucket-instance.yaml
+  - ../../../instance-templates/aws/layer-1/efs-instance.yaml
+  - ../../../instance-templates/aws/layer-1/route53-instance.yaml
+  - ../../../instance-templates/aws/layer-1/waf-instance.yaml
+  - ../../../instance-templates/aws/layer-1/eks-instance.yaml
+  - ../../../instance-templates/aws/layer-1/aurora-instance.yaml
+  - ../../../instance-templates/aws/layer-1/elasticache-instance.yaml
+  - ../../../instance-templates/aws/layer-1/opensearch-instance.yaml
+  - ../../../instance-templates/aws/layer-1/irsa-role-instance.yaml
 
 configMapGenerator:
   - name: spoke-values

@@ -56,3 +56,9 @@ variable "project_number" {
   type        = string
   default     = null
 }
+
+variable "policy_source" {
+  description = "Source folder where the policy was loaded from (e.g., '_default', 'gen3-kro-dev/csoc', 'gen3-kro-dev/spoke1')"
+  type        = string
+  default     = "_default"
+}
