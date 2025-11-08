@@ -61,7 +61,7 @@ resource "helm_release" "argocd" {
 # ArgoCD Cluster Info
 ################################################################################
 locals {
-  cluster_name = try(var.cluster.cluster_name, "in-cluster")
+  cluster_name = try(var.cluster.name, var.cluster.cluster_name, "in-cluster")
   argocd_labels = merge({
     cluster_name                     = local.cluster_name
     enable_argocd                    = true
@@ -142,7 +142,7 @@ resource "helm_release" "bootstrap" {
     EOT
   ]
 
-  depends_on = [resource.kubernetes_secret_v1.cluster]
+  depends_on = [helm_release.argocd, resource.kubernetes_secret_v1.cluster]
 }
 
 ###############################################################################

@@ -8,6 +8,12 @@ variable "create" {
   type        = bool
 }
 
+variable "override_id" {
+  description = "Override service account email (use existing identity instead of creating new bindings). When set, create is ignored and this value is returned."
+  type        = string
+  default     = null
+}
+
 variable "spoke_alias" {
   description = "Spoke alias"
   type        = string

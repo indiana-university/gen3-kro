@@ -3,7 +3,8 @@ kind: Application
 metadata:
   name: gen3-covid19prod
   namespace: argocd
-  finalizers:
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
 spec:
   project: default
   sources:
@@ -25,6 +26,16 @@ spec:
       labels:
         role: gen3
     syncOptions:
-    - CreateNamespace=true
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
     automated:
+      prune: true
       selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

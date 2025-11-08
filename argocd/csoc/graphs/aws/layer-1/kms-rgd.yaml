@@ -4,7 +4,7 @@ metadata:
   name: kms.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,6 +12,8 @@ spec:
     spec:
       name: string
       region: string
+      environment: string | default="dev"
+      tags: "map[string]string | default={}"
       description: string | default="KMS encryption key"
       keyUsage: string | default="ENCRYPT_DECRYPT"
       customerMasterKeySpec: string | default="SYMMETRIC_DEFAULT"
@@ -41,7 +43,7 @@ spec:
           - tagKey: "Name"
             tagValue: ${schema.spec.name}
           - tagKey: "Environment"
-            tagValue: "dev"
+            tagValue: ${schema.spec.environment}
   - id: alias
     template:
       apiVersion: kms.services.k8s.aws/v1alpha1

@@ -8,6 +8,8 @@ metadata:
 spec:
   name: base
   region: us-east-1
+  environment: dev
+  tags: {}
   clusterName: base
   namespace: default
   serviceAccountName: fence

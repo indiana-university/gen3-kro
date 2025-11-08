@@ -8,6 +8,8 @@ metadata:
 spec:
   name: base
   region: us-east-1
+  environment: dev
+  tags: {}
   vpcID: ""  # Populated by overlay or external reference
   subnetIDs: []  # Populated by overlay or external reference
   version: "1.33"

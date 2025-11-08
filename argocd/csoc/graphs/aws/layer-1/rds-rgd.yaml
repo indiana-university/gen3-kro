@@ -4,7 +4,7 @@ metadata:
   name: rds.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,8 +12,11 @@ spec:
     spec:
       name: string
       region: string
+      environment: string | default="dev"
+      tags: "map[string]string | default={}"
       vpcID: string
       subnetIDs: "[]string"
+      ingressCIDR: string | default="10.0.0.0/8"
       engine: string | default="postgres"
       engineVersion: string | default="15.4"
       instanceClass: string | default="db.t3.medium"
@@ -44,7 +47,7 @@ spec:
           - key: "Name"
             value: ${schema.spec.name}-db-subnet-group
           - key: "Environment"
-            value: "dev"
+            value: ${schema.spec.environment}
   - id: securityGroup
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
@@ -63,10 +66,12 @@ spec:
             toPort: 5432
             ipProtocol: tcp
             ipRanges:
-              - cidrIP: 10.0.0.0/8
+              - cidrIP: ${schema.spec.ingressCIDR}
         tags:
           - key: "Name"
             value: ${schema.spec.name}-db-sg
+          - key: "Environment"
+            value: ${schema.spec.environment}
   - id: dbInstance
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
@@ -93,4 +98,4 @@ spec:
           - key: "Name"
             value: ${schema.spec.name}-db
           - key: "Environment"
-            value: "dev"
+            value: ${schema.spec.environment}

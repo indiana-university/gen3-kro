@@ -42,3 +42,8 @@ variable "tags" {
   description = "Tags to apply to all cluster resources"
   type        = map(string)
 }
+
+variable "region" {
+  description = "AWS Region where the cluster is deployed"
+  type        = string
+}

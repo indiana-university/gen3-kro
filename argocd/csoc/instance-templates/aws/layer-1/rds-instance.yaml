@@ -8,6 +8,9 @@ metadata:
 spec:
   name: base
   region: us-east-1
+  environment: dev
+  ingressCIDR: "10.0.0.0/8"
+  tags: {}
   vpcID: ""  # Populated by overlay
   subnetIDs: []  # Populated by overlay
   engine: "postgres"

@@ -8,6 +8,8 @@ metadata:
 spec:
   name: base
   region: us-east-1
+  environment: dev
+  tags: {}
   description: "encryption key"
   keyUsage: "ENCRYPT_DECRYPT"
   customerMasterKeySpec: "SYMMETRIC_DEFAULT"

@@ -8,6 +8,12 @@ variable "create" {
   type        = bool
 }
 
+variable "override_id" {
+  description = "Override identity ID (use existing identity instead of creating new role assignment). When set, create is ignored and this value is returned."
+  type        = string
+  default     = null
+}
+
 variable "spoke_alias" {
   description = "Spoke alias"
   type        = string

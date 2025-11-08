@@ -1,5 +1,5 @@
 resource "azurerm_role_assignment" "this" {
-  count = var.create ? 1 : 0
+  count = var.override_id == null && var.create ? 1 : 0
 
   scope                = var.scope
   role_definition_name = var.role_definition_name != "" ? var.role_definition_name : null

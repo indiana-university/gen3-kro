@@ -4,7 +4,7 @@ metadata:
   name: cloudwatchlogs.kro.run
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "-1"
+    argocd.argoproj.io/sync-wave: "-4"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,6 +12,8 @@ spec:
     spec:
       name: string
       region: string
+      environment: string | default="dev"
+      tags: "map[string]string | default={}"
       logGroupName: string
       retentionInDays: integer | default=30
       kmsKeyID: string | default=""

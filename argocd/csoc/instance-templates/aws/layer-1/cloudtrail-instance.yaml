@@ -8,6 +8,8 @@ metadata:
 spec:
   name: base
   region: us-east-1
+  environment: dev
+  tags: {}
   s3BucketName: base-cloudtrail
   includeGlobalServiceEvents: true
   isMultiRegionTrail: true

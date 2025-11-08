@@ -57,15 +57,14 @@ module "pod_identity" {
 
   trust_policy_conditions = var.trust_policy_conditions
 
-  association_defaults = {
-    cluster_name    = var.cluster_name
-    namespace       = var.namespace
-    service_account = var.service_account
-  }
-
   associations = {
-    "${var.service_name}" = {}
-  }
+
+    csoc-cluster = {
+      cluster_name    = var.cluster_name
+      namespace       = var.namespace
+      service_account = var.service_account
+      }
+    }
 
   tags = var.tags
 }

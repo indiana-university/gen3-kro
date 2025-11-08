@@ -8,7 +8,7 @@
 # Spoke Account - IAM Role for Cross-Account Access
 ###################################################################################################################################################
 resource "aws_iam_role" "spoke" {
-  count = var.create ? 1 : 0
+  count = var.override_id == null && var.create ? 1 : 0
 
   # Role name format (unified): {spoke_alias}-{service_name}-spoke-role
   name = "${var.spoke_alias}-${var.service_name}-spoke-role"
@@ -32,7 +32,7 @@ resource "aws_iam_role" "spoke" {
 # Attach Inline Policy to Spoke Role
 ###############################################################################
 resource "aws_iam_role_policy" "spoke_inline" {
-  count = var.create ? 1 : 0
+  count = var.override_id == null && var.create ? 1 : 0
 
   name = "${var.service_name}-policy"
   role = aws_iam_role.spoke[0].name

@@ -8,6 +8,8 @@ metadata:
 spec:
   name: base
   region: us-east-1
+  environment: dev
+  tags: {}
   zoneName: base.example.com
   privateZone: false
   vpcID: ""
