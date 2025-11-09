@@ -7,7 +7,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Set versions for consistency
-ARG TERRAFORM_VERSION=1.13.3
+ARG TERRAFORM_VERSION=1.13.5
 ARG TERRAGRUNT_VERSION=0.89.3
 ARG KUBECTL_VERSION=1.34.1
 ARG HELM_VERSION=3.16.1
