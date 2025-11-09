@@ -24,7 +24,7 @@ spec:
             - path: '{{.metadata.annotations.csoc_repo_basepath}}/csoc/graphs/gcp/*'
   template:
     metadata:
-      name: '{{- if .path }}{{ .path.path | regexFind "(?:aws|azure|google)/.*" | replace "/" "-" }}-graphs{{- else }}{{ .name }}-graphs{{- end }}'
+      name: '{{- if .path }}{{ .path.path | regexFind "(?:aws|azure|gcp)/.*" | replace "/" "-" }}-graphs{{- else }}{{ .name }}-graphs{{- end }}'
       labels:
         app.kubernetes.io/part-of: graphs
         cluster: '{{.name}}'
