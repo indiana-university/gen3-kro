@@ -577,7 +577,8 @@ unit "argocd" {
     state_storage_account = local.state_storage_account
     state_container       = local.state_container
 
-    # ArgoCD configuration
+    # Cluster and ArgoCD configuration
+    enable_k8s_cluster   = local.enable_k8s_cluster
     enable_argocd        = local.enable_argocd
     argocd_config        = local.argocd_config
     argocd_values        = lookup(local.argocd_config_obj, "values", {})

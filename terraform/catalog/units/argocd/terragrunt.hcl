@@ -8,10 +8,38 @@ terraform {
 
 ###############################################################################
 # Locals - Conditional Provider Logic
+#
+# Eight Cases for ArgoCD Provider and Module Configuration:
+#
+# Case 1: EKS=false, ArgoCD=false, State=empty
+#   → Providers: disabled | Modules create: false
+#
+# Case 2: EKS=false, ArgoCD=false, State=has_resources
+#   → Providers: enabled (for destroy) | Modules create: false
+#
+# Case 3: EKS=false, ArgoCD=true, State=empty
+#   → INVALID: Providers: disabled | Modules create: false | Error
+#
+# Case 4: EKS=false, ArgoCD=true, State=has_resources
+#   → INVALID (destroy-only): Providers: enabled | Modules create: false | Warning
+#
+# Case 5: EKS=true, ArgoCD=false, State=empty
+#   → Providers: disabled | Modules create: false
+#
+# Case 6: EKS=true, ArgoCD=false, State=has_resources
+#   → Providers: enabled (for destroy) | Modules create: false
+#
+# Case 7: EKS=true, ArgoCD=true, State=empty
+#   → Providers: enabled | Modules create: true (create ArgoCD)
+#
+# Case 8: EKS=true, ArgoCD=true, State=has_resources
+#   → Providers: enabled | Modules create: true (reconcile/update)
+#
 ###############################################################################
 locals {
-  # Enable flag for ArgoCD installation
-  enable_argocd = values.enable_argocd
+  # Enable flags
+  enable_k8s_cluster = try(values.enable_k8s_cluster, false)
+  enable_argocd      = values.enable_argocd
 
   # Check if there are existing Kubernetes/Helm resources in state
   # This allows destroy operations to work even when enable_argocd = false
@@ -24,14 +52,21 @@ locals {
   # This indicates the cluster exists and we can read its data
   cluster_state_exists = trimspace(run_cmd(
     "bash", "-c",
-    "cd ${get_terragrunt_dir()}/../k8s-cluster && terraform state list 2>/dev/null | egrep '^aws_eks_cluster\\.|^azurerm_kubernetes_cluster\\.|^google_container_cluster\\.|^module\\.eks\\.|^module\\.aks\\.|^module\\.gke\\.' || true"
+    "cd ${get_terragrunt_dir()}x/../k8s-cluster && terraform state list 2>/dev/null | egrep '^aws_eks_cluster\\.|^azurerm_kubernetes_cluster\\.|^google_container_cluster\\.|^module\\.eks\\.|^module\\.aks\\.|^module\\.gke\\.' || true"
   )) != ""
 
-  # Need providers when: argocd enabled OR state has resources OR in migration mode
-  need_k8s_providers = local.enable_argocd || local.argocd_state_has_resources || values.state_migration_mode
+  # Provider enablement logic - 8 cases:
+  # Enable providers when:
+  # - ArgoCD resources exist in state (to allow destroy), OR
+  # - Both K8s cluster AND ArgoCD are enabled (to allow create/update)
+  need_k8s_providers = local.argocd_state_has_resources || (local.enable_k8s_cluster && local.enable_argocd)
+
+  # Module create flag logic:
+  # Create resources only when both K8s cluster AND ArgoCD are enabled
+  create_resources = local.enable_k8s_cluster && local.enable_argocd
 
   # Use cluster data from state if both argocd and cluster states have resources
-  use_cluster_state_data = local.argocd_state_has_resources && local.cluster_state_exists
+  use_cluster_state_data = false
 }###############################################################################
 # Dependencies
 ###############################################################################
@@ -97,8 +132,13 @@ dependency "spoke_iam" {
 # Inputs
 ###############################################################################
 inputs = {
-  create  = local.enable_argocd
+  create  = local.create_resources
   install = values.enable_argocd
+
+  # Flag variables for validation
+  enable_k8s_cluster         = local.enable_k8s_cluster
+  enable_argocd              = local.enable_argocd
+  argocd_state_has_resources = local.argocd_state_has_resources
 
   # ArgoCD Helm configuration
   argocd = values.argocd_config
@@ -187,6 +227,24 @@ variable "install" {
   type        = bool
 }
 
+variable "enable_k8s_cluster" {
+  description = "Whether the K8s cluster is enabled"
+  type        = bool
+  default     = false
+}
+
+variable "enable_argocd" {
+  description = "Whether ArgoCD is enabled"
+  type        = bool
+  default     = false
+}
+
+variable "argocd_state_has_resources" {
+  description = "Whether ArgoCD state has existing resources"
+  type        = bool
+  default     = false
+}
+
 variable "argocd" {
   description = "ArgoCD Helm configuration"
   type        = any
@@ -239,6 +297,28 @@ generate "argocd_module" {
   path      = "argocd.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
+# Validation for invalid flag combinations
+locals {
+  # Case 3: EKS disabled, Argo CD enabled, Argo CD not in state (invalid - cannot create)
+  invalid_case_3 = !var.enable_k8s_cluster && var.enable_argocd && !var.argocd_state_has_resources
+
+  # Case 4: EKS disabled, Argo CD enabled, Argo CD in state (warn - destroy only)
+  invalid_case_4 = !var.enable_k8s_cluster && var.enable_argocd && var.argocd_state_has_resources
+
+  validation_message_case_3 = "Invalid configuration: enable_argocd=true but enable_k8s_cluster=false with no existing resources. Cannot create Argo CD without a cluster. Set enable_argocd=false or enable_k8s_cluster=true."
+
+  validation_message_case_4 = "WARNING: enable_argocd=true but enable_k8s_cluster=false with existing resources. This configuration only allows destroying Argo CD. To update or maintain Argo CD, set enable_k8s_cluster=true."
+}
+
+# Validation check using a null_resource
+resource "null_resource" "validate_argocd_config" {
+  count = local.invalid_case_3 ? 1 : 0
+
+  provisioner "local-exec" {
+    command = "echo 'Error: $${local.validation_message_case_3}' && exit 1"
+  }
+}
+
 module "argocd" {
   source = "./argocd"
 
@@ -248,6 +328,13 @@ module "argocd" {
   cluster     = var.cluster
   apps        = var.apps
   outputs_dir = var.outputs_dir
+
+  depends_on = [null_resource.validate_argocd_config]
+}
+
+# Warning output for case 4 (destroy-only mode)
+output "argocd_warning" {
+  value = local.invalid_case_4 ? local.validation_message_case_4 : null
 }
 EOF
 }
