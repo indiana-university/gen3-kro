@@ -3,6 +3,10 @@ kind: ApplicationSet
 metadata:
   name: crds-csoc
   namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-9"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -43,3 +47,10 @@ spec:
             duration: 5s
             factor: 2
             maxDuration: 3m
+      # Ignore differences in CRD conversion webhooks (common with large CRDs)
+      ignoreDifferences:
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+          jsonPointers:
+            - /spec/conversion/webhook/clientConfig/caBundle
+            - /status
