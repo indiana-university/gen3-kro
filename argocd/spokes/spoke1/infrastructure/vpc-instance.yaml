@@ -4,7 +4,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
   name: spoke1-test
-  namespace: spoke1
+  # namespace will be set by kustomization.yaml
 spec:
   name: spoke1-gen3-vpc
   region: us-east-1

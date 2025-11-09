@@ -121,8 +121,27 @@ inputs = {
   # Outputs directory
   outputs_dir = values.outputs_dir
 
-  # Spokes configuration
-  spokes = values.spokes
+  # Spokes configuration with account IDs and service roles from iam-config
+  spokes = {
+    for spoke_alias, spoke_config in values.spokes :
+    spoke_alias => merge(
+      spoke_config,
+      {
+        # Add account_id from spoke_all_service_roles if available
+        account_id = try(
+          # Try to get account_id from any service role ARN (extract from ARN)
+          length(lookup(dependency.spoke_iam.outputs.spokes_all_service_roles, spoke_alias, {})) > 0 ?
+          regex("arn:aws:iam::([0-9]+):role/.*", values(lookup(dependency.spoke_iam.outputs.spokes_all_service_roles, spoke_alias, {}))[0].role_arn)[0] :
+          "",
+          ""
+        )
+        # Add service roles map
+        service_roles = try(dependency.spoke_iam.outputs.spokes_all_service_roles[spoke_alias], {})
+        # Add namespace override if configured
+        namespace = try(spoke_config.namespace, "${spoke_alias}-infrastructure")
+      }
+    )
+  }
 }
 
 ###############################################################################
@@ -207,53 +226,6 @@ module "argocd" {
 }
 EOF
 }
-
-# Generate ConfigMap modules - one per spoke
-generate "configmap_modules" {
-  path      = "configmap.tf"
-  if_exists = "overwrite_terragrunt"
-  contents  = <<-EOF
-###############################################################################
-# ConfigMap Modules - One per Spoke
-###############################################################################
-
-%{~ for spoke_alias, spoke_config in values.spokes ~}
-%{~ if lookup(spoke_config, "enabled", false) ~}
-# ConfigMap for ${spoke_alias}
-module "configmap_${spoke_alias}" {
-  source = "./configmap"
-
-  create            = var.create
-  context           = "${spoke_alias}"
-  cluster_name      = var.cluster.name
-  argocd_namespace  = try(var.argocd.namespace, "argocd")
-  pod_identities    = var.cluster.pod_identity_details
-  addon_configs     = try(var.argocd.addon_configs, {})
-  cluster_info      = {
-    cluster_name              = var.cluster.name
-    cluster_endpoint          = var.cluster.endpoint
-    cluster_version           = try(var.cluster.version, "")
-    account_id                = try(var.cluster.account_id, "")
-    region                    = var.cluster.region
-    oidc_provider             = try(var.cluster.oidc_provider, "")
-    oidc_provider_arn         = try(var.cluster.oidc_provider_arn, "")
-    cluster_security_group_id = try(var.cluster.security_group_id, "")
-    vpc_id                    = try(var.cluster.vpc_id, "")
-    private_subnets           = try(var.cluster.private_subnets, [])
-    public_subnets            = try(var.cluster.public_subnets, [])
-  }
-  gitops_context    = var.apps
-  spokes            = lookup(var.spokes, "${spoke_alias}", {})
-  outputs_dir       = var.outputs_dir
-
-  depends_on = [module.argocd]
-}
-
-%{~ endif ~}
-%{~ endfor ~}
-EOF
-}
-
 
 # Generate data source to read cluster info from k8s-cluster state
 # This is used when ArgoCD state has resources but we need cluster credentials for destroy
@@ -479,6 +451,34 @@ EOF
 EOF
     : ""
   ) : ""
+}
+
+###############################################################################
+# Generate Spoke ConfigMap Module
+###############################################################################
+generate "spoke_configmap" {
+  path      = "spoke_configmap.tf"
+  if_exists = "overwrite_terragrunt"
+  contents  = <<-EOF
+###############################################################################
+# Spoke Account Role Map ConfigMap
+# Use argocd-configmap module to create spoke metadata ConfigMap
+###############################################################################
+module "spoke_configmap" {
+  source = "./argocd-configmap"
+
+  create           = var.create && var.spokes != null && length(var.spokes) > 0
+  context          = "spokes"
+  cluster_name     = var.cluster.name
+  argocd_namespace = try(var.argocd.namespace, "argocd")
+  pod_identities   = {}    # Not needed for spoke ConfigMap
+  addon_configs    = {}    # Not needed for spoke ConfigMap
+  cluster_info     = null  # Not needed for spoke ConfigMap
+  gitops_context   = {}    # Not needed for spoke ConfigMap
+  spokes           = var.spokes
+  outputs_dir      = ""    # Don't write output file
+}
+EOF
 }
 
 ###############################################################################

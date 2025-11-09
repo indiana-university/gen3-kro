@@ -15,7 +15,7 @@ locals {
 # IAM Policy Document - Cross-Account AssumeRole
 ###################################################################################################################################################
 data "aws_iam_policy_document" "cross_account" {
-  count = var.create && length(var.spoke_role_arns) > 0 ? 1 : 0
+  count = var.create ? 1 : 0
 
   statement {
     sid    = "AssumeRoleInSpokeAccount"
@@ -24,15 +24,18 @@ data "aws_iam_policy_document" "cross_account" {
       "sts:AssumeRole",
       "sts:TagSession"
     ]
-    resources = var.spoke_role_arns
+    resources = length(var.spoke_role_arns) > 0 ? var.spoke_role_arns : ["arn:aws:iam::*:role/placeholder-no-spokes"]
   }
 }
 
 ###################################################################################################################################################
 # IAM Role Policy - Attach to CSOC Pod Identity Role
+# Note: We create this unconditionally when var.create=true. If spoke_role_arns ends up empty,
+# the policy will allow assuming a placeholder role that doesn't exist, which is harmless.
+# In practice, the generate block should only create these modules when spokes exist.
 ###################################################################################################################################################
 resource "aws_iam_role_policy" "cross_account" {
-  count = var.create && length(var.spoke_role_arns) > 0 ? 1 : 0
+  count = var.create ? 1 : 0
 
   name   = "${var.service_name}-cross-account-assume"
   role   = local.csoc_role_name

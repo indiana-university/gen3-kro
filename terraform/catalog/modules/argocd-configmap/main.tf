@@ -114,6 +114,40 @@ resource "local_file" "argocd_configmap" {
   depends_on = [kubernetes_config_map_v1.argocd_cluster_config]
 }
 
+################################################################################
+# Spoke Account Role Map ConfigMap
+# Maps spoke aliases to their account IDs, regions, and service role ARNs
+################################################################################
+
+locals {
+  # Build spoke annotations map from var.spokes
+  spoke_annotations_data = var.spokes != null ? {
+    for spoke_alias, spoke_config in var.spokes : spoke_alias => jsonencode({
+      account_id    = try(spoke_config.account_id, "")
+      region        = try(spoke_config.region, try(spoke_config.provider.aws_region, try(spoke_config.provider.gcp_region, try(spoke_config.provider.azure_location, ""))))
+      provider      = try(spoke_config.provider.name, "aws")
+      namespace     = try(spoke_config.namespace, "${spoke_alias}-infrastructure")
+      service_roles = try(spoke_config.service_roles, {})
+    })
+  } : {}
+}
+
+resource "kubernetes_config_map_v1" "spoke_account_role_map" {
+  count = var.create && var.spokes != null && length(var.spokes) > 0 ? 1 : 0
+
+  metadata {
+    name      = "spoke-account-role-map"
+    namespace = var.argocd_namespace
+    labels = {
+      "app.kubernetes.io/managed-by" = "terraform"
+      "app.kubernetes.io/part-of"    = "argocd"
+      "config-type"                  = "spoke-metadata"
+    }
+  }
+
+  data = local.spoke_annotations_data
+}
+
 ###############################################################################
 # End of File
 ###############################################################################
