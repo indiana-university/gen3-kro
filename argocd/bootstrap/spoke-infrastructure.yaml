@@ -39,6 +39,19 @@ spec:
           commonLabels:
             deployed-by: argocd
             cluster: '{{ .name }}'
+          namespace: '{{ .path.path | dir | base }}-infrastructure'
+          patches:
+            - target:
+                kind: Namespace
+                name: '{{ .path.path | dir | base }}-infrastructure'
+              patch: |-
+                - op: add
+                  path: /metadata/annotations
+                  value:
+                    services.k8s.aws~1owner-account-id: "{{ (lookup "v1" "ConfigMap" "argocd" "spoke-account-role-map").data (printf "%s" (.path.path | dir | base)) | mustFromJson | dig "account_id" "" }}"
+                    spoke~1alias: "{{ .path.path | dir | base }}"
+                    spoke~1region: "{{ (lookup "v1" "ConfigMap" "argocd" "spoke-account-role-map").data (printf "%s" (.path.path | dir | base)) | mustFromJson | dig "region" "" }}"
+                    spoke~1provider: "{{ (lookup "v1" "ConfigMap" "argocd" "spoke-account-role-map").data (printf "%s" (.path.path | dir | base)) | mustFromJson | dig "provider" "" }}"
       destination:
         server: '{{ .server }}'
         namespace: '{{ .path.path | dir | base }}-infrastructure'
@@ -47,7 +60,7 @@ spec:
           prune: true
           selfHeal: true
         syncOptions:
-          - CreateNamespace=true
+          - CreateNamespace=true  # Let ApplicationSet create namespaces with templated annotations
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
           - RespectIgnoreDifferences=true

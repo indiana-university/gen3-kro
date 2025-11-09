@@ -67,23 +67,23 @@ inputs = merge(
   },
   # Dynamically add spoke provider variables
   {
-    for spoke_alias, spoke_config in values.spokes :
-    "spoke_${spoke_alias}_profile" => lookup(lookup(spoke_config, "provider", {}), "aws_profile", "")
+    for spoke_config in values.spokes_config :
+    "${spoke_config.alias}_profile" => lookup(lookup(spoke_config, "provider", {}), "aws_profile", "")
     if lookup(spoke_config, "enabled", false)
   },
   {
-    for spoke_alias, spoke_config in values.spokes :
-    "spoke_${spoke_alias}_region" => lookup(lookup(spoke_config, "provider", {}), "aws_region", lookup(spoke_config, "region", ""))
+    for spoke_config in values.spokes_config :
+    "${spoke_config.alias}_region" => lookup(lookup(spoke_config, "provider", {}), "aws_region", "")
     if lookup(spoke_config, "enabled", false)
   },
   {
-    for spoke_alias, spoke_config in values.spokes :
-    "spoke_${spoke_alias}_subscription_id" => lookup(lookup(spoke_config, "provider", {}), "azure_subscription_id", "")
+    for spoke_config in values.spokes_config :
+    "${spoke_config.alias}_subscription_id" => lookup(lookup(spoke_config, "provider", {}), "azure_subscription_id", "")
     if lookup(spoke_config, "enabled", false)
   },
   {
-    for spoke_alias, spoke_config in values.spokes :
-    "spoke_${spoke_alias}_project_id" => lookup(lookup(spoke_config, "provider", {}), "gcp_project_id", "")
+    for spoke_config in values.spokes_config :
+    "${spoke_config.alias}_project_id" => lookup(lookup(spoke_config, "provider", {}), "gcp_project_id", "")
     if lookup(spoke_config, "enabled", false)
   }
 )
@@ -136,20 +136,15 @@ generate "csoc_data_sources" {
   contents = (
     values.csoc_provider == "aws" ? <<-EOF
 # CSOC Account Data Source
-provider "aws" {
-  alias   = "csoc"
-  profile = var.csoc_profile_name
-}
-
 data "aws_caller_identity" "csoc" {
   provider = aws.csoc
 }
 
 
 # Spoke Account Data Sources (for cross-account comparison)
-%{for spoke_alias, spoke_config in values.spokes~}
-data "aws_caller_identity" "spoke_${spoke_alias}" {
-  provider = aws.spoke_${spoke_alias}
+%{for spoke_config in values.spokes_config~}
+data "aws_caller_identity" "${spoke_config.alias}" {
+  provider = aws.${spoke_config.alias}
 }
 %{endfor~}
 EOF
@@ -159,9 +154,9 @@ data "azurerm_client_config" "csoc" {}
 
 
 # Spoke Subscription Data Sources (for cross-subscription comparison)
-%{for spoke_alias, spoke_config in values.spokes~}
-data "azurerm_client_config" "spoke_${spoke_alias}" {
-  provider = azurerm.spoke_${spoke_alias}
+%{for spoke_config in values.spokes_config~}
+data "azurerm_client_config" "${spoke_config.alias}" {
+  provider = azurerm.${spoke_config.alias}
 }
 %{endfor~}
 EOF
@@ -174,10 +169,10 @@ data "google_project" "csoc" {
 }
 
 # Spoke Project Data Sources (for cross-project comparison)
-%{for spoke_alias, spoke_config in values.spokes~}
-data "google_project" "spoke_${spoke_alias}" {
-  provider   = google.spoke_${spoke_alias}
-  project_id = var.spoke_${spoke_alias}_project_id
+%{for spoke_config in values.spokes_config~}
+data "google_project" "${spoke_config.alias}" {
+  provider   = google.${spoke_config.alias}
+  project_id = var.${spoke_config.alias}_project_id
 }
 %{endfor~}
 EOF
@@ -224,7 +219,7 @@ generate "csoc_pod_identities" {
 ###############################################################################
 
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
 module "pod_identity_${service_name}" {
   source = "./aws-pod-identity"
 
@@ -233,13 +228,11 @@ module "pod_identity_${service_name}" {
   context      = "csoc"
 
   service_name    = "${service_name}"
-  namespace       = lookup(service_config, "namespace", "kube-system")
-  service_account = lookup(service_config, "serviceAccount", "${service_name}")
+  namespace       = "${lookup(service_config, "namespace", "kube-system")}"
+  service_account = "${lookup(service_config, "service_account", replace(service_name, "_", "-"))}"
 
   loaded_inline_policy_document = try(module.csoc_policy_${service_name}.inline_policy_document, "")
-  has_inline_policy             = try(module.csoc_policy_${service_name}.has_inline_policy, false)
-  has_managed_policy            = false
-  policy_arns                   = {}
+  has_loaded_inline_policy      = try(module.csoc_policy_${service_name}.has_inline_policy, false)
 
   tags = merge(
     var.tags,
@@ -260,7 +253,7 @@ EOF
 ###############################################################################
 
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
 module "managed_identity_${service_name}" {
   source = "./azure-managed-identity"
 
@@ -269,8 +262,8 @@ module "managed_identity_${service_name}" {
   context      = "csoc"
 
   service_name    = "${service_name}"
-  namespace       = lookup(service_config, "namespace", "kube-system")
-  service_account = lookup(service_config, "serviceAccount", "${service_name}")
+  namespace       = "${lookup(service_config, "namespace", "kube-system")}"
+  service_account = "${lookup(service_config, "service_account", replace(service_name, "_", "-"))}"
 
   role_definition_json = try(module.csoc_policy_${service_name}.role_definition_json, "")
   has_role_definition  = try(module.csoc_policy_${service_name}.has_role_definition, false)
@@ -294,7 +287,7 @@ EOF
 ###############################################################################
 
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
 module "workload_identity_${service_name}" {
   source = "./gcp-workload-identity"
 
@@ -303,8 +296,8 @@ module "workload_identity_${service_name}" {
   context      = "csoc"
 
   service_name    = "${service_name}"
-  namespace       = lookup(service_config, "namespace", "kube-system")
-  service_account = lookup(service_config, "serviceAccount", "${service_name}")
+  namespace       = "${lookup(service_config, "namespace", "kube-system")}"
+  service_account = "${lookup(service_config, "service_account", replace(service_name, "_", "-"))}"
 
   role_definition_yaml = try(module.csoc_policy_${service_name}.role_definition_yaml, "")
   has_role_definition  = try(module.csoc_policy_${service_name}.has_role_definition, false)
@@ -329,21 +322,29 @@ EOF
 ###############################################################################
 # Generate Spoke Provider Configurations
 ###############################################################################
-generate "spoke_providers" {
-  path      = "spoke_providers.tf"
+generate "providers" {
+  path      = "providers.tf"
   if_exists = "overwrite_terragrunt"
   contents = (
     values.csoc_provider == "aws" ? <<-EOF
+################################################################################
+# CSOC Provider Configuration - AWS
+################################################################################
+provider "aws" {
+  alias   = "csoc"
+  profile = var.csoc_profile_name
+}
+
 ###############################################################################
 # Spoke Provider Configurations - AWS
 ###############################################################################
 
-%{for spoke_alias, spoke_config in values.spokes~}
-# Provider for ${spoke_alias}
+%{for spoke_config in values.spokes_config~}
+# Provider for ${spoke_config.alias}
 provider "aws" {
-  alias   = "spoke_${spoke_alias}"
-  profile = var.spoke_${spoke_alias}_profile
-  region  = var.spoke_${spoke_alias}_region
+  alias   = "${spoke_config.alias}"
+  profile = var.${spoke_config.alias}_profile
+  region  = var.${spoke_config.alias}_region
 }
 %{endfor~}
 EOF
@@ -352,11 +353,11 @@ EOF
 # Spoke Provider Configurations - Azure
 ###############################################################################
 
-%{for spoke_alias, spoke_config in values.spokes~}
-# Provider for ${spoke_alias}
+%{for spoke_config in values.spokes_config~}
+# Provider for ${spoke_config.alias}
 provider "azurerm" {
-  alias           = "spoke_${spoke_alias}"
-  subscription_id = var.spoke_${spoke_alias}_subscription_id
+  alias           = "${spoke_config.alias}"
+  subscription_id = var.${spoke_config.alias}_subscription_id
   features {}
 }
 %{endfor~}
@@ -366,12 +367,12 @@ EOF
 # Spoke Provider Configurations - GCP
 ###############################################################################
 
-%{for spoke_alias, spoke_config in values.spokes~}
-# Provider for ${spoke_alias}
+%{for spoke_config in values.spokes_config~}
+# Provider for ${spoke_config.alias}
 provider "google" {
-  alias   = "spoke_${spoke_alias}"
-  project = var.spoke_${spoke_alias}_project_id
-  region  = var.spoke_${spoke_alias}_region
+  alias   = "${spoke_config.alias}"
+  project = var.${spoke_config.alias}_project_id
+  region  = var.${spoke_config.alias}_region
 }
 %{endfor~}
 EOF
@@ -390,19 +391,19 @@ generate "spoke_policies" {
 # Spoke IAM Policies - For Spoke Roles
 ###############################################################################
 
-%{for spoke_alias, spoke_config in values.spokes~}
+%{for spoke_config in values.spokes_config~}
 %{if lookup(spoke_config, "enabled", false)~}
-# Policies for ${spoke_alias}
-%{for service_name, policy_json in lookup(values.spoke_iam_policies, spoke_alias, {})~}
-module "spoke_policy_${spoke_alias}_${service_name}" {
+# Policies for ${spoke_config.alias}
+%{for service_name, policy_json in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
+module "spoke_policy_${spoke_config.alias}_${service_name}" {
   source = "./iam-policy"
 
   service_name       = "${service_name}"
   policy_inline_json = ${jsonencode(policy_json)}
 
-  account_id      = data.aws_caller_identity.spoke_${spoke_alias}.account_id
+  account_id      = data.aws_caller_identity.${spoke_config.alias}.account_id
   csoc_account_id = data.aws_caller_identity.csoc.account_id
-  policy_source   = lookup(lookup(var.spoke_iam_policy_sources, "${spoke_alias}", {}), "${service_name}", "_default")
+  policy_source   = lookup(lookup(var.spoke_iam_policy_sources, "${spoke_config.alias}", {}), "${service_name}", "_default")
 }
 %{endfor~}
 
@@ -423,40 +424,40 @@ generate "spoke_roles" {
 # Spoke IAM Roles - Trusted by CSOC Pod Identities
 ###############################################################################
 
-%{for spoke_alias, spoke_config in values.spokes~}
-# Roles for ${spoke_alias}
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_alias, {})~}
-module "spoke_role_${spoke_alias}_${service_name}" {
+%{for spoke_config in values.spokes_config~}
+# Roles for ${spoke_config.alias}
+%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
+module "spoke_role_${spoke_config.alias}_${service_name}" {
   source = "./aws-spoke-role"
 
   providers = {
-    aws = aws.spoke_${spoke_alias}
+    aws = aws.${spoke_config.alias}
   }
 
   # Skip creation if spoke account == csoc account (same account scenario)
   # In that case, we'll use the csoc pod identity role directly via override_id
-  create                     = ${lookup(spoke_config, "enabled", false)} && var.enable_k8s_cluster && data.aws_caller_identity.spoke_${spoke_alias}.account_id != data.aws_caller_identity.csoc.account_id
-  override_id                = data.aws_caller_identity.spoke_${spoke_alias}.account_id == data.aws_caller_identity.csoc.account_id ? (%{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enabled", false)~}module.pod_identity_${service_name}.role_arn%{else~}""%{endif~}) : null
+  create                     = ${lookup(spoke_config, "enabled", false)} && var.enable_k8s_cluster && data.aws_caller_identity.${spoke_config.alias}.account_id != data.aws_caller_identity.csoc.account_id
+  override_id                = data.aws_caller_identity.${spoke_config.alias}.account_id == data.aws_caller_identity.csoc.account_id ? (%{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)~}module.pod_identity_${service_name}.role_arn%{else~}""%{endif~}) : null
   cluster_name               = var.cluster_name
   service_name               = "${service_name}"
-  spoke_alias                = "${spoke_alias}"
-  csoc_pod_identity_role_arn = %{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enabled", false)~}module.pod_identity_${service_name}.role_arn%{else~}""%{endif~}
+  spoke_alias                = "${spoke_config.alias}"
+  csoc_pod_identity_role_arn = %{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)~}module.pod_identity_${service_name}.role_arn%{else~}""%{endif~}
 
-  combined_policy_json = try(module.spoke_policy_${spoke_alias}_${service_name}.inline_policy_document, null)
-  has_inline_policy    = try(module.spoke_policy_${spoke_alias}_${service_name}.has_inline_policy, false)
+  combined_policy_json = try(module.spoke_policy_${spoke_config.alias}_${service_name}.inline_policy_document, null)
+  has_inline_policy    = try(module.spoke_policy_${spoke_config.alias}_${service_name}.has_inline_policy, false)
   has_managed_policy   = false
   policy_arns          = {}
 
   tags = merge(
     var.tags,
     {
-      spoke_alias  = "${spoke_alias}"
+      spoke_alias  = "${spoke_config.alias}"
       service_name = "${service_name}"
       context      = "spoke"
     }
   )
 
-  depends_on = [module.spoke_policy_${spoke_alias}_${service_name}]
+  depends_on = [module.spoke_policy_${spoke_config.alias}_${service_name}]
 }
 %{endfor~}
 
@@ -467,38 +468,38 @@ EOF
 # Spoke Managed Identities - Trusted by CSOC Managed Identities
 ###############################################################################
 
-%{for spoke_alias, spoke_config in values.spokes~}
-# Managed Identities for ${spoke_alias}
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_alias, {})~}
-module "spoke_identity_${spoke_alias}_${service_name}" {
+%{for spoke_config in values.spokes_config~}
+# Managed Identities for ${spoke_config.alias}
+%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
+module "spoke_identity_${spoke_config.alias}_${service_name}" {
   source = "./azure-spoke-role"
 
   providers = {
-    azurerm = azurerm.spoke_${spoke_alias}
+    azurerm = azurerm.${spoke_config.alias}
   }
 
   # Skip creation if spoke subscription == csoc subscription (same subscription scenario)
   # In that case, we'll use the csoc managed identity directly via override_id
-  create                        = lookup(spoke_config, "enabled", false) && var.enable_k8s_cluster && data.azurerm_client_config.spoke_${spoke_alias}.subscription_id != data.azurerm_client_config.csoc.subscription_id
-  override_id                   = data.azurerm_client_config.spoke_${spoke_alias}.subscription_id == data.azurerm_client_config.csoc.subscription_id ? (%{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enabled", false)~}module.managed_identity_${service_name}.identity_id%{else~}""%{endif~}) : null
+  create                        = lookup(spoke_config, "enabled", false) && var.enable_k8s_cluster && data.azurerm_client_config.${spoke_config.alias}.subscription_id != data.azurerm_client_config.csoc.subscription_id
+  override_id                   = data.azurerm_client_config.${spoke_config.alias}.subscription_id == data.azurerm_client_config.csoc.subscription_id ? (%{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)~}module.managed_identity_${service_name}.identity_id%{else~}""%{endif~}) : null
   cluster_name                  = var.cluster_name
   service_name                  = "${service_name}"
-  spoke_alias                   = "${spoke_alias}"
-  csoc_managed_identity_id      = %{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enabled", false)~}module.managed_identity_${service_name}.identity_id%{else~}""%{endif~}
+  spoke_alias                   = "${spoke_config.alias}"
+  csoc_managed_identity_id      = %{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)~}module.managed_identity_${service_name}.identity_id%{else~}""%{endif~}
 
-  role_definition_json = try(module.spoke_policy_${spoke_alias}_${service_name}.role_definition_json, null)
-  has_role_definition  = try(module.spoke_policy_${spoke_alias}_${service_name}.has_role_definition, false)
+  role_definition_json = try(module.spoke_policy_${spoke_config.alias}_${service_name}.role_definition_json, null)
+  has_role_definition  = try(module.spoke_policy_${spoke_config.alias}_${service_name}.has_role_definition, false)
 
   tags = merge(
     var.tags,
     {
-      spoke_alias  = "${spoke_alias}"
+      spoke_alias  = "${spoke_config.alias}"
       service_name = "${service_name}"
       context      = "spoke"
     }
   )
 
-  depends_on = [module.spoke_policy_${spoke_alias}_${service_name}]
+  depends_on = [module.spoke_policy_${spoke_config.alias}_${service_name}]
 }
 %{endfor~}
 
@@ -509,38 +510,38 @@ EOF
 # Spoke Service Accounts - Trusted by CSOC Workload Identities
 ###############################################################################
 
-%{for spoke_alias, spoke_config in values.spokes~}
-# Service Accounts for ${spoke_alias}
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_alias, {})~}
-module "spoke_sa_${spoke_alias}_${service_name}" {
+%{for spoke_config in values.spokes_config~}
+# Service Accounts for ${spoke_config.alias}
+%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
+module "spoke_sa_${spoke_config.alias}_${service_name}" {
   source = "./gcp-spoke-role"
 
   providers = {
-    google = google.spoke_${spoke_alias}
+    google = google.${spoke_config.alias}
   }
 
   # Skip creation if spoke project == csoc project (same project scenario)
   # In that case, we'll use the csoc workload identity directly via override_id
-  create                          = lookup(spoke_config, "enabled", false) && var.enable_k8s_cluster && data.google_project.spoke_${spoke_alias}.project_id != data.google_project.csoc.project_id
-  override_id                     = data.google_project.spoke_${spoke_alias}.project_id == data.google_project.csoc.project_id ? (%{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enabled", false)~}module.workload_identity_${service_name}.service_account_email%{else~}""%{endif~}) : null
+  create                          = lookup(spoke_config, "enabled", false) && var.enable_k8s_cluster && data.google_project.${spoke_config.alias}.project_id != data.google_project.csoc.project_id
+  override_id                     = data.google_project.${spoke_config.alias}.project_id == data.google_project.csoc.project_id ? (%{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)~}module.workload_identity_${service_name}.service_account_email%{else~}""%{endif~}) : null
   cluster_name                    = var.cluster_name
   service_name                    = "${service_name}"
-  spoke_alias                     = "${spoke_alias}"
-  csoc_workload_identity_email    = %{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enabled", false)~}module.workload_identity_${service_name}.service_account_email%{else~}""%{endif~}
+  spoke_alias                     = "${spoke_config.alias}"
+  csoc_workload_identity_email    = %{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)~}module.workload_identity_${service_name}.service_account_email%{else~}""%{endif~}
 
-  role_definition_yaml = try(module.spoke_policy_${spoke_alias}_${service_name}.role_definition_yaml, null)
-  has_role_definition  = try(module.spoke_policy_${spoke_alias}_${service_name}.has_role_definition, false)
+  role_definition_yaml = try(module.spoke_policy_${spoke_config.alias}_${service_name}.role_definition_yaml, null)
+  has_role_definition  = try(module.spoke_policy_${spoke_config.alias}_${service_name}.has_role_definition, false)
 
   tags = merge(
     var.tags,
     {
-      spoke_alias  = "${spoke_alias}"
+      spoke_alias  = "${spoke_config.alias}"
       service_name = "${service_name}"
       context      = "spoke"
     }
   )
 
-  depends_on = [module.spoke_policy_${spoke_alias}_${service_name}]
+  depends_on = [module.spoke_policy_${spoke_config.alias}_${service_name}]
 }
 %{endfor~}
 
@@ -563,7 +564,7 @@ generate "cross_account_policies" {
 ###############################################################################
 
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
 module "cross_account_${service_name}" {
   source = "./aws-cross-account-policy"
 
@@ -574,9 +575,9 @@ module "cross_account_${service_name}" {
   # Collect all spoke role ARNs for this service
   # Skip spokes where account ID == csoc account ID (same account scenario)
   spoke_role_arns = compact([
-%{for spoke_alias, spoke_config in values.spokes~}
-%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_alias, {})), service_name)~}
-    data.aws_caller_identity.spoke_${spoke_alias}.account_id != data.aws_caller_identity.csoc.account_id ? try(module.spoke_role_${spoke_alias}_${service_name}.role_arn, "") : "",
+%{for spoke_config in values.spokes_config~}
+%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_config.alias, {})), service_name)~}
+    data.aws_caller_identity.${spoke_config.alias}.account_id != data.aws_caller_identity.csoc.account_id ? try(module.spoke_role_${spoke_config.alias}_${service_name}.role_arn, "") : "",
 %{endif~}
 %{endfor~}
   ])
@@ -589,7 +590,14 @@ module "cross_account_${service_name}" {
     }
   )
 
-  depends_on = [module.pod_identity_${service_name}]
+  depends_on = [
+    module.pod_identity_${service_name},
+%{for spoke_config in values.spokes_config~}
+%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_config.alias, {})), service_name)~}
+    module.spoke_role_${spoke_config.alias}_${service_name},
+%{endif~}
+%{endfor~}
+  ]
 }
 %{endif~}
 %{endfor~}
@@ -689,28 +697,28 @@ variable "spoke_iam_policy_sources" {
 }
 
 # Spoke provider variables (AWS)
-%{for spoke_alias, spoke_config in values.spokes~}
+%{for spoke_config in values.spokes_config~}
 %{if lookup(spoke_config, "enabled", false)~}
-variable "spoke_${spoke_alias}_profile" {
-  description = "AWS profile for spoke ${spoke_alias}"
+variable "${spoke_config.alias}_profile" {
+  description = "AWS profile for spoke ${spoke_config.alias}"
   type        = string
   default     = ""
 }
 
-variable "spoke_${spoke_alias}_region" {
-  description = "AWS region for spoke ${spoke_alias}"
+variable "${spoke_config.alias}_region" {
+  description = "AWS region for spoke ${spoke_config.alias}"
   type        = string
   default     = ""
 }
 
-variable "spoke_${spoke_alias}_subscription_id" {
-  description = "Azure subscription ID for spoke ${spoke_alias}"
+variable "${spoke_config.alias}_subscription_id" {
+  description = "Azure subscription ID for spoke ${spoke_config.alias}"
   type        = string
   default     = ""
 }
 
-variable "spoke_${spoke_alias}_project_id" {
-  description = "GCP project ID for spoke ${spoke_alias}"
+variable "${spoke_config.alias}_project_id" {
+  description = "GCP project ID for spoke ${spoke_config.alias}"
   type        = string
   default     = ""
 }
@@ -736,7 +744,7 @@ output "csoc_pod_identity_arns" {
   description = "Map of CSOC pod identity role ARNs by service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = try(module.pod_identity_${service_name}.role_arn, "")
 %{endif~}
 %{endfor~}
@@ -748,7 +756,7 @@ output "csoc_pod_identity_details" {
   description = "Map of CSOC pod identity details by service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = {
       role_arn      = try(module.pod_identity_${service_name}.role_arn, "")
       role_name     = try(module.pod_identity_${service_name}.role_name, "")
@@ -766,11 +774,11 @@ output "spoke_service_roles_by_controller" {
   description = "Map of spoke role ARNs by controller/service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = compact([
-%{for spoke_alias, spoke_config in values.spokes~}
-%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_alias, {})), service_name)~}
-      try(module.spoke_role_${spoke_alias}_${service_name}.role_arn, ""),
+%{for spoke_config in values.spokes_config~}
+%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_config.alias, {})), service_name)~}
+      try(module.spoke_role_${spoke_config.alias}_${service_name}.role_arn, ""),
 %{endif~}
 %{endfor~}
     ])
@@ -783,15 +791,15 @@ output "spoke_service_roles_by_controller" {
 output "spokes_all_service_roles" {
   description = "Map of all service roles by spoke alias"
   value = {
-%{for spoke_alias, spoke_config in values.spokes~}
+%{for spoke_config in values.spokes_config~}
 %{if lookup(spoke_config, "enabled", false)~}
-    "${spoke_alias}" = {
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_alias, {})~}
+    "${spoke_config.alias}" = {
+%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
       "${service_name}" = {
-        role_arn     = try(module.spoke_role_${spoke_alias}_${service_name}.role_arn, "")
+        role_arn     = try(module.spoke_role_${spoke_config.alias}_${service_name}.role_arn, "")
         service_name = "${service_name}"
-        spoke_alias  = "${spoke_alias}"
-        source       = "spoke_created"
+        spoke_alias  = "${spoke_config.alias}"
+        source       = lookup(lookup(var.spoke_iam_policy_sources, "${spoke_config.alias}", {}), "${service_name}", "spoke_created")
       }
 %{endfor~}
     }
@@ -805,8 +813,24 @@ output "cross_account_policy_arns" {
   description = "Map of cross-account policy ARNs by service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
-    "${service_name}" = try(module.cross_account_${service_name}.policy_arn, "")
+%{if lookup(service_config, "enable_identity", false)~}
+    "${service_name}" = try(module.cross_account_${service_name}.policy_arn, null)
+%{endif~}
+%{endfor~}
+  }
+}
+
+# Debug: spokes provider info and account IDs
+output "spoke_provider_debug" {
+  description = "Map of spokes -> { profile, region, account_id } for debugging"
+  value = {
+%{for spoke_config in values.spokes_config~}
+%{if lookup(spoke_config, "enabled", false)~}
+    "${spoke_config.alias}" = {
+      profile    = var.${spoke_config.alias}_profile
+      region     = var.${spoke_config.alias}_region
+      account_id = try(data.aws_caller_identity.${spoke_config.alias}.account_id, "")
+    }
 %{endif~}
 %{endfor~}
   }
@@ -822,7 +846,7 @@ output "csoc_pod_identity_arns" {
   description = "Map of CSOC managed identity IDs by service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = try(module.managed_identity_${service_name}.identity_id, "")
 %{endif~}
 %{endfor~}
@@ -834,7 +858,7 @@ output "csoc_pod_identity_details" {
   description = "Map of CSOC managed identity details by service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = {
       role_arn      = try(module.managed_identity_${service_name}.identity_id, "")
       role_name     = try(module.managed_identity_${service_name}.identity_name, "")
@@ -852,11 +876,11 @@ output "spoke_service_roles_by_controller" {
   description = "Map of spoke managed identity IDs by controller/service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = compact([
-%{for spoke_alias, spoke_config in values.spokes~}
-%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_alias, {})), service_name)~}
-      try(module.spoke_identity_${spoke_alias}_${service_name}.identity_id, ""),
+%{for spoke_config in values.spokes_config~}
+%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_config.alias, {})), service_name)~}
+      try(module.spoke_identity_${spoke_config.alias}_${service_name}.identity_id, ""),
 %{endif~}
 %{endfor~}
     ])
@@ -869,15 +893,15 @@ output "spoke_service_roles_by_controller" {
 output "spokes_all_service_roles" {
   description = "Map of all managed identities by spoke alias"
   value = {
-%{for spoke_alias, spoke_config in values.spokes~}
+%{for spoke_config in values.spokes_config~}
 %{if lookup(spoke_config, "enabled", false)~}
-    "${spoke_alias}" = {
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_alias, {})~}
+    "${spoke_config.alias}" = {
+%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
       "${service_name}" = {
-        role_arn     = try(module.spoke_identity_${spoke_alias}_${service_name}.identity_id, "")
+        role_arn     = try(module.spoke_identity_${spoke_config.alias}_${service_name}.identity_id, "")
         service_name = "${service_name}"
-        spoke_alias  = "${spoke_alias}"
-        source       = "spoke_created"
+        spoke_alias  = "${spoke_config.alias}"
+        source       = lookup(lookup(var.spoke_iam_policy_sources, "${spoke_config.alias}", {}), "${service_name}", "spoke_created")
       }
 %{endfor~}
     }
@@ -902,7 +926,7 @@ output "csoc_pod_identity_arns" {
   description = "Map of CSOC workload identity service account emails by service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = try(module.workload_identity_${service_name}.service_account_email, "")
 %{endif~}
 %{endfor~}
@@ -914,7 +938,7 @@ output "csoc_pod_identity_details" {
   description = "Map of CSOC workload identity details by service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = {
       role_arn      = try(module.workload_identity_${service_name}.service_account_email, "")
       role_name     = try(module.workload_identity_${service_name}.service_account_name, "")
@@ -932,11 +956,11 @@ output "spoke_service_roles_by_controller" {
   description = "Map of spoke service account emails by controller/service name"
   value = {
 %{for service_name, service_config in values.addon_configs~}
-%{if lookup(service_config, "enabled", false)~}
+%{if lookup(service_config, "enable_identity", false)~}
     "${service_name}" = compact([
-%{for spoke_alias, spoke_config in values.spokes~}
-%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_alias, {})), service_name)~}
-      try(module.spoke_sa_${spoke_alias}_${service_name}.service_account_email, ""),
+%{for spoke_config in values.spokes_config~}
+%{if lookup(spoke_config, "enabled", false) && contains(keys(lookup(values.spoke_iam_policies, spoke_config.alias, {})), service_name)~}
+      try(module.spoke_sa_${spoke_config.alias}_${service_name}.service_account_email, ""),
 %{endif~}
 %{endfor~}
     ])
@@ -949,15 +973,15 @@ output "spoke_service_roles_by_controller" {
 output "spokes_all_service_roles" {
   description = "Map of all service accounts by spoke alias"
   value = {
-%{for spoke_alias, spoke_config in values.spokes~}
+%{for spoke_config in values.spokes_config~}
 %{if lookup(spoke_config, "enabled", false)~}
-    "${spoke_alias}" = {
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_alias, {})~}
+    "${spoke_config.alias}" = {
+%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
       "${service_name}" = {
-        role_arn     = try(module.spoke_sa_${spoke_alias}_${service_name}.service_account_email, "")
+        role_arn     = try(module.spoke_sa_${spoke_config.alias}_${service_name}.service_account_email, "")
         service_name = "${service_name}"
-        spoke_alias  = "${spoke_alias}"
-        source       = "spoke_created"
+        spoke_alias  = "${spoke_config.alias}"
+        source       = lookup(lookup(var.spoke_iam_policy_sources, "${spoke_config.alias}", {}), "${service_name}", "spoke_created")
       }
 %{endfor~}
     }
