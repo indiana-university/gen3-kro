@@ -20,14 +20,14 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-    targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+    repoURL: https://github.com/indiana-university/gen3-kro.git
+    targetRevision: test-kro-graphs
     path: argocd/addons/bootstrap
     directory:
       recurse: false
       include: '*-appset.yaml'
   destination:
-    name: {{.name}}
+    server: https://kubernetes.default.svc
     namespace: argocd
   syncPolicy:
     automated:
