@@ -6,7 +6,6 @@
 # Data Sources:
 # 1. Cluster Secret Annotations (from CSOC):
 #    - csoc_repo_url, csoc_repo_revision, csoc_repo_basepath
-#    - addons_repo_url, addons_repo_revision, addons_repo_basepath
 #    - csoc.kro.dev/addons-config (YAML map of addon identities and settings)
 #    - csoc.kro.dev/gitops-context (repository + region context)
 #
@@ -39,8 +38,8 @@ spec:
                   argocd.argoproj.io/secret-type: cluster
           # Addon catalog from git repository
           - git:
-              repoURL: '{{.metadata.annotations.addons_repo_url}}'
-              revision: '{{.metadata.annotations.addons_repo_revision}}'
+              repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+              revision: '{{.metadata.annotations.csoc_repo_revision}}'
               files:
                 - path: 'argocd/addons/catalog.yaml'
   template:
@@ -61,8 +60,8 @@ spec:
       project: default
       sources:
         # Values repository source
-        - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-          targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+        - repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+          targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
           ref: values
         # Addon Helm chart source
         - repoURL: '{{.repoURL}}'

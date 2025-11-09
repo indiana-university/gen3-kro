@@ -6,7 +6,6 @@
 # # Data Sources:
 # # 1. Cluster Secret Annotations (from CSOC, propagated to spokes):
 # #    - csoc_repo_url, csoc_repo_revision, csoc_repo_basepath
-# #    - addons_repo_url, addons_repo_revision, addons_repo_basepath
 # #    - rgds_repo_url, rgds_path
 # #
 # # 2. Spoke ConfigMap ({spoke_alias}-argocd-settings):
@@ -45,8 +44,8 @@
 #                 addonsConfigMap: '{{.name}}-argocd-settings'
 #           # Addon catalog from git repository
 #           - git:
-#               repoURL: '{{.metadata.annotations.addons_repo_url}}'
-#               revision: '{{.metadata.annotations.addons_repo_revision}}'
+#               repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+#               revision: '{{.metadata.annotations.csoc_repo_revision}}'
 #               files:
 #                 - path: 'argocd/addons/csoc/catalog.yaml'
 #   template:
@@ -92,8 +91,8 @@
 #                   eks.amazonaws.com/role-arn: {{$addonConfig.roleArn}}
 #               {{- end }}
 #         # Values repository reference for valueFiles
-#         - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-#           targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+#         - repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+#           targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
 #           ref: values
 #       destination:
 #         name: '{{.name}}'
