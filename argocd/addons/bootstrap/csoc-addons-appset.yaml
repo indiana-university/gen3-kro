@@ -69,9 +69,7 @@ spec:
           targetRevision: '{{.revision}}'
           chart: '{{.chart}}'
           helm:
-            skipCrds: false
-            # Enable CRD deletion on application deletion
-            # This overrides the helm.sh/resource-policy: keep annotation
+            skipCrds: true  # CRDs are managed separately via crds-appset
             releaseName: '{{.addon}}'
             # Load per-addon values file
             valueFiles:

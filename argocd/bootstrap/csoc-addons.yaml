@@ -20,9 +20,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/indiana-university/gen3-kro.git
-    targetRevision: test-kro-graphs
-    path: argocd/addons
+    repoURL: '{{.metadata.annotations.addons_repo_url}}'
+    targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+    path: argocd/addons/bootstrap
     directory:
       recurse: false
       include: '*-appset.yaml'
