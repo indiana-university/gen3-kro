@@ -1,14 +1,14 @@
-# - addon: kro
-#   repoURL: oci://ghcr.io/kro-run/kro/kro
-#   revision: 0.4.1
-#   chart: kro
-#   sync_wave: "-6"
-
-- addon: ack-cloudtrail
-  repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart
-  revision: 1.1.1
-  chart: cloudtrail-chart
+- addon: kro
+  repoURL: oci://ghcr.io/kro-run/kro/kro
+  revision: 0.4.1
+  chart: kro
   sync_wave: "-6"
+
+# - addon: ack-cloudtrail
+#   repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart
+#   revision: 1.1.1
+#   chart: cloudtrail-chart
+#   sync_wave: "-6"
 
 # - addon: ack-cloudwatchlogs
 #   repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudwatchlogs-chart
