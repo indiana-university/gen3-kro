@@ -1,0 +1,159 @@
+# CSOC Addons ApplicationSet
+#
+# This ApplicationSet deploys cluster addons (KRO, ACK controllers, and platform components)
+# to CSOC/control-plane clusters only.
+#
+# Data Sources:
+# 1. Cluster Secret Annotations (from CSOC):
+#    - csoc_repo_url, csoc_repo_revision, csoc_repo_basepath
+#    - addons_repo_url, addons_repo_revision, addons_repo_basepath
+#    - csoc.kro.dev/addons-config (YAML map of addon identities and settings)
+#    - csoc.kro.dev/gitops-context (repository + region context)
+#
+# 2. Addon Catalog (argocd/addons/catalog.yaml):
+#    - Defines available addons with their Helm chart sources and versions
+#
+# 3. Enablement Configuration: argocd/addons/enablement.yaml
+#    - Controls which addons are deployed to CSOC clusters
+#
+# 4. Values Configuration: argocd/addons/values/*.yaml
+#    - Provides addon-specific configuration (resource limits, role ARNs, etc.)
+#
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: csoc-addons
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-8"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # CSOC/Hub cluster only
+          - clusters:
+              selector:
+                matchLabels:
+                  argocd.argoproj.io/secret-type: cluster
+          # Addon catalog from git repository
+          - git:
+              repoURL: '{{.metadata.annotations.addons_repo_url}}'
+              revision: '{{.metadata.annotations.addons_repo_revision}}'
+              files:
+                - path: 'argocd/addons/catalog.yaml'
+  template:
+    metadata:
+      name: 'csoc-{{.addon}}'
+      labels:
+        app.kubernetes.io/part-of: addons
+        app.kubernetes.io/name: '{{.addon}}'
+        cluster: '{{.name}}'
+        addon: '{{.addon}}'
+      annotations:
+        # Sync wave from catalog (KRO at -1, controllers at 0, etc.)
+        argocd.argoproj.io/sync-wave: '{{default "0" .sync_wave}}'
+      # Enable cascade deletion - when app is deleted, all resources including CRDs are deleted
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      sources:
+        # Values repository source
+        - repoURL: '{{.metadata.annotations.addons_repo_url}}'
+          targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+          ref: values
+        # Addon Helm chart source
+        - repoURL: '{{.repoURL}}'
+          targetRevision: '{{.revision}}'
+          chart: '{{.chart}}'
+          helm:
+            skipCrds: true  # CRDs are managed separately via crds-appset
+            releaseName: '{{.addon}}'
+            # Load per-addon values file
+            valueFiles:
+              - $values/argocd/addons/values/{{.addon}}.yaml
+            # Inline values from cluster annotations
+            values: |
+              {{- $addonsConfig := dict }}
+              {{- with (index .metadata.annotations "csoc.kro.dev/addons-config") }}
+                {{- $addonsConfig = fromYaml . }}
+              {{- end }}
+              {{- $gitopsContext := dict }}
+              {{- with (index .metadata.annotations "csoc.kro.dev/gitops-context") }}
+                {{- $gitopsContext = fromYaml . }}
+              {{- end }}
+              {{- $addonConfig := index $addonsConfig .addon }}
+              {{- $roleArns := dict }}
+              {{- range $name, $cfg := $addonsConfig }}
+                {{- $role := default "" (index $cfg "roleArn") }}
+                {{- if $role }}
+                  {{- $normalized := replace (trimPrefix "ack-" $name) "-" "_" }}
+                  {{- $_ := set $roleArns $normalized $role }}
+                {{- end }}
+              {{- end }}
+              {{- $region := coalesce (index $gitopsContext "aws_region") (index $gitopsContext "azure_region") (index $gitopsContext "gcp_region") (index $gitopsContext "region") "" }}
+              {{- $awsRegion := coalesce (index $gitopsContext "aws_region") "" }}
+
+              global:
+                region: {{ $region | quote }}
+                aws_region: {{ $awsRegion | quote }}
+              {{- if gt (len $roleArns) 0 }}
+                roleArns:
+                  {{- range $key, $value := $roleArns }}
+                  {{ $key }}: {{ $value | quote }}
+                  {{- end }}
+              {{- else }}
+                roleArns: {}
+              {{- end }}
+              {{- if and $addonConfig (hasPrefix "ack-" .addon) }}
+              aws:
+                region: {{ $region | quote }}
+              serviceAccount:
+                name: {{ default (printf "%s-sa" .addon) (index $addonConfig "serviceAccount") | quote }}
+                annotations:
+                  eks.amazonaws.com/role-arn: {{ default "" (index $addonConfig "roleArn") | quote }}
+              {{- end }}
+              {{- if and $addonConfig (eq .addon "external-secrets") }}
+              serviceAccount:
+                name: {{ default "external-secrets" (index $addonConfig "serviceAccount") | quote }}
+                annotations:
+                  eks.amazonaws.com/role-arn: {{ default "" (index $addonConfig "roleArn") | quote }}
+              {{- end }}
+      destination:
+        name: '{{.name}}'
+        # Namespace mapping: kro -> kro-system, ack-* -> ack-system, others use addon name
+        namespace: '{{if eq .addon "kro"}}kro-system{{else if hasPrefix "ack-" .addon}}ack-system{{else}}{{.addon}}-system{{end}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          - Replace=true  # Allow replacing resources including CRDs during sync
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      # Ignore differences in CRD conversion webhooks (common with large CRDs)
+      ignoreDifferences:
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+          jsonPointers:
+            - /spec/conversion/webhook/clientConfig/caBundle
+            - /status
+        # Kyverno ClusterPolicies are dynamic resources that update at runtime
+        - group: kyverno.io
+          kind: ClusterPolicy
+          jqPathExpressions:
+            - .spec.rules[]?.exclude[]?.resources.namespaces[]?
+            - .spec.rules[]?.match[]?.resources.namespaces[]?
+            - .status
