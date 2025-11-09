@@ -112,7 +112,32 @@ inputs = {
       region               = values.region
       pod_identity_details = dependency.spoke_iam.outputs.csoc_pod_identity_details
     },
-    try(values.argocd_cluster, {})
+    try(values.argocd_cluster, {}),
+    {
+      # Add structured annotations for ApplicationSet templates
+      # These override/extend any annotations from values.argocd_cluster
+      metadata = {
+        annotations = merge(
+          try(values.argocd_cluster.metadata.annotations, {}),
+          {
+            # GitOps context for CSOC addons ApplicationSet
+            "csoc.kro.dev/gitops-context" = {
+              aws_region = values.region
+              region     = values.region
+            }
+            # Addons configuration (IAM roles from iam-config unit)
+            "csoc.kro.dev/addons-config" = {
+              for service_name, details in try(dependency.spoke_iam.outputs.csoc_pod_identity_details, {}) :
+              service_name => {
+                roleArn        = try(details.role_arn, "")
+                serviceAccount = try(details.service_account_name, "${service_name}-sa")
+                namespace      = try(details.service_account_namespace, "ack-system")
+              }
+            }
+          }
+        )
+      }
+    }
   )
 
   # Apps (bootstrap configuration)
