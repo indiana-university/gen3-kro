@@ -1,0 +1,18 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# Azure Layer-1 ResourceGraphDefinitions
+# Foundational infrastructure resources (VNet, Storage, etc.)
+# Sync wave -4: Deploy before layer-2 resources
+
+commonAnnotations:
+  argocd.argoproj.io/sync-wave: "-4"
+
+# resources:
+  # VNet - Core networking infrastructure (ACTIVE)
+  # - vnet-rgd.yaml
+
+  # Additional Layer-1 RGDs (commented out - enable as needed)
+  # - aks-rgd.yaml
+  # - postgresql-rgd.yaml
+  # - storage-account-rgd.yaml

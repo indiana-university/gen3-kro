@@ -1,9 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-
-# Azure Gen3 ResourceGraphDefinitions
-resources:
-  - aks-rgd.yaml
-  - postgresql-rgd.yaml
-  - storage-account-rgd.yaml
-  - vnet-rgd.yaml

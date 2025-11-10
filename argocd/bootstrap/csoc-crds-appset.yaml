@@ -1,0 +1,56 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: csoc-crds
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-30"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - clusters:
+        selector:
+          matchLabels:
+            argocd.argoproj.io/secret-type: cluster
+  template:
+    metadata:
+      name: 'csoc-crds'
+      namespace: argocd
+      annotations:
+        argocd.argoproj.io/sync-wave: "-30"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+      labels:
+        app.kubernetes.io/part-of: crds
+        cluster: '{{.name}}'
+    spec:
+      project: default
+      source:
+        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        path: argocd/csoc-addons/crds
+      destination:
+        name: '{{.name}}'
+      syncPolicy:
+        automated:
+          prune: false  # Never auto-prune CRDs to avoid accidental deletion
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - Replace=true  # Force replace for CRD updates
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      # Ignore differences in CRD conversion webhooks (common with large CRDs)
+      ignoreDifferences:
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+          jsonPointers:
+            - /spec/conversion/webhook/clientConfig/caBundle
+            - /status
