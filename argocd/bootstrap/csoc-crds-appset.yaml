@@ -1,3 +1,18 @@
+# CSOC CRDs ApplicationSet (Dynamic, Enablement-Based)
+#
+# This ApplicationSet deploys CRDs per controller based on enablement flags
+# in argocd/csoc-addons/enablement.yaml
+#
+# Data Sources:
+# 1. Enablement Configuration: argocd/csoc-addons/enablement.yaml (crds section)
+#    - Controls which CRDs are deployed (same file used by controllers)
+#
+# 2. CRD Catalog: argocd/csoc-addons/crds/catalog.yaml
+#    - Defines CRD paths and sync waves
+#
+# Each enabled CRD controller gets its own Application, allowing fine-grained
+# control over which CRDs are deployed to the cluster.
+#
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -9,27 +24,66 @@ spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-    - clusters:
-        selector:
-          matchLabels:
-            argocd.argoproj.io/secret-type: cluster
+    # Matrix generator: Clusters × (CRD Catalog merged with Enablement)
+    - matrix:
+        generators:
+          # CSOC/Hub cluster selection
+          - clusters:
+              selector:
+                matchLabels:
+                  argocd.argoproj.io/secret-type: cluster
+
+          # Merge CRD catalog with enablement configuration
+          - merge:
+              mergeKeys:
+                - controller
+              generators:
+                # Read CRD catalog from git (paths and sync_wave metadata)
+                - git:
+                    repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+                    revision: '{{.metadata.annotations.csoc_repo_revision}}'
+                    files:
+                      - path: 'argocd/csoc-addons/crds/catalog.yaml'
+
+                # Read enablement configuration from git (enabled flags)
+                - git:
+                    repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+                    revision: '{{.metadata.annotations.csoc_repo_revision}}'
+                    files:
+                      - path: 'argocd/csoc-addons/enablement.yaml'
+                    # Use only the crds list from the enablement file
+                    pathParamPrefix: crds
+
+        # Filter to only include enabled controllers
+        template:
+          metadata: {}
+          spec: {}
+          selector:
+            matchExpressions:
+              # Only include where enabled is true
+              - key: enabled
+                operator: In
+                values: ["true", true]
+
   template:
     metadata:
-      name: 'csoc-crds'
+      # Create one Application per enabled CRD controller
+      name: 'csoc-crds-{{.controller}}'
       namespace: argocd
       annotations:
-        argocd.argoproj.io/sync-wave: "-30"
+        argocd.argoproj.io/sync-wave: '{{default "-30" .sync_wave}}'
       finalizers:
         - resources-finalizer.argocd.argoproj.io
       labels:
         app.kubernetes.io/part-of: crds
+        app.kubernetes.io/component: '{{.controller}}'
         cluster: '{{.name}}'
     spec:
       project: default
       source:
         repoURL: '{{.metadata.annotations.csoc_repo_url}}'
         targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
-        path: argocd/csoc-addons/crds
+        path: '{{.path}}'
       destination:
         name: '{{.name}}'
       syncPolicy:

@@ -1,0 +1,24 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Kustomization
+
+resources:
+  - adoptedresources.services.k8s.aws.yaml
+  - capacityreservations.ec2.services.k8s.aws.yaml
+  - dhcpoptions.ec2.services.k8s.aws.yaml
+  - elasticipaddresses.ec2.services.k8s.aws.yaml
+  - fieldexports.services.k8s.aws.yaml
+  - flowlogs.ec2.services.k8s.aws.yaml
+  - instances.ec2.services.k8s.aws.yaml
+  - internetgateways.ec2.services.k8s.aws.yaml
+  - launchtemplates.ec2.services.k8s.aws.yaml
+  - natgateways.ec2.services.k8s.aws.yaml
+  - networkacls.ec2.services.k8s.aws.yaml
+  - routetables.ec2.services.k8s.aws.yaml
+  - securitygroups.ec2.services.k8s.aws.yaml
+  - subnets.ec2.services.k8s.aws.yaml
+  - transitgateways.ec2.services.k8s.aws.yaml
+  - transitgatewayvpcattachments.ec2.services.k8s.aws.yaml
+  - vpcendpoints.ec2.services.k8s.aws.yaml
+  - vpcendpointserviceconfigurations.ec2.services.k8s.aws.yaml
+  - vpcpeeringconnections.ec2.services.k8s.aws.yaml
+  - vpcs.ec2.services.k8s.aws.yaml
