@@ -3,7 +3,8 @@
 # Used by both csoc-controller-appset and csoc-crds-appset
 cluster: gen3-csoc-dev
 
-# Controller enablement - used by csoc-controller-appset with catalog lookup
+# Unified enablement map - used by both controller and CRD ApplicationSets
+# Each addon can be enabled/disabled with a single toggle
 enablement:
   kro:
     enabled: true
@@ -48,47 +49,4 @@ enablement:
   metrics-server:
     enabled: false
   kube-state-metrics:
-    enabled: false
-
-# CRD enablement - used by csoc-crds-appset (list format for iteration)
-crds:
-  - controller: kro
-    enabled: true
-  - controller: ack-cloudtrail
-    enabled: false
-  - controller: ack-cloudwatchlogs
-    enabled: false
-  - controller: ack-ec2
-    enabled: true
-  - controller: ack-efs
-    enabled: false
-  - controller: ack-eks
-    enabled: false
-  - controller: ack-elasticache
-    enabled: false
-  - controller: ack-iam
-    enabled: false
-  - controller: ack-kms
-    enabled: false
-  - controller: ack-opensearchservice
-    enabled: false
-  - controller: ack-rds
-    enabled: false
-  - controller: ack-route53
-    enabled: false
-  - controller: ack-s3
-    enabled: false
-  - controller: ack-secretsmanager
-    enabled: false
-  - controller: ack-sns
-    enabled: false
-  - controller: ack-sqs
-    enabled: false
-  - controller: ack-wafv2
-    enabled: false
-  - controller: external-secrets
-    enabled: false
-  - controller: metrics-server
-    enabled: false
-  - controller: kube-state-metrics
     enabled: false
