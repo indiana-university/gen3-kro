@@ -1,0 +1,9 @@
+apiVersion: kustomize.config.k8s.io/v1alpha1
+kind: Kustomization
+
+resources:
+  - accesspoints.efs.services.k8s.aws.yaml
+  - adoptedresources.services.k8s.aws.yaml
+  - fieldexports.services.k8s.aws.yaml
+  - filesystems.efs.services.k8s.aws.yaml
+  - mounttargets.efs.services.k8s.aws.yaml
