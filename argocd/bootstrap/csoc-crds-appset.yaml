@@ -1,17 +1,13 @@
-# CSOC CRDs ApplicationSet (Dynamic, Enablement-Based)
+# CSOC CRDs ApplicationSet
 #
-# This ApplicationSet deploys CRDs per controller based on enablement flags
-# in argocd/csoc-addons/enablement.yaml
+# This ApplicationSet deploys CRDs per controller.
 #
 # Data Sources:
-# 1. CRD Catalog: argocd/csoc-addons/crds/catalog.yaml
-#    - Defines CRD paths and sync waves
+# 1. Addon Catalog (argocd/csoc-addons/catalog.yaml):
+#    - Defines available addons and their configurations
+#    - CRDs are deployed from argocd/csoc-addons/crds/{addon} directories
 #
-# 2. Enablement Configuration: argocd/csoc-addons/enablement.yaml (enablement section)
-#    - Controls which CRDs are deployed (uses same enablement map as controllers)
-#
-# Each enabled CRD controller gets its own Application, allowing fine-grained
-# control over which CRDs are deployed to the cluster.
+# Each addon's CRDs get their own Application for fine-grained control.
 #
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
@@ -24,7 +20,7 @@ spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-    # Matrix generator: Clusters × (CRD Catalog with Enablement lookup)
+    # Matrix generator: Clusters × Addon Catalog
     - matrix:
         generators:
           # CSOC/Hub cluster selection
@@ -33,41 +29,32 @@ spec:
                 matchLabels:
                   argocd.argoproj.io/secret-type: cluster
 
-          # Read CRD catalog from git (paths and sync_wave metadata)
+          # Load addon catalog (shared with controller AppSet)
           - git:
               repoURL: '{{.metadata.annotations.csoc_repo_url}}'
               revision: '{{.metadata.annotations.csoc_repo_revision}}'
               files:
-                - path: 'argocd/csoc-addons/crds/catalog.yaml'
-
-          # Load enablement map (shared with controller AppSet) and expose it as .enablement
-          - git:
-              repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-              revision: '{{.metadata.annotations.csoc_repo_revision}}'
-              files:
-                - path: 'argocd/csoc-addons/enablement.yaml'
-
+                - path: 'argocd/csoc-addons/catalog.yaml'
   template:
-    # Only create an Application if the controller is enabled in enablement.yaml
-    when: '{{ $cfg := index .enablement .controller }}{{ if and $cfg $cfg.enabled }}true{{ else }}false{{ end }}'
     metadata:
-      # Create one Application per enabled CRD controller
-      name: 'csoc-crds-{{.controller}}'
-      namespace: argocd
-      annotations:
-        argocd.argoproj.io/sync-wave: '{{default "-30" .sync_wave}}'
-      finalizers:
-        - resources-finalizer.argocd.argoproj.io
+      # Create one Application per addon's CRDs
+      name: 'csoc-{{.addon}}-crds'
       labels:
         app.kubernetes.io/part-of: crds
-        app.kubernetes.io/component: '{{.controller}}'
-        cluster: '{{.name}}'
+        app.kubernetes.io/addon: '{{.addon}}'
+      annotations:
+        # Sync wave for all CRDs fixed at -30
+        argocd.argoproj.io/sync-wave: "-30"
+      # Enable cascade deletion - when app is deleted, all resources including CRDs are deleted
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
     spec:
       project: default
       source:
+        # Values repository source for CRDs
         repoURL: '{{.metadata.annotations.csoc_repo_url}}'
         targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
-        path: '{{.path}}'
+        path: 'argocd/csoc-addons/crds/{{.addon}}'
       destination:
         name: '{{.name}}'
       syncPolicy:

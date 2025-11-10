@@ -9,13 +9,10 @@
 #    - csoc.kro.dev/addons-config (YAML map of addon identities and settings)
 #    - csoc.kro.dev/gitops-context (repository + region context)
 #
-# 2. Addon Catalog (argocd/addons/catalog.yaml):
+# 2. Addon Catalog (argocd/csoc-addons/controllers/catalog.yaml):
 #    - Defines available addons with their Helm chart sources and versions
 #
-# 3. Enablement Configuration: argocd/addons/enablement.yaml
-#    - Controls which addons are deployed to CSOC clusters
-#
-# 4. Values Configuration: argocd/addons/values/*.yaml
+# 3. Values Configuration (argocd/csoc-addons/controllers/values/*.yaml):
 #    - Provides addon-specific configuration (resource limits, role ARNs, etc.)
 #
 apiVersion: argoproj.io/v1alpha1
@@ -41,18 +38,17 @@ spec:
               repoURL: '{{.metadata.annotations.csoc_repo_url}}'
               revision: '{{.metadata.annotations.csoc_repo_revision}}'
               files:
-                - path: 'argocd/csoc-addons/controllers/catalog.yaml'
+                - path: 'argocd/csoc-addons/catalog.yaml'
   template:
     metadata:
-      name: 'csoc-{{.addon}}'
+      # Create one Application per enabled addon controller
+      name: 'csoc-{{.addon}}-controller'
       labels:
         app.kubernetes.io/part-of: addons
-        app.kubernetes.io/name: '{{.addon}}'
-        cluster: '{{.name}}'
-        addon: '{{.addon}}'
+        app.kubernetes.io/addon: '{{.addon}}'
       annotations:
         # Sync wave from catalog (KRO at -1, controllers at 0, etc.)
-        argocd.argoproj.io/sync-wave: '{{default "0" .sync_wave}}'
+        argocd.argoproj.io/sync-wave: '{{.sync_wave}}'
       # Enable cascade deletion - when app is deleted, all resources including CRDs are deleted
       finalizers:
         - resources-finalizer.argocd.argoproj.io
