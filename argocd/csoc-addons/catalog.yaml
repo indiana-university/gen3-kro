@@ -4,11 +4,11 @@
   chart: kro
   sync_wave: "-20"
 
-# - addon: ack-cloudtrail
-#   repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart
-#   revision: 1.1.1
-#   chart: cloudtrail-chart
-#   sync_wave: "-20"
+- addon: ack-cloudtrail
+  repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart
+  revision: 1.1.1
+  chart: cloudtrail-chart
+  sync_wave: "-20"
 
 # - addon: ack-cloudwatchlogs
 #   repoURL: oci://public.ecr.aws/aws-controllers-k8s/cloudwatchlogs-chart
@@ -16,11 +16,11 @@
 #   chart: cloudwatchlogs-chart
 #   sync_wave: "-20"
 
-- addon: ack-ec2
-  repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
-  revision: 1.7.0
-  chart: ec2-chart
-  sync_wave: "-20"
+# - addon: ack-ec2
+#   repoURL: oci://public.ecr.aws/aws-controllers-k8s/ec2-chart
+#   revision: 1.7.0
+#   chart: ec2-chart
+#   sync_wave: "-20"
 
 # - addon: ack-efs
 #   repoURL: oci://public.ecr.aws/aws-controllers-k8s/efs-chart
@@ -28,11 +28,11 @@
 #   chart: efs-chart
 #   sync_wave: "-20"
 
-# - addon: ack-eks
-#   repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
-#   revision: 1.9.3
-#   chart: eks-chart
-#   sync_wave: "-20"
+- addon: ack-eks
+  repoURL: oci://public.ecr.aws/aws-controllers-k8s/eks-chart
+  revision: 1.9.3
+  chart: eks-chart
+  sync_wave: "-20"
 
 # - addon: ack-elasticache
 #   repoURL: oci://public.ecr.aws/aws-controllers-k8s/elasticache-chart
@@ -100,11 +100,11 @@
 #   chart: wafv2-chart
 #   sync_wave: "-20"
 
-# - addon: external-secrets
-#   repoURL: https://charts.external-secrets.io
-#   revision: 0.20.2
-#   chart: external-secrets
-#   sync_wave: "-20"
+- addon: external-secrets
+  repoURL: https://charts.external-secrets.io
+  revision: 0.20.2
+  chart: external-secrets
+  sync_wave: "-20"
 
 # - addon: kyverno
 #   repoURL: https://kyverno.github.io/kyverno/
