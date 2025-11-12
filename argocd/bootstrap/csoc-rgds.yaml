@@ -4,30 +4,92 @@ metadata:
   name: csoc-rgds
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-10"
-  finalizers:
-    - resources-finalizer.argocd.argoproj.io
+    # Move RGDs to a later sync-wave so controllers (and KRO) have time to be ready
+    argocd.argoproj.io/sync-wave: "-5"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-  - clusters:
-      selector:
-        matchLabels:
-          fleet_member: control-plane
+    # Merge layer-1 (per-controller) and multi-controller RGDs
+    - merge:
+        mergeKeys:
+          - name
+          - layer
+        generators:
+          # Layer-1: Per-controller RGDs
+          - matrix:
+              generators:
+                - clusters:
+                    selector:
+                      matchLabels:
+                        fleet_member: control-plane
+                - git:
+                    repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+                    revision: '{{.metadata.annotations.csoc_repo_revision}}'
+                    files:
+                      - path: 'argocd/csoc-addons/catalog.yaml'
+              template:
+                layer: "1"
+                type: "single-controller"
+                rgdPath: "argocd/csoc-addons/rgds/{{.addon}}"
+                # ensure layer-1 RGDs are processed after controllers are available
+                syncWave: "-5"
+                appName: "csoc-{{.addon}}-rgds-l1"
+                labelName: "rgds-layer1"
+
+          # Layer-Multi: Multi-controller composite RGDs
+          - matrix:
+              generators:
+                - clusters:
+                    selector:
+                      matchLabels:
+                        fleet_member: control-plane
+                - git:
+                    repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+                    revision: '{{.metadata.annotations.csoc_repo_revision}}'
+                    files:
+                      - path: 'argocd/csoc-addons/rgd-dependencies.yaml'
+              template:
+                layer: "multi"
+                type: "multi-controller"
+                rgdPath: "argocd/csoc-addons/rgds/_multi-controller/{{.path}}"
+                syncWave: "{{.sync_wave}}"
+                appName: "csoc-{{.name}}-rgds"
+                labelName: "rgds-multi"
+
   template:
+    # For multi-controller RGDs, check if dependencies are met
+    when: |
+      {{- if and (hasKey . "requires") (ne (len .requires) 0) }}
+        {{- $enabled := splitList "," (default "" (index .metadata.annotations "csoc.kro.dev/enabled-controllers")) }}
+        {{- $allPresent := true }}
+        {{- range $req := .requires }}
+          {{- if not (has $req $enabled) }}
+            {{- $allPresent = false }}
+          {{- end }}
+        {{- end }}
+        {{- $allPresent }}
+      {{- else }}
+        true
+      {{- end }}
+
     metadata:
-      name: 'csoc-rgds'
+      name: '{{.appName}}'
       labels:
         app.kubernetes.io/part-of: graphs
-        app.kubernetes.io/name: rgds
+        app.kubernetes.io/name: '{{.labelName}}'
+        app.kubernetes.io/layer: '{{.layer}}'
         cluster: '{{.name}}'
+      annotations:
+        argocd.argoproj.io/sync-wave: '{{.syncWave}}'
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
     spec:
       project: default
       source:
         repoURL: '{{.metadata.annotations.csoc_repo_url}}'
         targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
-        path: '{{.metadata.annotations.csoc_repo_basepath}}/csoc-addons/rgds'
+        path: '{{.rgdPath}}'
       destination:
         name: '{{.name}}'
       syncPolicy:
@@ -39,7 +101,7 @@ spec:
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
           - RespectIgnoreDifferences=true
-          - Replace=true
+          # - Replace=true removed: avoid replace behavior for RGDs which can be destructive
           - PrunePropagationPolicy=foreground
           - PruneLast=true
         retry:

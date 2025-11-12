@@ -1,5 +1,5 @@
 apiVersion: kro.run/v1alpha1
-kind: Route53
+kind: AwsRoute53
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"

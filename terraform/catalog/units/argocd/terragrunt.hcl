@@ -9,70 +9,59 @@ terraform {
 ###############################################################################
 # Locals - Conditional Provider Logic
 #
-# Eight Cases for ArgoCD Provider and Module Configuration:
+# Simplified ArgoCD Provider Configuration:
 #
-# Case 1: EKS=false, ArgoCD=false, State=empty
+# Case 1: ArgoCD=false, State=empty
 #   → Providers: disabled | Modules create: false
 #
-# Case 2: EKS=false, ArgoCD=false, State=has_resources
+# Case 2: ArgoCD=false, State=has_resources
 #   → Providers: enabled (for destroy) | Modules create: false
+#   → NOTE: K8s cluster will be kept alive automatically by k8s-cluster unit
 #
-# Case 3: EKS=false, ArgoCD=true, State=empty
-#   → INVALID: Providers: disabled | Modules create: false | Error
-#
-# Case 4: EKS=false, ArgoCD=true, State=has_resources
-#   → INVALID (destroy-only): Providers: enabled | Modules create: false | Warning
-#
-# Case 5: EKS=true, ArgoCD=false, State=empty
-#   → Providers: disabled | Modules create: false
-#
-# Case 6: EKS=true, ArgoCD=false, State=has_resources
-#   → Providers: enabled (for destroy) | Modules create: false
-#
-# Case 7: EKS=true, ArgoCD=true, State=empty
+# Case 3: ArgoCD=true, State=empty
 #   → Providers: enabled | Modules create: true (create ArgoCD)
 #
-# Case 8: EKS=true, ArgoCD=true, State=has_resources
+# Case 4: ArgoCD=true, State=has_resources
 #   → Providers: enabled | Modules create: true (reconcile/update)
 #
 ###############################################################################
 locals {
   # Enable flags
-  enable_k8s_cluster = try(values.enable_k8s_cluster, false)
-  enable_argocd      = values.enable_argocd
+  enable_argocd = values.enable_argocd
 
   # Check if there are existing Kubernetes/Helm resources in state
   # This allows destroy operations to work even when enable_argocd = false
+  # Initialize terraform first to ensure state can be read
   argocd_state_has_resources = trimspace(run_cmd(
     "bash", "-c",
-    "cd ${get_terragrunt_dir()} && terraform state list 2>/dev/null | egrep '^kubernetes_|^helm_|^local_file\\.' || true"
+    "cd ${get_terragrunt_dir()} && (terraform init -backend=false -input=false >/dev/null 2>&1 || true) && terraform state list 2>/dev/null | egrep '^kubernetes_|^helm_|^local_file\\.' || true"
   )) != ""
 
-  # Check if k8s-cluster state has cluster resources
-  # This indicates the cluster exists and we can read its data
-  cluster_state_exists = trimspace(run_cmd(
-    "bash", "-c",
-    "cd ${get_terragrunt_dir()}x/../k8s-cluster && terraform state list 2>/dev/null | egrep '^aws_eks_cluster\\.|^azurerm_kubernetes_cluster\\.|^google_container_cluster\\.|^module\\.eks\\.|^module\\.aks\\.|^module\\.gke\\.' || true"
-  )) != ""
-
-  # Provider enablement logic - 8 cases:
+  # Provider enablement logic - simplified from 8 cases to 4 cases:
   # Enable providers when:
   # - ArgoCD resources exist in state (to allow destroy), OR
-  # - Both K8s cluster AND ArgoCD are enabled (to allow create/update)
-  need_k8s_providers = local.argocd_state_has_resources || (local.enable_k8s_cluster && local.enable_argocd)
+  # - ArgoCD is enabled (to allow create/update)
+  # NOTE: We no longer check enable_k8s_cluster here because the k8s-cluster unit
+  # will keep itself alive when ArgoCD is being destroyed
+  need_k8s_providers = local.argocd_state_has_resources || local.enable_argocd
 
   # Module create flag logic:
-  # Create resources only when both K8s cluster AND ArgoCD are enabled
-  create_resources = local.enable_k8s_cluster && local.enable_argocd
+  # Create resources only when ArgoCD is enabled
+  create_resources = local.enable_argocd
 
   # Use cluster data from state if both argocd and cluster states have resources
   use_cluster_state_data = false
-}###############################################################################
+}
+###############################################################################
 # Dependencies
 ###############################################################################
 # Dependency: CSOC Unit (cluster info, pod identities)
 dependency "k8s_cluster" {
   config_path = "../k8s-cluster"
+
+  # Skip outputs when destroying ArgoCD and no resources in state
+  # When argocd_state_has_resources=true, we need cluster outputs for destroy
+  skip_outputs = !local.enable_argocd && !local.argocd_state_has_resources
 
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "providers"]
   mock_outputs = {
@@ -97,6 +86,9 @@ dependency "k8s_cluster" {
 # Dependency: Spoke-IAM Unit (spoke roles, spoke cluster info)
 dependency "spoke_iam" {
   config_path = "../iam-config"
+
+  # Skip outputs when destroying ArgoCD and no resources in state
+  skip_outputs = !local.enable_argocd && !local.argocd_state_has_resources
 
   mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "providers"]
   mock_outputs = {
@@ -135,8 +127,7 @@ inputs = {
   create  = local.create_resources
   install = values.enable_argocd
 
-  # Flag variables for validation
-  enable_k8s_cluster         = local.enable_k8s_cluster
+  # Flag variables for validation (simplified - no longer need enable_k8s_cluster check)
   enable_argocd              = local.enable_argocd
   argocd_state_has_resources = local.argocd_state_has_resources
 
@@ -146,11 +137,11 @@ inputs = {
   # Cluster secret configuration
   cluster = merge(
     {
-      name                 = dependency.k8s_cluster.outputs.cluster_name
-      endpoint             = dependency.k8s_cluster.outputs.cluster_endpoint
-      ca_cert              = dependency.k8s_cluster.outputs.cluster_certificate_authority_data
+      name                 = try(dependency.k8s_cluster.outputs.cluster_name, "")
+      endpoint             = try(dependency.k8s_cluster.outputs.cluster_endpoint, "")
+      ca_cert              = try(dependency.k8s_cluster.outputs.cluster_certificate_authority_data, "")
       region               = values.region
-      pod_identity_details = dependency.spoke_iam.outputs.csoc_pod_identity_details
+      pod_identity_details = try(dependency.spoke_iam.outputs.csoc_pod_identity_details, {})
     },
     try(values.argocd_cluster, {}),
     {
@@ -207,6 +198,32 @@ inputs = {
       }
     )
   }
+
+  # Pass the computed controller-to-spoke mappings for ConfigMap generation
+  ack_controller_spoke_roles = {
+    for controller_name, spoke_arns in try(dependency.spoke_iam.outputs.spoke_service_roles_by_controller, {}) :
+    controller_name => {
+      for spoke_alias, spoke_config in values.spokes :
+      spoke_alias => {
+        account_id = try(
+          length(lookup(dependency.spoke_iam.outputs.spokes_all_service_roles, spoke_alias, {})) > 0 ?
+          regex("arn:aws:iam::([0-9]+):role/.*", values(lookup(dependency.spoke_iam.outputs.spokes_all_service_roles, spoke_alias, {}))[0].role_arn)[0] :
+          "",
+          ""
+        )
+        role_arn = try(dependency.spoke_iam.outputs.spokes_all_service_roles[spoke_alias][controller_name].role_arn, "")
+      }
+      if try(dependency.spoke_iam.outputs.spokes_all_service_roles[spoke_alias][controller_name].role_arn, "") != ""
+    }
+  }
+
+  debug_state_check = {
+    argocd_state_has_resources = local.argocd_state_has_resources
+    need_k8s_providers         = local.need_k8s_providers
+    create_resources           = local.create_resources
+    enable_argocd              = local.enable_argocd
+  }
+
 }
 
 ###############################################################################
@@ -225,12 +242,6 @@ variable "create" {
 variable "install" {
   description = "Install ArgoCD Helm chart"
   type        = bool
-}
-
-variable "enable_k8s_cluster" {
-  description = "Whether the K8s cluster is enabled"
-  type        = bool
-  default     = false
 }
 
 variable "enable_argocd" {
@@ -270,6 +281,15 @@ variable "spokes" {
   type        = any
 }
 
+variable "ack_controller_spoke_roles" {
+  description = "Per-controller spoke role mappings for ACK ConfigMaps (data-driven from iam-config)"
+  type = map(map(object({
+    account_id = string
+    role_arn   = string
+  })))
+  default = {}
+}
+
 # Optional Azure variables for kubelogin
 variable "azure_client_id" {
   description = "Azure Client ID for kubelogin authentication"
@@ -289,6 +309,22 @@ variable "tenant_id" {
   type        = string
   default     = ""
 }
+
+variable "debug_state_check" {
+  description = "Debug information about state checks and provider enablement"
+  type = object({
+    argocd_state_has_resources = bool
+    need_k8s_providers         = bool
+    create_resources           = bool
+    enable_argocd              = bool
+  })
+  default = {
+    argocd_state_has_resources = false
+    need_k8s_providers         = false
+    create_resources           = false
+    enable_argocd              = false
+  }
+}
 EOF
 }
 
@@ -297,28 +333,9 @@ generate "argocd_module" {
   path      = "argocd.tf"
   if_exists = "overwrite_terragrunt"
   contents  = <<-EOF
-# Validation for invalid flag combinations
-locals {
-  # Case 3: EKS disabled, Argo CD enabled, Argo CD not in state (invalid - cannot create)
-  invalid_case_3 = !var.enable_k8s_cluster && var.enable_argocd && !var.argocd_state_has_resources
-
-  # Case 4: EKS disabled, Argo CD enabled, Argo CD in state (warn - destroy only)
-  invalid_case_4 = !var.enable_k8s_cluster && var.enable_argocd && var.argocd_state_has_resources
-
-  validation_message_case_3 = "Invalid configuration: enable_argocd=true but enable_k8s_cluster=false with no existing resources. Cannot create Argo CD without a cluster. Set enable_argocd=false or enable_k8s_cluster=true."
-
-  validation_message_case_4 = "WARNING: enable_argocd=true but enable_k8s_cluster=false with existing resources. This configuration only allows destroying Argo CD. To update or maintain Argo CD, set enable_k8s_cluster=true."
-}
-
-# Validation check using a null_resource
-resource "null_resource" "validate_argocd_config" {
-  count = local.invalid_case_3 ? 1 : 0
-
-  provisioner "local-exec" {
-    command = "echo 'Error: $${local.validation_message_case_3}' && exit 1"
-  }
-}
-
+###############################################################################
+# ArgoCD Module
+###############################################################################
 module "argocd" {
   source = "./argocd"
 
@@ -328,13 +345,42 @@ module "argocd" {
   cluster     = var.cluster
   apps        = var.apps
   outputs_dir = var.outputs_dir
-
-  depends_on = [null_resource.validate_argocd_config]
 }
 
-# Warning output for case 4 (destroy-only mode)
-output "argocd_warning" {
-  value = local.invalid_case_4 ? local.validation_message_case_4 : null
+###############################################################################
+# ACK ConfigMaps Module (Data-Driven)
+# Dynamically creates ConfigMaps for all controllers from iam-config
+###############################################################################
+
+module "ack_configmaps" {
+  source = "./aws-ack-configmaps"
+
+  create                   = var.create
+  cluster_name             = var.cluster.name
+  controller_spoke_roles   = var.ack_controller_spoke_roles
+}
+
+# Debug output showing state check results
+output "argocd_state_debug" {
+  value = {
+    state_checks = {
+      argocd_has_resources = var.debug_state_check.argocd_state_has_resources
+    }
+    flags = {
+      enable_argocd = var.debug_state_check.enable_argocd
+    }
+    computed = {
+      need_k8s_providers = var.debug_state_check.need_k8s_providers
+      create_resources   = var.debug_state_check.create_resources
+    }
+    case = (
+      !var.debug_state_check.enable_argocd && !var.debug_state_check.argocd_state_has_resources ? "Case 1: ArgoCD disabled, no state" :
+      !var.debug_state_check.enable_argocd && var.debug_state_check.argocd_state_has_resources ? "Case 2: ArgoCD disabled, has state (destroy)" :
+      var.debug_state_check.enable_argocd && !var.debug_state_check.argocd_state_has_resources ? "Case 3: ArgoCD enabled, no state (create)" :
+      var.debug_state_check.enable_argocd && var.debug_state_check.argocd_state_has_resources ? "Case 4: ArgoCD enabled, has state (update)" :
+      "Unknown case"
+    )
+  }
 }
 EOF
 }
@@ -563,34 +609,6 @@ EOF
 EOF
     : ""
   ) : ""
-}
-
-###############################################################################
-# Generate Spoke ConfigMap Module
-###############################################################################
-generate "spoke_configmap" {
-  path      = "spoke_configmap.tf"
-  if_exists = "overwrite_terragrunt"
-  contents  = <<-EOF
-###############################################################################
-# Spoke Account Role Map ConfigMap
-# Use argocd-configmap module to create spoke metadata ConfigMap
-###############################################################################
-module "spoke_configmap" {
-  source = "./argocd-configmap"
-
-  create           = var.create && var.spokes != null && length(var.spokes) > 0
-  context          = "spokes"
-  cluster_name     = var.cluster.name
-  argocd_namespace = try(var.argocd.namespace, "argocd")
-  pod_identities   = {}    # Not needed for spoke ConfigMap
-  addon_configs    = {}    # Not needed for spoke ConfigMap
-  cluster_info     = null  # Not needed for spoke ConfigMap
-  gitops_context   = {}    # Not needed for spoke ConfigMap
-  spokes           = var.spokes
-  outputs_dir      = ""    # Don't write output file
-}
-EOF
 }
 
 ###############################################################################

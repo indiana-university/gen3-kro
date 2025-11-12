@@ -105,8 +105,22 @@ locals {
   ###############################################################################
   # Addon and IAM Configuration
   ###############################################################################
-  addon_configs = lookup(local.csoc_config, "addon_configs", {})
+  addon_original_configs = lookup(local.csoc_config, "addon_configs", {})
+  
+  # Compute ArgoCD identity flag first to break circular dependency
+  argocd_identity_flag = lookup(lookup(local.addon_original_configs, "argocd", {}), "enable_argocd", false)
 
+  addon_configs = {
+    for addon, addon_config in local.addon_original_configs :
+    addon => merge(
+      {
+        namespace = "${replace(addon, "_", "-")}-ns"
+        service_account = "${replace(addon, "_", "-")}-sa"
+        enable_identity = addon == "argocd" ? local.argocd_identity_flag : local.argocd_identity_flag
+      },
+      addon_config
+    )
+  }
   outputs_dir            = lookup(local.paths_config, "outputs_dir", "../../../../../../../../../../outputs")
   terraform_state_bucket = local.state_bucket
   terraform_locks_table  = lookup(local.csoc_provider_config, "terraform_locks_table", "")
@@ -509,6 +523,7 @@ unit "iam_config" {
 
     # Cluster existence flag
     enable_k8s_cluster = local.enable_k8s_cluster
+    cluster_name       = local.cluster_name
 
     # CSOC pod identity ARNs - initially empty, will be populated after csoc deployment
     # User can manually update this or it will be empty on first run

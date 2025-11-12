@@ -1,5 +1,5 @@
 apiVersion: kro.run/v1alpha1
-kind: CloudTrail
+kind: AwsCloudTrail
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"

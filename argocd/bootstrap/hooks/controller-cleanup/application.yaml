@@ -1,0 +1,26 @@
+---
+# ArgoCD Application for controller pre-delete validation
+# NOTE: This is a template. You should create separate instances for each controller
+# (e.g., kro-cleanup-checker, ack-ec2-cleanup-checker, etc.)
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: controller-cleanup-checker
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/indiana-university/gen3-kro
+    targetRevision: test-kro-graphs
+    path: argocd/bootstrap/hooks/controller-cleanup
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
