@@ -1,0 +1,53 @@
+---
+# Job that validates namespaces exist before spoke infrastructure deployment
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: spoke-namespace-check
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      serviceAccountName: spoke-namespace-checker
+      restartPolicy: OnFailure
+      containers:
+        - name: namespace-wait
+          image: bitnami/kubectl:1.27
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              echo "Validating spoke namespaces exist before infrastructure deployment..."
+
+              # Get spoke definitions from ConfigMap
+              SPOKES=$(kubectl get configmap spokes-charter -n argocd -o jsonpath='{.data.spokes}' || echo "[]")
+
+              if [ "$SPOKES" = "[]" ]; then
+                echo "No spokes defined in charter, nothing to check"
+                exit 0
+              fi
+
+              # Parse spokes and check each namespace
+              MISSING=0
+              echo "$SPOKES" | jq -r '.spokes[] | "\(.alias)-\(.namespace_suffix)"' | while read NS; do
+                echo "Checking namespace: $NS"
+                if kubectl get namespace "$NS" >/dev/null 2>&1; then
+                  echo "✓ Namespace $NS exists"
+                else
+                  echo "✗ Namespace $NS does NOT exist"
+                  MISSING=1
+                fi
+              done
+
+              if [ "$MISSING" -eq 1 ]; then
+                echo "ERROR: Some spoke namespaces are missing. Wait for namespace ApplicationSet to complete."
+                exit 1
+              fi
+
+              echo "All spoke namespaces exist and are ready"

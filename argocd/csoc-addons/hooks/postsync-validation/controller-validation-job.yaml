@@ -1,0 +1,60 @@
+---
+# PostSync validation job for controller deployments
+# Validates that controllers are running and ready after deployment
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: controller-postsync-validation
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: HookSucceeded
+spec:
+  backoffLimit: 3
+  template:
+    spec:
+      serviceAccountName: postsync-validator
+      restartPolicy: Never
+      containers:
+        - name: validate
+          image: bitnami/kubectl:1.27
+          imagePullPolicy: IfNotPresent
+          command:
+            - sh
+            - -c
+            - |
+              set -euo pipefail
+              echo "Running post-deployment validation for controllers..."
+
+              # Check KRO controller
+              echo "Validating KRO controller..."
+              if kubectl get deployment kro -n kro-system >/dev/null 2>&1; then
+                READY=$(kubectl get deployment kro -n kro-system -o jsonpath='{.status.readyReplicas}' || echo "0")
+                DESIRED=$(kubectl get deployment kro -n kro-system -o jsonpath='{.spec.replicas}' || echo "1")
+                if [ "$READY" -eq "$DESIRED" ]; then
+                  echo "✓ KRO controller is ready ($READY/$DESIRED replicas)"
+                else
+                  echo "✗ KRO controller not ready ($READY/$DESIRED replicas)"
+                  exit 1
+                fi
+              fi
+
+              # Check ACK controllers (example pattern)
+              for ns in $(kubectl get namespaces -o name | grep -E '(ack-|kro-)' | cut -d/ -f2); do
+                echo "Checking deployments in namespace: $ns"
+                DEPLOYMENTS=$(kubectl get deployments -n "$ns" -o name 2>/dev/null || echo "")
+                if [ -n "$DEPLOYMENTS" ]; then
+                  for deploy in $DEPLOYMENTS; do
+                    DEPLOY_NAME=$(echo "$deploy" | cut -d/ -f2)
+                    READY=$(kubectl get "$deploy" -n "$ns" -o jsonpath='{.status.readyReplicas}' || echo "0")
+                    DESIRED=$(kubectl get "$deploy" -n "$ns" -o jsonpath='{.spec.replicas}' || echo "1")
+                    if [ "$READY" -eq "$DESIRED" ]; then
+                      echo "✓ $DEPLOY_NAME is ready ($READY/$DESIRED)"
+                    else
+                      echo "⚠ $DEPLOY_NAME not fully ready ($READY/$DESIRED)"
+                    fi
+                  done
+                fi
+              done
+
+              echo "Post-deployment validation completed successfully"

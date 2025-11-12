@@ -4,7 +4,9 @@ metadata:
   name: gen3-spoke-namespaces
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-5"  # Deploy before spoke infrastructure
+    # Increased gap: -10 for namespaces, 0 for infrastructure
+    # Ensures namespaces are fully created before infrastructure deployment
+    argocd.argoproj.io/sync-wave: "-10"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -27,7 +29,7 @@ spec:
         app.kubernetes.io/part-of: gen3-kro
         app.kubernetes.io/component: spoke-infrastructure
       annotations:
-        argocd.argoproj.io/sync-wave: "-5"
+        argocd.argoproj.io/sync-wave: "-10"
     spec:
       project: default
       source:
