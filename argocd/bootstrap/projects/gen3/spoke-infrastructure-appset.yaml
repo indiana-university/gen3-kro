@@ -11,22 +11,26 @@ spec:
   generators:
   - matrix:
       generators:
+        # Read spokes-charter ConfigMap for spoke definitions
+        - list:
+            elements: |
+              {{- range $spoke := (lookup "v1" "ConfigMap" "argocd" "spokes-charter").data.spokes | mustFromJson | get "spokes" }}
+              - alias: {{ $spoke.alias }}
+                environment: {{ $spoke.environment }}
+                namespace_suffix: {{ $spoke.namespace_suffix }}
+              {{- end }}
         - clusters:
             selector:
               matchLabels:
                 fleet_member: spoke
-        - git:
-            repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-            revision: '{{.metadata.annotations.csoc_repo_revision}}'
-            directories:
-              - path: '{{.metadata.annotations.csoc_repo_basepath}}/deployments/*/infrastructure'
   template:
     metadata:
-      name: '{{ .path.path | dir | base }}-infrastructure'
+      name: '{{ .alias }}-infrastructure'
       labels:
         app.kubernetes.io/name: spoke-infrastructure
         app.kubernetes.io/part-of: gen3
-        spoke: '{{ .path.path | dir | base }}'
+        spoke: '{{ .alias }}'
+        environment: '{{ .environment }}'
       annotations:
         argocd.argoproj.io/sync-wave: "0"
     spec:
@@ -34,33 +38,26 @@ spec:
       source:
         repoURL: '{{.metadata.annotations.csoc_repo_url}}'
         targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
-        path: '{{ .path.path }}'
+        # Use spoke alias as folder name: argocd/deployments/gen3-spokes/<spoke_alias>
+        path: '{{.metadata.annotations.csoc_repo_basepath}}/deployments/gen3-spokes/{{ .alias }}'
         kustomize:
           commonLabels:
             deployed-by: argocd
             cluster: '{{ .name }}'
-          namespace: '{{ .path.path | dir | base }}-infrastructure'
-          patches:
-            - target:
-                kind: Namespace
-                name: '{{ .path.path | dir | base }}-infrastructure'
-              patch: |-
-                - op: add
-                  path: /metadata/annotations
-                  value:
-                    services.k8s.aws~1owner-account-id: "{{ (lookup "v1" "ConfigMap" "argocd" "spoke-account-role-map").data (printf "%s" (.path.path | dir | base)) | mustFromJson | dig "account_id" "" }}"
-                    spoke~1alias: "{{ .path.path | dir | base }}"
-                    spoke~1region: "{{ (lookup "v1" "ConfigMap" "argocd" "spoke-account-role-map").data (printf "%s" (.path.path | dir | base)) | mustFromJson | dig "region" "" }}"
-                    spoke~1provider: "{{ (lookup "v1" "ConfigMap" "argocd" "spoke-account-role-map").data (printf "%s" (.path.path | dir | base)) | mustFromJson | dig "provider" "" }}"
+            spoke: '{{ .alias }}'
+            environment: '{{ .environment }}'
+          # Target namespace: <spoke_alias>-<namespace_suffix>
+          namespace: '{{ .alias }}-{{ .namespace_suffix }}'
       destination:
         server: '{{ .server }}'
-        namespace: '{{ .path.path | dir | base }}-infrastructure'
+        # Deploy to spoke infrastructure namespace
+        namespace: '{{ .alias }}-{{ .namespace_suffix }}'
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
         syncOptions:
-          - CreateNamespace=true  # Let ApplicationSet create namespaces with templated annotations
+          - CreateNamespace=false  # Namespaces created by separate namespace ApplicationSet
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
           - RespectIgnoreDifferences=true
@@ -73,6 +70,10 @@ spec:
             factor: 2
             maxDuration: 5m
       ignoreDifferences:
+        - group: kro.run
+          kind: ResourceGraph
+          jsonPointers:
+            - /status
         - group: kro.run
           kind: Vpc
           jsonPointers:

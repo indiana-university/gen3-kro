@@ -1,0 +1,85 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: gen3-spoke-namespaces
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"  # Deploy before spoke infrastructure
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+  - matrix:
+      generators:
+        # Read spokes-charter for spoke definitions
+        - configMap:
+            name: spokes-charter
+            namespace: argocd
+        - clusters:
+            selector:
+              matchLabels:
+                fleet_member: control-plane  # Deploy to hub cluster
+  template:
+    metadata:
+      name: 'spoke-namespaces-{{ index .metadata.labels "cluster_name" }}'
+      labels:
+        app.kubernetes.io/name: spoke-namespaces
+        app.kubernetes.io/part-of: gen3-kro
+        app.kubernetes.io/component: spoke-infrastructure
+      annotations:
+        argocd.argoproj.io/sync-wave: "-5"
+    spec:
+      project: default
+      source:
+        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        path: '{{.metadata.annotations.csoc_repo_basepath}}/csoc-addons/spoke-namespaces'
+        kustomize:
+          commonLabels:
+            deployed-by: argocd
+            cluster: '{{ .name }}'
+          # Process templates for each spoke from spokes-charter
+          patches:
+            # Dynamically generate namespace resources from spokes-charter
+            - target:
+                kind: Namespace
+              patch: |-
+                {{- $cluster_name := index .metadata.labels "cluster_name" }}
+                {{- $spoke_map := (lookup "v1" "ConfigMap" "argocd" "spoke-account-role-map").data }}
+                {{- range $spoke := (lookup "v1" "ConfigMap" "argocd" "spokes-charter").data.spokes | mustFromJson | get "spokes" }}
+                {{- $spoke_metadata := index $spoke_map $spoke.alias | mustFromJson }}
+                apiVersion: v1
+                kind: Namespace
+                metadata:
+                  name: {{ $spoke.alias }}-{{ $spoke.namespace_suffix }}
+                  annotations:
+                    services.k8s.aws/owner-account-id: "{{ $spoke_metadata.account_id }}"
+                    gen3.io/spoke-alias: "{{ $spoke.alias }}"
+                    gen3.io/spoke-environment: "{{ $spoke.environment }}"
+                    gen3.io/spoke-region: "{{ $spoke_metadata.region }}"
+                  labels:
+                    app.kubernetes.io/name: {{ $spoke.alias }}-infrastructure
+                    app.kubernetes.io/part-of: gen3-kro
+                    app.kubernetes.io/managed-by: argocd
+                    gen3.io/spoke: "{{ $spoke.alias }}"
+                    gen3.io/environment: "{{ $spoke.environment }}"
+                    gen3.io/namespace-type: infrastructure
+                ---
+                {{- end }}
+      destination:
+        server: '{{ .server }}'
+        namespace: default
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=false
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 3m

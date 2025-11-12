@@ -1,0 +1,49 @@
+# Multi-Controller RGD Catalog
+# Defines composite RGDs that depend on multiple controllers
+# The csoc-rgds-multi appset will only deploy these when ALL required controllers are present
+
+# Example: Gen3 Infrastructure Stack (Layer-2)
+- name: gen3-infrastructure
+  path: gen3-infrastructure
+  requires:
+    - ack-ec2      # VPC, subnets
+    - ack-s3       # Data buckets
+    - ack-rds      # PostgreSQL database
+    - ack-eks      # Kubernetes cluster
+    - ack-iam      # Service account roles
+  sync_wave: "-5"
+  description: "Complete Gen3 infrastructure stack including VPC, EKS, RDS, and S3"
+
+# Example: Application Stack with Caching (Layer-2)
+# - name: app-stack-with-cache
+#   path: layer-2/app-stack
+#   requires:
+#     - ack-eks
+#     - ack-elasticache
+#     - ack-s3
+#   sync_wave: "-5"
+#   description: "Application infrastructure with Redis caching layer"
+
+# Example: Observability Stack (Layer-2)
+# - name: observability-stack
+#   path: layer-2/observability
+#   requires:
+#     - ack-opensearchservice
+#     - ack-cloudwatchlogs
+#     - ack-s3
+#   sync_wave: "-5"
+#   description: "Centralized logging and observability infrastructure"
+
+# Example: Full Deployment (Layer-3)
+# - name: gen3-full-deployment
+#   path: layer-3/full-deployment
+#   requires:
+#     - ack-ec2
+#     - ack-eks
+#     - ack-rds
+#     - ack-s3
+#     - ack-route53
+#     - ack-wafv2
+#     - ack-secretsmanager
+#   sync_wave: "0"
+#   description: "Complete Gen3 deployment with all components"

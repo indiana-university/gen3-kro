@@ -1,0 +1,26 @@
+---
+# ArgoCD Application to run CRD readiness check before controllers start
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: crd-checker
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-34"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/indiana-university/gen3-kro
+    targetRevision: test-kro-graphs
+    path: argocd/bootstrap/hooks/crd-checker
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

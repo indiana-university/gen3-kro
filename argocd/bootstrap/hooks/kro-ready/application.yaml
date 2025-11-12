@@ -1,0 +1,26 @@
+---
+# ArgoCD Application to run KRO readiness check before RGDs are deployed
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kro-ready-checker
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-18"
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/indiana-university/gen3-kro
+    targetRevision: test-kro-graphs
+    path: argocd/bootstrap/hooks/kro-ready
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -12,7 +12,7 @@
 # 2. Addon Catalog (argocd/csoc-addons/controllers/catalog.yaml):
 #    - Defines available addons with their Helm chart sources and versions
 #
-# 3. Values Configuration (argocd/csoc-addons/controllers/values/*.yaml):
+# 3. Values Configuration (argocd/csoc-addons/controllers/*.yaml):
 #    - Provides addon-specific configuration (resource limits, role ARNs, etc.)
 #
 apiVersion: argoproj.io/v1alpha1
@@ -21,7 +21,8 @@ metadata:
   name: csoc-controllers
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-20"
+    # Schedule controllers after CRDs and the CRD readiness check
+    argocd.argoproj.io/sync-wave: "-25"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -32,7 +33,7 @@ spec:
           - clusters:
               selector:
                 matchLabels:
-                  argocd.argoproj.io/secret-type: cluster
+                  fleet_member: control-plane
           # Addon catalog from git repository
           - git:
               repoURL: '{{.metadata.annotations.csoc_repo_url}}'
@@ -68,7 +69,7 @@ spec:
             releaseName: '{{.addon}}'
             # Load per-addon values file
             valueFiles:
-              - $values/argocd/csoc-addons/controllers/values/{{.addon}}.yaml
+              - $values/argocd/csoc-addons/controllers/{{.addon}}.yaml
             # Inline values from cluster annotations
             values: |
               {{- $addonsConfig := dict }}
@@ -110,16 +111,10 @@ spec:
                 annotations:
                   eks.amazonaws.com/role-arn: {{ default "" (index $addonConfig "roleArn") | quote }}
               {{- end }}
-              {{- if and $addonConfig (eq .addon "external-secrets") }}
-              serviceAccount:
-                name: {{ default "external-secrets" (index $addonConfig "serviceAccount") | quote }}
-                annotations:
-                  eks.amazonaws.com/role-arn: {{ default "" (index $addonConfig "roleArn") | quote }}
-              {{- end }}
       destination:
         name: '{{.name}}'
         # Namespace mapping: kro -> kro-system, ack-* -> ack-system, others use addon name
-        namespace: '{{if eq .addon "kro"}}kro-system{{else if hasPrefix "ack-" .addon}}ack-system{{else}}addon-system{{end}}'
+        namespace: '{{.addon}}-ns'
       syncPolicy:
         automated:
           prune: true
@@ -131,7 +126,7 @@ spec:
           - RespectIgnoreDifferences=true
           - PrunePropagationPolicy=foreground
           - PruneLast=true
-          - Replace=true  # Allow replacing resources including CRDs during sync
+          # - Replace=true removed: avoid destructive replace operations at AppSet/controller level
         retry:
           limit: 5
           backoff:

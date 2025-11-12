@@ -31,17 +31,29 @@ variable "cluster_name" {
 }
 
 variable "namespace" {
-  description = "Kubernetes namespace for the service account"
+  description = "Kubernetes namespace for the service account (single mode)"
   type        = string
+  default     = ""
 }
 
 variable "service_account" {
-  description = "Kubernetes service account name"
+  description = "Kubernetes service account name (single mode)"
   type        = string
+  default     = ""
 }
 
-###################################################################################################################################################
-# Pre-loaded IAM Policy Configuration (from external iam-policy module)
+variable "spoke_associations" {
+  description = "Map of spoke configurations for multi-spoke service account associations"
+  type = map(object({
+    namespace       = string
+    service_account = string
+    spoke_alias     = string
+  }))
+  default = {}
+}
+
+########################################################################################################################################
+###########                                                                                                                             # Pre-loaded IAM Policy Configuration (from external iam-policy module)
 ###################################################################################################################################################
 variable "loaded_inline_policy_document" {
   description = "Pre-loaded inline policy document from iam-policy module"

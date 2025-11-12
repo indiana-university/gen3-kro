@@ -1,0 +1,31 @@
+---
+# ServiceAccount for KRO readiness checker (shares crd-checker permissions)
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kro-ready-checker
+  namespace: argocd
+---
+# ClusterRole to read Deployments
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: kro-ready-checker
+rules:
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch"]
+---
+# ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kro-ready-checker
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kro-ready-checker
+subjects:
+  - kind: ServiceAccount
+    name: kro-ready-checker
+    namespace: argocd

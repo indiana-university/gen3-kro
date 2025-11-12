@@ -15,7 +15,8 @@ metadata:
   name: csoc-crds
   namespace: argocd
   annotations:
-    argocd.argoproj.io/sync-wave: "-30"
+    # Deploy CRDs early; AppSet evaluation earlier than controllers
+    argocd.argoproj.io/sync-wave: "-40"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -27,7 +28,7 @@ spec:
           - clusters:
               selector:
                 matchLabels:
-                  argocd.argoproj.io/secret-type: cluster
+                  fleet_member: control-plane
 
           # Load addon catalog (shared with controller AppSet)
           - git:
@@ -43,8 +44,8 @@ spec:
         app.kubernetes.io/part-of: crds
         app.kubernetes.io/addon: '{{.addon}}'
       annotations:
-        # Sync wave for all CRDs fixed at -30
-        argocd.argoproj.io/sync-wave: "-30"
+        # Sync wave for generated CRD Applications (ensure they apply before readiness checks)
+        argocd.argoproj.io/sync-wave: "-35"
       # Enable cascade deletion - when app is deleted, all resources including CRDs are deleted
       finalizers:
         - resources-finalizer.argocd.argoproj.io
@@ -65,7 +66,7 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
-          - Replace=true  # Force replace for CRD updates
+          # - Replace=true removed: avoid delete-and-recreate of CRDs which would delete all CRs
         retry:
           limit: 5
           backoff:

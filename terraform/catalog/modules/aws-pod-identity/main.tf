@@ -34,6 +34,25 @@ locals {
   additional_policy_arns = merge(local.loaded_policy_arns, local.custom_policy_arns, var.additional_policy_arns)
 
   has_inline_policy = length(local.all_source_policy_documents) > 0 || length(local.override_policy_documents) > 0
+
+  # Build associations map
+  # If spoke_associations is provided, use it (multi-spoke mode)
+  # Otherwise, use single namespace/service_account (legacy mode)
+  associations = length(var.spoke_associations) > 0 ? {
+    for spoke_key, spoke_config in var.spoke_associations : spoke_key => {
+      cluster_name    = var.cluster_name
+      namespace       = spoke_config.namespace
+      service_account = "${spoke_config.spoke_alias}-${spoke_config.service_account}"
+    }
+  } : (
+    var.namespace != "" && var.service_account != "" ? {
+      csoc-cluster = {
+        cluster_name    = var.cluster_name
+        namespace       = var.namespace
+        service_account = var.service_account
+      }
+    } : {}
+  )
 }
 
 ###############################################################################
@@ -57,14 +76,7 @@ module "pod_identity" {
 
   trust_policy_conditions = var.trust_policy_conditions
 
-  associations = {
-
-    csoc-cluster = {
-      cluster_name    = var.cluster_name
-      namespace       = var.namespace
-      service_account = var.service_account
-      }
-    }
+  associations = local.associations
 
   tags = var.tags
 }

@@ -31,7 +31,7 @@ inputs = merge(
   {
     csoc_provider = values.csoc_provider
     tags          = values.tags
-    cluster_name  = dependency.csoc.outputs.cluster_name
+    cluster_name  = values.cluster_name
 
     # IAM policies (loaded from repository files)
     csoc_iam_policies  = values.csoc_iam_policies
@@ -228,8 +228,19 @@ module "pod_identity_${service_name}" {
   context      = "csoc"
 
   service_name    = "${service_name}"
-  namespace       = "${lookup(service_config, "namespace", "kube-system")}"
-  service_account = "${lookup(service_config, "service_account", replace(service_name, "_", "-"))}"
+
+  # Multi-spoke associations: create service accounts per spoke
+  spoke_associations = {
+%{for spoke_config in values.spokes_config~}
+%{if lookup(spoke_config, "enabled", false)~}
+    ${spoke_config.alias} = {
+      namespace       = "${lookup(service_config, "namespace", "kube-system")}"
+      service_account = "${lookup(service_config, "service_account", replace(service_name, "_", "-"))}"
+      spoke_alias     = "${spoke_config.alias}"
+    }
+%{endif~}
+%{endfor~}
+  }
 
   loaded_inline_policy_document = try(module.csoc_policy_${service_name}.inline_policy_document, "")
   has_loaded_inline_policy      = try(module.csoc_policy_${service_name}.has_inline_policy, false)
@@ -436,7 +447,7 @@ module "spoke_role_${spoke_config.alias}_${service_name}" {
 
   # Skip creation if spoke account == csoc account (same account scenario)
   # In that case, we'll use the csoc pod identity role directly via override_id
-  create                     = ${lookup(spoke_config, "enabled", false)} && var.enable_k8s_cluster && data.aws_caller_identity.${spoke_config.alias}.account_id != data.aws_caller_identity.csoc.account_id
+  create                     = ${lookup(spoke_config, "enabled", false)} && var.enable_k8s_cluster && ${lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)} && data.aws_caller_identity.${spoke_config.alias}.account_id != data.aws_caller_identity.csoc.account_id
   override_id                = data.aws_caller_identity.${spoke_config.alias}.account_id == data.aws_caller_identity.csoc.account_id ? (%{if contains(keys(values.addon_configs), service_name) && lookup(lookup(values.addon_configs, service_name, {}), "enable_identity", false)~}module.pod_identity_${service_name}.role_arn%{else~}""%{endif~}) : null
   cluster_name               = var.cluster_name
   service_name               = "${service_name}"
