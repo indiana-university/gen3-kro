@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: gen3-spoke-namespaces
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     # Increased gap: -10 for namespaces, 0 for infrastructure
     # Ensures namespaces are fully created before infrastructure deployment
@@ -16,7 +16,7 @@ spec:
         # Read spokes-charter for spoke definitions
         - configMap:
             name: spokes-charter
-            namespace: argocd
+            namespace: argocd-ns
         - clusters:
             selector:
               matchLabels:

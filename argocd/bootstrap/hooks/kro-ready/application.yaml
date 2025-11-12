@@ -5,7 +5,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: kro-ready-checker
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     argocd.argoproj.io/sync-wave: "-18"
 spec:
@@ -31,7 +31,7 @@ spec:
         path: argocd/csoc-addons/hooks/kro-ready
       destination:
         server: '{{.server}}'
-        namespace: argocd
+        namespace: argocd-ns
       syncPolicy:
         automated:
           prune: true

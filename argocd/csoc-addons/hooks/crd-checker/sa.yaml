@@ -4,7 +4,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: crd-checker
-  namespace: argocd
+  namespace: argocd-ns
 ---
 # ClusterRole to read CRD status
 apiVersion: rbac.authorization.k8s.io/v1
@@ -28,4 +28,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: crd-checker
-    namespace: argocd
+    namespace: argocd-ns

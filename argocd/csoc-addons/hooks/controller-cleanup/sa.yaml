@@ -4,7 +4,7 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: controller-cleanup-checker
-  namespace: argocd
+  namespace: argocd-ns
 ---
 # ClusterRole to list all custom resources
 apiVersion: rbac.authorization.k8s.io/v1
@@ -28,4 +28,4 @@ roleRef:
 subjects:
   - kind: ServiceAccount
     name: controller-cleanup-checker
-    namespace: argocd
+    namespace: argocd-ns

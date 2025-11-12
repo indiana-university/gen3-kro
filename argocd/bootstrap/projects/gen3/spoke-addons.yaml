@@ -3,7 +3,7 @@
 # kind: Application
 # metadata:
 #   name: gen3-spoke-addons
-#   namespace: argocd
+#   namespace: argocd-ns
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "10"
 # spec:
@@ -17,7 +17,7 @@
 #       include: '*-appset.yaml'
 #   destination:
 #     server: https://kubernetes.default.svc
-#     namespace: argocd
+#     namespace: argocd-ns
 #   syncPolicy:
 #     automated:
 #       prune: true

@@ -5,7 +5,7 @@ resources: []
 #   kind: ApplicationSet
 #   metadata:
 #     name: bootstrap-addons
-#     namespace: argocd
+#     namespace: argocd-ns
 #   spec:
 #     syncPolicy:
 #       preserveResourcesOnDeletion: true
@@ -29,7 +29,7 @@ resources: []
 #             recurse: true
 #             exclude: exclude/*
 #         destination:
-#           namespace: 'argocd'
+#           namespace: 'argocd-ns'
 #           name: '{{name}}'
 #         syncPolicy:
 #           automated: {}
@@ -38,7 +38,7 @@ resources: []
 #   kind: ApplicationSet
 #   metadata:
 #     name: bootstrap-addons
-#     namespace: argocd
+#     namespace: argocd-ns
 #   spec:
 #     syncPolicy:
 #       preserveResourcesOnDeletion: true
@@ -62,7 +62,7 @@ resources: []
 #             recurse: true
 #             exclude: exclude/*
 #         destination:
-#           namespace: 'argocd'
+#           namespace: 'argocd-ns'
 #           name: '{{name}}'
 #         syncPolicy:
 #           automated: {}

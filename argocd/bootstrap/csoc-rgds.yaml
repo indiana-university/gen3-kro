@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: csoc-rgds
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     # Move RGDs to a later sync-wave so controllers (and KRO) have time to be ready
     argocd.argoproj.io/sync-wave: "-5"

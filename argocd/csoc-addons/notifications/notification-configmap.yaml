@@ -3,7 +3,7 @@ apiVersion: v1
 kind: ConfigMap
 metadata:
   name: argocd-notifications-cm
-  namespace: argocd
+  namespace: argocd-ns
 data:
   # Notification service configuration
   # Uncomment and configure the services you want to use

@@ -5,7 +5,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: crd-checker
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     # Increased gap: CRDs at -35, checker at -30, controllers at -20
     # Allows more time for CRD webhooks/conversions to be fully ready
@@ -33,7 +33,7 @@ spec:
         path: argocd/csoc-addons/hooks/crd-checker
       destination:
         server: '{{.server}}'
-        namespace: argocd
+        namespace: argocd-ns
       syncPolicy:
         automated:
           prune: true

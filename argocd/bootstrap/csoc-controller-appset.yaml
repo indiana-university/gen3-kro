@@ -19,7 +19,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: csoc-controllers
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     # Schedule controllers after CRDs and the CRD readiness check
     argocd.argoproj.io/sync-wave: "-25"

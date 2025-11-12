@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
   name: gen3-covid19prod
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     argocd.argoproj.io/sync-wave: "4"
 spec:
