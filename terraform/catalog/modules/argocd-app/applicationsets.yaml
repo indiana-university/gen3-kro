@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: bootstrap
-  namespace: argocd
+  namespace: argocd-ns
 spec:
   goTemplate: true
   syncPolicy:
@@ -25,7 +25,7 @@ spec:
           recurse: true
           exclude: exclude/*
       destination:
-        namespace: 'argocd'
+        namespace: 'argocd-ns'
         name: '{{.name}}'
       syncPolicy:
         automated: {}

@@ -5,7 +5,7 @@ apiVersion: batch/v1
 kind: Job
 metadata:
   name: controller-cleanup-check
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     argocd.argoproj.io/hook: PreDelete
     argocd.argoproj.io/hook-delete-policy: HookSucceeded

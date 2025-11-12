@@ -5,7 +5,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: spoke-namespace-checker
-  namespace: argocd
+  namespace: argocd-ns
   annotations:
     # Run after namespaces are created (-10) but before infrastructure (0)
     argocd.argoproj.io/sync-wave: "-8"
@@ -32,7 +32,7 @@ spec:
         path: argocd/csoc-addons/hooks/namespace-checker
       destination:
         server: '{{.server}}'
-        namespace: argocd
+        namespace: argocd-ns
       syncPolicy:
         automated:
           prune: true

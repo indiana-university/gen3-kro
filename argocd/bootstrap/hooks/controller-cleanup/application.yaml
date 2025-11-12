@@ -7,7 +7,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: controller-cleanup-checker
-  namespace: argocd
+  namespace: argocd-ns
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -29,7 +29,7 @@ spec:
         path: argocd/csoc-addons/hooks/controller-cleanup
       destination:
         server: '{{.server}}'
-        namespace: argocd
+        namespace: argocd-ns
       syncPolicy:
         automated:
           prune: true
