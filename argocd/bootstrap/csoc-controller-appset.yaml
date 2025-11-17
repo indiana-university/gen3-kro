@@ -114,6 +114,11 @@ spec:
         name: '{{.name}}'
         # Use namespace from addonsConfig annotation, with fallback logic for catalog-only addons
         namespace: |-
+          {{- $addonsConfig := dict }}
+          {{- with (index .metadata.annotations "csoc.kro.dev/addons-config") }}
+            {{- $addonsConfig = fromYaml . }}
+          {{- end }}
+          {{- $addonConfig := index $addonsConfig .addon }}
           {{- if $addonConfig }}{{ default .addon (index $addonConfig "namespace") }}
           {{- else if eq .addon "kro" }}kro-system
           {{- else if hasPrefix "ack-" .addon }}ack-{{ trimPrefix "ack-" .addon }}-system
