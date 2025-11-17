@@ -326,7 +326,7 @@ Update $WORKSPACE_PATH/$WORKING_REPO
    Then sync the cluster app:
 
    ```sh
-   argocd app sync clusters 
+   argocd app sync clusters
    ```
 
    To deploy workloads on the spoke cluster, sync the namespace applications:
@@ -383,7 +383,7 @@ Key benefits of this architecture:
 
 - **Scalability**: Easily add new clusters by updating Git configuration
 - **Consistency**: Ensures uniform configuration across all clusters
-- **Automation**: Reduces manual intervention in cluster lifecycle management
+- **Automation**: Reduces manual intervention in cluster management
 - **Separation of Concerns**: Clear distinction between infrastructure and application management
 - **Audit Trail**: All changes are tracked through Git history
 - **Multi-Account Support**: Secure isolation between different environments or business units

@@ -228,8 +228,8 @@ resource "aws_cloudwatch_event_rule" "this" {
   description   = each.value.description
   event_pattern = jsonencode(each.value.event_pattern)
 
-  tags = { 
-    ClusterName = aws_eks_cluster.eks_cluster.id 
+  tags = {
+    ClusterName = aws_eks_cluster.eks_cluster.id
   }
 }
 
@@ -292,35 +292,30 @@ resource "helm_release" "karpenter" {
   chart               = "karpenter"
   version             = var.karpenter_version
 
-  set {
+  set = [{
     name  = "settings.clusterName"
     value = aws_eks_cluster.eks_cluster.id
-  }
-
-  set {
+  },
+  {
     name  = "settings.clusterEndpoint"
     value = aws_eks_cluster.eks_cluster.endpoint
-  }
-
-  set {
+  },
+  {
     name  = "serviceAccount.annotations.eks\\.amazonaws\\.com/role-arn"
     value = aws_iam_role.irsa[0].arn
-  }
-
-  set {
+  },
+  {
     name  = "settings.aws.defaultInstanceProfile"
     value = aws_iam_instance_profile.eks_node_instance_profile.id
-  }
-
-  set {
+  },
+  {
     name  = "settings.aws.interruptionQueueName"
     value = aws_sqs_queue.this[0].name
-  }
-
-  set {
+  },
+  {
     name = "dnsPolicy"
     value = "Default"
-  }
+  }]
 
   depends_on = [time_sleep.wait_60_seconds]
 
@@ -443,7 +438,7 @@ resource "kubectl_manifest" "karpenter_node_class" {
 
         sudo yum update -y
 
-        --BOUNDARY--   
+        --BOUNDARY--
   YAML
 
   depends_on = [

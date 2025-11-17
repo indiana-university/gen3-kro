@@ -19,7 +19,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: csoc-controllers
-  namespace: argocd-ns
+  namespace: argocd
   annotations:
     # Schedule controllers after CRDs and the CRD readiness check
     argocd.argoproj.io/sync-wave: "-25"
@@ -85,8 +85,7 @@ spec:
               {{- range $name, $cfg := $addonsConfig }}
                 {{- $role := default "" (index $cfg "roleArn") }}
                 {{- if $role }}
-                  {{- $normalized := replace (trimPrefix "ack-" $name) "-" "_" }}
-                  {{- $_ := set $roleArns $normalized $role }}
+                  {{- $_ := set $roleArns $name $role }}
                 {{- end }}
               {{- end }}
               {{- $region := coalesce (index $gitopsContext "aws_region") (index $gitopsContext "azure_region") (index $gitopsContext "gcp_region") (index $gitopsContext "region") "" }}
@@ -113,8 +112,13 @@ spec:
               {{- end }}
       destination:
         name: '{{.name}}'
-        # Namespace mapping: kro -> kro-system, ack-* -> ack-system, others use addon name
-        namespace: '{{.addon}}-ns'
+        # Use namespace from addonsConfig annotation, with fallback logic for catalog-only addons
+        namespace: |-
+          {{- if $addonConfig }}{{ default .addon (index $addonConfig "namespace") }}
+          {{- else if eq .addon "kro" }}kro-system
+          {{- else if hasPrefix "ack-" .addon }}ack-{{ trimPrefix "ack-" .addon }}-system
+          {{- else }}{{ .addon }}
+          {{- end }}
       syncPolicy:
         automated:
           prune: true

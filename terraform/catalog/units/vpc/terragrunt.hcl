@@ -6,41 +6,22 @@
 ###############################################################################
 
 terraform {
-  source = "${values.catalog_path}//modules/${values.csoc_provider == "azure" ? "azure-vnet" : "${values.csoc_provider}-vpc"}"
+  source = "${get_repo_root()}/${values.modules_path}/${values.csoc_provider == "azure" ? "azure-vnet" : "${values.csoc_provider}-vpc"}"
 }
 
 ###############################################################################
-# Locals - Lifecycle Management
+# Locals
 ###############################################################################
 locals {
-  enable_vpc         = values.enable_vpc
-  enable_k8s_cluster = try(values.enable_k8s_cluster, false)
-
-  backend_configured = (
-    (values.csoc_provider == "aws"   && values.state_bucket != "") ||
-    (values.csoc_provider == "azure" && values.state_storage_account != "" && values.state_container != "") ||
-    (values.csoc_provider == "gcp"   && values.state_bucket != "")
+  # Check if k8s cluster unit has resources in state
+  k8s_cluster_state_check_cmd_output = run_cmd(
+    "bash", "-c",
+    "cd ${get_terragrunt_dir()}/../k8s-cluster 2>/dev/null && CACHE_DIR=$(find .terragrunt-cache -name 'backend.tf' -type f 2>/dev/null | head -1 | xargs dirname 2>/dev/null) && [ -n \"$CACHE_DIR\" ] && cd \"$CACHE_DIR\" && terraform state list 2>/dev/null | egrep 'aws_eks_|azurerm_kubernetes_|google_container_|module\\.eks\\.|module\\.aks\\.|module\\.gke\\.' || true"
   )
+  k8s_cluster_unit_has_state = trimspace(local.k8s_cluster_state_check_cmd_output) != ""
 
-  # Check if VPC has resources in state
-  vpc_state_has_resources = trimspace(run_cmd(
-    "bash", "-c",
-    "cd ${get_terragrunt_dir()} && terraform state list 2>/dev/null | egrep '^aws_vpc|^azurerm_virtual_network|^google_compute_network|^module\\.vpc\\.|^module\\.vnet\\.' || true"
-  )) != ""
-
-  # Check if k8s cluster has resources in state
-  cluster_state_has_resources = trimspace(run_cmd(
-    "bash", "-c",
-    "cd ${get_terragrunt_dir()}/../k8s-cluster && terraform state list 2>/dev/null | egrep '^aws_eks_|^azurerm_kubernetes_|^google_container_|^module\\.eks\\.|^module\\.aks\\.|^module\\.gke\\.' || true"
-  )) != ""
-
-  # Lifecycle management logic:
-  # vpc disabled, k8s enabled, cluster still in state
-  #   → Do NOT disable VPC (keep create=true), let k8s-cluster handle cleanup
-  prevent_vpc_disable_for_cluster = !local.enable_vpc && local.enable_k8s_cluster && local.cluster_state_has_resources
-
-  # Final create flag
-  should_create_vpc = local.enable_vpc || local.prevent_vpc_disable_for_cluster
+  # Keep VPC alive if k8s-cluster exists in state
+  should_create_vpc = values.enable_vpc || local.k8s_cluster_unit_has_state
 }
 
 ###############################################################################
@@ -51,7 +32,7 @@ locals {
 generate "backend" {
   path      = "backend.tf"
   if_exists = "overwrite_terragrunt"
-  contents = local.backend_configured ? (
+  contents = (
     values.csoc_provider == "aws" ? <<EOF
 terraform {
   backend "s3" {
@@ -81,47 +62,7 @@ terraform {
 }
 EOF
     : ""
-  ) : ""
-}
-
-###############################################################################
-# Lifecycle Management Output
-###############################################################################
-generate "lifecycle_output" {
-  path      = "lifecycle_info.tf"
-  if_exists = "overwrite_terragrunt"
-  contents  = <<-EOF
-variable "lifecycle_info" {
-  description = "Lifecycle management debug information"
-  type        = any
-  default     = {}
-}
-
-output "lifecycle_management" {
-  description = "VPC lifecycle management status"
-  value = {
-    status = var.lifecycle_info.prevent_vpc_disable_for_cluster ? "⚠️  LIFECYCLE HOLD: VPC kept alive for cluster cleanup" : (
-      var.lifecycle_info.enable_vpc ? "✅ VPC enabled normally" : "⏸️  VPC disabled normally"
-    )
-
-    details = var.lifecycle_info.prevent_vpc_disable_for_cluster ? {
-      reason = "🔗 K8s cluster resources still exist in state and need VPC to be destroyed"
-      action = "🔄 After cluster is destroyed, VPC will be automatically reapplied and destroyed"
-      cluster_in_state = var.lifecycle_info.cluster_state_has_resources
-    } : {}
-
-    flags = {
-      enable_vpc         = var.lifecycle_info.enable_vpc
-      enable_k8s_cluster = var.lifecycle_info.enable_k8s_cluster
-    }
-
-    computed = {
-      should_create_vpc               = var.lifecycle_info.should_create_vpc
-      prevent_vpc_disable_for_cluster = var.lifecycle_info.prevent_vpc_disable_for_cluster
-    }
-  }
-}
-EOF
+  )
 }
 
 ###############################################################################
@@ -129,7 +70,7 @@ EOF
 ###############################################################################
 
 inputs = {
-  # Module control - use computed should_create_vpc instead of enable_vpc directly
+  # Module control
   create = local.should_create_vpc
 
   # Global settings
@@ -146,16 +87,6 @@ inputs = {
   availability_zones   = values.availability_zones
   private_subnet_cidrs = values.private_subnet_cidrs
   public_subnet_cidrs  = values.public_subnet_cidrs
-
-  # Lifecycle management debug info
-  lifecycle_info = {
-    enable_vpc                      = local.enable_vpc
-    enable_k8s_cluster              = local.enable_k8s_cluster
-    vpc_state_has_resources         = local.vpc_state_has_resources
-    cluster_state_has_resources     = local.cluster_state_has_resources
-    prevent_vpc_disable_for_cluster = local.prevent_vpc_disable_for_cluster
-    should_create_vpc               = local.should_create_vpc
-  }
 }
 ###############################################################################
 # End of File

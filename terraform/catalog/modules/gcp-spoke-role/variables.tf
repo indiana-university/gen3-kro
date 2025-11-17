@@ -14,16 +14,6 @@ variable "override_id" {
   default     = null
 }
 
-variable "spoke_alias" {
-  description = "Spoke alias"
-  type        = string
-}
-
-variable "service_name" {
-  description = "Service name"
-  type        = string
-}
-
 variable "project_id" {
   description = "GCP project ID for the spoke"
   type        = string

@@ -13,7 +13,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: csoc-crds
-  namespace: argocd-ns
+  namespace: argocd
   annotations:
     # Deploy CRDs early; AppSet evaluation earlier than controllers
     argocd.argoproj.io/sync-wave: "-40"

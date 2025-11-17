@@ -14,16 +14,6 @@ variable "override_id" {
   default     = null
 }
 
-variable "spoke_alias" {
-  description = "Spoke alias"
-  type        = string
-}
-
-variable "service_name" {
-  description = "Service name"
-  type        = string
-}
-
 variable "csoc_managed_identity_principal_id" {
   description = "Principal ID of CSOC managed identity"
   type        = string
@@ -42,9 +32,4 @@ variable "role_definition_name" {
 variable "custom_role_definition_id" {
   description = "Custom role definition ID"
   type        = string
-}
-
-variable "tags" {
-  description = "Tags to apply"
-  type        = map(string)
 }
