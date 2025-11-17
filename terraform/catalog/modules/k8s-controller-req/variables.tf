@@ -8,7 +8,7 @@ variable "create" {
   default     = true
 }
 
-variable "controller_configs" {
+variable "csoc_controller_configs" {
   description = <<-DESC
     Map of controller configurations. Each entry should contain:
     - namespace: Controller namespace name
@@ -45,16 +45,16 @@ variable "controller_spoke_roles" {
     # AWS fields
     account_id = optional(string, "")
     role_arn   = optional(string, "")
-    
+
     # Azure fields
     subscription_id = optional(string, "")
     identity_id     = optional(string, "")
     client_id       = optional(string, "")
-    
+
     # GCP fields
     project_id            = optional(string, "")
     service_account_email = optional(string, "")
-    
+
     # Common fields
     region = optional(string, "")
   })))

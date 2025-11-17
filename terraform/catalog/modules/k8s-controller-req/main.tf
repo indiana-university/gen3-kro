@@ -19,7 +19,7 @@ locals {
   # Simplified: No special annotations or labels, just the name
   #############################################################################
   namespaces = {
-    for controller_name, config in var.controller_configs :
+    for controller_name, config in var.csoc_controller_configs :
     controller_name => {
       name = config.namespace
     }
@@ -31,7 +31,7 @@ locals {
   # Cloud-agnostic with provider-specific IAM annotations
   #############################################################################
   service_accounts = {
-    for controller_name, config in var.controller_configs :
+    for controller_name, config in var.csoc_controller_configs :
     controller_name => {
       name             = config.service_account
       namespace        = config.namespace
@@ -72,7 +72,7 @@ locals {
     for controller_name, spoke_roles in var.controller_spoke_roles :
     controller_name => {
       name      = "${controller_name}-crossaccount-role-map"
-      namespace = try(var.controller_configs[controller_name].namespace, "default")
+      namespace = try(var.csoc_controller_configs[controller_name].namespace, "default")
 
       # Build account/subscription/project to role/identity mapping
       # Try provider-specific fields in order: AWS, Azure, GCP
