@@ -18,9 +18,9 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+        repoURL: '{{.metadata.annotations.repo_url}}'
         path: '{{.metadata.annotations.bootstrap_path}}'
-        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        targetRevision: '{{.metadata.annotations.repo_revision}}'
         directory:
           recurse: true
           exclude: exclude/*

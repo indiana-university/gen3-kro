@@ -32,8 +32,8 @@ spec:
 
           # Load addon catalog (shared with controller AppSet)
           - git:
-              repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-              revision: '{{.metadata.annotations.csoc_repo_revision}}'
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              revision: '{{.metadata.annotations.repo_revision}}'
               files:
                 - path: 'argocd/csoc-addons/catalog.yaml'
   template:
@@ -53,8 +53,8 @@ spec:
       project: default
       source:
         # Values repository source for CRDs
-        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        repoURL: '{{.metadata.annotations.repo_url}}'
+        targetRevision: '{{.metadata.annotations.repo_revision}}'
         path: 'argocd/csoc-addons/crds/{{.addon}}'
       destination:
         name: '{{.name}}'

@@ -24,8 +24,8 @@ spec:
                       matchLabels:
                         fleet_member: control-plane
                 - git:
-                    repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-                    revision: '{{.metadata.annotations.csoc_repo_revision}}'
+                    repoURL: '{{.metadata.annotations.repo_url}}'
+                    revision: '{{.metadata.annotations.repo_revision}}'
                     files:
                       - path: 'argocd/csoc-addons/catalog.yaml'
               template:
@@ -45,8 +45,8 @@ spec:
                       matchLabels:
                         fleet_member: control-plane
                 - git:
-                    repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-                    revision: '{{.metadata.annotations.csoc_repo_revision}}'
+                    repoURL: '{{.metadata.annotations.repo_url}}'
+                    revision: '{{.metadata.annotations.repo_revision}}'
                     files:
                       - path: 'argocd/csoc-addons/rgd-graph-of-graph-dependencies.yaml'
               template:
@@ -61,10 +61,13 @@ spec:
     # For multi-controller RGDs, check if dependencies are met
     when: |
       {{- if and (hasKey . "requires") (ne (len .requires) 0) }}
-        {{- $enabled := splitList "," (default "" (index .metadata.annotations "csoc.kro.dev/enabled-controllers")) }}
+        {{- $addonsConfig := dict }}
+        {{- with (index .metadata.annotations "csoc.kro.dev/addons-config") }}
+          {{- $addonsConfig = fromYaml . }}
+        {{- end }}
         {{- $allPresent := true }}
         {{- range $req := .requires }}
-          {{- if not (has $req $enabled) }}
+          {{- if not (hasKey $addonsConfig $req) }}
             {{- $allPresent = false }}
           {{- end }}
         {{- end }}
@@ -87,8 +90,8 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        repoURL: '{{.metadata.annotations.repo_url}}'
+        targetRevision: '{{.metadata.annotations.repo_revision}}'
         path: '{{.rgdPath}}'
       destination:
         name: '{{.name}}'

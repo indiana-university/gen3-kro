@@ -14,10 +14,10 @@ spec:
         # Read spokes-charter ConfigMap for spoke definitions
         - list:
             elements: |
-              {{- range $spoke := (lookup "v1" "ConfigMap" "argocd" "spokes-charter").data.spokes | mustFromJson | get "spokes" }}
+              {{- $charter := (lookup "v1" "ConfigMap" "argocd" "spokes-charter").data | index "charter.json" | mustFromJson }}
+              {{- range $spoke := $charter.spokes }}
               - alias: {{ $spoke.alias }}
-                environment: {{ $spoke.environment }}
-                namespace_suffix: {{ $spoke.namespace_suffix }}
+                namespace: {{ $spoke.namespace }}
               {{- end }}
         - clusters:
             selector:
@@ -30,28 +30,26 @@ spec:
         app.kubernetes.io/name: spoke-infrastructure
         app.kubernetes.io/part-of: gen3
         spoke: '{{ .alias }}'
-        environment: '{{ .environment }}'
       annotations:
         argocd.argoproj.io/sync-wave: "0"
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        repoURL: '{{.metadata.annotations.repo_url}}'
+        targetRevision: '{{.metadata.annotations.repo_revision}}'
         # Use spoke alias as folder name: argocd/deployments/gen3-spokes/<spoke_alias>
-        path: '{{.metadata.annotations.csoc_repo_basepath}}/deployments/gen3-spokes/{{ .alias }}'
+        path: '{{.metadata.annotations.repo_basepath}}/deployments/gen3-spokes/{{ .alias }}'
         kustomize:
           commonLabels:
             deployed-by: argocd
             cluster: '{{ .name }}'
             spoke: '{{ .alias }}'
-            environment: '{{ .environment }}'
-          # Target namespace: <spoke_alias>-<namespace_suffix>
-          namespace: '{{ .alias }}-{{ .namespace_suffix }}'
+          # Target namespace from charter
+          namespace: '{{ .namespace }}'
       destination:
         server: '{{ .server }}'
         # Deploy to spoke infrastructure namespace
-        namespace: '{{ .alias }}-{{ .namespace_suffix }}'
+        namespace: '{{ .namespace }}'
       syncPolicy:
         automated:
           prune: true
