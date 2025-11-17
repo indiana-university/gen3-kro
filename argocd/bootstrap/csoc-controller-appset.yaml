@@ -5,7 +5,7 @@
 #
 # Data Sources:
 # 1. Cluster Secret Annotations (from CSOC):
-#    - csoc_repo_url, csoc_repo_revision, csoc_repo_basepath
+#    - repo_url, repo_revision, repo_basepath
 #    - csoc.kro.dev/addons-config (YAML map of addon identities and settings)
 #    - csoc.kro.dev/gitops-context (repository + region context)
 #
@@ -36,8 +36,8 @@ spec:
                   fleet_member: control-plane
           # Addon catalog from git repository
           - git:
-              repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-              revision: '{{.metadata.annotations.csoc_repo_revision}}'
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              revision: '{{.metadata.annotations.repo_revision}}'
               files:
                 - path: 'argocd/csoc-addons/catalog.yaml'
   template:
@@ -57,8 +57,8 @@ spec:
       project: default
       sources:
         # Values repository source
-        - repoURL: '{{.metadata.annotations.csoc_repo_url}}'
-          targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
+        - repoURL: '{{.metadata.annotations.repo_url}}'
+          targetRevision: '{{.metadata.annotations.repo_revision}}'
           ref: values
         # Addon Helm chart source
         - repoURL: '{{.repoURL}}'
@@ -78,7 +78,8 @@ spec:
               {{- end }}
               {{- $gitopsContext := dict }}
               {{- with (index .metadata.annotations "csoc.kro.dev/gitops-context") }}
-                {{- $gitopsContext = fromYaml . }}
+                {{- $gitopsContextRaw := fromYaml . }}
+                {{- $gitopsContext = default dict (index $gitopsContextRaw "csoc") }}
               {{- end }}
               {{- $addonConfig := index $addonsConfig .addon }}
               {{- $roleArns := dict }}
@@ -88,12 +89,11 @@ spec:
                   {{- $_ := set $roleArns $name $role }}
                 {{- end }}
               {{- end }}
-              {{- $region := coalesce (index $gitopsContext "aws_region") (index $gitopsContext "azure_region") (index $gitopsContext "gcp_region") (index $gitopsContext "region") "" }}
-              {{- $awsRegion := coalesce (index $gitopsContext "aws_region") "" }}
+              {{- $region := default "" (index $gitopsContext "region") }}
 
               global:
                 region: {{ $region | quote }}
-                aws_region: {{ $awsRegion | quote }}
+                aws_region: {{ $region | quote }}
               {{- if gt (len $roleArns) 0 }}
                 roleArns:
                   {{- range $key, $value := $roleArns }}
