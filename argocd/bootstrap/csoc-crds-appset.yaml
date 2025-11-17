@@ -62,7 +62,7 @@ spec:
         automated:
           prune: false  # Never auto-prune CRDs to avoid accidental deletion
           selfHeal: true
-          allowEmpty: false
+          allowEmpty: true  # Allow empty directories for addons that manage their own CRDs (e.g., external-secrets)
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
