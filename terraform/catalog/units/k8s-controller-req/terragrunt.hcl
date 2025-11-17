@@ -216,7 +216,7 @@ inputs = {
   create = local.create_resources
 
   # Unified controller configurations with cloud-specific identity information
-  controller_configs = {
+  csoc_controller_configs = {
     for controller_name, config in try(values.all_configs, {}) :
     controller_name => {
       namespace       = config.namespace
