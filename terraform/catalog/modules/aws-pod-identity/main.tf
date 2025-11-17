@@ -44,7 +44,7 @@ locals {
       namespace       = spoke_config.namespace
       service_account = "${spoke_config.spoke_alias}-${spoke_config.service_account}"
     }
-  } : (
+    } : (
     var.namespace != "" && var.service_account != "" ? {
       csoc-cluster = {
         cluster_name    = var.cluster_name

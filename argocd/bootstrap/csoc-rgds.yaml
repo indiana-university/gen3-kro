@@ -2,7 +2,7 @@ apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
   name: csoc-rgds
-  namespace: argocd-ns
+  namespace: argocd
   annotations:
     # Move RGDs to a later sync-wave so controllers (and KRO) have time to be ready
     argocd.argoproj.io/sync-wave: "-5"
@@ -48,7 +48,7 @@ spec:
                     repoURL: '{{.metadata.annotations.csoc_repo_url}}'
                     revision: '{{.metadata.annotations.csoc_repo_revision}}'
                     files:
-                      - path: 'argocd/csoc-addons/rgd-dependencies.yaml'
+                      - path: 'argocd/csoc-addons/rgd-graph-of-graph-dependencies.yaml'
               template:
                 layer: "multi"
                 type: "multi-controller"

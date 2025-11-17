@@ -23,21 +23,41 @@ readonly COLOR_BLUE='\033[0;34m'
 readonly COLOR_CYAN='\033[0;36m'
 
 ###############################################################################
+# Timezone Configuration
+###############################################################################
+# Get timezone from log-config.yaml or use default
+get_log_timezone() {
+  local script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+  local repo_root="$(cd "$script_dir/.." && pwd -P)"
+  local config_file="${repo_root}/log-config.yaml"
+
+  if [[ -f "$config_file" ]]; then
+    local tz=$(grep "^timezone:" "$config_file" | sed -E 's/^timezone: *"?([^"# ]+)"?.*/\1/' || echo "UTC")
+    echo "$tz"
+  else
+    echo "UTC"
+  fi
+}
+
+# Export timezone for use in scripts
+export LOG_TIMEZONE="${LOG_TIMEZONE:-$(get_log_timezone)}"
+
+###############################################################################
 # Core Logging Function
 ###############################################################################
 log() {
   local level="$1"; shift
   local color="$1"; shift
-  local timestamp="$(date '+%Y-%m-%d %H:%M:%S')"
+  local timestamp="$(TZ="$LOG_TIMEZONE" date '+%Y-%m-%d %H:%M:%S')"
   local message="[${timestamp}] [${level}] $*"
-  
+
   # Colorized output to stderr
   if [[ -t 2 ]]; then
     echo -e "${color}${message}${COLOR_RESET}" >&2
   else
     echo "$message" >&2
   fi
-  
+
   # Also log to file if LOG_FILE is set
   if [[ -n "$LOG_FILE" ]]; then
     echo "$message" >> "$LOG_FILE"

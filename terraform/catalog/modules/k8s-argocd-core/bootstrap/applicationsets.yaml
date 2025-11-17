@@ -11,21 +11,23 @@ spec:
   - clusters:
       selector:
         matchLabels:
-          fleet_member: control-plane
+          argocd.argoproj.io/secret-type: cluster
   template:
     metadata:
       name: bootstrap
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}{{.metadata.annotations.fleet_repo_path}}'
-        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        repoURL: '{{.metadata.annotations.csoc_repo_url}}'
+        path: '{{.metadata.annotations.bootstrap_path}}'
+        targetRevision: '{{.metadata.annotations.csoc_repo_revision}}'
         directory:
-          recurse: false
+          recurse: true
           exclude: exclude/*
       destination:
         namespace: 'argocd'
         name: '{{.name}}'
       syncPolicy:
         automated: {}
+        syncOptions:
+          - CreateNamespace=true
