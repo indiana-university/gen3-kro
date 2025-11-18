@@ -7,4 +7,5 @@ resources:
     cpu: 100m
     memory: 128Mi
 serviceAccount:
+  name: ack-cloudwatchlogs-sa
   create: false
