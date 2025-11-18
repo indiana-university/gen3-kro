@@ -72,58 +72,11 @@ spec:
               - $values/argocd/csoc-addons/controllers/{{.addon}}.yaml
             # Inline values from cluster annotations
             values: |
-              {{- $addonsConfig := dict }}
-              {{- with (index .metadata.annotations "csoc.kro.dev/addons-config") }}
-                {{- $addonsConfig = fromYaml . }}
-              {{- end }}
-              {{- $gitopsContext := dict }}
-              {{- with (index .metadata.annotations "csoc.kro.dev/gitops-context") }}
-                {{- $gitopsContextRaw := fromYaml . }}
-                {{- $gitopsContext = default dict (index $gitopsContextRaw "csoc") }}
-              {{- end }}
-              {{- $addonConfig := index $addonsConfig .addon }}
-              {{- $roleArns := dict }}
-              {{- range $name, $cfg := $addonsConfig }}
-                {{- $role := default "" (index $cfg "roleArn") }}
-                {{- if $role }}
-                  {{- $_ := set $roleArns $name $role }}
-                {{- end }}
-              {{- end }}
-              {{- $region := default "" (index $gitopsContext "region") }}
-
-              global:
-                region: {{ $region | quote }}
-                aws_region: {{ $region | quote }}
-              {{- if gt (len $roleArns) 0 }}
-                roleArns:
-                  {{- range $key, $value := $roleArns }}
-                  {{ $key }}: {{ $value | quote }}
-                  {{- end }}
-              {{- else }}
-                roleArns: {}
-              {{- end }}
-              {{- if and $addonConfig (hasPrefix "ack-" .addon) }}
-              aws:
-                region: {{ $region | quote }}
-              serviceAccount:
-                name: {{ default (printf "%s-sa" .addon) (index $addonConfig "serviceAccount") | quote }}
-                annotations:
-                  eks.amazonaws.com/role-arn: {{ default "" (index $addonConfig "roleArn") | quote }}
-              {{- end }}
+              region: {{ index .metadata.annotations "csoc_region" | quote }}
+              aws_region: {{ index .metadata.annotations "csoc_region" | quote }}
       destination:
         name: '{{.name}}'
-        # Use namespace from addonsConfig annotation, with fallback logic for catalog-only addons
-        namespace: |-
-          {{- $addonsConfig := dict }}
-          {{- with (index .metadata.annotations "csoc.kro.dev/addons-config") }}
-            {{- $addonsConfig = fromYaml . }}
-          {{- end }}
-          {{- $addonConfig := index $addonsConfig .addon }}
-          {{- if $addonConfig }}{{ default .addon (index $addonConfig "namespace") }}
-          {{- else if eq .addon "kro" }}kro-system
-          {{- else if hasPrefix "ack-" .addon }}ack-{{ trimPrefix "ack-" .addon }}-system
-          {{- else }}{{ .addon }}
-          {{- end }}
+        namespace: '{{.namespace}}'
       syncPolicy:
         automated:
           prune: true
