@@ -4,7 +4,7 @@
 
 # Example: Gen3 Infrastructure Stack (Layer-2)
 - name: gen3-infrastructure
-  path: gen3-infrastructure
+  path: gen3
   requires:
     - ack-ec2      # VPC, subnets
     - ack-s3       # Data buckets
