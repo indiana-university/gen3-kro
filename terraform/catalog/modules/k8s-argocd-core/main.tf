@@ -113,12 +113,6 @@ resource "kubernetes_secret_v1" "cluster" {
 
   depends_on = [helm_release.argocd]
 
-  lifecycle {
-    ignore_changes = [
-      metadata[0].annotations,
-      metadata[0].labels,
-    ]
-  }
 }
 
 

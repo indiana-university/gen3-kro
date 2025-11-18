@@ -281,7 +281,9 @@ inputs = {
     endpoint             = try(dependency.k8s_cluster.outputs.cluster_endpoint, "")
     ca_cert              = try(dependency.k8s_cluster.outputs.cluster_certificate_authority_data, "")
     region               = values.region
-    fleet_member         = "control-plane"
+    addons = {
+      fleet_member         = "control-plane"
+    }
     metadata = {
       annotations = {
         # Repository Configuration
