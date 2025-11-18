@@ -13,8 +13,7 @@ spec:
     # Merge layer-1 (per-controller) and multi-controller RGDs
     - merge:
         mergeKeys:
-          - name
-          - layer
+          - appName
         generators:
           # Layer-1: Per-controller RGDs
           - matrix:
@@ -29,13 +28,13 @@ spec:
                     files:
                       - path: 'argocd/csoc-addons/catalog.yaml'
               template:
-                name: "csoc-{{.addon}}-rgds-l1"
-                layer: {{.addon}}
+                layer: "1"
                 type: "single-controller"
                 rgdPath: "argocd/csoc-addons/rgds/{{.addon}}"
                 syncWave: "-5"
                 appName: "csoc-{{.addon}}-rgds-l1"
                 labelName: "rgds-layer1"
+                clusterName: "{{.metadata.name}}"
 
           # Layer-Multi: Multi-controller composite RGDs
           - matrix:
@@ -50,13 +49,13 @@ spec:
                     files:
                       - path: 'argocd/csoc-addons/rgd-graph-of-graph-dependencies.yaml'
               template:
-                name: "csoc-{{.name}}-rgds"
                 layer: "multi"
                 type: "multi-controller"
                 rgdPath: "argocd/csoc-addons/rgds/_multi-controller/{{.path}}"
                 syncWave: "{{.sync_wave}}"
                 appName: "csoc-{{.name}}-rgds"
                 labelName: "rgds-multi"
+                clusterName: "{{.metadata.name}}"
 
   template:
     metadata:
@@ -65,7 +64,7 @@ spec:
         app.kubernetes.io/part-of: graphs
         app.kubernetes.io/name: '{{.labelName}}'
         app.kubernetes.io/layer: '{{.layer}}'
-        cluster: '{{.metadata.name}}'
+        cluster: '{{.clusterName}}'
       annotations:
         argocd.argoproj.io/sync-wave: '{{.syncWave}}'
       finalizers:
@@ -77,7 +76,7 @@ spec:
         targetRevision: '{{.metadata.annotations.repo_revision}}'
         path: '{{.rgdPath}}'
       destination:
-        name: '{{.metadata.name}}'
+        name: '{{.clusterName}}'
       syncPolicy:
         automated:
           prune: true
