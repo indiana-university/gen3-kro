@@ -30,7 +30,7 @@ spec:
                       - path: 'argocd/csoc-addons/catalog.yaml'
               template:
                 name: "csoc-{{.addon}}-rgds-l1"
-                layer: "1"
+                layer: {{.addon}}
                 type: "single-controller"
                 rgdPath: "argocd/csoc-addons/rgds/{{.addon}}"
                 syncWave: "-5"
