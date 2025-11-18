@@ -4,96 +4,119 @@ metadata:
   name: csoc-rgds
   namespace: argocd
   annotations:
-    # Move RGDs to a later sync-wave so controllers (and KRO) have time to be ready
+    # RGDs deploy after controllers are ready
     argocd.argoproj.io/sync-wave: "-5"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
-    # Merge layer-1 (per-controller) and multi-controller RGDs
-    - merge:
-        mergeKeys:
-          - addon
-          - layer
+    # LAYER 1: Per-controller RGDs
+    # Creates one app per controller in catalog.yaml
+    # Example: csoc-kro-rgds, csoc-ack-eks-rgds, csoc-ack-cloudtrail-rgds
+    - matrix:
         generators:
-          # Layer-1: Per-controller RGDs
-          - matrix:
-              generators:
-                - clusters:
-                    selector:
-                      matchLabels:
-                        fleet_member: control-plane
-                - git:
-                    repoURL: '{{.metadata.annotations.repo_url}}'
-                    revision: '{{.metadata.annotations.repo_revision}}'
-                    files:
-                      - path: 'argocd/csoc-addons/catalog.yaml'
-              template:
-                layer: "1"
-                type: "single-controller"
-                rgdPath: "argocd/csoc-addons/rgds/{{.addon}}"
-                syncWave: "-5"
-                appName: "csoc-{{.addon}}-rgds-l1"
-                labelName: "rgds-layer1"
-                clusterName: "{{.metadata.name}}"
-                addon: "{{.addon}}"
+          - clusters:
+              selector:
+                matchLabels:
+                  fleet_member: control-plane
+          - git:
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              revision: '{{.metadata.annotations.repo_revision}}'
+              files:
+                - path: 'argocd/csoc-addons/catalog.yaml'
+        template:
+          metadata:
+            name: "csoc-{{.addon}}-rgds"
+            labels:
+              app.kubernetes.io/part-of: graphs
+              app.kubernetes.io/name: rgds
+              app.kubernetes.io/layer: "single-controller"
+              app.kubernetes.io/controller: "{{.addon}}"
+              cluster: "{{.metadata.name}}"
+            annotations:
+              argocd.argoproj.io/sync-wave: "-5"
+            finalizers:
+              - resources-finalizer.argocd.argoproj.io
+          spec:
+            project: default
+            source:
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              targetRevision: '{{.metadata.annotations.repo_revision}}'
+              path: 'argocd/csoc-addons/rgds/{{.addon}}'
+            destination:
+              name: '{{.metadata.name}}'
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+                allowEmpty: true
+              syncOptions:
+                - CreateNamespace=true
+                - ServerSideApply=true
+                - SkipDryRunOnMissingResource=true
+                - RespectIgnoreDifferences=true
+                - PrunePropagationPolicy=foreground
+                - PruneLast=true
+              retry:
+                limit: 5
+                backoff:
+                  duration: 10s
+                  factor: 2
+                  maxDuration: 5m
 
-          # Layer-Multi: Multi-controller composite RGDs
-          - matrix:
-              generators:
-                - clusters:
-                    selector:
-                      matchLabels:
-                        fleet_member: control-plane
-                - git:
-                    repoURL: '{{.metadata.annotations.repo_url}}'
-                    revision: '{{.metadata.annotations.repo_revision}}'
-                    files:
-                      - path: 'argocd/csoc-addons/rgd-graph-of-graph-dependencies.yaml'
-              template:
-                layer: "multi"
-                type: "multi-controller"
-                rgdPath: "argocd/csoc-addons/rgds/_multi-controller/{{.path}}"
-                syncWave: "{{.sync_wave}}"
-                appName: "csoc-{{.name}}-rgds"
-                labelName: "rgds-multi"
-                clusterName: "{{.metadata.name}}"
-                addon: "{{.name}}"
-
-  template:
-    metadata:
-      name: '{{.appName}}'
-      labels:
-        app.kubernetes.io/part-of: graphs
-        app.kubernetes.io/name: '{{.labelName}}'
-        app.kubernetes.io/layer: '{{.layer}}'
-        cluster: '{{.clusterName}}'
-      annotations:
-        argocd.argoproj.io/sync-wave: '{{.syncWave}}'
-      finalizers:
-        - resources-finalizer.argocd.argoproj.io
-    spec:
-      project: default
-      source:
-        repoURL: '{{.metadata.annotations.repo_url}}'
-        targetRevision: '{{.metadata.annotations.repo_revision}}'
-        path: '{{.rgdPath}}'
-      destination:
-        name: '{{.clusterName}}'
-      syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-        syncOptions:
-          - CreateNamespace=true
-          - ServerSideApply=true
-          - SkipDryRunOnMissingResource=true
-          - RespectIgnoreDifferences=true
-          - PrunePropagationPolicy=foreground
-          - PruneLast=true
-        retry:
-          limit: 5
-          backoff:
-            duration: 10s
-            factor: 2
-            maxDuration: 5m
+    # LAYER 2+: Multi-controller composite RGDs
+    # Creates apps for composite infrastructure that needs multiple controllers
+    # Example: csoc-gen3-infrastructure (needs ack-ec2, ack-s3, ack-rds, ack-eks, ack-iam)
+    # NOTE: Deploy these only after verifying all required controllers are in catalog.yaml
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  fleet_member: control-plane
+          - git:
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              revision: '{{.metadata.annotations.repo_revision}}'
+              files:
+                - path: 'argocd/csoc-addons/rgd-graph-of-graph-dependencies.yaml'
+        template:
+          metadata:
+            name: "csoc-{{.name}}-rgds"
+            labels:
+              app.kubernetes.io/part-of: graphs
+              app.kubernetes.io/name: rgds
+              app.kubernetes.io/layer: "multi-controller"
+              app.kubernetes.io/composite: "{{.name}}"
+              cluster: "{{.metadata.name}}"
+            annotations:
+              argocd.argoproj.io/sync-wave: "{{.sync_wave}}"
+              # Document which controllers this composite RGD requires
+              requires: "{{.requires | join \",\"}}"
+            finalizers:
+              - resources-finalizer.argocd.argoproj.io
+          spec:
+            project: default
+            source:
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              targetRevision: '{{.metadata.annotations.repo_revision}}'
+              path: 'argocd/csoc-addons/rgds/_multi-controller/{{.path}}'
+            destination:
+              name: '{{.metadata.name}}'
+            syncPolicy:
+              automated:
+                prune: true
+                selfHeal: true
+                allowEmpty: true
+              syncOptions:
+                - CreateNamespace=true
+                - ServerSideApply=true
+                - SkipDryRunOnMissingResource=true
+                - RespectIgnoreDifferences=true
+                - PrunePropagationPolicy=foreground
+                - PruneLast=true
+              retry:
+                limit: 5
+                backoff:
+                  duration: 10s
+                  factor: 2
+                  maxDuration: 5m
