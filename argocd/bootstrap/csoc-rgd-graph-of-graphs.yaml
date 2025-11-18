@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: csoc-rgd-graph-of-graphs
+  name: csoc-rgds-graph-of-graphs
   namespace: argocd
   annotations:
     # Multi-controller RGDs deploy all composite graphs
