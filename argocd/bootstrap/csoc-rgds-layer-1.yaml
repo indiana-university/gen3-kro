@@ -1,0 +1,62 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: csoc-rgds-layer-1
+  namespace: argocd
+  annotations:
+    # RGDs deploy after controllers are ready
+    argocd.argoproj.io/sync-wave: "-5"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          - clusters:
+              selector:
+                matchLabels:
+                  fleet_member: control-plane
+          - git:
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              revision: '{{.metadata.annotations.repo_revision}}'
+              files:
+                - path: 'argocd/csoc-addons/catalog.yaml'
+  template:
+    metadata:
+      name: "csoc-{{.addon}}-rgds"
+      labels:
+        app.kubernetes.io/part-of: graphs
+        app.kubernetes.io/name: rgds
+        app.kubernetes.io/layer: "single-controller"
+        app.kubernetes.io/controller: "{{.addon}}"
+        cluster: "{{.metadata.name}}"
+      annotations:
+        argocd.argoproj.io/sync-wave: "-5"
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        repoURL: '{{.metadata.annotations.repo_url}}'
+        targetRevision: '{{.metadata.annotations.repo_revision}}'
+        path: 'argocd/csoc-addons/rgds/{{.addon}}'
+      destination:
+        name: '{{.metadata.name}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: true
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+          - RespectIgnoreDifferences=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+        retry:
+          limit: 5
+          backoff:
+            duration: 10s
+            factor: 2
+            maxDuration: 5m
