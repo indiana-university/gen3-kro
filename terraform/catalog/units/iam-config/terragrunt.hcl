@@ -65,8 +65,10 @@ inputs = merge(
     )
 
     # Provider-specific configuration
-    csoc_profile_name = values.profile
-    project_id        = values.project_id
+    csoc_profile_name   = values.profile
+    csoc_region         = values.region
+    csoc_subscription_id = values.subscription_id
+    csoc_project_id     = values.project_id
 
     # Spokes configuration
     spokes = values.spokes
@@ -138,6 +140,75 @@ EOF
 }
 
 ###############################################################################
+# Generate Provider Configurations
+###############################################################################
+generate "providers" {
+  path      = "providers.tf"
+  if_exists = "overwrite_terragrunt"
+  contents = (
+    values.csoc_provider == "aws" ? <<-EOF
+################################################################################
+# CSOC Provider Configuration - AWS
+################################################################################
+provider "aws" {
+  alias   = "csoc"
+  profile = var.csoc_profile_name
+  region  = var.csoc_region
+}
+
+%{for spoke_config in values.spokes_config~}
+# Provider for ${spoke_config.alias}
+provider "aws" {
+  alias   = "${spoke_config.alias}"
+  profile = var.${spoke_config.alias}_profile
+  region  = var.${spoke_config.alias}_region
+}
+%{endfor~}
+EOF
+    : values.csoc_provider == "azure" ? <<-EOF
+
+################################################################################
+# CSOC Provider Configuration - Azure
+################################################################################
+provider "azurerm" {
+  alias           = "csoc"
+  subscription_id = var.csoc_subscription_id
+  features {}
+}
+%{for spoke_config in values.spokes_config~}
+# Provider for ${spoke_config.alias}
+provider "azurerm" {
+  alias           = "${spoke_config.alias}"
+  subscription_id = var.${spoke_config.alias}_subscription_id
+  features {}
+}
+%{endfor~}
+EOF
+    : values.csoc_provider == "gcp" ? <<-EOF
+################################################################################
+# CSOC Provider Configuration - GCP
+################################################################################
+provider "google" {
+  alias   = "csoc"
+  project = var.csoc_project_id
+  region  = var.csoc_region
+}
+
+
+%{for spoke_config in values.spokes_config~}
+# Provider for ${spoke_config.alias}
+provider "google" {
+  alias   = "${spoke_config.alias}"
+  project = var.${spoke_config.alias}_project_id
+  region  = var.${spoke_config.alias}_region
+}
+%{endfor~}
+EOF
+    : ""
+  )
+}
+
+###############################################################################
 # Generate CSOC Account Data Sources
 ###############################################################################
 generate "csoc_data_sources" {
@@ -150,7 +221,6 @@ data "aws_caller_identity" "csoc" {
   provider = aws.csoc
 }
 
-
 # Spoke Account Data Sources (for cross-account comparison)
 %{for spoke_config in values.spokes_config~}
 data "aws_caller_identity" "${spoke_config.alias}" {
@@ -160,8 +230,9 @@ data "aws_caller_identity" "${spoke_config.alias}" {
 EOF
     : values.csoc_provider == "azure" ? <<-EOF
 # CSOC Azure Data Sources
-data "azurerm_client_config" "csoc" {}
-
+data "azurerm_client_config" "csoc" {
+  provider = azurerm.csoc
+}
 
 # Spoke Subscription Data Sources (for cross-subscription comparison)
 %{for spoke_config in values.spokes_config~}
@@ -172,10 +243,13 @@ data "azurerm_client_config" "${spoke_config.alias}" {
 EOF
     : values.csoc_provider == "gcp" ? <<-EOF
 # CSOC GCP Data Sources
-data "google_client_config" "csoc" {}
+data "google_client_config" "csoc" {
+  provider = google.csoc
+}
 
 data "google_project" "csoc" {
-  project_id = var.project_id
+  provider   = google.csoc
+  project_id = var.csoc_project_id
 }
 
 # Spoke Project Data Sources (for cross-project comparison)
@@ -234,106 +308,37 @@ EOF
 generate "csoc_pod_identities" {
   path      = "csoc_pod_identities.tf"
   if_exists = "overwrite_terragrunt"
-  contents = (
-    values.csoc_provider == "aws" ? <<-EOF
+  contents  = <<-EOF
 ###############################################################################
-# CSOC Pod Identity Roles - All Controllers running in CSOC cluster
+# CSOC Pod/Managed/Workload Identities - All Controllers running in CSOC cluster
 ###############################################################################
 
 %{for service_name, service_config in values.all_configs~}
 %{if lookup(service_config, "enable_identity", false)~}
 module "pod-identity-${service_name}" {
-  source = "./aws-pod-identity"
+  source = %{if values.csoc_provider == "aws"~}"./aws-pod-identity"%{else}%{if values.csoc_provider == "azure"~}"./azure-managed-identity"%{else}"./gcp-workload-identity"%{endif~}%{endif}
 
   create       = var.enable_k8s_cluster
   cluster_name = var.cluster_name
   context      = "csoc"
 
   service_name    = "${service_name}"
+  namespace       = "${service_config.namespace}"
+  service_account = "${service_config.service_account}"
 
-  # Multi-spoke associations: create service accounts per spoke
-  spoke_associations = {
-%{for spoke_config in values.spokes_config~}
-%{if lookup(spoke_config, "enabled", false)~}
-    ${spoke_config.alias} = {
-      namespace       = "${service_config.namespace}"
-      service_account = "${service_config.service_account}"
-      spoke_alias     = "${spoke_config.alias}"
-    }
-%{endif~}
-%{endfor~}
-  }
-
+  # Provider-specific policy fields
+  %{if values.csoc_provider == "aws"~}
   loaded_inline_policy_document = try(module.csoc-policy-${service_name}.inline_policy_document, "")
   has_loaded_inline_policy      = try(module.csoc-policy-${service_name}.has_inline_policy, false)
-
-  tags = merge(
-    var.tags,
-    {
-      service_name = "${service_name}"
-      context      = "csoc"
-    }
-  )
-
-  depends_on = [module.csoc-policy-${service_name}]
-}
-%{endif~}
-%{endfor~}
-EOF
-    : values.csoc_provider == "azure" ? <<-EOF
-###############################################################################
-# CSOC Managed Identity - All Controllers running in CSOC cluster
-###############################################################################
-
-%{for service_name, service_config in values.all_configs~}
-%{if lookup(service_config, "enable_identity", false)~}
-module "managed-identity-${service_name}" {
-  source = "./azure-managed-identity"
-
-  create       = var.enable_k8s_cluster
-  cluster_name = var.cluster_name
-  context      = "csoc"
-
-  service_name    = "${service_name}"
-  namespace       = "${service_config.namespace}"
-  service_account = "${service_config.service_account}"
-
+  %{endif~}
+  %{if values.csoc_provider == "azure"~}
   role_definition_json = try(module.csoc-policy-${service_name}.role_definition_json, "")
   has_role_definition  = try(module.csoc-policy-${service_name}.has_role_definition, false)
-
-  tags = merge(
-    var.tags,
-    {
-      service_name = "${service_name}"
-      context      = "csoc"
-    }
-  )
-
-  depends_on = [module.csoc-policy-${service_name}]
-}
-%{endif~}
-%{endfor~}
-EOF
-    : values.csoc_provider == "gcp" ? <<-EOF
-###############################################################################
-# CSOC Workload Identity - All Controllers running in CSOC cluster
-###############################################################################
-
-%{for service_name, service_config in values.all_configs~}
-%{if lookup(service_config, "enable_identity", false)~}
-module "workload-identity-${service_name}" {
-  source = "./gcp-workload-identity"
-
-  create       = var.enable_k8s_cluster
-  cluster_name = var.cluster_name
-  context      = "csoc"
-
-  service_name    = "${service_name}"
-  namespace       = "${service_config.namespace}"
-  service_account = "${service_config.service_account}"
-
+  %{endif~}
+  %{if values.csoc_provider == "gcp"~}
   role_definition_yaml = try(module.csoc-policy-${service_name}.role_definition_yaml, "")
   has_role_definition  = try(module.csoc-policy-${service_name}.has_role_definition, false)
+  %{endif~}
 
   tags = merge(
     var.tags,
@@ -348,69 +353,6 @@ module "workload-identity-${service_name}" {
 %{endif~}
 %{endfor~}
 EOF
-    : ""
-  )
-}
-
-###############################################################################
-# Generate Spoke Provider Configurations
-###############################################################################
-generate "providers" {
-  path      = "providers.tf"
-  if_exists = "overwrite_terragrunt"
-  contents = (
-    values.csoc_provider == "aws" ? <<-EOF
-################################################################################
-# CSOC Provider Configuration - AWS
-################################################################################
-provider "aws" {
-  alias   = "csoc"
-  profile = var.csoc_profile_name
-}
-
-###############################################################################
-# Spoke Provider Configurations - AWS
-###############################################################################
-
-%{for spoke_config in values.spokes_config~}
-# Provider for ${spoke_config.alias}
-provider "aws" {
-  alias   = "${spoke_config.alias}"
-  profile = var.${spoke_config.alias}_profile
-  region  = var.${spoke_config.alias}_region
-}
-%{endfor~}
-EOF
-    : values.csoc_provider == "azure" ? <<-EOF
-###############################################################################
-# Spoke Provider Configurations - Azure
-###############################################################################
-
-%{for spoke_config in values.spokes_config~}
-# Provider for ${spoke_config.alias}
-provider "azurerm" {
-  alias           = "${spoke_config.alias}"
-  subscription_id = var.${spoke_config.alias}_subscription_id
-  features {}
-}
-%{endfor~}
-EOF
-    : values.csoc_provider == "gcp" ? <<-EOF
-###############################################################################
-# Spoke Provider Configurations - GCP
-###############################################################################
-
-%{for spoke_config in values.spokes_config~}
-# Provider for ${spoke_config.alias}
-provider "google" {
-  alias   = "${spoke_config.alias}"
-  project = var.${spoke_config.alias}_project_id
-  region  = var.${spoke_config.alias}_region
-}
-%{endfor~}
-EOF
-    : ""
-  )
 }
 
 ###############################################################################
@@ -463,119 +405,57 @@ EOF
 generate "spoke_roles" {
   path      = "spoke_roles.tf"
   if_exists = "overwrite_terragrunt"
-  contents = (
-    values.csoc_provider == "aws" ? <<-EOF
+  contents  = <<-EOF
 ###############################################################################
-# Spoke IAM Roles - Trusted by CSOC Pod Identities
+# Spoke IAM Roles/Identities/Service Accounts - Trusted by CSOC Identities
 ###############################################################################
 
 %{for spoke_config in values.spokes_config~}
-# Roles for ${spoke_config.alias}
+# Roles/Identities for ${spoke_config.alias}
 %{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
 module "spoke-role-${spoke_config.alias}-${service_name}" {
-  source = "./aws-spoke-role"
+  source = %{if values.csoc_provider == "aws"~}"./aws-spoke-role"%{else}%{if values.csoc_provider == "azure"~}"./azure-spoke-role"%{else}"./gcp-spoke-role"%{endif~}%{endif}
 
   providers = {
+    %{if values.csoc_provider == "aws"~}
     aws = aws.${spoke_config.alias}
-  }
-
-  # Skip creation if spoke account == csoc account (same account scenario)
-  # In that case, we'll use the csoc pod identity role directly via override_id
-  create                     = ${lookup(spoke_config, "enabled", false)} && var.enable_k8s_cluster && ${lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)} && data.aws_caller_identity.${spoke_config.alias}.account_id != data.aws_caller_identity.csoc.account_id
-  override_id                = data.aws_caller_identity.${spoke_config.alias}.account_id == data.aws_caller_identity.csoc.account_id ? (%{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.pod-identity-${service_name}.role_arn%{else~}""%{endif~}) : null
-  cluster_name               = var.cluster_name
-  service_name               = "${service_name}"
-  spoke_alias                = "${spoke_config.alias}"
-  csoc_pod_identity_role_arn = %{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.pod-identity-${service_name}.role_arn%{else~}""%{endif~}
-
-  combined_policy_json = try(module.spoke-policy-${spoke_config.alias}-${service_name}.inline_policy_document, null)
-  has_inline_policy    = try(module.spoke-policy-${spoke_config.alias}-${service_name}.has_inline_policy, false)
-  has_managed_policy   = false
-  policy_arns          = {}
-
-  tags = merge(
-    var.tags,
-    {
-      spoke_alias  = "${spoke_config.alias}"
-      service_name = "${service_name}"
-      context      = "spoke"
-    }
-  )
-
-  depends_on = [module.spoke-policy-${spoke_config.alias}-${service_name}]
-}
-%{endfor~}
-
-%{endfor~}
-EOF
-    : values.csoc_provider == "azure" ? <<-EOF
-###############################################################################
-# Spoke Managed Identities - Trusted by CSOC Managed Identities
-###############################################################################
-
-%{for spoke_config in values.spokes_config~}
-# Managed Identities for ${spoke_config.alias}
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
-module "spoke-identity-${spoke_config.alias}-${service_name}" {
-  source = "./azure-spoke-role"
-
-  providers = {
+    %{endif~}
+    %{if values.csoc_provider == "azure"~}
     azurerm = azurerm.${spoke_config.alias}
-  }
-
-  # Skip creation if spoke subscription == csoc subscription (same subscription scenario)
-  # In that case, we'll use the csoc managed identity directly via override_id
-  create                        = lookup(spoke_config, "enabled", false) && var.enable_k8s_cluster && data.azurerm_client_config.${spoke_config.alias}.subscription_id != data.azurerm_client_config.csoc.subscription_id
-  override_id                   = data.azurerm_client_config.${spoke_config.alias}.subscription_id == data.azurerm_client_config.csoc.subscription_id ? (%{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.managed-identity-${service_name}.identity_id%{else~}""%{endif~}) : null
-  cluster_name                  = var.cluster_name
-  service_name                  = "${service_name}"
-  spoke_alias                   = "${spoke_config.alias}"
-  csoc_managed_identity_id      = %{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.managed-identity-${service_name}.identity_id%{else~}""%{endif~}
-
-  role_definition_json = try(module.spoke-policy-${spoke_config.alias}-${service_name}.role_definition_json, null)
-  has_role_definition  = try(module.spoke-policy-${spoke_config.alias}-${service_name}.has_role_definition, false)
-
-  tags = merge(
-    var.tags,
-    {
-      spoke_alias  = "${spoke_config.alias}"
-      service_name = "${service_name}"
-      context      = "spoke"
-    }
-  )
-
-  depends_on = [module.spoke-policy-${spoke_config.alias}-${service_name}]
-}
-%{endfor~}
-
-%{endfor~}
-EOF
-    : values.csoc_provider == "gcp" ? <<-EOF
-###############################################################################
-# Spoke Service Accounts - Trusted by CSOC Workload Identities
-###############################################################################
-
-%{for spoke_config in values.spokes_config~}
-# Service Accounts for ${spoke_config.alias}
-%{for service_name, _ in lookup(values.spoke_iam_policies, spoke_config.alias, {})~}
-module "spoke-sa-${spoke_config.alias}-${service_name}" {
-  source = "./gcp-spoke-role"
-
-  providers = {
+    %{endif~}
+    %{if values.csoc_provider == "gcp"~}
     google = google.${spoke_config.alias}
+    %{endif~}
   }
 
-  # Skip creation if spoke project == csoc project (same project scenario)
-  # In that case, we'll use the csoc workload identity directly via override_id
-  create                          = lookup(spoke_config, "enabled", false) && var.enable_k8s_cluster && data.google_project.${spoke_config.alias}.project_id != data.google_project.csoc.project_id
-  override_id                     = data.google_project.${spoke_config.alias}.project_id == data.google_project.csoc.project_id ? (%{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.workload-identity-${service_name}.service_account_email%{else~}""%{endif~}) : null
-  cluster_name                    = var.cluster_name
-  service_name                    = "${service_name}"
-  spoke_alias                     = "${spoke_config.alias}"
-  csoc_workload_identity_email    = %{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.workload-identity-${service_name}.service_account_email%{else~}""%{endif~}
+  # Skip creation if spoke account/subscription/project == csoc (same account scenario)
+  # In that case, we'll use the csoc identity directly via override_id
+  create = ${lookup(spoke_config, "enabled", false)} && var.enable_k8s_cluster && ${lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)} && (%{if values.csoc_provider == "aws"~}data.aws_caller_identity.${spoke_config.alias}.account_id != data.aws_caller_identity.csoc.account_id%{else}%{if values.csoc_provider == "azure"~}data.azurerm_client_config.${spoke_config.alias}.subscription_id != data.azurerm_client_config.csoc.subscription_id%{else}data.google_project.${spoke_config.alias}.project_id != data.google_project.csoc.project_id%{endif~}%{endif})
 
-  role_definition_yaml = try(module.spoke-policy-${spoke_config.alias}-${service_name}.role_definition_yaml, null)
-  has_role_definition  = try(module.spoke-policy-${spoke_config.alias}-${service_name}.has_role_definition, false)
+  override_id = %{if values.csoc_provider == "aws"~}data.aws_caller_identity.${spoke_config.alias}.account_id == data.aws_caller_identity.csoc.account_id%{else}%{if values.csoc_provider == "azure"~}data.azurerm_client_config.${spoke_config.alias}.subscription_id == data.azurerm_client_config.csoc.subscription_id%{else}data.google_project.${spoke_config.alias}.project_id == data.google_project.csoc.project_id%{endif~}%{endif} ? (%{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}%{if values.csoc_provider == "aws"~}module.pod-identity-${service_name}.role_arn%{else}%{if values.csoc_provider == "azure"~}module.pod-identity-${service_name}.identity_id%{else}module.pod-identity-${service_name}.service_account_email%{endif~}%{endif~}%{else~}""%{endif~}) : null
+
+  cluster_name = var.cluster_name
+  service_name = "${service_name}"
+  spoke_alias  = "${spoke_config.alias}"
+
+  # Provider-specific CSOC identity references
+  %{if values.csoc_provider == "aws"~}
+  csoc_pod_identity_role_arn = %{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.pod-identity-${service_name}.role_arn%{else~}""%{endif}
+  combined_policy_json       = try(module.spoke-policy-${spoke_config.alias}-${service_name}.inline_policy_document, null)
+  has_inline_policy          = try(module.spoke-policy-${spoke_config.alias}-${service_name}.has_inline_policy, false)
+  has_managed_policy         = false
+  policy_arns                = {}
+  %{endif~}
+  %{if values.csoc_provider == "azure"~}
+  csoc_managed_identity_id = %{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.pod-identity-${service_name}.identity_id%{else~}""%{endif}
+  role_definition_json     = try(module.spoke-policy-${spoke_config.alias}-${service_name}.role_definition_json, null)
+  has_role_definition      = try(module.spoke-policy-${spoke_config.alias}-${service_name}.has_role_definition, false)
+  %{endif~}
+  %{if values.csoc_provider == "gcp"~}
+  csoc_workload_identity_email = %{if contains(keys(values.all_configs), service_name) && lookup(lookup(values.all_configs, service_name, {}), "enable_identity", false)~}module.pod-identity-${service_name}.service_account_email%{else~}""%{endif}
+  role_definition_yaml         = try(module.spoke-policy-${spoke_config.alias}-${service_name}.role_definition_yaml, null)
+  has_role_definition          = try(module.spoke-policy-${spoke_config.alias}-${service_name}.has_role_definition, false)
+  %{endif~}
 
   tags = merge(
     var.tags,
@@ -592,8 +472,6 @@ module "spoke-sa-${spoke_config.alias}-${service_name}" {
 
 %{endfor~}
 EOF
-    : ""
-  )
 }
 
 ###############################################################################
@@ -707,13 +585,25 @@ variable "tags" {
 }
 
 variable "csoc_profile_name" {
-  description = "AWS profile name for CSOC to get account ID"
+  description = "AWS profile name for CSOC"
   type        = string
   default     = ""
 }
 
-variable "project_id" {
-  description = "GCP project ID"
+variable "csoc_region" {
+  description = "Region for CSOC cluster"
+  type        = string
+  default     = ""
+}
+
+variable "csoc_subscription_id" {
+  description = "Azure subscription ID for CSOC"
+  type        = string
+  default     = ""
+}
+
+variable "csoc_project_id" {
+  description = "GCP project ID for CSOC"
   type        = string
   default     = ""
 }
@@ -797,13 +687,13 @@ output "csoc_identities" {
       policy_arn = %{if values.csoc_provider == "aws"~}try(module.pod-identity-${service_name}.policy_arn, "")%{else~}""%{endif}
 
       # Azure-specific fields
-      identity_id   = %{if values.csoc_provider == "azure"~}try(module.managed-identity-${service_name}.identity_id, "")%{else~}""%{endif}
-      identity_name = %{if values.csoc_provider == "azure"~}try(module.managed-identity-${service_name}.identity_name, "")%{else~}""%{endif}
-      client_id     = %{if values.csoc_provider == "azure"~}try(module.managed-identity-${service_name}.client_id, "")%{else~}""%{endif}
+      identity_id   = %{if values.csoc_provider == "azure"~}try(module.pod-identity-${service_name}.identity_id, "")%{else~}""%{endif}
+      identity_name = %{if values.csoc_provider == "azure"~}try(module.pod-identity-${service_name}.identity_name, "")%{else~}""%{endif}
+      client_id     = %{if values.csoc_provider == "azure"~}try(module.pod-identity-${service_name}.client_id, "")%{else~}""%{endif}
 
       # GCP-specific fields
-      service_account_email = %{if values.csoc_provider == "gcp"~}try(module.workload-identity-${service_name}.service_account_email, "")%{else~}""%{endif}
-      service_account_name  = %{if values.csoc_provider == "gcp"~}try(module.workload-identity-${service_name}.service_account_name, "")%{else~}""%{endif}
+      service_account_email = %{if values.csoc_provider == "gcp"~}try(module.pod-identity-${service_name}.service_account_email, "")%{else~}""%{endif}
+      service_account_name  = %{if values.csoc_provider == "gcp"~}try(module.pod-identity-${service_name}.service_account_name, "")%{else~}""%{endif}
 
       # Common fields
       service_name              = "${service_name}"
@@ -847,13 +737,13 @@ output "spoke_identities" {
           role_name = %{if values.csoc_provider == "aws"~}try(module.spoke-role-${spoke_config.alias}-${service_name}.role_name, "")%{else~}""%{endif}
 
           # Azure-specific fields
-          identity_id   = %{if values.csoc_provider == "azure"~}try(module.spoke-identity-${spoke_config.alias}-${service_name}.identity_id, "")%{else~}""%{endif}
-          identity_name = %{if values.csoc_provider == "azure"~}try(module.spoke-identity-${spoke_config.alias}-${service_name}.identity_name, "")%{else~}""%{endif}
-          client_id     = %{if values.csoc_provider == "azure"~}try(module.spoke-identity-${spoke_config.alias}-${service_name}.client_id, "")%{else~}""%{endif}
+          identity_id   = %{if values.csoc_provider == "azure"~}try(module.spoke-role-${spoke_config.alias}-${service_name}.identity_id, "")%{else~}""%{endif}
+          identity_name = %{if values.csoc_provider == "azure"~}try(module.spoke-role-${spoke_config.alias}-${service_name}.identity_name, "")%{else~}""%{endif}
+          client_id     = %{if values.csoc_provider == "azure"~}try(module.spoke-role-${spoke_config.alias}-${service_name}.client_id, "")%{else~}""%{endif}
 
           # GCP-specific fields
-          service_account_email = %{if values.csoc_provider == "gcp"~}try(module.spoke-sa-${spoke_config.alias}-${service_name}.service_account_email, "")%{else~}""%{endif}
-          service_account_name  = %{if values.csoc_provider == "gcp"~}try(module.spoke-sa-${spoke_config.alias}-${service_name}.service_account_name, "")%{else~}""%{endif}
+          service_account_email = %{if values.csoc_provider == "gcp"~}try(module.spoke-role-${spoke_config.alias}-${service_name}.service_account_email, "")%{else~}""%{endif}
+          service_account_name  = %{if values.csoc_provider == "gcp"~}try(module.spoke-role-${spoke_config.alias}-${service_name}.service_account_name, "")%{else~}""%{endif}
 
           # Common fields
           service_name  = "${service_name}"
