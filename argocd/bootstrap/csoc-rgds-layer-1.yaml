@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/name: rgds
         app.kubernetes.io/layer: "single-controller"
         app.kubernetes.io/controller: "{{.addon}}"
-        cluster: "{{.metadata.name}}"
+        cluster: "{{.name}}"
       annotations:
         argocd.argoproj.io/sync-wave: "-5"
       finalizers:
@@ -41,7 +41,7 @@ spec:
         targetRevision: '{{.metadata.annotations.repo_revision}}'
         path: 'argocd/csoc-addons/rgds/{{.addon}}'
       destination:
-        name: '{{.metadata.name}}'
+        name: '{{.name}}'
       syncPolicy:
         automated:
           prune: true
