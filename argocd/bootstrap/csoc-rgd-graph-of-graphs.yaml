@@ -1,7 +1,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: csoc-rgds-layer-2
+  name: csoc-rgd-graph-of-graphs
   namespace: argocd
   annotations:
     # Multi-controller RGDs deploy all composite graphs
@@ -28,9 +28,8 @@ spec:
         app.kubernetes.io/part-of: graphs
         app.kubernetes.io/name: rgds
         app.kubernetes.io/layer: "multi-controller"
-        app.kubernetes.io/composite: "{{.path.basename}}"
       annotations:
-        argocd.argoproj.io/sync-wave: "-4"
+        argocd.argoproj.io/sync-wave: "-5"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:
