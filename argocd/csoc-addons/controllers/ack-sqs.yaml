@@ -7,4 +7,5 @@ resources:
     cpu: 100m
     memory: 128Mi
 serviceAccount:
+  name: ack-sqs-sa
   create: false

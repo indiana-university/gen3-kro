@@ -104,16 +104,6 @@ locals {
   csoc_repo_url        = format("https://%s/%s/%s.git", local.csoc_gitops_github_url, local.csoc_gitops_org_name, local.csoc_gitops_repo_name)
   csoc_repo_basepath   = trimsuffix(local.csoc_gitops_bootstrap_path, "/bootstrap")
 
-  # ArgoCD GitOps context (cluster secret only needs csoc info)
-  argocd_gitops = {
-    csoc = {
-      alias        = local.csoc_alias
-      region       = local.region
-      cluster_name = local.cluster_name
-      repo_url     = local.csoc_repo_url
-      branch       = local.csoc_gitops_branch
-    }
-  }
   # Load separate config sections
   addon_original_configs = lookup(local.csoc_config, "addon_configs", {})
   ack_original_configs   = lookup(local.csoc_config, "ack_configs", {})
@@ -550,7 +540,6 @@ unit "argocd_core" {
     # Computed GitOps values (computed in stack, passed to unit)
     csoc_repo_url             = local.csoc_repo_url
     csoc_repo_basepath        = local.csoc_repo_basepath
-    argocd_gitops             = local.argocd_gitops
     csoc_gitops_branch        = local.csoc_gitops_branch
     csoc_gitops_bootstrap_path = local.csoc_gitops_bootstrap_path
   }

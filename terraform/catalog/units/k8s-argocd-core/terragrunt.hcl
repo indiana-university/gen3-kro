@@ -30,32 +30,6 @@ locals {
 
   need_k8s_providers      = local.state_has_resources || values.enable_argocd
   create_resources        = local.k8s_spoke_req_has_state || values.enable_argocd
-
-
-  ###############################################################################
-  # ArgoCD Cluster Configuration
-  ###############################################################################
-  argocd_cluster = {
-    cluster_name     = values.cluster_name
-    secret_namespace = "argocd"
-    addons = {
-      fleet_member = "control-plane"
-    }
-    metadata = {
-      annotations = {
-        # Repository Configuration
-        repo_url       = values.csoc_repo_url
-        repo_revision  = values.csoc_gitops_branch
-        repo_basepath  = values.csoc_repo_basepath
-        branch         = values.csoc_gitops_branch
-        bootstrap_path = values.csoc_gitops_bootstrap_path
-
-        # Cluster Information (use csoc_ prefix for hub cluster context)
-        csoc_alias  = values.csoc_alias
-        csoc_region = values.region
-      }
-    }
-  }
 }
 
 ###############################################################################
@@ -292,44 +266,36 @@ inputs = {
   create  = local.create_resources
   install = values.enable_argocd
 
-  # ArgoCD configuration - use defaults with namespace from local argocd_cluster
+  # ArgoCD configuration
   argocd = {
-    namespace     = try(local.argocd_cluster.secret_namespace, "argocd")
+    namespace     = "argocd"
     chart         = "argo-cd"
     repository    = "https://argoproj.github.io/argo-helm"
     chart_version = "8.6.0"
     values        = [file("${get_repo_root()}/${values.modules_path}/k8s-argocd-core/bootstrap/argocd-initial-values.yaml")]
   }
 
-  # Cluster secret configuration - computed from local.argocd_cluster
-  cluster = merge(
-    {
-      name                 = try(dependency.k8s_cluster.outputs.cluster_name, "")
-      endpoint             = try(dependency.k8s_cluster.outputs.cluster_endpoint, "")
-      ca_cert              = try(dependency.k8s_cluster.outputs.cluster_certificate_authority_data, "")
-      region               = values.region
-    },
-    local.argocd_cluster,
-    {
-      metadata = {
-        annotations = merge(
-          local.argocd_cluster.metadata.annotations,
-          {
-            "csoc.kro.dev/gitops-context" = jsonencode(values.argocd_gitops)
-            "csoc.kro.dev/addons-config" = jsonencode({
-              for service_name, details in try(dependency.spoke_iam.outputs.csoc_identities, {}) :
-              service_name => {
-                # Try provider-specific identity fields
-                roleArn        = try(details.role_arn, details.identity_id, details.service_account_email, "")
-                serviceAccount = try(details.k8s_service_account, "${service_name}-sa")
-                namespace      = try(details.k8s_namespace, service_name)
-              }
-            })
-          }
-        )
+  # Cluster secret configuration
+  cluster = {
+    name                 = try(dependency.k8s_cluster.outputs.cluster_name, "")
+    endpoint             = try(dependency.k8s_cluster.outputs.cluster_endpoint, "")
+    ca_cert              = try(dependency.k8s_cluster.outputs.cluster_certificate_authority_data, "")
+    region               = values.region
+    fleet_member         = "control-plane"
+    metadata = {
+      annotations = {
+        # Repository Configuration
+        repo_url       = values.csoc_repo_url
+        repo_revision  = values.csoc_gitops_branch
+        repo_basepath  = values.csoc_repo_basepath
+        bootstrap_path = values.csoc_gitops_bootstrap_path
+
+        # Cluster Information (use csoc_ prefix for hub cluster context)
+        csoc_alias  = values.csoc_alias
+        region      = values.region
       }
     }
-  )
+  }
 
   # Apps (bootstrap configuration)
   apps = {
