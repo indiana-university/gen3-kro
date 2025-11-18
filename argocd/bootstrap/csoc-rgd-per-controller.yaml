@@ -1,11 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: csoc-rgds-layer-2
+  name: csoc-rgds-per-cloud
   namespace: argocd
   annotations:
-    # Multi-controller RGDs deploy all composite graphs
-    argocd.argoproj.io/sync-wave: "-4"
+    # RGDs deploy after controllers are ready
+    argocd.argoproj.io/sync-wave: "-7"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -20,17 +20,18 @@ spec:
               repoURL: '{{.metadata.annotations.repo_url}}'
               revision: '{{.metadata.annotations.repo_revision}}'
               directories:
-                - path: 'argocd/csoc-addons/rgds/_multi-controller/*'
+                - path: 'argocd/csoc-addons/rgds/aws'
+                - path: 'argocd/csoc-addons/rgds/azure'
+                - path: 'argocd/csoc-addons/rgds/gcp'
   template:
     metadata:
       name: "csoc-{{.path.basename}}-rgds"
       labels:
         app.kubernetes.io/part-of: graphs
         app.kubernetes.io/name: rgds
-        app.kubernetes.io/layer: "multi-controller"
-        app.kubernetes.io/composite: "{{.path.basename}}"
+        app.kubernetes.io/cloud-provider: "{{.path.basename}}"
       annotations:
-        argocd.argoproj.io/sync-wave: "-4"
+        argocd.argoproj.io/sync-wave: "-6"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:
