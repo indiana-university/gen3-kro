@@ -29,7 +29,6 @@ spec:
         app.kubernetes.io/name: rgds
         app.kubernetes.io/layer: "multi-controller"
         app.kubernetes.io/composite: "{{.name}}"
-        cluster: "{{.server}}"
       annotations:
         argocd.argoproj.io/sync-wave: "{{.sync_wave}}"
         # Document which controllers this composite RGD requires
