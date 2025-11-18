@@ -72,8 +72,8 @@ spec:
               - $values/argocd/csoc-addons/controllers/{{.addon}}.yaml
             # Inline values from cluster annotations
             values: |
-              region: {{ index .metadata.annotations "csoc_region" | quote }}
-              aws_region: {{ index .metadata.annotations "csoc_region" | quote }}
+              aws:
+                region: {{ index .metadata.annotations "region" | quote }}
       destination:
         name: '{{.name}}'
         namespace: '{{.namespace}}'
