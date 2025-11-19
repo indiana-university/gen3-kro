@@ -20,14 +20,14 @@ spec:
               repoURL: '{{.metadata.annotations.repo_url}}'
               revision: '{{.metadata.annotations.repo_revision}}'
               directories:
-                - path: 'argocd/csoc-addons/rgds/_multi-controller/*'
+                - path: 'argocd/csoc-addons/rgds/graph-of-graphs/*'
   template:
     metadata:
       name: "csoc-{{.path.basename}}-rgds"
       labels:
         app.kubernetes.io/part-of: graphs
         app.kubernetes.io/name: rgds
-        app.kubernetes.io/layer: "multi-controller"
+        app.kubernetes.io/cloud-provider: "all-clouds"
       annotations:
         argocd.argoproj.io/sync-wave: "-5"
       finalizers:
