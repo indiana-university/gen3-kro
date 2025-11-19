@@ -7,7 +7,7 @@ namespace: spoke1-infrastructure
 resources:
   # Namespace is created by Terraform with proper annotations
   # - ./namespace.yaml
-  - github.com/indiana-university/gen3-kro//argocd/.instance-library/aws/graph-of-graphs/vpc.yaml
+  - github.com/indiana-university/gen3-kro//argocd/.instance-library/aws/graph-of-graphs/vpc.yaml?ref=test-kro-graphs
 
 labels:
   - pairs: {spoke: spoke1, deployed-by: kustomize}
