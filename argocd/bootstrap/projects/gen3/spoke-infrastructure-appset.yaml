@@ -43,11 +43,9 @@ spec:
             cluster: '{{ .name }}'
             spoke: '{{ .alias }}'
           # Target namespace from charter
-          namespace: '{{ .namespace }}'
+          namespace: '{{.namespace}}'
       destination:
         server: '{{ .server }}'
-        # Deploy to spoke infrastructure namespace
-        namespace: '{{ .namespace }}'
       syncPolicy:
         automated:
           prune: true
