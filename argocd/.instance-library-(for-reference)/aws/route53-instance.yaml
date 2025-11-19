@@ -1,14 +1,11 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsRoute53
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
   name: route53
   namespace: base
 spec:
   name: base
   namespace: base
-  region: us-east-1
   environment: dev
   tags: {}
   zoneName: base.example.com

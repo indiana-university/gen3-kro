@@ -3,16 +3,14 @@ kind: AwsGenericCommonsAndBucket
 metadata:
   name: awsgenericcommonsandbucket
   namespace: base
-  annotations:
-    argocd.argoproj.io/sync-wave: "1"
 spec:
   name: my-gen3-commons
   namespace: base
-  region: us-east-1
+  overrideRegion: us-east-1
   environment: dev
   tags:
-    project: gen3
-    managed-by: kro
+    ManagedBy: terragrunt
+    Owner: RDS Team
 
   # VPC Configuration
   vpc:

@@ -1,14 +1,12 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsSQS
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "3"
   name: sqs
   namespace: base
 spec:
   name: base
   namespace: base
-  region: us-east-1
+  overrideRegion: us-east-1
   environment: dev
   tags: {}
   queueName: base-queue

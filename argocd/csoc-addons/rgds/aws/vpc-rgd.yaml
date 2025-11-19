@@ -2,8 +2,6 @@ apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
   name: vpc.kro.run
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
   schema:
     apiVersion: v1alpha1
@@ -11,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      region: string
+      overrideRegion: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
       cidr:
@@ -38,7 +36,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-vpc
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         cidrBlocks:
         - ${schema.spec.cidr.vpcCidr}
@@ -57,7 +55,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-igw
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         vpc: ${vpc.status.vpcID}
         tags:
@@ -73,7 +71,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-nat-gateway1
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         subnetID: ${publicSubnet1.status.subnetID}
         allocationID: ${eip1.status.allocationID}
@@ -90,7 +88,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-nat-gateway2
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         subnetID: ${publicSubnet2.status.subnetID}
         allocationID: ${eip2.status.allocationID}
@@ -107,7 +105,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eip1
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         tags:
           - key: "Name"
@@ -122,7 +120,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eip2
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         tags:
           - key: "Name"
@@ -137,7 +135,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-public-routetable
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         vpcID: ${vpc.status.vpcID}
         routes:
@@ -156,7 +154,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-routetable1
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         vpcID: ${vpc.status.vpcID}
         routes:
@@ -175,7 +173,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-routetable2
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         vpcID: ${vpc.status.vpcID}
         routes:
@@ -194,9 +192,9 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-public-subnet1
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
-        availabilityZone: ${schema.spec.region}a
+        availabilityZone: ${schema.spec.overrideRegion}a
         cidrBlock: ${schema.spec.cidr.publicSubnet1Cidr}
         mapPublicIPOnLaunch: true
         vpcID: ${vpc.status.vpcID}
@@ -217,9 +215,9 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-public-subnet2
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
-        availabilityZone: ${schema.spec.region}b
+        availabilityZone: ${schema.spec.overrideRegion}b
         cidrBlock: ${schema.spec.cidr.publicSubnet2Cidr}
         mapPublicIPOnLaunch: true
         vpcID: ${vpc.status.vpcID}
@@ -240,9 +238,9 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-subnet1
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
-        availabilityZone: ${schema.spec.region}a
+        availabilityZone: ${schema.spec.overrideRegion}a
         cidrBlock: ${schema.spec.cidr.privateSubnet1Cidr}
         vpcID: ${vpc.status.vpcID}
         routeTables:
@@ -262,9 +260,9 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-subnet2
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
-        availabilityZone: ${schema.spec.region}b
+        availabilityZone: ${schema.spec.overrideRegion}b
         cidrBlock: ${schema.spec.cidr.privateSubnet2Cidr}
         vpcID: ${vpc.status.vpcID}
         routeTables:

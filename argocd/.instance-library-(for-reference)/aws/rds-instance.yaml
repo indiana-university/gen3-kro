@@ -1,14 +1,12 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsRDS
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
   name: rds
   namespace: base
 spec:
   name: base
   namespace: base
-  region: us-east-1
+  overrideRegion: us-east-1
   environment: dev
   ingressCIDR: "10.0.0.0/8"
   tags: {}

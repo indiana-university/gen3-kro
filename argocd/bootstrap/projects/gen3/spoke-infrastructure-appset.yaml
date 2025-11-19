@@ -55,7 +55,6 @@ spec:
           - SkipDryRunOnMissingResource=true
           - RespectIgnoreDifferences=true
           - PrunePropagationPolicy=foreground
-          - PruneLast=true
         retry:
           limit: 5
           backoff:
@@ -64,14 +63,17 @@ spec:
             maxDuration: 5m
       ignoreDifferences:
         - group: kro.run
-          kind: ResourceGraph
+          kind: AwsVpc
           jsonPointers:
             - /status
+            - /metadata/finalizers
         - group: kro.run
-          kind: Vpc
+          kind: AwsTestInfrastructure
           jsonPointers:
             - /status
-        - group: ""
-          kind: Namespace
-          jqPathExpressions:
-            - '.metadata.labels."kubernetes.io/metadata.name"'
+            - /metadata/finalizers
+        - group: kro.run
+          kind: AwsGenericCommonsAndBucket
+          jsonPointers:
+            - /status
+            - /metadata/finalizers

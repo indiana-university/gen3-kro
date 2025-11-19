@@ -1,14 +1,12 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsCloudTrail
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "5"
   name: cloudtrail
   namespace: base
 spec:
   name: base
   namespace: base
-  region: us-east-1
+  overrideRegion: us-east-1
   environment: dev
   tags: {}
   s3BucketName: base-cloudtrail
