@@ -16,36 +16,34 @@ spec:
             selector:
               matchLabels:
                 fleet_member: control-plane
-        # Read spokes-charter from git repository
+        # Discover spoke infrastructure directories
         - git:
             repoURL: '{{.metadata.annotations.repo_url}}'
             revision: '{{.metadata.annotations.repo_revision}}'
-            files:
-            - path: 'argocd/csoc-addons/spokes-charter.yaml'
+            directories:
+            - path: 'argocd/deployments/gen3-spokes/*/infrastructure'
   template:
     metadata:
-      name: '{{.alias}}-infrastructure'
+      name: '{{.path.path | trimPrefix "argocd/deployments/gen3-spokes/" | trimSuffix "/infrastructure"}}-infrastructure'
       labels:
         app.kubernetes.io/name: spoke-infrastructure
         app.kubernetes.io/part-of: gen3
-        spoke: '{{.alias}}'
+        spoke: '{{.path.path | trimPrefix "argocd/deployments/gen3-spokes/" | trimSuffix "/infrastructure"}}'
       annotations:
         argocd.argoproj.io/sync-wave: "0"
     spec:
       project: default
       source:
-        repoURL: '{{ .repoURL }}'
-        targetRevision: '{{ .targetRevision }}'
-        path: '{{ .basePath }}/deployments/gen3-spokes/{{.alias}}/infrastructure'
+        repoURL: '{{.metadata.annotations.repo_url}}'
+        targetRevision: '{{.metadata.annotations.repo_revision}}'
+        path: '{{.path.path}}'
         kustomize:
           commonLabels:
             deployed-by: argocd
-            cluster: '{{ .name }}'
-            spoke: '{{.alias}}'
-          # Target namespace from charter
-          namespace: '{{.namespace}}'
+            cluster: '{{.name}}'
+            spoke: '{{.path.path | trimPrefix "argocd/deployments/gen3-spokes/" | trimSuffix "/infrastructure"}}'
       destination:
-        server: '{{ .server }}'
+        server: '{{.server}}'
       syncPolicy:
         automated:
           prune: true

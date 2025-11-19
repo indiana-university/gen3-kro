@@ -2,13 +2,12 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 # Override namespace for all resources
-namespace: spoke1-infrastructure
+namespace: spoke2-infrastructure
 
 resources:
   # Namespace is created by Terraform with proper annotations
-  # - ./namespace.yaml
   - github.com/indiana-university/gen3-kro//argocd/.instance-library/aws/graph-of-graphs/vpc.yaml
 
 labels:
-  - pairs: {spoke: spoke1, deployed-by: kustomize}
+  - pairs: {spoke: spoke2, deployed-by: kustomize}
     includeSelectors: false
