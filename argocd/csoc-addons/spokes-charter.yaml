@@ -1,14 +1,10 @@
----
-# Gen3 Spokes Charter
-# Defines all Gen3 spoke environments and their configurations
-spokes:
-  - alias: spoke1
-    namespace: spoke1-infrastructure
-    repoURL: https://github.com/indiana-university/gen3-kro.git
-    targetRevision: test-kro-graphs
-    basePath: argocd
-  - alias: spoke2
-    namespace: spoke2-infrastructure
-    repoURL: https://github.com/indiana-university/gen3-kro.git
-    targetRevision: test-kro-graphs
-    basePath: argocd
+- alias: spoke1
+  namespace: spoke1-infrastructure
+  repoURL: https://github.com/indiana-university/gen3-kro.git
+  targetRevision: test-kro-graphs
+  basePath: argocd
+- alias: spoke2
+  namespace: spoke2-infrastructure
+  repoURL: https://github.com/indiana-university/gen3-kro.git
+  targetRevision: test-kro-graphs
+  basePath: argocd
