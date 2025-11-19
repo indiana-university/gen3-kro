@@ -11,6 +11,7 @@ spec:
     kind: AwsRDS
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -35,7 +36,7 @@ spec:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBSubnetGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-db-subnet-group
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -53,7 +54,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: SecurityGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-db-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -77,8 +78,8 @@ spec:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance
       metadata:
-        namespace: ${schema.spec.name}
-        name: ${schema.spec.name}-db
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
       spec:

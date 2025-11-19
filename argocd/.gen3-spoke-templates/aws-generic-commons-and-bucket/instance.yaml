@@ -1,12 +1,13 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsGenericCommonsAndBucket
 metadata:
-  name: my-gen3-commons
-  namespace: default
+  name: awsgenericcommonsandbucket
+  namespace: base
   annotations:
     argocd.argoproj.io/sync-wave: "1"
 spec:
   name: my-gen3-commons
+  namespace: base
   region: us-east-1
   environment: dev
   tags:

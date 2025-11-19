@@ -11,6 +11,7 @@ spec:
     kind: GenericCommonsAndBucket
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -152,9 +153,10 @@ spec:
       kind: KMS
       metadata:
         name: ${schema.spec.name}-kms
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -168,9 +170,10 @@ spec:
       kind: Vpc
       metadata:
         name: ${schema.spec.name}-vpc
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -183,9 +186,10 @@ spec:
       kind: CloudWatchLogs
       metadata:
         name: ${schema.spec.name}-logs
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -198,9 +202,10 @@ spec:
       kind: S3Bucket
       metadata:
         name: ${schema.spec.buckets.loggingBucket.name}
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.buckets.loggingBucket.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -214,9 +219,10 @@ spec:
       kind: CloudTrail
       metadata:
         name: ${schema.spec.name}-trail
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -234,9 +240,10 @@ spec:
       kind: EKS
       metadata:
         name: ${schema.spec.name}-eks
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -257,9 +264,10 @@ spec:
       kind: Aurora
       metadata:
         name: ${schema.spec.name}-aurora
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -283,9 +291,10 @@ spec:
       kind: ElastiCache
       metadata:
         name: ${schema.spec.name}-elasticache
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -306,9 +315,10 @@ spec:
       kind: EFS
       metadata:
         name: ${schema.spec.name}-efs
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -329,9 +339,10 @@ spec:
       kind: S3Bucket
       metadata:
         name: ${schema.spec.buckets.dataBucket.name}
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.buckets.dataBucket.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -345,9 +356,10 @@ spec:
       kind: S3Bucket
       metadata:
         name: ${schema.spec.buckets.uploadBucket.name}
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.buckets.uploadBucket.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -361,9 +373,10 @@ spec:
       kind: OpenSearch
       metadata:
         name: ${schema.spec.name}-opensearch
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}

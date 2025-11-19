@@ -10,6 +10,7 @@ spec:
     kind: AwsVpc
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -34,7 +35,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: VPC
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-vpc
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -53,7 +54,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: InternetGateway
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-igw
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -69,7 +70,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: NATGateway
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-nat-gateway1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -86,7 +87,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: NATGateway
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-nat-gateway2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -103,7 +104,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: ElasticIPAddress
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eip1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -118,7 +119,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: ElasticIPAddress
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eip2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -133,7 +134,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-public-routetable
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -152,7 +153,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-routetable1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -171,7 +172,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-routetable2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -190,7 +191,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-public-subnet1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -213,7 +214,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-public-subnet2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -236,7 +237,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-subnet1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -258,7 +259,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-private-subnet2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}

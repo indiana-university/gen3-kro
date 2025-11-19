@@ -11,6 +11,7 @@ spec:
     kind: AwsRoute53
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -30,7 +31,7 @@ spec:
       apiVersion: route53.services.k8s.aws/v1alpha1
       kind: HostedZone
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}

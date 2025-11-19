@@ -11,6 +11,7 @@ spec:
     kind: AwsKMS
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -30,7 +31,7 @@ spec:
       apiVersion: kms.services.k8s.aws/v1alpha1
       kind: Key
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -49,7 +50,7 @@ spec:
       apiVersion: kms.services.k8s.aws/v1alpha1
       kind: Alias
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-alias
         annotations:
           services.k8s.aws/region: ${schema.spec.region}

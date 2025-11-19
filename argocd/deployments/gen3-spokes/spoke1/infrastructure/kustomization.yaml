@@ -11,3 +11,11 @@ resources:
 labels:
   - pairs: {spoke: spoke1, deployed-by: kustomize}
     includeSelectors: false
+
+patches:
+  - patch: |-
+      - op: replace
+        path: /spec/namespace
+        value: spoke1-infrastructure
+    target:
+      kind: AwsVpc

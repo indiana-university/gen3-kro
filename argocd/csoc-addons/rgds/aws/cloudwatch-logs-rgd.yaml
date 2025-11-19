@@ -11,6 +11,7 @@ spec:
     kind: AwsCloudWatchLogs
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -27,7 +28,7 @@ spec:
       apiVersion: cloudwatchlogs.services.k8s.aws/v1alpha1
       kind: LogGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}

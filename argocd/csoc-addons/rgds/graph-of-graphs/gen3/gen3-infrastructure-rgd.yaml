@@ -11,6 +11,7 @@ spec:
     kind: Gen3Infrastructure
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -155,12 +156,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: Vpc
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-vpc
         annotations:
           argocd.argoproj.io/sync-wave: "1"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -172,12 +174,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: KMS
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-kms
         annotations:
           argocd.argoproj.io/sync-wave: "2"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -190,12 +193,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: EKS
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks
         annotations:
           argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -215,12 +219,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: RDS
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-rds
         annotations:
           argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -241,12 +246,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: Aurora
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-aurora
         annotations:
           argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -267,12 +273,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: ElastiCache
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-elasticache
         annotations:
           argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -292,12 +299,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: EFS
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-efs
         annotations:
           argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -317,12 +325,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: OpenSearch
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-opensearch
         annotations:
           argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -342,12 +351,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: DataBucket
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-data-bucket
         annotations:
           argocd.argoproj.io/sync-wave: "2"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -362,12 +372,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: Route53
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-route53
         annotations:
           argocd.argoproj.io/sync-wave: "2"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -383,12 +394,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: CloudTrail
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cloudtrail
         annotations:
           argocd.argoproj.io/sync-wave: "4"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
@@ -402,12 +414,13 @@ spec:
       apiVersion: kro.run/v1alpha1
       kind: WAF
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-waf
         annotations:
           argocd.argoproj.io/sync-wave: "4"
       spec:
         name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}

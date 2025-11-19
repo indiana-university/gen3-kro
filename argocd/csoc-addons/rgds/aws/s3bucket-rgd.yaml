@@ -11,6 +11,7 @@ spec:
     kind: AwsS3Bucket
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -28,7 +29,7 @@ spec:
       apiVersion: s3.services.k8s.aws/v1alpha1
       kind: Bucket
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -45,7 +46,7 @@ spec:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Policy
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-s3-policy
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
