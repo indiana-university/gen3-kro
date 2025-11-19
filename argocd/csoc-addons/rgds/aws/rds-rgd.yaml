@@ -8,7 +8,7 @@ metadata:
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: RDS
+    kind: AwsRDS
     spec:
       name: string
       region: string
