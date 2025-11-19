@@ -11,18 +11,17 @@ spec:
   generators:
   - matrix:
       generators:
-        # Read spokes-charter ConfigMap for spoke definitions
-        - list:
-            elements: |
-              {{- $charter := (lookup "v1" "ConfigMap" "argocd" "spokes-charter").data | index "charter.json" | mustFromJson }}
-              {{- range $spoke := $charter.spokes }}
-              - alias: {{ $spoke.alias }}
-                namespace: {{ $spoke.namespace }}
-              {{- end }}
+        # Get cluster info for destination server
         - clusters:
             selector:
               matchLabels:
                 fleet_member: spoke
+        # Read spokes-charter from git repository
+        - git:
+            repoURL: '{{.metadata.annotations.repo_url}}'
+            revision: '{{.metadata.annotations.repo_revision}}'
+            files:
+            - path: 'argocd/csoc-addons/spokes-charter.yaml'
   template:
     metadata:
       name: '{{ .alias }}-infrastructure'
@@ -35,9 +34,9 @@ spec:
     spec:
       project: default
       source:
-        repoURL: '{{.metadata.annotations.repo_url}}'
-        targetRevision: '{{.metadata.annotations.repo_revision}}'
-        path: '{{.metadata.annotations.repo_basepath}}/deployments/gen3-spokes/{{ .alias }}/infrastructure'
+        repoURL: '{{ .repoURL }}'
+        targetRevision: '{{ .targetRevision }}'
+        path: '{{ .basePath }}/deployments/gen3-spokes/{{ .alias }}/infrastructure'
         kustomize:
           commonLabels:
             deployed-by: argocd
@@ -53,6 +52,7 @@ spec:
         automated:
           prune: true
           selfHeal: true
+          allowEmpty: true
         syncOptions:
           - CreateNamespace=false  # Namespaces created by separate namespace ApplicationSet
           - ServerSideApply=true

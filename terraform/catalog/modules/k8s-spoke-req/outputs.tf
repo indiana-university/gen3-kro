@@ -16,20 +16,6 @@ output "spoke_namespace_list" {
 }
 
 ################################################################################
-# ConfigMap Outputs
-################################################################################
-
-output "charter_configmap_name" {
-  description = "Name of the spokes charter ConfigMap"
-  value       = try(kubernetes_config_map_v1.spokes_charter[0].metadata[0].name, null)
-}
-
-output "charter_configmap_namespace" {
-  description = "Namespace of the spokes charter ConfigMap"
-  value       = try(kubernetes_config_map_v1.spokes_charter[0].metadata[0].namespace, null)
-}
-
-################################################################################
 # Combined Outputs
 ################################################################################
 

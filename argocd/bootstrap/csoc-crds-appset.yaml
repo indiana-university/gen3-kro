@@ -35,7 +35,7 @@ spec:
               repoURL: '{{.metadata.annotations.repo_url}}'
               revision: '{{.metadata.annotations.repo_revision}}'
               files:
-                - path: 'argocd/csoc-addons/catalog.yaml'
+                - path: 'argocd/csoc-addons/controller-crd-catalog.yaml'
   template:
     metadata:
       # Create one Application per addon's CRDs
