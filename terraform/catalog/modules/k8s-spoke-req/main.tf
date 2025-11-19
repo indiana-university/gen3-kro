@@ -30,26 +30,6 @@ locals {
     }
     if lookup(spoke, "enabled", true)
   }
-
-  #############################################################################
-  # Charter ConfigMap - ONLY alias and namespace
-  #############################################################################
-  charter_configmap = {
-    name      = "spokes-charter"
-    namespace = var.namespace # Usually "argocd"
-    data = {
-      "charter.json" = jsonencode({
-        spokes = [
-          for spoke in var.spokes :
-          {
-            alias     = spoke.alias
-            namespace = "${spoke.alias}-infrastructure"
-          }
-          if lookup(spoke, "enabled", true)
-        ]
-      })
-    }
-  }
 }
 
 ################################################################################
@@ -72,26 +52,5 @@ resource "kubernetes_namespace_v1" "spoke_infrastructure" {
 
   timeouts {
     delete = "40m"
-  }
-}
-
-################################################################################
-# Spoke Charter ConfigMap
-################################################################################
-resource "kubernetes_config_map_v1" "spokes_charter" {
-  count = var.create ? 1 : 0
-
-  metadata {
-    name      = local.charter_configmap.name
-    namespace = local.charter_configmap.namespace
-  }
-
-  data = local.charter_configmap.data
-
-  lifecycle {
-    ignore_changes = [
-      metadata[0].annotations,
-      metadata[0].labels,
-    ]
   }
 }
