@@ -38,7 +38,7 @@ spec:
         targetRevision: '{{.metadata.annotations.repo_revision}}'
         path: '{{.path.path}}'
         kustomize:
-          commonLabels:
+          labels:
             deployed-by: argocd
             cluster: '{{.name}}'
             spoke: '{{.path.path | trimPrefix "argocd/deployments/gen3-spokes/" | trimSuffix "/infrastructure"}}'
