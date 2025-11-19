@@ -3,7 +3,7 @@ kind: Gen3Infrastructure
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: gen3-infrastructure-example
+  name: gen3-example
   namespace: default
 spec:
   name: base

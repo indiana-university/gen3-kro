@@ -37,8 +37,7 @@ spec:
       source:
         repoURL: '{{.metadata.annotations.repo_url}}'
         targetRevision: '{{.metadata.annotations.repo_revision}}'
-        # Use spoke alias as folder name: argocd/deployments/gen3-spokes/<spoke_alias>
-        path: '{{.metadata.annotations.repo_basepath}}/deployments/gen3-spokes/{{ .alias }}'
+        path: '{{.metadata.annotations.repo_basepath}}/deployments/gen3-spokes/{{ .alias }}/infrastructure'
         kustomize:
           commonLabels:
             deployed-by: argocd
