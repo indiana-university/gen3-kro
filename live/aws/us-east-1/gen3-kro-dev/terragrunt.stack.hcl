@@ -49,8 +49,8 @@ locals {
   ###############################################################################
   # Backend State Configuration
   ###############################################################################
-  state_bucket          = lookup(local.csoc_provider_config, "terraform_state_bucket", lookup(local.backend_config, "terraform_state_bucket", ""))
-  state_locks_table     = lookup(local.backend_config, "terraform_locks_table", "")
+  state_bucket          = lookup(local.csoc_provider_config, "terraform_state_bucket", "")
+  state_locks_table     = lookup(local.csoc_provider_config, "terraform_locks_table", "")
   state_storage_account = lookup(local.csoc_provider_config, "terraform_state_storage_account", "")
   state_container       = lookup(local.csoc_provider_config, "terraform_state_container", "tfstate")
 

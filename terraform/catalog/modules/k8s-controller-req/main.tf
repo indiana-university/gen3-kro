@@ -71,22 +71,23 @@ locals {
   configmaps = {
     for controller_name, spoke_roles in var.controller_spoke_roles :
     controller_name => {
-      name      = "${controller_name}-crossaccount-role-map"
+      name      = "ack-role-account-map"
       namespace = try(var.csoc_controller_configs[controller_name].namespace, "default")
 
-      # Build account/subscription/project to role/identity mapping
-      # Try provider-specific fields in order: AWS, Azure, GCP
+      # Build spoke-to-role/identity mapping
+      # Key: spoke_alias (unique identifier for each spoke)
+      # Value: role_arn (AWS), identity_id (Azure), or service_account_email (GCP)
       account_role_map = {
         for spoke_alias, spoke_data in spoke_roles :
-        # Key: account_id (AWS), subscription_id (Azure), or project_id (GCP)
-        try(spoke_data.account_id, spoke_data.subscription_id, spoke_data.project_id, spoke_alias) =>
+        # Use spoke_alias as key to avoid duplicates when spokes share the same account
+        spoke_alias =>
         # Value: role_arn (AWS), identity_id (Azure), or service_account_email (GCP)
         try(spoke_data.role_arn, spoke_data.identity_id, spoke_data.service_account_email, "")
-        # Only include entries where we have both key and value
+        # Only include entries where we have a value
         if (
-          (try(spoke_data.account_id, "") != "" && try(spoke_data.role_arn, "") != "") ||
-          (try(spoke_data.subscription_id, "") != "" && try(spoke_data.identity_id, "") != "") ||
-          (try(spoke_data.project_id, "") != "" && try(spoke_data.service_account_email, "") != "")
+          try(spoke_data.role_arn, "") != "" ||
+          try(spoke_data.identity_id, "") != "" ||
+          try(spoke_data.service_account_email, "") != ""
         )
       }
     }
