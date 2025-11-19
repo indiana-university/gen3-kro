@@ -75,19 +75,33 @@ locals {
       namespace = try(var.csoc_controller_configs[controller_name].namespace, "default")
 
       # Build spoke-to-role/identity mapping
-      # Key: spoke_alias (unique identifier for each spoke)
-      # Value: role_arn (AWS), identity_id (Azure), or service_account_email (GCP)
+      # Determine cloud provider by checking which ID/credential pair exists
+      # Use that pair as single source of truth for both key and value
       account_role_map = {
         for spoke_alias, spoke_data in spoke_roles :
-        # Use spoke_alias as key to avoid duplicates when spokes share the same account
-        spoke_alias =>
-        # Value: role_arn (AWS), identity_id (Azure), or service_account_email (GCP)
-        try(spoke_data.role_arn, spoke_data.identity_id, spoke_data.service_account_email, "")
-        # Only include entries where we have a value
+        # Key: Use the cloud ID that has a corresponding credential
+        # AWS: account_id (if role_arn exists)
+        # Azure: subscription_id (if identity_id exists)
+        # GCP: project_id (if service_account_email exists)
+        # Fallback: spoke_alias if no valid pair found
+        (
+          try(spoke_data.role_arn, "") != "" && try(spoke_data.account_id, "") != "" ? spoke_data.account_id :
+          try(spoke_data.identity_id, "") != "" && try(spoke_data.subscription_id, "") != "" ? spoke_data.subscription_id :
+          try(spoke_data.service_account_email, "") != "" && try(spoke_data.project_id, "") != "" ? spoke_data.project_id :
+          spoke_alias
+        ) =>
+        # Value: Use the credential that corresponds to the ID we chose
+        (
+          try(spoke_data.role_arn, "") != "" && try(spoke_data.account_id, "") != "" ? spoke_data.role_arn :
+          try(spoke_data.identity_id, "") != "" && try(spoke_data.subscription_id, "") != "" ? spoke_data.identity_id :
+          try(spoke_data.service_account_email, "") != "" && try(spoke_data.project_id, "") != "" ? spoke_data.service_account_email :
+          ""
+        )
+        # Only include if we found a valid ID/credential pair
         if (
-          try(spoke_data.role_arn, "") != "" ||
-          try(spoke_data.identity_id, "") != "" ||
-          try(spoke_data.service_account_email, "") != ""
+          (try(spoke_data.role_arn, "") != "" && try(spoke_data.account_id, "") != "") ||
+          (try(spoke_data.identity_id, "") != "" && try(spoke_data.subscription_id, "") != "") ||
+          (try(spoke_data.service_account_email, "") != "" && try(spoke_data.project_id, "") != "")
         )
       }
     }
