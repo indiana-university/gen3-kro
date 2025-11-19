@@ -1,14 +1,12 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsEKS
 metadata:
-  annotations:
-    argocd.argoproj.io/sync-wave: "4"
   name: eks
   namespace: base
 spec:
   name: base
   namespace: base
-  region: us-east-1
+  overrideRegion: us-east-1
   environment: dev
   tags: {}
   vpcID: ""  # Populated by overlay or external reference

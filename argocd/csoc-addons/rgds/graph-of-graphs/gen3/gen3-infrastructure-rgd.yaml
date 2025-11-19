@@ -2,9 +2,6 @@ apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
   name: gen3-infrastructure.kro.run
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      region: string
+      overrideRegion: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
 
@@ -158,12 +155,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-vpc
-        annotations:
-          argocd.argoproj.io/sync-wave: "1"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         cidr: ${schema.spec.vpc.cidr}
@@ -176,12 +171,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-kms
-        annotations:
-          argocd.argoproj.io/sync-wave: "2"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         description: ${schema.spec.kms.description}
@@ -195,12 +188,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks
-        annotations:
-          argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -221,12 +212,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-rds
-        annotations:
-          argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -248,12 +237,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-aurora
-        annotations:
-          argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -275,12 +262,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-elasticache
-        annotations:
-          argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -301,12 +286,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-efs
-        annotations:
-          argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -327,12 +310,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-opensearch
-        annotations:
-          argocd.argoproj.io/sync-wave: "3"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -353,12 +334,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-data-bucket
-        annotations:
-          argocd.argoproj.io/sync-wave: "2"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         bucketName: ${schema.spec.dataBucket.bucketName}
@@ -374,18 +353,15 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-route53
-        annotations:
-          argocd.argoproj.io/sync-wave: "2"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         zoneName: ${schema.spec.route53.zoneName}
         privateZone: ${schema.spec.route53.privateZone}
         vpcID: ${vpc.status.vpcID}
-        vpcRegion: ${schema.spec.region}
+        vpcRegion: ${schema.spec.overrideRegion}
         comment: ${schema.spec.route53.comment}
 
   # Layer 2: CloudTrail (may depend on S3 bucket)
@@ -396,12 +372,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cloudtrail
-        annotations:
-          argocd.argoproj.io/sync-wave: "4"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         s3BucketName: ${schema.spec.cloudtrail.s3BucketName}
@@ -416,12 +390,10 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-waf
-        annotations:
-          argocd.argoproj.io/sync-wave: "4"
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         scope: ${schema.spec.waf.scope}

@@ -2,9 +2,6 @@ apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
   name: efs.kro.run
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "-4"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      region: string
+      overrideRegion: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
       vpcID: string
@@ -35,7 +32,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-efs-sg
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         name: ${schema.spec.name}-efs-sg
         description: "EFS security group"
@@ -59,7 +56,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         performanceMode: ${schema.spec.performanceMode}
         throughputMode: ${schema.spec.throughputMode}

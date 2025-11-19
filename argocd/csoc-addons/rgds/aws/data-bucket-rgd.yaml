@@ -1,10 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: data-bucket.kro.run
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "-4"
+  name: databucket.kro.run
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      region: string
+      overrideRegion: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
       bucketName: string
@@ -36,7 +33,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.bucketName}
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         name: ${schema.spec.bucketName}
         tagging:
@@ -56,7 +53,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.bucketName}-logs
         annotations:
-          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         name: ${schema.spec.bucketName}-logs
         tagging:
@@ -75,8 +72,6 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.bucketName}-rw-policy
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.bucketName}-rw-policy
         description: "Read-Write access policy for ${schema.spec.bucketName}"
@@ -119,8 +114,6 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.bucketName}-ro-policy
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.bucketName}-ro-policy
         description: "Read-Only access policy for ${schema.spec.bucketName}"

@@ -2,9 +2,6 @@ apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
   name: generic-commons-and-bucket.kro.run
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:
     apiVersion: v1alpha1
@@ -12,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      region: string
+      overrideRegion: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
 
@@ -157,7 +154,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         description: ${schema.spec.kms.description}
@@ -174,7 +171,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         cidr: ${schema.spec.vpc.cidr}
@@ -190,7 +187,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         retentionInDays: ${schema.spec.cloudwatchLogs.retentionInDays}
@@ -206,7 +203,7 @@ spec:
       spec:
         name: ${schema.spec.buckets.loggingBucket.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         versioning: ${schema.spec.buckets.loggingBucket.versioning}
@@ -223,7 +220,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         s3BucketName: ${loggingBucket.status.s3Name}
@@ -244,7 +241,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -268,7 +265,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -295,7 +292,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -319,7 +316,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
@@ -343,7 +340,7 @@ spec:
       spec:
         name: ${schema.spec.buckets.dataBucket.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         versioning: ${schema.spec.buckets.dataBucket.versioning}
@@ -360,7 +357,7 @@ spec:
       spec:
         name: ${schema.spec.buckets.uploadBucket.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         versioning: ${schema.spec.buckets.uploadBucket.versioning}
@@ -377,7 +374,7 @@ spec:
       spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
+        overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
