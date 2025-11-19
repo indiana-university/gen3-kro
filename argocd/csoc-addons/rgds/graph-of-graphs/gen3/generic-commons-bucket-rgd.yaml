@@ -1,0 +1,377 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: generic-commons-and-bucket.kro.run
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: GenericCommonsAndBucket
+    spec:
+      name: string
+      region: string
+      environment: string | default="dev"
+      tags: "map[string]string | default={}"
+
+      # VPC Configuration
+      vpc:
+        cidr:
+          vpcCidr: string | default="10.0.0.0/16"
+          publicSubnet1Cidr: string | default="10.0.1.0/24"
+          publicSubnet2Cidr: string | default="10.0.2.0/24"
+          privateSubnet1Cidr: string | default="10.0.11.0/24"
+          privateSubnet2Cidr: string | default="10.0.12.0/24"
+
+      # EKS Configuration
+      eks:
+        version: string | default="1.33"
+        nodeGroupInstanceTypes: "[]string | default=[\"t3.large\"]"
+        nodeGroupDesiredSize: integer | default=3
+        nodeGroupMinSize: integer | default=2
+        nodeGroupMaxSize: integer | default=6
+
+      # Aurora PostgreSQL Configuration
+      aurora:
+        engine: string | default="aurora-postgresql"
+        engineVersion: string | default="15.4"
+        instanceClass: string | default="db.r5.large"
+        instanceCount: integer | default=2
+        databaseName: string | default="gen3"
+        masterUsername: string | default="admin"
+        backupRetentionPeriod: integer | default=7
+
+      # ElastiCache Configuration
+      elasticache:
+        engine: string | default="redis"
+        engineVersion: string | default="7.0"
+        nodeType: string | default="cache.t3.micro"
+        numCacheNodes: integer | default=1
+
+      # EFS Configuration
+      efs:
+        performanceMode: string | default="generalPurpose"
+        throughputMode: string | default="bursting"
+        encrypted: boolean | default=true
+
+      # S3 Buckets Configuration
+      buckets:
+        # Data bucket
+        dataBucket:
+          name: string
+          versioning: boolean | default=true
+          encryption: boolean | default=true
+        # Logging bucket
+        loggingBucket:
+          name: string
+          versioning: boolean | default=false
+          encryption: boolean | default=true
+        # Upload bucket
+        uploadBucket:
+          name: string
+          versioning: boolean | default=true
+          encryption: boolean | default=true
+
+      # KMS Configuration
+      kms:
+        description: string | default="Gen3 encryption key"
+        enableKeyRotation: boolean | default=true
+
+      # OpenSearch Configuration
+      opensearch:
+        engineVersion: string | default="OpenSearch_2.11"
+        instanceType: string | default="t3.small.search"
+        instanceCount: integer | default=1
+        volumeSize: integer | default=10
+
+      # CloudWatch Logs Configuration
+      cloudwatchLogs:
+        retentionInDays: integer | default=1827
+
+      # CloudTrail Configuration
+      cloudtrail:
+        enableLogFileValidation: boolean | default=true
+        includeGlobalServiceEvents: boolean | default=true
+        isMultiRegionTrail: boolean | default=true
+
+    status:
+      # VPC Status
+      vpc:
+        vpcID: ${vpc.status.vpcID}
+        publicSubnet1ID: ${vpc.status.publicSubnet1ID}
+        publicSubnet2ID: ${vpc.status.publicSubnet2ID}
+        privateSubnet1ID: ${vpc.status.privateSubnet1ID}
+        privateSubnet2ID: ${vpc.status.privateSubnet2ID}
+      # EKS Status
+      eks:
+        clusterName: ${eks.status.clusterName}
+        clusterEndpoint: ${eks.status.clusterEndpoint}
+        clusterARN: ${eks.status.clusterARN}
+      # Aurora Status
+      aurora:
+        clusterEndpoint: ${aurora.status.clusterEndpoint}
+        readerEndpoint: ${aurora.status.readerEndpoint}
+      # ElastiCache Status
+      elasticache:
+        endpoint: ${elasticache.status.endpoint}
+      # EFS Status
+      efs:
+        fileSystemID: ${efs.status.fileSystemID}
+      # KMS Status
+      kms:
+        keyID: ${kms.status.keyID}
+        keyARN: ${kms.status.keyARN}
+      # S3 Buckets Status
+      buckets:
+        dataBucket:
+          name: ${dataBucket.status.s3Name}
+          arn: ${dataBucket.status.s3ARN}
+        loggingBucket:
+          name: ${loggingBucket.status.s3Name}
+          arn: ${loggingBucket.status.s3ARN}
+        uploadBucket:
+          name: ${uploadBucket.status.s3Name}
+          arn: ${uploadBucket.status.s3ARN}
+      # OpenSearch Status
+      opensearch:
+        domainARN: ${opensearch.status.domainARN}
+        domainEndpoint: ${opensearch.status.endpoint}
+      # CloudWatch Logs Status
+      cloudwatchLogs:
+        logGroupARN: ${cloudwatchLogs.status.logGroupARN}
+      # CloudTrail Status
+      cloudtrail:
+        trailARN: ${cloudtrail.status.trailARN}
+
+  resources:
+  # 1. KMS Key - needed for encryption of other resources
+  - id: kms
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: KMS
+      metadata:
+        name: ${schema.spec.name}-kms
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        description: ${schema.spec.kms.description}
+        enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
+
+  # 2. VPC - foundational network infrastructure
+  - id: vpc
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: Vpc
+      metadata:
+        name: ${schema.spec.name}-vpc
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        cidr: ${schema.spec.vpc.cidr}
+
+  # 3. CloudWatch Log Group - needed for CloudTrail and other logging
+  - id: cloudwatchLogs
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: CloudWatchLogs
+      metadata:
+        name: ${schema.spec.name}-logs
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        retentionInDays: ${schema.spec.cloudwatchLogs.retentionInDays}
+
+  # 4. Logging S3 Bucket - needed for CloudTrail and other buckets
+  - id: loggingBucket
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: S3Bucket
+      metadata:
+        name: ${schema.spec.buckets.loggingBucket.name}
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.buckets.loggingBucket.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        versioning: ${schema.spec.buckets.loggingBucket.versioning}
+        encryption: ${schema.spec.buckets.loggingBucket.encryption}
+
+  # 5. CloudTrail - depends on logging bucket and CloudWatch logs
+  - id: cloudtrail
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: CloudTrail
+      metadata:
+        name: ${schema.spec.name}-trail
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        s3BucketName: ${loggingBucket.status.s3Name}
+        cloudWatchLogsLogGroupARN: ${cloudwatchLogs.status.logGroupARN}
+        enableLogFileValidation: ${schema.spec.cloudtrail.enableLogFileValidation}
+        includeGlobalServiceEvents: ${schema.spec.cloudtrail.includeGlobalServiceEvents}
+        isMultiRegionTrail: ${schema.spec.cloudtrail.isMultiRegionTrail}
+        kmsKeyID: ${kms.status.keyARN}
+
+  # 6. EKS Cluster - depends on VPC
+  - id: eks
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: EKS
+      metadata:
+        name: ${schema.spec.name}-eks
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        version: ${schema.spec.eks.version}
+        nodeGroupInstanceTypes: ${schema.spec.eks.nodeGroupInstanceTypes}
+        nodeGroupDesiredSize: ${schema.spec.eks.nodeGroupDesiredSize}
+        nodeGroupMinSize: ${schema.spec.eks.nodeGroupMinSize}
+        nodeGroupMaxSize: ${schema.spec.eks.nodeGroupMaxSize}
+
+  # 7. Aurora PostgreSQL - depends on VPC
+  - id: aurora
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: Aurora
+      metadata:
+        name: ${schema.spec.name}-aurora
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        engine: ${schema.spec.aurora.engine}
+        engineVersion: ${schema.spec.aurora.engineVersion}
+        instanceClass: ${schema.spec.aurora.instanceClass}
+        instanceCount: ${schema.spec.aurora.instanceCount}
+        databaseName: ${schema.spec.aurora.databaseName}
+        masterUsername: ${schema.spec.aurora.masterUsername}
+        backupRetentionPeriod: ${schema.spec.aurora.backupRetentionPeriod}
+
+  # 8. ElastiCache - depends on VPC
+  - id: elasticache
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: ElastiCache
+      metadata:
+        name: ${schema.spec.name}-elasticache
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        engine: ${schema.spec.elasticache.engine}
+        engineVersion: ${schema.spec.elasticache.engineVersion}
+        nodeType: ${schema.spec.elasticache.nodeType}
+        numCacheNodes: ${schema.spec.elasticache.numCacheNodes}
+
+  # 9. EFS - depends on VPC
+  - id: efs
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: EFS
+      metadata:
+        name: ${schema.spec.name}-efs
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+          - ${vpc.status.privateSubnet2ID}
+        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        performanceMode: ${schema.spec.efs.performanceMode}
+        throughputMode: ${schema.spec.efs.throughputMode}
+        encrypted: ${schema.spec.efs.encrypted}
+        kmsKeyID: ${kms.status.keyID}
+
+  # 10. Data Bucket - depends on KMS and logging bucket
+  - id: dataBucket
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: S3Bucket
+      metadata:
+        name: ${schema.spec.buckets.dataBucket.name}
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.buckets.dataBucket.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        versioning: ${schema.spec.buckets.dataBucket.versioning}
+        encryption: ${schema.spec.buckets.dataBucket.encryption}
+
+  # 11. Upload Bucket - depends on KMS and logging bucket
+  - id: uploadBucket
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: S3Bucket
+      metadata:
+        name: ${schema.spec.buckets.uploadBucket.name}
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.buckets.uploadBucket.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        versioning: ${schema.spec.buckets.uploadBucket.versioning}
+        encryption: ${schema.spec.buckets.uploadBucket.encryption}
+
+  # 12. OpenSearch - depends on VPC
+  - id: opensearch
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: OpenSearch
+      metadata:
+        name: ${schema.spec.name}-opensearch
+        namespace: ${schema.spec.name}
+      spec:
+        name: ${schema.spec.name}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        tags: ${schema.spec.tags}
+        vpcID: ${vpc.status.vpcID}
+        subnetIDs:
+          - ${vpc.status.privateSubnet1ID}
+        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        engineVersion: ${schema.spec.opensearch.engineVersion}
+        instanceType: ${schema.spec.opensearch.instanceType}
+        instanceCount: ${schema.spec.opensearch.instanceCount}
+        volumeSize: ${schema.spec.opensearch.volumeSize}

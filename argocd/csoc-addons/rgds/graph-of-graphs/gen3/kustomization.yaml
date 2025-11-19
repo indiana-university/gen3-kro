@@ -6,3 +6,4 @@ kind: Kustomization
 
 resources:
   - gen3-infrastructure-rgd.yaml
+  - generic-commons-bucket-rgd.yaml
