@@ -24,11 +24,11 @@ spec:
             - path: 'argocd/csoc-addons/spokes-charter.yaml'
   template:
     metadata:
-      name: '{{ .alias }}-infrastructure'
+      name: '{{.alias}}-infrastructure'
       labels:
         app.kubernetes.io/name: spoke-infrastructure
         app.kubernetes.io/part-of: gen3
-        spoke: '{{ .alias }}'
+        spoke: '{{.alias}}'
       annotations:
         argocd.argoproj.io/sync-wave: "0"
     spec:
@@ -36,12 +36,12 @@ spec:
       source:
         repoURL: '{{ .repoURL }}'
         targetRevision: '{{ .targetRevision }}'
-        path: '{{ .basePath }}/deployments/gen3-spokes/{{ .alias }}/infrastructure'
+        path: '{{ .basePath }}/deployments/gen3-spokes/{{.alias}}/infrastructure'
         kustomize:
           commonLabels:
             deployed-by: argocd
             cluster: '{{ .name }}'
-            spoke: '{{ .alias }}'
+            spoke: '{{.alias}}'
           # Target namespace from charter
           namespace: '{{.namespace}}'
       destination:
