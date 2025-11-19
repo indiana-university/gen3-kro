@@ -20,9 +20,10 @@ locals {
       name  = "${spoke.alias}-infrastructure"
       alias = spoke.alias
       # Provider-specific annotations - detect from spoke_identity_mappings
-      annotations = try(var.spoke_identity_mappings[spoke.alias].account_id, null) != null ? {
+      annotations = try(var.spoke_identity_mappings[spoke.alias].account_id, null) != null ? merge({
         "services.k8s.aws/owner-account-id" = var.spoke_identity_mappings[spoke.alias].account_id
-        } : try(var.spoke_identity_mappings[spoke.alias].subscription_id, null) != null ? {
+        "services.k8s.aws/default-region"   = try(spoke.provider.region, var.default_region)
+        }, {}) : try(var.spoke_identity_mappings[spoke.alias].subscription_id, null) != null ? {
         "azure.workload.identity/subscription-id" = var.spoke_identity_mappings[spoke.alias].subscription_id
         } : try(var.spoke_identity_mappings[spoke.alias].project_id, null) != null ? {
         "iam.gke.io/project-id" = var.spoke_identity_mappings[spoke.alias].project_id
