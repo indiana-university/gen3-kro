@@ -11,6 +11,7 @@ spec:
     kind: AwsElastiCache
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -34,7 +35,7 @@ spec:
       apiVersion: elasticache.services.k8s.aws/v1alpha1
       kind: CacheSubnetGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cache-subnet-group
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -52,7 +53,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: SecurityGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cache-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -76,7 +77,7 @@ spec:
       apiVersion: elasticache.services.k8s.aws/v1alpha1
       kind: CacheCluster
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cache
         annotations:
           services.k8s.aws/region: ${schema.spec.region}

@@ -11,6 +11,7 @@ spec:
     kind: AwsAurora
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -38,7 +39,7 @@ spec:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBSubnetGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-aurora-subnet-group
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -56,7 +57,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: SecurityGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-aurora-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -80,7 +81,7 @@ spec:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBCluster
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-aurora
         annotations:
           services.k8s.aws/region: ${schema.spec.region}

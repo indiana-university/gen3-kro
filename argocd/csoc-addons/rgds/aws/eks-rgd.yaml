@@ -11,6 +11,7 @@ spec:
     kind: AwsEKS
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -35,7 +36,7 @@ spec:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks-cluster-role
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -67,7 +68,7 @@ spec:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks-node-role
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -101,7 +102,7 @@ spec:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: SecurityGroup
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
@@ -119,8 +120,8 @@ spec:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Cluster
       metadata:
-        namespace: ${schema.spec.name}
-        name: ${schema.spec.name}-eks
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
       spec:
@@ -141,8 +142,8 @@ spec:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Nodegroup
       metadata:
-        namespace: ${schema.spec.name}
-        name: ${schema.spec.name}-eks-nodegroup
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-nodegroup
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
       spec:

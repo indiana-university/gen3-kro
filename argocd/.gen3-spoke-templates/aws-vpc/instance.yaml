@@ -3,10 +3,11 @@ kind: AwsVpc
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: vpc
-  namespace: default
+  name: awsvpc
+  namespace: base
 spec:
   name: base
+  namespace: base
   region: us-east-1
   environment: dev
   tags: {}

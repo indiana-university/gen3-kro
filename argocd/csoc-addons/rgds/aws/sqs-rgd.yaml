@@ -11,6 +11,7 @@ spec:
     kind: AwsSQS
     spec:
       name: string
+      namespace: string
       region: string
       environment: string | default="dev"
       tags: "map[string]string | default={}"
@@ -33,7 +34,7 @@ spec:
       apiVersion: sqs.services.k8s.aws/v1alpha1
       kind: Queue
       metadata:
-        namespace: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}

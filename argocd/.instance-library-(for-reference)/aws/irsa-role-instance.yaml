@@ -4,14 +4,15 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "5"
   name: fenceirsa
-  namespace: default
+  namespace: base
 spec:
   name: base
+  resourceNamespace: base
   region: us-east-1
   environment: dev
   tags: {}
   clusterName: base
-  namespace: default
+  namespace: base
   serviceAccountName: fence
   accountID: ""  # AWS Account ID - to be populated by overlay
   oidcProvider: ""  # OIDC provider URL - to be populated by overlay
