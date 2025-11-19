@@ -1,0 +1,18 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsVpc
+metadata:
+  annotations:
+    argocd.argoproj.io/sync-wave: "1"
+  name: spoke2-test
+  # namespace will be set by kustomization.yaml
+spec:
+  name: spoke2-gen3-vpc
+  region: us-east-1
+  environment: dev
+  tags: {}
+  cidr:
+    vpcCidr: "10.1.0.0/16"
+    publicSubnet1Cidr: "10.1.1.0/24"
+    publicSubnet2Cidr: "10.1.2.0/24"
+    privateSubnet1Cidr: "10.1.11.0/24"
+    privateSubnet2Cidr: "10.1.12.0/24"
