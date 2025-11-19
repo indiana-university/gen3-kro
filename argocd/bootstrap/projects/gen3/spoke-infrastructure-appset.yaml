@@ -15,7 +15,7 @@ spec:
         - clusters:
             selector:
               matchLabels:
-                fleet_member: spoke
+                fleet_member: control-plane
         # Read spokes-charter from git repository
         - git:
             repoURL: '{{.metadata.annotations.repo_url}}'
