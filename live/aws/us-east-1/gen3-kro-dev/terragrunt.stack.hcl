@@ -35,7 +35,7 @@ locals {
 
   # AWS Configuration
   region  = lookup(local.csoc_provider_config, "region", "us-east-1")
-  profile = lookup(local.csoc_provider_config, "profile", "")
+  profile = lookup(local.csoc_provider_config, "aws_profile", "")
 
   # Azure Configuration
   subscription_id = lookup(local.csoc_provider_config, "subscription_id", "")
