@@ -1,17 +1,17 @@
 apiVersion: kro.run/v1alpha1
-kind: TestInfrastructure
+kind: AwsGenericCommonsAndBucket
 metadata:
+  name: my-gen3-commons
+  namespace: default
   annotations:
     argocd.argoproj.io/sync-wave: "1"
-  name: gen3-example
-  namespace: default
 spec:
-  name: base
+  name: my-gen3-commons
   region: us-east-1
   environment: dev
   tags:
-    Project: "gen3"
-    ManagedBy: "kro"
+    project: gen3
+    managed-by: kro
 
   # VPC Configuration
   vpc:
@@ -24,7 +24,6 @@ spec:
 
   # EKS Configuration
   eks:
-    enabled: true
     version: "1.33"
     nodeGroupInstanceTypes:
       - "t3.large"
@@ -32,84 +31,65 @@ spec:
     nodeGroupMinSize: 2
     nodeGroupMaxSize: 6
 
-  # RDS Configuration
-  rds:
-    enabled: true
-    engine: "postgres"
-    engineVersion: "15.4"
-    instanceClass: "db.t3.medium"
-    allocatedStorage: 100
-    databaseName: "gen3"
-    ingressCIDR: "10.0.0.0/8"
-
-  # Aurora Configuration (disabled by default - alternative to RDS)
+  # Aurora PostgreSQL Configuration
   aurora:
-    enabled: false
     engine: "aurora-postgresql"
     engineVersion: "15.4"
     instanceClass: "db.r5.large"
     instanceCount: 2
     databaseName: "gen3"
-    ingressCIDR: "10.0.0.0/8"
+    masterUsername: "gen3admin"
+    backupRetentionPeriod: 7
 
   # ElastiCache Configuration
   elasticache:
-    enabled: true
     engine: "redis"
     engineVersion: "7.0"
     nodeType: "cache.t3.micro"
     numCacheNodes: 1
-    ingressCIDR: "10.0.0.0/8"
 
   # EFS Configuration
   efs:
-    enabled: false
     performanceMode: "generalPurpose"
     throughputMode: "bursting"
     encrypted: true
-    kmsKeyID: ""
-    ingressCIDR: "10.0.0.0/8"
 
-  # S3 Data Bucket Configuration
-  dataBucket:
-    enabled: true
-    bucketName: "gen3-data-bucket-base"
-    versioning: true
-    encryption: true
-    publicAccess: false
+  # S3 Buckets Configuration
+  buckets:
+    # Data bucket for storing Gen3 data
+    dataBucket:
+      name: "my-gen3-commons-data-bucket"
+      versioning: true
+      encryption: true
+    # Logging bucket for audit logs
+    loggingBucket:
+      name: "my-gen3-commons-logging-bucket"
+      versioning: false
+      encryption: true
+    # Upload bucket for user uploads
+    uploadBucket:
+      name: "my-gen3-commons-upload-bucket"
+      versioning: true
+      encryption: true
 
   # KMS Configuration
   kms:
-    enabled: true
-    description: "Gen3 encryption key"
+    description: "Gen3 commons encryption key"
     enableKeyRotation: true
 
   # OpenSearch Configuration
   opensearch:
-    enabled: false
     engineVersion: "OpenSearch_2.11"
     instanceType: "t3.small.search"
     instanceCount: 1
     volumeSize: 10
-    ingressCIDR: "10.0.0.0/8"
 
-  # Route53 Configuration
-  route53:
-    enabled: false
-    zoneName: ""
-    privateZone: false
-    comment: "Gen3 hosted zone"
+  # CloudWatch Logs Configuration
+  cloudwatchLogs:
+    retentionInDays: 1827
 
   # CloudTrail Configuration
   cloudtrail:
-    enabled: false
-    s3BucketName: ""
+    enableLogFileValidation: true
     includeGlobalServiceEvents: true
     isMultiRegionTrail: true
-
-  # WAF Configuration
-  waf:
-    enabled: false
-    scope: "REGIONAL"
-    description: "Gen3 WAF Web ACL"
-    defaultAction: "ALLOW"

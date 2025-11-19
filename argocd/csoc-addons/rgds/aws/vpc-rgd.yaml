@@ -7,7 +7,7 @@ metadata:
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: Vpc
+    kind: AwsVpc
     spec:
       name: string
       region: string

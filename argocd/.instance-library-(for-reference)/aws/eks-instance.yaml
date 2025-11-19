@@ -1,5 +1,5 @@
 apiVersion: kro.run/v1alpha1
-kind: EKS
+kind: AwsEKS
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "4"

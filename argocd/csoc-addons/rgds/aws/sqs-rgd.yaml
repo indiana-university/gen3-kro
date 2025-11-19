@@ -8,7 +8,7 @@ metadata:
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: SQS
+    kind: AwsSQS
     spec:
       name: string
       region: string

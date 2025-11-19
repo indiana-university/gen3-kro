@@ -1,5 +1,5 @@
 apiVersion: kro.run/v1alpha1
-kind: SQS
+kind: AwsSQS
 metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "3"
