@@ -47,7 +47,7 @@ spec:
       syncPolicy:
         automated:
           prune: true
-          selfHeal: true
+          selfHeal: false
           allowEmpty: true
         syncOptions:
           - CreateNamespace=false  # Namespaces created by separate namespace ApplicationSet
@@ -61,19 +61,19 @@ spec:
             duration: 10s
             factor: 2
             maxDuration: 5m
-      ignoreDifferences:
-        - group: kro.run
-          kind: AwsVpc
-          jsonPointers:
-            - /status
-            - /metadata/finalizers
-        - group: kro.run
-          kind: AwsTestInfrastructure
-          jsonPointers:
-            - /status
-            - /metadata/finalizers
-        - group: kro.run
-          kind: AwsGenericCommonsAndBucket
-          jsonPointers:
-            - /status
-            - /metadata/finalizers
+      # ignoreDifferences:
+      #   - group: kro.run
+      #     kind: AwsVpc
+      #     jsonPointers:
+      #       - /status
+      #       - /metadata/finalizers
+      #   - group: kro.run
+      #     kind: AwsTestInfrastructure
+      #     jsonPointers:
+      #       - /status
+      #       - /metadata
+      #   - group: kro.run
+      #     kind: AwsGenericCommonsAndBucket
+      #     jsonPointers:
+      #       - /status
+      #       - /metadata
