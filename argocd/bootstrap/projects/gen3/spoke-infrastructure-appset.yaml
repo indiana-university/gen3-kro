@@ -37,11 +37,6 @@ spec:
         repoURL: '{{.metadata.annotations.repo_url}}'
         targetRevision: '{{.metadata.annotations.repo_revision}}'
         path: '{{.path.path}}'
-        kustomize:
-          labels:
-            deployed-by: argocd
-            cluster: '{{.name}}'
-            spoke: '{{.path.path | trimPrefix "argocd/deployments/gen3-spokes/" | trimSuffix "/infrastructure"}}'
       destination:
         server: '{{.server}}'
       syncPolicy:
