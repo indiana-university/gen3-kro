@@ -48,7 +48,7 @@ spec:
           - CreateNamespace=false  # Namespaces created by separate namespace ApplicationSet
           - ServerSideApply=true
           - SkipDryRunOnMissingResource=true
-          - RespectIgnoreDifferences=true
+          # - RespectIgnoreDifferences=true
           - PrunePropagationPolicy=foreground
         retry:
           limit: 5
