@@ -1,17 +1,32 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: generic-commons-and-bucket.kro.run
+  name: aws-generic-commons-and-bucket.kro.run
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: GenericCommonsAndBucket
+    kind: AwsGenericCommonsAndBucket
     spec:
       name: string
       namespace: string
       overrideRegion: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
+
+      # Feature Toggles - control which resources are deployed
+      features:
+        enableVPC: boolean | default=true
+        enableEKS: boolean | default=true
+        enableAurora: boolean | default=true
+        enableElastiCache: boolean | default=true
+        enableEFS: boolean | default=true
+        enableKMS: boolean | default=true
+        enableOpenSearch: boolean | default=true
+        enableCloudWatchLogs: boolean | default=true
+        enableCloudTrail: boolean | default=true
+        enableDataBucket: boolean | default=true
+        enableLoggingBucket: boolean | default=true
+        enableUploadBucket: boolean | default=true
 
       # VPC Configuration
       vpc:
@@ -145,9 +160,11 @@ spec:
   resources:
   # 1. KMS Key - needed for encryption of other resources
   - id: kms
+    includeWhen:
+      - ${schema.spec.features.enableKMS}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: KMS
+      kind: AwsKMS
       metadata:
         name: ${schema.spec.name}-kms
         namespace: ${schema.spec.namespace}
@@ -162,9 +179,11 @@ spec:
 
   # 2. VPC - foundational network infrastructure
   - id: vpc
+    includeWhen:
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: Vpc
+      kind: AwsVpc
       metadata:
         name: ${schema.spec.name}-vpc
         namespace: ${schema.spec.namespace}
@@ -178,9 +197,11 @@ spec:
 
   # 3. CloudWatch Log Group - needed for CloudTrail and other logging
   - id: cloudwatchLogs
+    includeWhen:
+      - ${schema.spec.features.enableCloudWatchLogs}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: CloudWatchLogs
+      kind: AwsCloudWatchLogs
       metadata:
         name: ${schema.spec.name}-logs
         namespace: ${schema.spec.namespace}
@@ -194,9 +215,11 @@ spec:
 
   # 4. Logging S3 Bucket - needed for CloudTrail and other buckets
   - id: loggingBucket
+    includeWhen:
+      - ${schema.spec.features.enableLoggingBucket}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: S3Bucket
+      kind: AwsS3Bucket
       metadata:
         name: ${schema.spec.buckets.loggingBucket.name}
         namespace: ${schema.spec.namespace}
@@ -211,9 +234,11 @@ spec:
 
   # 5. CloudTrail - depends on logging bucket and CloudWatch logs
   - id: cloudtrail
+    includeWhen:
+      - ${schema.spec.features.enableCloudTrail}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: CloudTrail
+      kind: AwsCloudTrail
       metadata:
         name: ${schema.spec.name}-trail
         namespace: ${schema.spec.namespace}
@@ -232,9 +257,11 @@ spec:
 
   # 6. EKS Cluster - depends on VPC
   - id: eks
+    includeWhen:
+      - ${schema.spec.features.enableEKS}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: EKS
+      kind: AwsEKS
       metadata:
         name: ${schema.spec.name}-eks
         namespace: ${schema.spec.namespace}
@@ -256,9 +283,11 @@ spec:
 
   # 7. Aurora PostgreSQL - depends on VPC
   - id: aurora
+    includeWhen:
+      - ${schema.spec.features.enableAurora}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: Aurora
+      kind: AwsAurora
       metadata:
         name: ${schema.spec.name}-aurora
         namespace: ${schema.spec.namespace}
@@ -283,9 +312,11 @@ spec:
 
   # 8. ElastiCache - depends on VPC
   - id: elasticache
+    includeWhen:
+      - ${schema.spec.features.enableElastiCache}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: ElastiCache
+      kind: AwsElastiCache
       metadata:
         name: ${schema.spec.name}-elasticache
         namespace: ${schema.spec.namespace}
@@ -307,9 +338,11 @@ spec:
 
   # 9. EFS - depends on VPC
   - id: efs
+    includeWhen:
+      - ${schema.spec.features.enableEFS}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: EFS
+      kind: AwsEFS
       metadata:
         name: ${schema.spec.name}-efs
         namespace: ${schema.spec.namespace}
@@ -331,9 +364,11 @@ spec:
 
   # 10. Data Bucket - depends on KMS and logging bucket
   - id: dataBucket
+    includeWhen:
+      - ${schema.spec.features.enableDataBucket}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: S3Bucket
+      kind: AwsS3Bucket
       metadata:
         name: ${schema.spec.buckets.dataBucket.name}
         namespace: ${schema.spec.namespace}
@@ -348,9 +383,11 @@ spec:
 
   # 11. Upload Bucket - depends on KMS and logging bucket
   - id: uploadBucket
+    includeWhen:
+      - ${schema.spec.features.enableUploadBucket}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: S3Bucket
+      kind: AwsS3Bucket
       metadata:
         name: ${schema.spec.buckets.uploadBucket.name}
         namespace: ${schema.spec.namespace}
@@ -365,9 +402,11 @@ spec:
 
   # 12. OpenSearch - depends on VPC
   - id: opensearch
+    includeWhen:
+      - ${schema.spec.features.enableOpenSearch}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: OpenSearch
+      kind: AwsOpenSearch
       metadata:
         name: ${schema.spec.name}-opensearch
         namespace: ${schema.spec.namespace}
