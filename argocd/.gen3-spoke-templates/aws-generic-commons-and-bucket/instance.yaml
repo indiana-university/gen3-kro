@@ -17,9 +17,9 @@ spec:
   # Feature Toggles - control which resources are deployed
   features:
     enableVPC: true
-    enableEKS: false
-    enableAurora: false
-    enableElastiCache: false
+    enableEKS: true
+    enableAurora: true
+    enableElastiCache: true
     enableEFS: false
     enableKMS: false
     enableOpenSearch: false
