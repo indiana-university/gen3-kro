@@ -1,21 +1,20 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
-# Override metadata.namespace
-namespace: spoke2-infrastructure
-
 resources:
   - github.com/jayadeyemi/Gen3-Kro-Demo//a-vpc-deployment?ref=main
 
-labels:
-  - pairs: {spoke: spoke2, deployed-by: kustomize}
-    includeSelectors: false
-
 # Override spec.namespace
 patches:
-  - patch: |-
+  - target:
+      group: kro.run
+    patch: |-
       - op: replace
         path: /spec/namespace
         value: spoke2-infrastructure
-    target:
-      kind: AwsVpc
+  - target:
+      group: kro.run
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: spoke2-infrastructure
