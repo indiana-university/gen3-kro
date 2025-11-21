@@ -9,17 +9,34 @@ spec:
   overrideRegion: us-east-1
   environment: dev
   tags:
-    ManagedBy: terragrunt
+    ManagedBy: KRO
     Owner: RDS Team
+    # Do not tag resources with "Name" tag here; it's set in individual resource templates
+    # Do not tag resources with "Environment" tag here; it's set in individual resource templates
+
+  # Feature Toggles - control which resources are deployed
+  features:
+    enableVPC: true
+    enableEKS: false
+    enableAurora: false
+    enableElastiCache: false
+    enableEFS: false
+    enableKMS: false
+    enableOpenSearch: false
+    enableCloudWatchLogs: false
+    enableCloudTrail: false
+    enableDataBucket: false
+    enableLoggingBucket: false
+    enableUploadBucket: false
 
   # VPC Configuration
   vpc:
     cidr:
-      vpcCidr: "10.0.0.0/16"
-      publicSubnet1Cidr: "10.0.1.0/24"
-      publicSubnet2Cidr: "10.0.2.0/24"
-      privateSubnet1Cidr: "10.0.11.0/24"
-      privateSubnet2Cidr: "10.0.12.0/24"
+      vpcCidr: "10.1.0.0/16"
+      publicSubnet1Cidr: "10.1.1.0/24"
+      publicSubnet2Cidr: "10.1.2.0/24"
+      privateSubnet1Cidr: "10.1.11.0/24"
+      privateSubnet2Cidr: "10.1.12.0/24"
 
   # EKS Configuration
   eks:
@@ -33,7 +50,7 @@ spec:
   # Aurora PostgreSQL Configuration
   aurora:
     engine: "aurora-postgresql"
-    engineVersion: "15.4"
+    engineVersion: "15.13"
     instanceClass: "db.r5.large"
     instanceCount: 2
     databaseName: "gen3"
@@ -57,17 +74,17 @@ spec:
   buckets:
     # Data bucket for storing Gen3 data
     dataBucket:
-      name: "my-gen3-commons-data-bucket"
+      name: "gen3-commons-data-859011005590-us-east-1"
       versioning: true
       encryption: true
     # Logging bucket for audit logs
     loggingBucket:
-      name: "my-gen3-commons-logging-bucket"
+      name: "gen3-commons-logging-859011005590-us-east-1"
       versioning: false
       encryption: true
     # Upload bucket for user uploads
     uploadBucket:
-      name: "my-gen3-commons-upload-bucket"
+      name: "gen3-commons-upload-859011005590-us-east-1"
       versioning: true
       encryption: true
 
