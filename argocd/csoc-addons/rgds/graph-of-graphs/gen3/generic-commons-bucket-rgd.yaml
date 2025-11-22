@@ -117,57 +117,44 @@ spec:
         isMultiRegionTrail: boolean | default=true
 
     status:
-      # VPC Status
-      vpc:
-        vpcID: string | ${vpc.status.vpcID}
-        publicSubnet1ID: string | ${vpc.status.publicSubnet1ID}
-        publicSubnet2ID: string | ${vpc.status.publicSubnet2ID}
-        publicSubnet3ID: string | ${vpc.status.publicSubnet3ID}
-        privateSubnet1ID: string | ${vpc.status.privateSubnet1ID}
-        privateSubnet2ID: string | ${vpc.status.privateSubnet2ID}
-        privateSubnet3ID: string | ${vpc.status.privateSubnet3ID}
-        dbSubnet1ID: string | ${vpc.status.dbSubnet1ID}
-        dbSubnet2ID: string | ${vpc.status.dbSubnet2ID}
+      # VPC Status - flattened to avoid type-checking issues with nested optional fields
+      vpcID: ${vpc.status.vpcID}
+      vpcPublicSubnet1ID: ${vpc.status.publicSubnet1ID}
+      vpcPublicSubnet2ID: ${vpc.status.publicSubnet2ID}
+      vpcPublicSubnet3ID: ${vpc.status.publicSubnet3ID}
+      vpcPrivateSubnet1ID: ${vpc.status.privateSubnet1ID}
+      vpcPrivateSubnet2ID: ${vpc.status.privateSubnet2ID}
+      vpcPrivateSubnet3ID: ${vpc.status.privateSubnet3ID}
+      vpcDbSubnet1ID: ${vpc.status.dbSubnet1ID}
+      vpcDbSubnet2ID: ${vpc.status.dbSubnet2ID}
       # EKS Status
-      eks:
-        clusterName: string | ${eks.?status.?clusterName}
-        clusterEndpoint: string | ${eks.?status.?clusterEndpoint}
-        clusterARN: string | ${eks.?status.?clusterARN}
+      eksClusterName: ${eks.?status.?clusterName}
+      eksClusterEndpoint: ${eks.?status.?clusterEndpoint}
+      eksClusterARN: ${eks.?status.?clusterARN}
       # Aurora Status
-      aurora:
-        clusterEndpoint: string | ${aurora.?status.?clusterEndpoint}
-        readerEndpoint: string | ${aurora.?status.?readerEndpoint}
+      auroraClusterEndpoint: ${aurora.?status.?clusterEndpoint}
+      auroraReaderEndpoint: ${aurora.?status.?readerEndpoint}
       # ElastiCache Status
-      elasticache:
-        endpoint: string | ${elasticache.?status.?endpoint}
+      elasticacheEndpoint: ${elasticache.?status.?endpoint}
       # EFS Status
-      efs:
-        fileSystemID: string | ${efs.?status.?fileSystemID}
+      efsFileSystemID: ${efs.?status.?fileSystemID}
       # KMS Status
-      kms:
-        keyID: string | ${kms.?status.?keyID}
-        keyARN: string | ${kms.?status.?keyARN}
+      kmsKeyID: ${kms.?status.?keyID}
+      kmsKeyARN: ${kms.?status.?keyARN}
       # S3 Buckets Status
-      buckets:
-        dataBucket:
-          name: string | ${dataBucket.?status.?s3Name}
-          arn: string | ${dataBucket.?status.?s3ARN}
-        loggingBucket:
-          name: string | ${loggingBucket.?status.?s3Name}
-          arn: string | ${loggingBucket.?status.?s3ARN}
-        uploadBucket:
-          name: string | ${uploadBucket.?status.?s3Name}
-          arn: string | ${uploadBucket.?status.?s3ARN}
+      dataBucketName: ${dataBucket.?status.?s3Name}
+      dataBucketArn: ${dataBucket.?status.?s3ARN}
+      loggingBucketName: ${loggingBucket.?status.?s3Name}
+      loggingBucketArn: ${loggingBucket.?status.?s3ARN}
+      uploadBucketName: ${uploadBucket.?status.?s3Name}
+      uploadBucketArn: ${uploadBucket.?status.?s3ARN}
       # OpenSearch Status
-      opensearch:
-        domainARN: string | ${opensearch.?status.?domainARN}
-        domainEndpoint: string | ${opensearch.?status.?endpoint}
+      opensearchDomainARN: ${opensearch.?status.?domainARN}
+      opensearchDomainEndpoint: ${opensearch.?status.?endpoint}
       # CloudWatch Logs Status
-      cloudwatchLogs:
-        logGroupARN: string | ${cloudwatchLogs.?status.?logGroupARN}
+      cloudwatchLogsGroupARN: ${cloudwatchLogs.?status.?logGroupARN}
       # CloudTrail Status
-      cloudtrail:
-        trailARN: string | ${cloudtrail.?status.?trailARN}
+      cloudtrailARN: ${cloudtrail.?status.?trailARN}
 
   resources:
   # 1. KMS Key - needed for encryption of other resources
