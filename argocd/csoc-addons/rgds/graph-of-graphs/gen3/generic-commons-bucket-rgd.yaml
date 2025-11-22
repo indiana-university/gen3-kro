@@ -120,13 +120,13 @@ spec:
       # VPC Status - flattened to avoid type-checking issues with nested optional fields
       vpcID: ${vpc.status.vpcID}
       vpcPublicSubnet1ID: ${vpc.status.publicSubnet1ID}
-      vpcPublicSubnet2ID: ${vpc.status.publicSubnet2ID}
-      vpcPublicSubnet3ID: ${vpc.status.publicSubnet3ID}
+      vpcPublicSubnet2ID: ${vpc.?status.?publicSubnet2ID}
+      vpcPublicSubnet3ID: ${vpc.?status.?publicSubnet3ID}
       vpcPrivateSubnet1ID: ${vpc.status.privateSubnet1ID}
-      vpcPrivateSubnet2ID: ${vpc.status.privateSubnet2ID}
-      vpcPrivateSubnet3ID: ${vpc.status.privateSubnet3ID}
-      vpcDbSubnet1ID: ${vpc.status.dbSubnet1ID}
-      vpcDbSubnet2ID: ${vpc.status.dbSubnet2ID}
+      vpcPrivateSubnet2ID: ${vpc.?status.?privateSubnet2ID}
+      vpcPrivateSubnet3ID: ${vpc.?status.?privateSubnet3ID}
+      vpcDbSubnet1ID: ${vpc.?status.?dbSubnet1ID}
+      vpcDbSubnet2ID: ${vpc.?status.?dbSubnet2ID}
       # EKS Status
       eksClusterName: ${eks.?status.?clusterName}
       eksClusterEndpoint: ${eks.?status.?clusterEndpoint}
