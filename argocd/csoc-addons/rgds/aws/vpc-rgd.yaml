@@ -31,19 +31,19 @@ spec:
         dbSubnet1Cidr: string | default="10.0.21.0/24"
         dbSubnet2Cidr: string | default="10.0.22.0/24"
     status:
-      vpcID: string | ${vpc.status.vpcID}
-      publicSubnet1ID: string | ${publicSubnet1.status.subnetID}
-      publicSubnet2ID: string | ${publicSubnet2.?status.?subnetID}
-      publicSubnet3ID: string | ${publicSubnet3.?status.?subnetID}
-      privateSubnet1ID: string | ${privateSubnet1.status.subnetID}
-      privateSubnet2ID: string | ${privateSubnet2.?status.?subnetID}
-      privateSubnet3ID: string | ${privateSubnet3.?status.?subnetID}
-      dbSubnet1ID: string | ${dbSubnet1.?status.?subnetID}
-      dbSubnet2ID: string | ${dbSubnet2.?status.?subnetID}
-      internetGatewayID: string | ${internetGateway.status.internetGatewayID}
-      natGateway1ID: string | ${natGateway1.status.natGatewayID}
-      natGateway2ID: string | ${natGateway2.?status.?natGatewayID}
-      natGateway3ID: string | ${natGateway3.?status.?natGatewayID}
+      vpcID: ${vpc.status.vpcID}
+      publicSubnet1ID: ${publicSubnet1.status.subnetID}
+      publicSubnet2ID: ${publicSubnet2.?status.?subnetID}
+      publicSubnet3ID: ${publicSubnet3.?status.?subnetID}
+      privateSubnet1ID: ${privateSubnet1.status.subnetID}
+      privateSubnet2ID: ${privateSubnet2.?status.?subnetID}
+      privateSubnet3ID: ${privateSubnet3.?status.?subnetID}
+      dbSubnet1ID: ${dbSubnet1.?status.?subnetID}
+      dbSubnet2ID: ${dbSubnet2.?status.?subnetID}
+      internetGatewayID: ${internetGateway.status.internetGatewayID}
+      natGateway1ID: ${natGateway1.status.natGatewayID}
+      natGateway2ID: ${natGateway2.?status.?natGatewayID}
+      natGateway3ID: ${natGateway3.?status.?natGatewayID}
   resources:
   - id: vpc
     readyWhen:
