@@ -44,8 +44,8 @@ spec:
         maximumMessageSize: ${string(schema.spec.maxMessageSize)}
         delaySeconds: ${string(schema.spec.delaySeconds)}
         receiveMessageWaitTimeSeconds: ${string(schema.spec.receiveMessageWaitTimeSeconds)}
-        fifoQueue: ${schema.spec.fifoQueue}
-        contentBasedDeduplication: ${schema.spec.contentBasedDeduplication}
+        fifoQueue: ${string(schema.spec.fifoQueue)}
+        contentBasedDeduplication: ${string(schema.spec.contentBasedDeduplication)}
         tags:
           Name: ${schema.spec.name}
           Environment: dev
