@@ -33,17 +33,17 @@ spec:
     status:
       vpcID: ${vpc.status.vpcID}
       publicSubnet1ID: ${publicSubnet1.status.subnetID}
-      publicSubnet2ID: ${publicSubnet2.status.subnetID}
-      publicSubnet3ID: ${publicSubnet3.status.subnetID}
+      publicSubnet2ID: "${ schema.spec.features.enableSubnet2 ? publicSubnet2.status.subnetID : \"\" }"
+      publicSubnet3ID: "${ schema.spec.features.enableSubnet3 ? publicSubnet3.status.subnetID : \"\" }"
       privateSubnet1ID: ${privateSubnet1.status.subnetID}
-      privateSubnet2ID: ${privateSubnet2.status.subnetID}
-      privateSubnet3ID: ${privateSubnet3.status.subnetID}
-      dbSubnet1ID: ${dbSubnet1.status.subnetID}
-      dbSubnet2ID: ${dbSubnet2.status.subnetID}
+      privateSubnet2ID: "${ schema.spec.features.enableSubnet2 ? privateSubnet2.status.subnetID : \"\" }"
+      privateSubnet3ID: "${ schema.spec.features.enableSubnet3 ? privateSubnet3.status.subnetID : \"\" }"
+      dbSubnet1ID: "${ schema.spec.features.enableDbSubnet1 ? dbSubnet1.status.subnetID : \"\" }"
+      dbSubnet2ID: "${ schema.spec.features.enableDbSubnet2 ? dbSubnet2.status.subnetID : \"\" }"
       internetGatewayID: ${internetGateway.status.internetGatewayID}
       natGateway1ID: ${natGateway1.status.natGatewayID}
-      natGateway2ID: ${natGateway2.status.natGatewayID}
-      natGateway3ID: ${natGateway3.status.natGatewayID}
+      natGateway2ID: "${ schema.spec.features.enableSubnet2 ? natGateway2.status.natGatewayID : \"\" }"
+      natGateway3ID: "${ schema.spec.features.enableSubnet3 ? natGateway3.status.natGatewayID : \"\" }"
   resources:
   - id: vpc
     readyWhen:
