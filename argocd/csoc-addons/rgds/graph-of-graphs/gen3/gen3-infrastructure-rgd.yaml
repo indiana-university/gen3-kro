@@ -115,36 +115,36 @@ spec:
 
     status:
       # VPC Outputs
-      vpcID: ${vpc.status.vpcID}
-      publicSubnet1ID: ${vpc.status.publicSubnet1ID}
-      publicSubnet2ID: ${vpc.status.publicSubnet2ID}
-      privateSubnet1ID: ${vpc.status.privateSubnet1ID}
-      privateSubnet2ID: ${vpc.status.privateSubnet2ID}
-      internetGatewayID: ${vpc.status.internetGatewayID}
+      vpcID: string | ${vpc.status.vpcID}
+      publicSubnet1ID: string | ${vpc.status.publicSubnet1ID}
+      publicSubnet2ID: string | ${vpc.?status.?publicSubnet2ID}
+      privateSubnet1ID: string | ${vpc.status.privateSubnet1ID}
+      privateSubnet2ID: string | ${vpc.?status.?privateSubnet2ID}
+      internetGatewayID: string | ${vpc.status.internetGatewayID}
 
       # EKS Outputs (conditional)
-      eksClusterARN: ${eks.?status.?clusterARN}
-      eksClusterName: ${eks.?status.?clusterName}
-      eksClusterEndpoint: ${eks.?status.?clusterEndpoint}
+      eksClusterARN: string | ${eks.?status.?clusterARN}
+      eksClusterName: string | ${eks.?status.?clusterName}
+      eksClusterEndpoint: string | ${eks.?status.?clusterEndpoint}
 
       # Database Outputs (conditional - RDS or Aurora)
-      dbInstanceARN: ${rds.?status.?dbInstanceARN}
-      dbEndpoint: ${rds.?status.?endpoint}
+      dbInstanceARN: string | ${rds.?status.?dbInstanceARN}
+      dbEndpoint: string | ${rds.?status.?endpoint}
 
       # ElastiCache Outputs (conditional)
-      cacheClusterID: ${elasticache.?status.?cacheClusterID}
-      cacheEndpoint: ${elasticache.?status.?endpoint}
+      cacheClusterID: string | ${elasticache.?status.?cacheClusterID}
+      cacheEndpoint: string | ${elasticache.?status.?endpoint}
 
       # EFS Outputs (conditional)
-      efsFileSystemID: ${efs.?status.?fileSystemID}
+      efsFileSystemID: string | ${efs.?status.?fileSystemID}
 
       # S3 Outputs (conditional)
-      dataBucketARN: ${dataBucket.?status.?bucketARN}
-      dataBucketName: ${dataBucket.?status.?bucketName}
+      dataBucketARN: string | ${dataBucket.?status.?bucketARN}
+      dataBucketName: string | ${dataBucket.?status.?bucketName}
 
       # KMS Outputs (conditional)
-      kmsKeyARN: ${kms.?status.?keyARN}
-      kmsKeyID: ${kms.?status.?keyID}
+      kmsKeyARN: string | ${kms.?status.?keyARN}
+      kmsKeyID: string | ${kms.?status.?keyID}
 
   resources:
   # Layer 1: VPC (foundational - no dependencies)

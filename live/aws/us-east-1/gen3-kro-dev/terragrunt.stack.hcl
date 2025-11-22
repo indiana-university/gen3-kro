@@ -230,50 +230,6 @@ locals {
   ]
 
   ###############################################################################
-  # IAM Policies - CSOC
-  # Load IAM policies for CSOC services from repository files
-  ###############################################################################
-  csoc_iam_policies = {
-    for service_name, service_config in local.all_configs :
-    service_name => try(
-      local.csoc_provider == "aws" ? file("${local.repo_root}/${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/inline-policy.json") : (
-        local.csoc_provider == "azure" ? file("${local.repo_root}/${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/role-definition.json") : (
-          local.csoc_provider == "gcp" ? yamlencode(yamldecode(file("${local.repo_root}/${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/role-definition.yaml"))) : null
-        )
-      ),
-      local.csoc_provider == "aws" ? file("${local.repo_root}/${local.iam_provider_path}/_default/${service_name}/inline-policy.json") : (
-        local.csoc_provider == "azure" ? file("${local.repo_root}/${local.iam_provider_path}/_default/${service_name}/role-definition.json") : (
-          local.csoc_provider == "gcp" ? yamlencode(yamldecode(file("${local.repo_root}/${local.iam_provider_path}/_default/${service_name}/role-definition.yaml"))) : null
-        )
-      ),
-      null
-    )
-    if lookup(service_config, "enable_identity", false)
-  }
-
-  # Track IAM policy sources for CSOC (which folder was used)
-  csoc_iam_policy_sources = {
-    for service_name, service_config in local.all_configs :
-    service_name => (
-      # Try csoc-specific path first, then _default, then none
-      local.csoc_provider == "aws" ? (
-        fileexists("${local.repo_root}/${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/inline-policy.json") ? "${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/inline-policy.json" : (
-          fileexists("${local.repo_root}/${local.iam_provider_path}/_default/${service_name}/inline-policy.json") ? "${local.iam_provider_path}/_default/${service_name}/inline-policy.json" : "none"
-        )
-      ) : local.csoc_provider == "azure" ? (
-        fileexists("${local.repo_root}/${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/role-definition.json") ? "${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/role-definition.json" : (
-          fileexists("${local.repo_root}/${local.iam_provider_path}/_default/${service_name}/role-definition.json") ? "${local.iam_provider_path}/_default/${service_name}/role-definition.json" : "none"
-        )
-      ) : local.csoc_provider == "gcp" ? (
-        fileexists("${local.repo_root}/${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/role-definition.yaml") ? "${local.iam_provider_path}/${local.csoc_alias}/csoc/${service_name}/role-definition.yaml" : (
-          fileexists("${local.repo_root}/${local.iam_provider_path}/_default/${service_name}/role-definition.yaml") ? "${local.iam_provider_path}/_default/${service_name}/role-definition.yaml" : "none"
-        )
-      ) : "none"
-    )
-    if lookup(service_config, "enable_identity", false)
-  }
-
-  ###############################################################################
   # IAM Policies - Spoke
   # Load IAM policies for spoke services from repository files
   ###############################################################################
@@ -331,6 +287,23 @@ locals {
           )
         ) : "none"
       )
+      if lookup(service_config, "enable_identity", false)
+    }
+  }
+
+  # Extract override_id values from spoke controller configs
+  # This allows users to specify existing role ARNs/identities in secrets.yaml
+  spoke_override_ids = {
+    for spoke in local.spokes :
+    spoke.alias => {
+      # Merge all spoke config types and extract override_id
+      for service_name, service_config in merge(
+        lookup(spoke, "addon_configs", {}),
+        lookup(spoke, "ack_configs", {}),
+        lookup(spoke, "aso_configs", {}),
+        lookup(spoke, "gcc_configs", {})
+      ) :
+      service_name => lookup(service_config, "override_id", null)
       if lookup(service_config, "enable_identity", false)
     }
   }
@@ -454,12 +427,13 @@ unit "iam_config" {
     spokes_config = local.spokes
 
     # IAM policies (loaded from repository files)
-    csoc_iam_policies  = local.csoc_iam_policies
     spoke_iam_policies = local.spoke_iam_policies
 
     # IAM policy sources (track which folder was used)
-    csoc_iam_policy_sources  = local.csoc_iam_policy_sources
     spoke_iam_policy_sources = local.spoke_iam_policy_sources
+
+    # Override IDs from spoke configs (for customer-managed identities)
+    spoke_override_ids = local.spoke_override_ids
 
     # Controller configurations - unified map of all controllers
     all_configs = local.all_configs
@@ -498,50 +472,6 @@ unit "iam_config" {
         )
       }
     }
-  }
-}
-
-###############################################################################
-# ArgoCD Core Unit
-# ArgoCD deployment itself
-###############################################################################
-unit "argocd_core" {
-  source = "${local.units_path}/k8s-argocd-core"
-  path   = "k8s-argocd-core"
-
-  values = {
-    modules_path = local.modules_path
-
-    csoc_provider = local.csoc_provider
-    tags          = local.base_tags
-    cluster_name  = local.cluster_name
-    csoc_alias    = local.csoc_alias
-
-    region = local.region
-
-    subscription_id = local.subscription_id
-    tenant_id       = local.tenant_id
-    location        = local.location
-
-    azure_client_id     = lookup(local.csoc_provider_config, "client_id", "")
-    azure_client_secret = lookup(local.csoc_provider_config, "client_secret", "")
-
-    project_id       = local.project_id
-    credentials_file = local.credentials_file
-
-    state_bucket          = local.state_bucket
-    state_locks_table     = local.state_locks_table
-    state_storage_account = local.state_storage_account
-    state_container       = local.state_container
-
-    enable_argocd = local.enable_argocd
-    outputs_dir   = local.outputs_dir
-
-    # Computed GitOps values (computed in stack, passed to unit)
-    csoc_repo_url             = local.csoc_repo_url
-    csoc_repo_basepath        = local.csoc_repo_basepath
-    csoc_gitops_branch        = local.csoc_gitops_branch
-    csoc_gitops_bootstrap_path = local.csoc_gitops_bootstrap_path
   }
 }
 
@@ -592,6 +522,50 @@ unit "k8s_controller_req" {
       for spoke in local.spokes :
       spoke.alias => spoke
     }
+  }
+}
+
+###############################################################################
+# ArgoCD Core Unit
+# ArgoCD deployment itself
+###############################################################################
+unit "argocd_core" {
+  source = "${local.units_path}/k8s-argocd-core"
+  path   = "k8s-argocd-core"
+
+  values = {
+    modules_path = local.modules_path
+
+    csoc_provider = local.csoc_provider
+    tags          = local.base_tags
+    cluster_name  = local.cluster_name
+    csoc_alias    = local.csoc_alias
+
+    region = local.region
+
+    subscription_id = local.subscription_id
+    tenant_id       = local.tenant_id
+    location        = local.location
+
+    azure_client_id     = lookup(local.csoc_provider_config, "client_id", "")
+    azure_client_secret = lookup(local.csoc_provider_config, "client_secret", "")
+
+    project_id       = local.project_id
+    credentials_file = local.credentials_file
+
+    state_bucket          = local.state_bucket
+    state_locks_table     = local.state_locks_table
+    state_storage_account = local.state_storage_account
+    state_container       = local.state_container
+
+    enable_argocd = local.enable_argocd
+    outputs_dir   = local.outputs_dir
+
+    # Computed GitOps values (computed in stack, passed to unit)
+    csoc_repo_url             = local.csoc_repo_url
+    csoc_repo_basepath        = local.csoc_repo_basepath
+    csoc_gitops_branch        = local.csoc_gitops_branch
+    csoc_gitops_bootstrap_path = local.csoc_gitops_bootstrap_path
   }
 }
 
