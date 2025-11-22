@@ -42,19 +42,19 @@ spec:
       privateSubnet2ID: ${privateSubnet2.status.subnetID}
       privateSubnet2Cidr: ${schema.spec.cidr.privateSubnet2Cidr}
       # Third AZ (optional)
-      publicSubnet3ID: ${publicSubnet3.status.subnetID}
-      publicSubnet3Cidr: ${schema.spec.cidr.publicSubnet3Cidr}
-      privateSubnet3ID: ${privateSubnet3.status.subnetID}
-      privateSubnet3Cidr: ${schema.spec.cidr.privateSubnet3Cidr}
+      publicSubnet3ID: "${ schema.spec.features.enableSubnet3 ? publicSubnet3.status.subnetID : '' }"
+      publicSubnet3Cidr: "${ schema.spec.features.enableSubnet3 ? schema.spec.cidr.publicSubnet3Cidr : '' }"
+      privateSubnet3ID: "${ schema.spec.features.enableSubnet3 ? privateSubnet3.status.subnetID : '' }"
+      privateSubnet3Cidr: "${ schema.spec.features.enableSubnet3 ? schema.spec.cidr.privateSubnet3Cidr : '' }"
       # Database subnets
-      dbSubnet1ID: ${dbSubnet1.status.subnetID}
-      dbSubnet1Cidr: ${schema.spec.cidr.dbSubnet1Cidr}
-      dbSubnet2ID: ${dbSubnet2.status.subnetID}
-      dbSubnet2Cidr: ${schema.spec.cidr.dbSubnet2Cidr}
+      dbSubnet1ID: "${ schema.spec.features.enableDbSubnet1 ? dbSubnet1.status.subnetID : '' }"
+      dbSubnet1Cidr: "${ schema.spec.features.enableDbSubnet1 ? schema.spec.cidr.dbSubnet1Cidr : '' }"
+      dbSubnet2ID: "${ schema.spec.features.enableDbSubnet2 ? dbSubnet2.status.subnetID : '' }"
+      dbSubnet2Cidr: "${ schema.spec.features.enableDbSubnet2 ? schema.spec.cidr.dbSubnet2Cidr : '' }"
       internetGatewayID: ${internetGateway.status.internetGatewayID}
       natGateway1ID: ${natGateway1.status.natGatewayID}
-      natGateway2ID: ${natGateway2.status.natGatewayID}
-      natGateway3ID: ${natGateway3.status.natGatewayID}
+      natGateway2ID: "${ schema.spec.features.enableSubnet2 ? natGateway2.status.natGatewayID : '' }"
+      natGateway3ID: "${ schema.spec.features.enableSubnet3 ? natGateway3.status.natGatewayID : '' }"
   resources:
   - id: vpc
     readyWhen:
