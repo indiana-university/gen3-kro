@@ -5,5 +5,5 @@ kind: Kustomization
 # Composite RGD requiring: ack-ec2, ack-s3, ack-rds, ack-eks, ack-iam
 
 resources:
-  - gen3-infrastructure-rgd.yaml
-  - generic-commons-bucket-rgd.yaml
+  - aws-test-infrastructure-rgd.yaml
+  - aws-generic-commons-bucket-rgd.yaml

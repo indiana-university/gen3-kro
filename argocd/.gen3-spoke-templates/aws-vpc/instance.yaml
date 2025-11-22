@@ -13,7 +13,14 @@ spec:
     vpcCidr: "10.0.0.0/16"
     publicSubnet1Cidr: "10.0.1.0/24"
     publicSubnet2Cidr: "10.0.2.0/24"
+    publicSubnet3Cidr: "10.0.3.0/24"
     privateSubnet1Cidr: "10.0.11.0/24"
     privateSubnet2Cidr: "10.0.12.0/24"
+    privateSubnet3Cidr: "10.0.13.0/24"
+    dbSubnet1Cidr: "10.0.21.0/24"
+    dbSubnet2Cidr: "10.0.22.0/24"
   features:
     enableSubnet2: true
+    enableSubnet3: false
+    enableDbSubnet1: false
+    enableDbSubnet2: false
