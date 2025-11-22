@@ -12,4 +12,7 @@ spec:
   queueName: base-queue
   visibilityTimeout: 30
   messageRetentionPeriod: 345600
+  maxMessageSize: 262144
+  delaySeconds: 0
+  receiveMessageWaitTimeSeconds: 0
   fifoQueue: false

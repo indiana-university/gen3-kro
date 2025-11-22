@@ -5,10 +5,7 @@ metadata:
   namespace: base
 spec:
   name: base
-  resourceNamespace: base
   overrideRegion: us-east-1
-  environment: dev
-  tags: {}
   clusterName: base
   namespace: base
   serviceAccountName: fence
