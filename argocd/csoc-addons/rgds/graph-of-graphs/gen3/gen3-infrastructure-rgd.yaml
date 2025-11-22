@@ -161,7 +161,12 @@ spec:
         overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
-        cidr: ${schema.spec.vpc.cidr}
+        cidr:
+          vpcCidr: ${schema.spec.vpc.cidr.vpcCidr}
+          publicSubnet1Cidr: ${schema.spec.vpc.cidr.publicSubnet1Cidr}
+          publicSubnet2Cidr: ${schema.spec.vpc.cidr.publicSubnet2Cidr}
+          privateSubnet1Cidr: ${schema.spec.vpc.cidr.privateSubnet1Cidr}
+          privateSubnet2Cidr: ${schema.spec.vpc.cidr.privateSubnet2Cidr}
 
   # Layer 2: KMS (independent resource)
   - id: kms
