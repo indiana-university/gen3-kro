@@ -163,6 +163,8 @@ spec:
       - ${schema.spec.features.enableKMS}
     readyWhen:
       - ${kms.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${kms.status.keyID != ""}
+      - ${kms.status.keyARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsKMS
@@ -184,6 +186,8 @@ spec:
       - ${schema.spec.features.enableVPC}
     readyWhen:
       - ${vpc.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${vpc.status.vpcID != ""}
+      - ${vpc.status.privateSubnet1ID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpc
@@ -218,6 +222,7 @@ spec:
       - ${schema.spec.features.enableCloudWatchLogs}
     readyWhen:
       - ${cloudwatchLogs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${cloudwatchLogs.status.logGroupARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudWatchLogs
@@ -238,6 +243,7 @@ spec:
       - ${schema.spec.features.enableLoggingBucket}
     readyWhen:
       - ${loggingBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${loggingBucket.status.s3Name != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -259,6 +265,7 @@ spec:
       - ${schema.spec.features.enableCloudTrail}
     readyWhen:
       - ${cloudtrail.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${cloudtrail.status.trailARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudTrail
@@ -284,6 +291,8 @@ spec:
       - ${schema.spec.features.enableEKS}
     readyWhen:
       - ${eks.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${eks.status.clusterEndpoint != ""}
+      - ${eks.status.clusterARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEKS
@@ -310,6 +319,7 @@ spec:
       - ${schema.spec.features.enableAurora}
     readyWhen:
       - ${aurora.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${aurora.status.clusterEndpoint != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsAurora
@@ -339,6 +349,7 @@ spec:
       - ${schema.spec.features.enableElastiCache}
     readyWhen:
       - ${elasticache.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${elasticache.status.endpoint != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsElastiCache
@@ -365,6 +376,7 @@ spec:
       - ${schema.spec.features.enableEFS}
     readyWhen:
       - ${efs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${efs.status.fileSystemID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEFS
@@ -391,6 +403,7 @@ spec:
       - ${schema.spec.features.enableDataBucket}
     readyWhen:
       - ${dataBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${dataBucket.status.s3Name != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -412,6 +425,7 @@ spec:
       - ${schema.spec.features.enableUploadBucket}
     readyWhen:
       - ${uploadBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${uploadBucket.status.s3Name != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -433,6 +447,7 @@ spec:
       - ${schema.spec.features.enableOpenSearch}
     readyWhen:
       - ${opensearch.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${opensearch.status.endpoint != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsOpenSearch
