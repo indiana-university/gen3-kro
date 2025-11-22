@@ -39,7 +39,7 @@ spec:
         instanceClass: string | default="db.t3.medium"
         allocatedStorage: integer | default=100
         databaseName: string | default="gen3"
-        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
 
       # Aurora Configuration (alternative to RDS)
       aurora:
@@ -49,7 +49,7 @@ spec:
         instanceClass: string | default="db.r5.large"
         instanceCount: integer | default=2
         databaseName: string | default="gen3"
-        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
 
       # ElastiCache Configuration
       elasticache:
@@ -58,7 +58,7 @@ spec:
         engineVersion: string | default="7.0"
         nodeType: string | default="cache.t3.micro"
         numCacheNodes: integer | default=1
-        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
 
       # EFS Configuration
       efs:
@@ -67,7 +67,7 @@ spec:
         throughputMode: string | default="bursting"
         encrypted: boolean | default=true
         kmsKeyID: string | default=""
-        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
 
       # S3 Data Bucket Configuration
       dataBucket:
@@ -90,7 +90,7 @@ spec:
         instanceType: string | default="t3.small.search"
         instanceCount: integer | default=1
         volumeSize: integer | default=10
-        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
 
       # Route53 Configuration
       route53:

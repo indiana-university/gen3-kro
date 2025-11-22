@@ -328,7 +328,7 @@ spec:
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
         subnetIDs: "${ [vpc.status.dbSubnet1ID] + (schema.spec.vpc.features.enableDbSubnet2 ? [vpc.status.dbSubnet2ID] : []) }"
-        ingressIPRanges: "${ [{cidrIP: schema.spec.vpc.cidr.privateSubnet1Cidr}] + (schema.spec.vpc.features.enableSubnet2 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet2Cidr}] : []) + (schema.spec.vpc.features.enableSubnet3 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet3Cidr}] : []) }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
         engine: ${schema.spec.aurora.engine}
         engineVersion: ${schema.spec.aurora.engineVersion}
         instanceClass: ${schema.spec.aurora.instanceClass}
@@ -357,7 +357,7 @@ spec:
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
         subnetIDs: "${ [vpc.status.dbSubnet1ID] + (schema.spec.vpc.features.enableDbSubnet2 ? [vpc.status.dbSubnet2ID] : []) }"
-        ingressIPRanges: "${ [{cidrIP: schema.spec.vpc.cidr.privateSubnet1Cidr}] + (schema.spec.vpc.features.enableSubnet2 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet2Cidr}] : []) + (schema.spec.vpc.features.enableSubnet3 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet3Cidr}] : []) }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
         engine: ${schema.spec.elasticache.engine}
         engineVersion: ${schema.spec.elasticache.engineVersion}
         nodeType: ${schema.spec.elasticache.nodeType}
@@ -383,7 +383,7 @@ spec:
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
         subnetIDs: "${ [vpc.status.privateSubnet1ID] + (schema.spec.vpc.features.enableSubnet2 ? [vpc.status.privateSubnet2ID] : []) + (schema.spec.vpc.features.enableSubnet3 ? [vpc.status.privateSubnet3ID] : []) }"
-        ingressIPRanges: "${ [{cidrIP: schema.spec.vpc.cidr.privateSubnet1Cidr}] + (schema.spec.vpc.features.enableSubnet2 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet2Cidr}] : []) + (schema.spec.vpc.features.enableSubnet3 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet3Cidr}] : []) }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
         performanceMode: ${schema.spec.efs.performanceMode}
         throughputMode: ${schema.spec.efs.throughputMode}
         encrypted: ${schema.spec.efs.encrypted}
@@ -451,7 +451,7 @@ spec:
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
         subnetIDs: "${ [vpc.status.dbSubnet1ID] }"
-        ingressIPRanges: "${ [{cidrIP: schema.spec.vpc.cidr.privateSubnet1Cidr}] + (schema.spec.vpc.features.enableSubnet2 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet2Cidr}] : []) + (schema.spec.vpc.features.enableSubnet3 ? [{cidrIP: schema.spec.vpc.cidr.privateSubnet3Cidr}] : []) }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
         engineVersion: ${schema.spec.opensearch.engineVersion}
         instanceType: ${schema.spec.opensearch.instanceType}
         instanceCount: ${schema.spec.opensearch.instanceCount}
