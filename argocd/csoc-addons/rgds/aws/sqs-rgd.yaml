@@ -39,11 +39,11 @@ spec:
           services.k8s.aws/region: ${schema.spec.overrideRegion}
       spec:
         queueName: ${schema.spec.name}
-        visibilityTimeout: ${schema.spec.visibilityTimeout}
-        messageRetentionPeriod: ${schema.spec.messageRetentionPeriod}
-        maximumMessageSize: ${schema.spec.maxMessageSize}
-        delaySeconds: ${schema.spec.delaySeconds}
-        receiveMessageWaitTimeSeconds: ${schema.spec.receiveMessageWaitTimeSeconds}
+        visibilityTimeout: ${string(schema.spec.visibilityTimeout)}
+        messageRetentionPeriod: ${string(schema.spec.messageRetentionPeriod)}
+        maximumMessageSize: ${string(schema.spec.maxMessageSize)}
+        delaySeconds: ${string(schema.spec.delaySeconds)}
+        receiveMessageWaitTimeSeconds: ${string(schema.spec.receiveMessageWaitTimeSeconds)}
         fifoQueue: ${schema.spec.fifoQueue}
         contentBasedDeduplication: ${schema.spec.contentBasedDeduplication}
         tags:

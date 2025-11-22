@@ -68,7 +68,7 @@ spec:
             value: ${schema.spec.environment}
   - id: internetGateway
     readyWhen:
-      - ${internetGateway.status.state == "available"}
+      - ${internetGateway.status.internetGatewayID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: InternetGateway

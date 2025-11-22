@@ -209,12 +209,12 @@ spec:
         overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
+        cidr: ${schema.spec.vpc.cidr}
         features:
           enableSubnet2: ${schema.spec.vpc.features.enableSubnet2}
           enableSubnet3: ${schema.spec.vpc.features.enableSubnet3}
           enableDbSubnet1: ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
           enableDbSubnet2: ${schema.spec.vpc.features.enableDbSubnet2}
-        cidr: ${schema.spec.vpc.cidr}
 
   # 3. CloudWatch Log Group - needed for CloudTrail and other logging
   - id: cloudwatchLogs

@@ -167,7 +167,7 @@ spec:
   - id: kms
     template:
       apiVersion: kro.run/v1alpha1
-      kind: KMS
+      kind: AwsKMS
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-kms
@@ -184,7 +184,7 @@ spec:
   - id: eks
     template:
       apiVersion: kro.run/v1alpha1
-      kind: EKS
+      kind: AwsEKS
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks
@@ -208,7 +208,7 @@ spec:
   - id: rds
     template:
       apiVersion: kro.run/v1alpha1
-      kind: RDS
+      kind: AwsRDS
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-rds
@@ -233,7 +233,7 @@ spec:
   - id: aurora
     template:
       apiVersion: kro.run/v1alpha1
-      kind: Aurora
+      kind: AwsAurora
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-aurora
@@ -258,7 +258,7 @@ spec:
   - id: elasticache
     template:
       apiVersion: kro.run/v1alpha1
-      kind: ElastiCache
+      kind: AwsElastiCache
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-elasticache
@@ -282,7 +282,7 @@ spec:
   - id: efs
     template:
       apiVersion: kro.run/v1alpha1
-      kind: EFS
+      kind: AwsEFS
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-efs
@@ -306,7 +306,7 @@ spec:
   - id: opensearch
     template:
       apiVersion: kro.run/v1alpha1
-      kind: OpenSearch
+      kind: AwsOpenSearch
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-opensearch
@@ -330,7 +330,7 @@ spec:
   - id: dataBucket
     template:
       apiVersion: kro.run/v1alpha1
-      kind: DataBucket
+      kind: AwsDataBucket
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-data-bucket
@@ -349,7 +349,7 @@ spec:
   - id: route53
     template:
       apiVersion: kro.run/v1alpha1
-      kind: Route53
+      kind: AwsRoute53
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-route53
@@ -368,7 +368,7 @@ spec:
   - id: cloudtrail
     template:
       apiVersion: kro.run/v1alpha1
-      kind: CloudTrail
+      kind: AwsCloudTrail
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cloudtrail
@@ -386,7 +386,7 @@ spec:
   - id: waf
     template:
       apiVersion: kro.run/v1alpha1
-      kind: WAF
+      kind: AwsWAF
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-waf

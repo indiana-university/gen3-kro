@@ -14,7 +14,7 @@ spec:
       tags: "map[string]string | default={}"
       vpcID: string
       subnetIDs: "[]string"
-      ingressCIDRs: "[]string | default=[\"10.0.0.0/8\"]"
+      ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
       engine: string | default="aurora-postgresql"
       engineVersion: string | default="15.4"
       instanceClass: string | default="db.r5.large"

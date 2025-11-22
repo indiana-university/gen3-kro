@@ -14,7 +14,7 @@ spec:
       tags: "map[string]string | default={}"
       vpcID: string
       subnetIDs: "[]string"
-      ingressIPRanges: "[]object"
+      ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
       engine: string | default="postgres"
       engineVersion: string | default="15.4"
       instanceClass: string | default="db.t3.medium"

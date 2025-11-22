@@ -14,7 +14,7 @@ spec:
       tags: "map[string]string | default={}"
       vpcID: string
       subnetIDs: "[]string"
-      ingressIPRanges: "[]object"
+      ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
       performanceMode: string | default="generalPurpose"
       throughputMode: string | default="bursting"
       encrypted: boolean | default=true
