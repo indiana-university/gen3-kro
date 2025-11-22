@@ -119,15 +119,15 @@ spec:
     status:
       # VPC Status
       vpc:
-        vpcID: string | ${vpc.?status.?vpcID}
-        publicSubnet1ID: string | ${vpc.?status.?publicSubnet1ID}
-        publicSubnet2ID: string | ${vpc.?status.?publicSubnet2ID}
-        publicSubnet3ID: string | ${vpc.?status.?publicSubnet3ID}
-        privateSubnet1ID: string | ${vpc.?status.?privateSubnet1ID}
-        privateSubnet2ID: string | ${vpc.?status.?privateSubnet2ID}
-        privateSubnet3ID: string | ${vpc.?status.?privateSubnet3ID}
-        dbSubnet1ID: string | ${vpc.?status.?dbSubnet1ID}
-        dbSubnet2ID: string | ${vpc.?status.?dbSubnet2ID}
+        vpcID: string | ${vpc.status.vpcID}
+        publicSubnet1ID: string | ${vpc.status.publicSubnet1ID}
+        publicSubnet2ID: string | ${vpc.status.publicSubnet2ID}
+        publicSubnet3ID: string | ${vpc.status.publicSubnet3ID}
+        privateSubnet1ID: string | ${vpc.status.privateSubnet1ID}
+        privateSubnet2ID: string | ${vpc.status.privateSubnet2ID}
+        privateSubnet3ID: string | ${vpc.status.privateSubnet3ID}
+        dbSubnet1ID: string | ${vpc.status.dbSubnet1ID}
+        dbSubnet2ID: string | ${vpc.status.dbSubnet2ID}
       # EKS Status
       eks:
         clusterName: string | ${eks.?status.?clusterName}
