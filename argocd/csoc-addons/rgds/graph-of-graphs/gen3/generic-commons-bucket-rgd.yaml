@@ -119,55 +119,55 @@ spec:
     status:
       # VPC Status
       vpc:
-        vpcID: ${vpc?.status?.vpcID}
-        publicSubnet1ID: ${vpc?.status?.publicSubnet1ID}
-        publicSubnet2ID: ${vpc?.status?.publicSubnet2ID}
-        publicSubnet3ID: ${vpc?.status?.publicSubnet3ID}
-        privateSubnet1ID: ${vpc?.status?.privateSubnet1ID}
-        privateSubnet2ID: ${vpc?.status?.privateSubnet2ID}
-        privateSubnet3ID: ${vpc?.status?.privateSubnet3ID}
-        dbSubnet1ID: ${vpc?.status?.dbSubnet1ID}
-        dbSubnet2ID: ${vpc?.status?.dbSubnet2ID}
+        vpcID: ${vpc.?status.?vpcID}
+        publicSubnet1ID: ${vpc.?status.?publicSubnet1ID}
+        publicSubnet2ID: ${vpc.?status.?publicSubnet2ID}
+        publicSubnet3ID: ${vpc.?status.?publicSubnet3ID}
+        privateSubnet1ID: ${vpc.?status.?privateSubnet1ID}
+        privateSubnet2ID: ${vpc.?status.?privateSubnet2ID}
+        privateSubnet3ID: ${vpc.?status.?privateSubnet3ID}
+        dbSubnet1ID: ${vpc.?status.?dbSubnet1ID}
+        dbSubnet2ID: ${vpc.?status.?dbSubnet2ID}
       # EKS Status
       eks:
-        clusterName: ${eks?.status?.clusterName}
-        clusterEndpoint: ${eks?.status?.clusterEndpoint}
-        clusterARN: ${eks?.status?.clusterARN}
+        clusterName: ${eks.?status.?clusterName}
+        clusterEndpoint: ${eks.?status.?clusterEndpoint}
+        clusterARN: ${eks.?status.?clusterARN}
       # Aurora Status
       aurora:
-        clusterEndpoint: ${aurora?.status?.clusterEndpoint}
-        readerEndpoint: ${aurora?.status?.readerEndpoint}
+        clusterEndpoint: ${aurora.?status.?clusterEndpoint}
+        readerEndpoint: ${aurora.?status.?readerEndpoint}
       # ElastiCache Status
       elasticache:
-        endpoint: ${elasticache?.status?.endpoint}
+        endpoint: ${elasticache.?status.?endpoint}
       # EFS Status
       efs:
-        fileSystemID: ${efs?.status?.fileSystemID}
+        fileSystemID: ${efs.?status.?fileSystemID}
       # KMS Status
       kms:
-        keyID: ${kms?.status?.keyID}
-        keyARN: ${kms?.status?.keyARN}
+        keyID: ${kms.?status.?keyID}
+        keyARN: ${kms.?status.?keyARN}
       # S3 Buckets Status
       buckets:
         dataBucket:
-          name: ${dataBucket?.status?.s3Name}
-          arn: ${dataBucket?.status?.s3ARN}
+          name: ${dataBucket.?status.?s3Name}
+          arn: ${dataBucket.?status.?s3ARN}
         loggingBucket:
-          name: ${loggingBucket?.status?.s3Name}
-          arn: ${loggingBucket?.status?.s3ARN}
+          name: ${loggingBucket.?status.?s3Name}
+          arn: ${loggingBucket.?status.?s3ARN}
         uploadBucket:
-          name: ${uploadBucket?.status?.s3Name}
-          arn: ${uploadBucket?.status?.s3ARN}
+          name: ${uploadBucket.?status.?s3Name}
+          arn: ${uploadBucket.?status.?s3ARN}
       # OpenSearch Status
       opensearch:
-        domainARN: ${opensearch?.status?.domainARN}
-        domainEndpoint: ${opensearch?.status?.endpoint}
+        domainARN: ${opensearch.?status.?domainARN}
+        domainEndpoint: ${opensearch.?status.?endpoint}
       # CloudWatch Logs Status
       cloudwatchLogs:
-        logGroupARN: ${cloudwatchLogs?.status?.logGroupARN}
+        logGroupARN: ${cloudwatchLogs.?status.?logGroupARN}
       # CloudTrail Status
       cloudtrail:
-        trailARN: ${cloudtrail?.status?.trailARN}
+        trailARN: ${cloudtrail.?status.?trailARN}
 
   resources:
   # 1. KMS Key - needed for encryption of other resources
