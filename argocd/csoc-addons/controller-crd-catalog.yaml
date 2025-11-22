@@ -1,7 +1,7 @@
 - addon: kro
   namespace: kro-system
   repoURL: oci://ghcr.io/kro-run/kro/kro
-  revision: latest
+  revision: 0.6.3
   chart: kro
   sync_wave: "-20"
 
