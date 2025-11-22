@@ -27,6 +27,8 @@ spec:
 
   resources:
   - id: queue
+    readyWhen:
+      - ${queue.status.queueURL != ""}
     template:
       apiVersion: sqs.services.k8s.aws/v1alpha1
       kind: Queue

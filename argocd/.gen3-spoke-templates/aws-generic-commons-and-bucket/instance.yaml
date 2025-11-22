@@ -17,9 +17,9 @@ spec:
   # Feature Toggles - control which resources are deployed
   features:
     enableVPC: true
-    enableEKS: true
-    enableAurora: true
-    enableElastiCache: true
+    enableEKS: false
+    enableAurora: false
+    enableElastiCache: false
     enableEFS: false
     enableKMS: false
     enableOpenSearch: false
@@ -31,12 +31,20 @@ spec:
 
   # VPC Configuration
   vpc:
+    features:
+      enableSubnet2: true
+      enableSubnet3: false
+      enableDbSubnet2: true
     cidr:
       vpcCidr: "10.1.0.0/16"
       publicSubnet1Cidr: "10.1.1.0/24"
       publicSubnet2Cidr: "10.1.2.0/24"
+      publicSubnet3Cidr: "10.1.3.0/24"
       privateSubnet1Cidr: "10.1.11.0/24"
       privateSubnet2Cidr: "10.1.12.0/24"
+      privateSubnet3Cidr: "10.1.13.0/24"
+      dbSubnet1Cidr: "10.1.21.0/24"
+      dbSubnet2Cidr: "10.1.22.0/24"
 
   # EKS Configuration
   eks:

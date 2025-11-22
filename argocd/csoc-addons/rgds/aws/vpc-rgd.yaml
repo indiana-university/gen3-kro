@@ -12,23 +12,53 @@ spec:
       overrideRegion: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
+      # Feature toggles for optional subnets
+      features:
+        enableSubnet2: boolean | default=true
+        enableSubnet3: boolean | default=false
+        enableDbSubnet1: boolean | default=true
+        enableDbSubnet2: boolean | default=true
       cidr:
         vpcCidr: string | default="10.0.0.0/16"
+        # EKS/App subnets
         publicSubnet1Cidr: string | default="10.0.1.0/24"
         publicSubnet2Cidr: string | default="10.0.2.0/24"
+        publicSubnet3Cidr: string | default="10.0.3.0/24"
         privateSubnet1Cidr: string | default="10.0.11.0/24"
         privateSubnet2Cidr: string | default="10.0.12.0/24"
+        privateSubnet3Cidr: string | default="10.0.13.0/24"
+        # Database subnets (separate tier)
+        dbSubnet1Cidr: string | default="10.0.21.0/24"
+        dbSubnet2Cidr: string | default="10.0.22.0/24"
     status:
       vpcID: ${vpc.status.vpcID}
+      vpcCidr: ${schema.spec.cidr.vpcCidr}
       publicSubnet1ID: ${publicSubnet1.status.subnetID}
+      publicSubnet1Cidr: ${schema.spec.cidr.publicSubnet1Cidr}
       publicSubnet2ID: ${publicSubnet2.status.subnetID}
+      publicSubnet2Cidr: ${schema.spec.cidr.publicSubnet2Cidr}
       privateSubnet1ID: ${privateSubnet1.status.subnetID}
+      privateSubnet1Cidr: ${schema.spec.cidr.privateSubnet1Cidr}
       privateSubnet2ID: ${privateSubnet2.status.subnetID}
+      privateSubnet2Cidr: ${schema.spec.cidr.privateSubnet2Cidr}
+      # Third AZ (optional)
+      publicSubnet3ID: ${publicSubnet3.status.subnetID}
+      publicSubnet3Cidr: ${schema.spec.cidr.publicSubnet3Cidr}
+      privateSubnet3ID: ${privateSubnet3.status.subnetID}
+      privateSubnet3Cidr: ${schema.spec.cidr.privateSubnet3Cidr}
+      # Database subnets
+      dbSubnet1ID: ${dbSubnet1.status.subnetID}
+      dbSubnet1Cidr: ${schema.spec.cidr.dbSubnet1Cidr}
+      dbSubnet2ID: ${dbSubnet2.status.subnetID}
+      dbSubnet2Cidr: ${schema.spec.cidr.dbSubnet2Cidr}
       internetGatewayID: ${internetGateway.status.internetGatewayID}
       natGateway1ID: ${natGateway1.status.natGatewayID}
       natGateway2ID: ${natGateway2.status.natGatewayID}
+      natGateway3ID: ${natGateway3.status.natGatewayID}
   resources:
   - id: vpc
+    readyWhen:
+      - ${vpc.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: VPC
@@ -48,6 +78,8 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: internetGateway
+    readyWhen:
+      - ${internetGateway.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: InternetGateway
@@ -64,6 +96,8 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: natGateway1
+    readyWhen:
+      - ${natGateway1.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: NATGateway
@@ -81,6 +115,10 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: natGateway2
+    includeWhen:
+      - ${schema.spec.features.enableSubnet2}
+    readyWhen:
+      - ${natGateway2.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: NATGateway
@@ -98,6 +136,8 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: eip1
+    readyWhen:
+      - ${eip1.status.allocationID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: ElasticIPAddress
@@ -113,6 +153,10 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: eip2
+    includeWhen:
+      - ${schema.spec.features.enableSubnet2}
+    readyWhen:
+      - ${eip2.status.allocationID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: ElasticIPAddress
@@ -128,6 +172,8 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: publicRoutetable
+    readyWhen:
+      - ${publicRoutetable.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -147,6 +193,8 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: privateRoutetable1
+    readyWhen:
+      - ${privateRoutetable1.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -166,6 +214,10 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: privateRoutetable2
+    includeWhen:
+      - ${schema.spec.features.enableSubnet2}
+    readyWhen:
+      - ${privateRoutetable2.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -185,6 +237,8 @@ spec:
           - key: "Environment"
             value: ${schema.spec.environment}
   - id: publicSubnet1
+    readyWhen:
+      - ${publicSubnet1.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
@@ -208,6 +262,10 @@ spec:
           - key: kubernetes.io/role/elb
             value: '1'
   - id: publicSubnet2
+    includeWhen:
+      - ${schema.spec.features.enableSubnet2}
+    readyWhen:
+      - ${publicSubnet2.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
@@ -231,6 +289,8 @@ spec:
           - key: kubernetes.io/role/elb
             value: '1'
   - id: privateSubnet1
+    readyWhen:
+      - ${privateSubnet1.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
@@ -253,6 +313,10 @@ spec:
           - key: kubernetes.io/role/internal-elb
             value: '1'
   - id: privateSubnet2
+    includeWhen:
+      - ${schema.spec.features.enableSubnet2}
+    readyWhen:
+      - ${privateSubnet2.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
@@ -274,3 +338,180 @@ spec:
             value: ${schema.spec.environment}
           - key: kubernetes.io/role/internal-elb
             value: '1'
+
+  # Optional Third AZ Resources
+  - id: publicSubnet3
+    includeWhen:
+      - ${schema.spec.features.enableSubnet3}
+    readyWhen:
+      - ${publicSubnet3.status.state == "available"}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: Subnet
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-public-subnet3
+        annotations:
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
+      spec:
+        availabilityZone: ${schema.spec.overrideRegion}c
+        cidrBlock: ${schema.spec.cidr.publicSubnet3Cidr}
+        mapPublicIPOnLaunch: true
+        vpcID: ${vpc.status.vpcID}
+        routeTables:
+        - ${publicRoutetable.status.routeTableID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-public-subnet3
+          - key: "Environment"
+            value: ${schema.spec.environment}
+          - key: kubernetes.io/role/elb
+            value: '1'
+
+  - id: privateSubnet3
+    includeWhen:
+      - ${schema.spec.features.enableSubnet3}
+    readyWhen:
+      - ${privateSubnet3.status.state == "available"}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: Subnet
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-private-subnet3
+        annotations:
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
+      spec:
+        availabilityZone: ${schema.spec.overrideRegion}c
+        cidrBlock: ${schema.spec.cidr.privateSubnet3Cidr}
+        vpcID: ${vpc.status.vpcID}
+        routeTables:
+        - ${privateRoutetable3.status.routeTableID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-private-subnet3
+          - key: "Environment"
+            value: ${schema.spec.environment}
+          - key: kubernetes.io/role/internal-elb
+            value: '1'
+
+  - id: eip3
+    includeWhen:
+      - ${schema.spec.features.enableSubnet3}
+    readyWhen:
+      - ${eip3.status.allocationID != ""}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: ElasticIPAddress
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-eip3
+        annotations:
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
+      spec:
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-eip3
+          - key: "Environment"
+            value: ${schema.spec.environment}
+
+  - id: natGateway3
+    includeWhen:
+      - ${schema.spec.features.enableSubnet3}
+    readyWhen:
+      - ${natGateway3.status.state == "available"}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: NATGateway
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-nat-gateway3
+        annotations:
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
+      spec:
+        subnetID: ${publicSubnet3.status.subnetID}
+        allocationID: ${eip3.status.allocationID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-nat-gateway3
+          - key: "Environment"
+            value: ${schema.spec.environment}
+
+  - id: privateRoutetable3
+    includeWhen:
+      - ${schema.spec.features.enableSubnet3}
+    readyWhen:
+      - ${privateRoutetable3.status.routeTableID != ""}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: RouteTable
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-private-rt3
+        annotations:
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
+      spec:
+        vpcID: ${vpc.status.vpcID}
+        routes:
+          - destinationCIDRBlock: "0.0.0.0/0"
+            natGatewayID: ${natGateway3.status.natGatewayID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-private-rt3
+          - key: "Environment"
+            value: ${schema.spec.environment}
+
+  # Database Subnet Resources - separate tier for database services
+  - id: dbSubnet1
+    includeWhen:
+      - ${schema.spec.features.enableDbSubnet1}
+    readyWhen:
+      - ${dbSubnet1.status.state == "available"}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: Subnet
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-db-subnet1
+        annotations:
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
+      spec:
+        availabilityZone: ${schema.spec.overrideRegion}a
+        cidrBlock: ${schema.spec.cidr.dbSubnet1Cidr}
+        vpcID: ${vpc.status.vpcID}
+        routeTables:
+        - ${privateRoutetable1.status.routeTableID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-db-subnet1
+          - key: "Environment"
+            value: ${schema.spec.environment}
+          - key: "Tier"
+            value: "database"
+
+  - id: dbSubnet2
+    includeWhen:
+      - ${schema.spec.features.enableDbSubnet2}
+    readyWhen:
+      - ${dbSubnet2.status.state == "available"}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: Subnet
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-db-subnet2
+        annotations:
+          services.k8s.aws/region: ${schema.spec.overrideRegion}
+      spec:
+        availabilityZone: ${schema.spec.overrideRegion}b
+        cidrBlock: ${schema.spec.cidr.dbSubnet2Cidr}
+        vpcID: ${vpc.status.vpcID}
+        routeTables:
+        - ${privateRoutetable2.status.routeTableID}
+        tags:
+          - key: "Name"
+            value: ${schema.spec.name}-db-subnet2
+          - key: "Environment"
+            value: ${schema.spec.environment}
+          - key: "Tier"
+            value: "database"
