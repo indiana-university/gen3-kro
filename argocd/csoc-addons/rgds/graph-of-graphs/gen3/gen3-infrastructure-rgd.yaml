@@ -123,28 +123,28 @@ spec:
       internetGatewayID: ${vpc.status.internetGatewayID}
 
       # EKS Outputs (conditional)
-      eksClusterARN: ${eks?.status?.clusterARN}
-      eksClusterName: ${eks?.status?.clusterName}
-      eksClusterEndpoint: ${eks?.status?.clusterEndpoint}
+      eksClusterARN: ${eks.?status.?clusterARN}
+      eksClusterName: ${eks.?status.?clusterName}
+      eksClusterEndpoint: ${eks.?status.?clusterEndpoint}
 
       # Database Outputs (conditional - RDS or Aurora)
-      dbInstanceARN: ${rds?.status?.dbInstanceARN}
-      dbEndpoint: ${rds?.status?.endpoint}
+      dbInstanceARN: ${rds.?status.?dbInstanceARN}
+      dbEndpoint: ${rds.?status.?endpoint}
 
       # ElastiCache Outputs (conditional)
-      cacheClusterID: ${elasticache?.status?.cacheClusterID}
-      cacheEndpoint: ${elasticache?.status?.endpoint}
+      cacheClusterID: ${elasticache.?status.?cacheClusterID}
+      cacheEndpoint: ${elasticache.?status.?endpoint}
 
       # EFS Outputs (conditional)
-      efsFileSystemID: ${efs?.status?.fileSystemID}
+      efsFileSystemID: ${efs.?status.?fileSystemID}
 
       # S3 Outputs (conditional)
-      dataBucketARN: ${dataBucket?.status?.bucketARN}
-      dataBucketName: ${dataBucket?.status?.bucketName}
+      dataBucketARN: ${dataBucket.?status.?bucketARN}
+      dataBucketName: ${dataBucket.?status.?bucketName}
 
       # KMS Outputs (conditional)
-      kmsKeyARN: ${kms?.status?.keyARN}
-      kmsKeyID: ${kms?.status?.keyID}
+      kmsKeyARN: ${kms.?status.?keyARN}
+      kmsKeyID: ${kms.?status.?keyID}
 
   resources:
   # Layer 1: VPC (foundational - no dependencies)
