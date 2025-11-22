@@ -3,7 +3,7 @@ kind: Kustomization
 
 resources:
   # Namespace is created by Terraform with proper annotations
-  - github.com/indiana-university/gen3-kro//argocd/.gen3-spoke-templates/aws-generic-commons-and-bucket?ref=test-kro-graphs
+  - github.com/indiana-university/gen3-kro//argocd/csoc-addons/.gen3-spoke-templates/aws-generic-commons-and-bucket?ref=test-kro-graphs
 
 patches:
   - target:
