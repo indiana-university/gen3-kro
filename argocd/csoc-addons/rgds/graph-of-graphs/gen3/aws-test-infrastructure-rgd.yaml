@@ -1,11 +1,11 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3-infrastructure.kro.run
+  name: aws-test-infrastructure.kro.run
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: Gen3Infrastructure
+    kind: AwsTestInfrastructure
     spec:
       name: string
       namespace: string

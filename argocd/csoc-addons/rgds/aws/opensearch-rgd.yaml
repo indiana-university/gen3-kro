@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: opensearch.kro.run
+  name: aws-opensearch.kro.run
 spec:
   schema:
     apiVersion: v1alpha1

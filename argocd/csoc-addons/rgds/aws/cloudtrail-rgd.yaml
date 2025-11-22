@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: cloudtrail.kro.run
+  name: aws-cloudtrail.kro.run
 spec:
   schema:
     apiVersion: v1alpha1
