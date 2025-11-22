@@ -14,7 +14,7 @@ spec:
       tags: "map[string]string | default={}"
       vpcID: string
       subnetIDs: "[]string"
-      ingressCIDRs: "[]string | default=[\"10.0.0.0/8\"]"
+      ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
       engine: string | default="redis"
       engineVersion: string | default="7.0"
       nodeType: string | default="cache.t3.micro"
