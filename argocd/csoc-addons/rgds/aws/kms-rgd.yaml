@@ -24,6 +24,8 @@ spec:
 
   resources:
   - id: key
+    readyWhen:
+      - ${key.status.keyState == "Enabled"}
     template:
       apiVersion: kms.services.k8s.aws/v1alpha1
       kind: Key

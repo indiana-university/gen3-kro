@@ -23,6 +23,8 @@ spec:
 
   resources:
   - id: hostedZone
+    readyWhen:
+      - ${hostedZone.status.id != ""}
     template:
       apiVersion: route53.services.k8s.aws/v1alpha1
       kind: HostedZone

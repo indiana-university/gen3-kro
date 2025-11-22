@@ -30,12 +30,20 @@ spec:
 
       # VPC Configuration
       vpc:
+        features:
+          enableSubnet2: boolean | default=true
+          enableSubnet3: boolean | default=false
+          enableDbSubnet2: boolean | default=true
         cidr:
           vpcCidr: string | default="10.0.0.0/16"
           publicSubnet1Cidr: string | default="10.0.1.0/24"
           publicSubnet2Cidr: string | default="10.0.2.0/24"
+          publicSubnet3Cidr: string | default="10.0.3.0/24"
           privateSubnet1Cidr: string | default="10.0.11.0/24"
           privateSubnet2Cidr: string | default="10.0.12.0/24"
+          privateSubnet3Cidr: string | default="10.0.13.0/24"
+          dbSubnet1Cidr: string | default="10.0.21.0/24"
+          dbSubnet2Cidr: string | default="10.0.22.0/24"
 
       # EKS Configuration
       eks:
@@ -112,10 +120,19 @@ spec:
       # VPC Status
       vpc:
         vpcID: ${vpc.status.vpcID}
+        vpcCidr: ${vpc.status.vpcCidr}
         publicSubnet1ID: ${vpc.status.publicSubnet1ID}
+        publicSubnet1Cidr: ${vpc.status.publicSubnet1Cidr}
         publicSubnet2ID: ${vpc.status.publicSubnet2ID}
+        publicSubnet2Cidr: ${vpc.status.publicSubnet2Cidr}
         privateSubnet1ID: ${vpc.status.privateSubnet1ID}
+        privateSubnet1Cidr: ${vpc.status.privateSubnet1Cidr}
         privateSubnet2ID: ${vpc.status.privateSubnet2ID}
+        privateSubnet2Cidr: ${vpc.status.privateSubnet2Cidr}
+        dbSubnet1ID: ${vpc.status.dbSubnet1ID}
+        dbSubnet1Cidr: ${vpc.status.dbSubnet1Cidr}
+        dbSubnet2ID: ${vpc.status.dbSubnet2ID}
+        dbSubnet2Cidr: ${vpc.status.dbSubnet2Cidr}
       # EKS Status
       eks:
         clusterName: ${eks.status.clusterName}
@@ -162,6 +179,8 @@ spec:
   - id: kms
     includeWhen:
       - ${schema.spec.features.enableKMS}
+    readyWhen:
+      - ${kms.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsKMS
@@ -181,6 +200,8 @@ spec:
   - id: vpc
     includeWhen:
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${vpc.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpc
@@ -193,12 +214,19 @@ spec:
         overrideRegion: ${schema.spec.overrideRegion}
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
+        features:
+          enableSubnet2: ${schema.spec.vpc.features.enableSubnet2}
+          enableSubnet3: ${schema.spec.vpc.features.enableSubnet3}
+          enableDbSubnet1: ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
+          enableDbSubnet2: ${schema.spec.vpc.features.enableDbSubnet2}
         cidr: ${schema.spec.vpc.cidr}
 
   # 3. CloudWatch Log Group - needed for CloudTrail and other logging
   - id: cloudwatchLogs
     includeWhen:
       - ${schema.spec.features.enableCloudWatchLogs}
+    readyWhen:
+      - ${cloudwatchLogs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudWatchLogs
@@ -217,6 +245,8 @@ spec:
   - id: loggingBucket
     includeWhen:
       - ${schema.spec.features.enableLoggingBucket}
+    readyWhen:
+      - ${loggingBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -236,6 +266,8 @@ spec:
   - id: cloudtrail
     includeWhen:
       - ${schema.spec.features.enableCloudTrail}
+    readyWhen:
+      - ${cloudtrail.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudTrail
@@ -259,6 +291,8 @@ spec:
   - id: eks
     includeWhen:
       - ${schema.spec.features.enableEKS}
+    readyWhen:
+      - ${eks.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEKS
@@ -272,9 +306,7 @@ spec:
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
-        subnetIDs:
-          - ${vpc.status.privateSubnet1ID}
-          - ${vpc.status.privateSubnet2ID}
+        subnetIDs: "${ [vpc.status.privateSubnet1ID] + (schema.spec.vpc.features.enableSubnet2 ? [vpc.status.privateSubnet2ID] : []) + (schema.spec.vpc.features.enableSubnet3 ? [vpc.status.privateSubnet3ID] : []) }"
         version: ${schema.spec.eks.version}
         nodeGroupInstanceTypes: ${schema.spec.eks.nodeGroupInstanceTypes}
         nodeGroupDesiredSize: ${schema.spec.eks.nodeGroupDesiredSize}
@@ -285,6 +317,8 @@ spec:
   - id: aurora
     includeWhen:
       - ${schema.spec.features.enableAurora}
+    readyWhen:
+      - ${aurora.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsAurora
@@ -298,10 +332,8 @@ spec:
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
-        subnetIDs:
-          - ${vpc.status.privateSubnet1ID}
-          - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        subnetIDs: "${ [vpc.status.dbSubnet1ID] + (schema.spec.vpc.features.enableDbSubnet2 ? [vpc.status.dbSubnet2ID] : []) }"
+        ingressCIDRs: "${ [vpc.status.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [vpc.status.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [vpc.status.privateSubnet3Cidr] : []) }"
         engine: ${schema.spec.aurora.engine}
         engineVersion: ${schema.spec.aurora.engineVersion}
         instanceClass: ${schema.spec.aurora.instanceClass}
@@ -314,6 +346,8 @@ spec:
   - id: elasticache
     includeWhen:
       - ${schema.spec.features.enableElastiCache}
+    readyWhen:
+      - ${elasticache.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsElastiCache
@@ -327,10 +361,8 @@ spec:
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
-        subnetIDs:
-          - ${vpc.status.privateSubnet1ID}
-          - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        subnetIDs: "${ [vpc.status.dbSubnet1ID] + (schema.spec.vpc.features.enableDbSubnet2 ? [vpc.status.dbSubnet2ID] : []) }"
+        ingressCIDRs: "${ [vpc.status.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [vpc.status.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [vpc.status.privateSubnet3Cidr] : []) }"
         engine: ${schema.spec.elasticache.engine}
         engineVersion: ${schema.spec.elasticache.engineVersion}
         nodeType: ${schema.spec.elasticache.nodeType}
@@ -340,6 +372,8 @@ spec:
   - id: efs
     includeWhen:
       - ${schema.spec.features.enableEFS}
+    readyWhen:
+      - ${efs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEFS
@@ -353,10 +387,8 @@ spec:
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
-        subnetIDs:
-          - ${vpc.status.privateSubnet1ID}
-          - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        subnetIDs: "${ [vpc.status.privateSubnet1ID] + (schema.spec.vpc.features.enableSubnet2 ? [vpc.status.privateSubnet2ID] : []) + (schema.spec.vpc.features.enableSubnet3 ? [vpc.status.privateSubnet3ID] : []) }"
+        ingressCIDRs: "${ [vpc.status.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [vpc.status.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [vpc.status.privateSubnet3Cidr] : []) }"
         performanceMode: ${schema.spec.efs.performanceMode}
         throughputMode: ${schema.spec.efs.throughputMode}
         encrypted: ${schema.spec.efs.encrypted}
@@ -366,6 +398,8 @@ spec:
   - id: dataBucket
     includeWhen:
       - ${schema.spec.features.enableDataBucket}
+    readyWhen:
+      - ${dataBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -385,6 +419,8 @@ spec:
   - id: uploadBucket
     includeWhen:
       - ${schema.spec.features.enableUploadBucket}
+    readyWhen:
+      - ${uploadBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -404,6 +440,8 @@ spec:
   - id: opensearch
     includeWhen:
       - ${schema.spec.features.enableOpenSearch}
+    readyWhen:
+      - ${opensearch.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsOpenSearch
@@ -417,9 +455,8 @@ spec:
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         vpcID: ${vpc.status.vpcID}
-        subnetIDs:
-          - ${vpc.status.privateSubnet1ID}
-        ingressCIDR: ${schema.spec.vpc.cidr.vpcCidr}
+        subnetIDs: "${ [vpc.status.dbSubnet1ID] }"
+        ingressCIDRs: "${ [vpc.status.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [vpc.status.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [vpc.status.privateSubnet3Cidr] : []) }"
         engineVersion: ${schema.spec.opensearch.engineVersion}
         instanceType: ${schema.spec.opensearch.instanceType}
         instanceCount: ${schema.spec.opensearch.instanceCount}

@@ -26,6 +26,8 @@ spec:
 
   resources:
   - id: bucket
+    readyWhen:
+      - ${bucket.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: s3.services.k8s.aws/v1alpha1
       kind: Bucket
@@ -46,6 +48,8 @@ spec:
               value: "data-storage"
 
   - id: logBucket
+    readyWhen:
+      - ${logBucket.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: s3.services.k8s.aws/v1alpha1
       kind: Bucket
