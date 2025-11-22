@@ -39,7 +39,7 @@ spec:
         instanceClass: string | default="db.t3.medium"
         allocatedStorage: integer | default=100
         databaseName: string | default="gen3"
-        ingressCIDR: string | default="10.0.0.0/8"
+        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
 
       # Aurora Configuration (alternative to RDS)
       aurora:
@@ -49,7 +49,7 @@ spec:
         instanceClass: string | default="db.r5.large"
         instanceCount: integer | default=2
         databaseName: string | default="gen3"
-        ingressCIDR: string | default="10.0.0.0/8"
+        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
 
       # ElastiCache Configuration
       elasticache:
@@ -58,7 +58,7 @@ spec:
         engineVersion: string | default="7.0"
         nodeType: string | default="cache.t3.micro"
         numCacheNodes: integer | default=1
-        ingressCIDR: string | default="10.0.0.0/8"
+        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
 
       # EFS Configuration
       efs:
@@ -67,7 +67,7 @@ spec:
         throughputMode: string | default="bursting"
         encrypted: boolean | default=true
         kmsKeyID: string | default=""
-        ingressCIDR: string | default="10.0.0.0/8"
+        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
 
       # S3 Data Bucket Configuration
       dataBucket:
@@ -90,7 +90,7 @@ spec:
         instanceType: string | default="t3.small.search"
         instanceCount: integer | default=1
         volumeSize: integer | default=10
-        ingressCIDR: string | default="10.0.0.0/8"
+        ingressIPRanges: "[]object | default=[{cidrIP: \"10.0.0.0/8\"}]"
 
       # Route53 Configuration
       route53:
@@ -123,28 +123,28 @@ spec:
       internetGatewayID: ${vpc.status.internetGatewayID}
 
       # EKS Outputs (conditional)
-      eksClusterARN: ${eks.status.clusterARN}
-      eksClusterName: ${eks.status.clusterName}
-      eksClusterEndpoint: ${eks.status.clusterEndpoint}
+      eksClusterARN: ${eks?.status?.clusterARN}
+      eksClusterName: ${eks?.status?.clusterName}
+      eksClusterEndpoint: ${eks?.status?.clusterEndpoint}
 
       # Database Outputs (conditional - RDS or Aurora)
-      dbInstanceARN: ${rds.status.dbInstanceARN}
-      dbEndpoint: ${rds.status.endpoint}
+      dbInstanceARN: ${rds?.status?.dbInstanceARN}
+      dbEndpoint: ${rds?.status?.endpoint}
 
       # ElastiCache Outputs (conditional)
-      cacheClusterID: ${elasticache.status.cacheClusterID}
-      cacheEndpoint: ${elasticache.status.endpoint}
+      cacheClusterID: ${elasticache?.status?.cacheClusterID}
+      cacheEndpoint: ${elasticache?.status?.endpoint}
 
       # EFS Outputs (conditional)
-      efsFileSystemID: ${efs.status.fileSystemID}
+      efsFileSystemID: ${efs?.status?.fileSystemID}
 
       # S3 Outputs (conditional)
-      dataBucketARN: ${dataBucket.status.bucketARN}
-      dataBucketName: ${dataBucket.status.bucketName}
+      dataBucketARN: ${dataBucket?.status?.bucketARN}
+      dataBucketName: ${dataBucket?.status?.bucketName}
 
       # KMS Outputs (conditional)
-      kmsKeyARN: ${kms.status.keyARN}
-      kmsKeyID: ${kms.status.keyID}
+      kmsKeyARN: ${kms?.status?.keyARN}
+      kmsKeyID: ${kms?.status?.keyID}
 
   resources:
   # Layer 1: VPC (foundational - no dependencies)
@@ -222,7 +222,7 @@ spec:
         subnetIDs:
           - ${vpc.status.privateSubnet1ID}
           - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.rds.ingressCIDR}
+        ingressIPRanges: ${schema.spec.rds.ingressIPRanges}
         engine: ${schema.spec.rds.engine}
         engineVersion: ${schema.spec.rds.engineVersion}
         instanceClass: ${schema.spec.rds.instanceClass}
@@ -247,7 +247,7 @@ spec:
         subnetIDs:
           - ${vpc.status.privateSubnet1ID}
           - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.aurora.ingressCIDR}
+        ingressIPRanges: ${schema.spec.aurora.ingressIPRanges}
         engine: ${schema.spec.aurora.engine}
         engineVersion: ${schema.spec.aurora.engineVersion}
         instanceClass: ${schema.spec.aurora.instanceClass}
@@ -272,7 +272,7 @@ spec:
         subnetIDs:
           - ${vpc.status.privateSubnet1ID}
           - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.elasticache.ingressCIDR}
+        ingressIPRanges: ${schema.spec.elasticache.ingressIPRanges}
         engine: ${schema.spec.elasticache.engine}
         engineVersion: ${schema.spec.elasticache.engineVersion}
         nodeType: ${schema.spec.elasticache.nodeType}
@@ -296,7 +296,7 @@ spec:
         subnetIDs:
           - ${vpc.status.privateSubnet1ID}
           - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.efs.ingressCIDR}
+        ingressIPRanges: ${schema.spec.efs.ingressIPRanges}
         performanceMode: ${schema.spec.efs.performanceMode}
         throughputMode: ${schema.spec.efs.throughputMode}
         encrypted: ${schema.spec.efs.encrypted}
@@ -320,7 +320,7 @@ spec:
         subnetIDs:
           - ${vpc.status.privateSubnet1ID}
           - ${vpc.status.privateSubnet2ID}
-        ingressCIDR: ${schema.spec.opensearch.ingressCIDR}
+        ingressIPRanges: ${schema.spec.opensearch.ingressIPRanges}
         engineVersion: ${schema.spec.opensearch.engineVersion}
         instanceType: ${schema.spec.opensearch.instanceType}
         instanceCount: ${schema.spec.opensearch.instanceCount}
