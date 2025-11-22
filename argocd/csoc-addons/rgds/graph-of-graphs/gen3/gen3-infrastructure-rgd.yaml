@@ -151,7 +151,7 @@ spec:
   - id: vpc
     template:
       apiVersion: kro.run/v1alpha1
-      kind: Vpc
+      kind: AwsVpc
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-vpc
