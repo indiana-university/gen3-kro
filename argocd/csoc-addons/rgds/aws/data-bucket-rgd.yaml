@@ -11,7 +11,7 @@ spec:
       namespace: string
       region: string | default=""
       environment: string | default="dev"
-      tags: "map[string]string | default={}"
+      project: string | default="kro-managed"
       bucketName: string
       versioning: boolean | default=true
       encryption: boolean | default=true
@@ -39,12 +39,13 @@ spec:
       spec:
         name: ${schema.spec.bucketName}
         tagging:
-          tagSet: |-
-            ${[
-              {"key": "Name", "value": "${schema.spec.bucketName}"},
-              {"key": "Environment", "value": "${schema.spec.environment}"},
-              {"key": "Purpose", "value": "data-storage"}
-            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
+          tagSet:
+          - key: Name
+            value: ${schema.spec.bucketName}
+          - key: Environment
+            value: ${schema.spec.environment}
+          - key: Purpose
+            value: data-storage
 
   - id: logBucket
     readyWhen:
@@ -60,12 +61,13 @@ spec:
       spec:
         name: ${schema.spec.bucketName}-logs
         tagging:
-          tagSet: |-
-            ${[
-              {"key": "Name", "value": "${schema.spec.bucketName}-logs"},
-              {"key": "Environment", "value": "${schema.spec.environment}"},
-              {"key": "Purpose", "value": "access-logs"}
-            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
+          tagSet:
+          - key: Name
+            value: ${schema.spec.bucketName}-logs
+          - key: Environment
+            value: ${schema.spec.environment}
+          - key: Purpose
+            value: access-logs
 
   - id: rwPolicy
     template:

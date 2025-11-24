@@ -11,7 +11,7 @@ spec:
       namespace: string
       region: string | default=""
       environment: string | default="dev"
-      tags: "map[string]string | default={}"
+      project: string | default="kro-managed"
       queueName: string
       visibilityTimeout: integer | default=30
       messageRetentionPeriod: integer | default=345600
@@ -46,4 +46,3 @@ spec:
         receiveMessageWaitTimeSeconds: ${string(schema.spec.receiveMessageWaitTimeSeconds)}
         fifoQueue: ${string(schema.spec.fifoQueue)}
         contentBasedDeduplication: ${string(schema.spec.contentBasedDeduplication)}
-        tags: ${schema.spec.tags}

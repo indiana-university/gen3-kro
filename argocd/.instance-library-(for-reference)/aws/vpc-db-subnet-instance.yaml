@@ -8,7 +8,6 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags: {}
   availabilityZone: "us-east-1a"
   cidrBlock: "10.0.21.0/24"
   vpcID: "vpc-xxxxx"  # Reference from AwsVpc status

@@ -8,9 +8,6 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags:
-    project: gen3
-    managed-by: kro
 
   # Feature Toggles - control which resources are deployed
   features:

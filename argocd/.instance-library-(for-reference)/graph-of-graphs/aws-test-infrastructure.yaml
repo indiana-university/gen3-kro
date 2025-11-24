@@ -8,9 +8,6 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags:
-    Project: "gen3"
-    ManagedBy: "kro"
 
   # VPC Configuration
   vpc:

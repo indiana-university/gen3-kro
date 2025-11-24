@@ -8,7 +8,6 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags: {}
   ingressIPRanges:
     - "10.0.0.0/8"
   vpcID: ""  # Populated by overlay

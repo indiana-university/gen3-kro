@@ -11,7 +11,7 @@ spec:
       namespace: string
       region: string | default=""
       environment: string | default="dev"
-      tags: "map[string]string | default={}"
+      project: string | default="kro-managed"
       logGroupName: string
       retentionInDays: integer | default=30
       kmsKeyID: string | default=""
@@ -35,4 +35,3 @@ spec:
         name: ${schema.spec.logGroupName}
         retentionDays: ${schema.spec.retentionInDays}
         kmsKeyID: ${schema.spec.kmsKeyID}
-        tags: ${schema.spec.tags}

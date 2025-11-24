@@ -11,7 +11,7 @@ spec:
       namespace: string
       region: string | default=""
       environment: string | default="dev"
-      tags: "map[string]string | default={}"
+      project: string | default="kro-managed"
       description: string | default="KMS encryption key"
       keyUsage: string | default="ENCRYPT_DECRYPT"
       customerMasterKeySpec: string | default="SYMMETRIC_DEFAULT"
@@ -39,11 +39,15 @@ spec:
         keyUsage: ${schema.spec.keyUsage}
         keySpec: ${schema.spec.customerMasterKeySpec}
         multiRegion: ${schema.spec.multiRegion}
-        tags: |-
-          ${[
-            {"tagKey": "Name", "tagValue": "${schema.spec.name}"},
-            {"tagKey": "Environment", "tagValue": "${schema.spec.environment}"}
-          ] + schema.spec.tags.map(k, {"tagKey": k, "tagValue": schema.spec.tags[k]})}
+        tags:
+        - tagKey: Name
+          tagValue: ${schema.spec.name}
+        - tagKey: Environment
+          tagValue: ${schema.spec.environment}
+        - tagKey: ManagedBy
+          tagValue: Kro
+        - tagKey: Project
+          tagValue: ${schema.spec.project}
   - id: alias
     template:
       apiVersion: kms.services.k8s.aws/v1alpha1
