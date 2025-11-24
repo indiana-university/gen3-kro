@@ -11,7 +11,7 @@ spec:
       namespace: string
       region: string | default=""
       environment: string | default="dev"
-      tags: "map[string]string | default={}"
+      project: string | default="kro-managed"
 
       # Feature Toggles - control which resources are deployed
       features:
@@ -175,7 +175,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         description: ${schema.spec.kms.description}
         enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
 
@@ -196,7 +195,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         cidr:
           vpcCidr: ${schema.spec.vpc.cidr.vpcCidr}
           publicSubnetCidr: ${schema.spec.vpc.cidr.publicSubnet1Cidr}
@@ -220,7 +218,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: ${schema.spec.region}b
         cidrBlock: ${schema.spec.vpc.cidr.publicSubnet2Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -244,7 +241,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: ${schema.spec.region}c
         cidrBlock: ${schema.spec.vpc.cidr.publicSubnet3Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -269,7 +265,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: ${schema.spec.region}b
         cidrBlock: ${schema.spec.vpc.cidr.privateSubnet2Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -294,7 +289,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: ${schema.spec.region}c
         cidrBlock: ${schema.spec.vpc.cidr.privateSubnet3Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -318,7 +312,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: ${schema.spec.region}a
         cidrBlock: ${schema.spec.vpc.cidr.dbSubnet1Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -343,7 +336,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: ${schema.spec.region}b
         cidrBlock: ${schema.spec.vpc.cidr.dbSubnet2Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -368,7 +360,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         logGroupName: /aws/${schema.spec.name}
         retentionInDays: ${schema.spec.cloudwatchLogs.retentionInDays}
         kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyID : \"\" }"
@@ -392,7 +383,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         versioning: ${schema.spec.buckets.loggingBucket.versioning}
         encryption: ${schema.spec.buckets.loggingBucket.encryption}
 
@@ -415,7 +405,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         s3BucketName: ${loggingBucket.status.s3Name}
         cloudWatchLogsLogGroupARN: ${cloudwatchLogs.status.logGroupARN}
         enableLogFileValidation: ${schema.spec.cloudtrail.enableLogFileValidation}
@@ -443,7 +432,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs: "${ [vpcCore.status.privateSubnetID] + (schema.spec.vpc.features.enableSubnet2 ? [privateSubnet2.status.subnetID] : []) + (schema.spec.vpc.features.enableSubnet3 ? [privateSubnet3.status.subnetID] : []) }"
         version: ${schema.spec.eks.version}
@@ -472,7 +460,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs: "${ [dbSubnet1.status.subnetID] + (schema.spec.vpc.features.enableDbSubnet2 ? [dbSubnet2.status.subnetID] : []) }"
         ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
@@ -503,7 +490,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs: "${ [dbSubnet1.status.subnetID] + (schema.spec.vpc.features.enableDbSubnet2 ? [dbSubnet2.status.subnetID] : []) }"
         ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
@@ -531,7 +517,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs: "${ [vpcCore.status.privateSubnetID] + (schema.spec.vpc.features.enableSubnet2 ? [privateSubnet2.status.subnetID] : []) + (schema.spec.vpc.features.enableSubnet3 ? [privateSubnet3.status.subnetID] : []) }"
         ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
@@ -559,7 +544,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         versioning: ${schema.spec.buckets.dataBucket.versioning}
         encryption: ${schema.spec.buckets.dataBucket.encryption}
 
@@ -582,7 +566,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         versioning: ${schema.spec.buckets.uploadBucket.versioning}
         encryption: ${schema.spec.buckets.uploadBucket.encryption}
 
@@ -605,7 +588,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs: "${ [dbSubnet1.status.subnetID] }"
         ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"

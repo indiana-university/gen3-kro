@@ -8,5 +8,4 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags: {}
   displayName:  Notifications

@@ -11,7 +11,7 @@ spec:
       namespace: string
       region: string | default=""
       environment: string | default="dev"
-      tags: "map[string]string | default={}"
+      project: string | default="kro-managed"
 
       # VPC Configuration
       vpc:
@@ -165,7 +165,7 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
+        project: ${schema.spec.project}
         cidr:
           vpcCidr: ${schema.spec.vpc.cidr.vpcCidr}
           publicSubnetCidr: ${schema.spec.vpc.cidr.publicSubnetCidr}
@@ -187,7 +187,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: "us-east-1b"
         cidrBlock: ${schema.spec.vpc.cidr.publicSubnet2Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -209,7 +208,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         availabilityZone: "us-east-1b"
         cidrBlock: ${schema.spec.vpc.cidr.privateSubnet2Cidr}
         vpcID: ${vpcCore.status.vpcID}
@@ -233,7 +231,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         description: ${schema.spec.kms.description}
         enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
 
@@ -255,7 +252,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs:
           - ${vpcCore.status.privateSubnetID}
@@ -284,7 +280,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs:
           - ${vpcCore.status.privateSubnetID}
@@ -314,7 +309,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs:
           - ${vpcCore.status.privateSubnetID}
@@ -344,7 +338,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs:
           - ${vpcCore.status.privateSubnetID}
@@ -373,7 +366,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs:
           - ${vpcCore.status.privateSubnetID}
@@ -402,7 +394,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs:
           - ${vpcCore.status.privateSubnetID}
@@ -431,7 +422,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         bucketName: ${schema.spec.dataBucket.bucketName}
         versioning: ${schema.spec.dataBucket.versioning}
         encryption: ${schema.spec.dataBucket.encryption}
@@ -454,7 +444,6 @@ spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         zoneName: ${schema.spec.route53.zoneName}
         vpcID: ${vpcCore.status.vpcID}
         region: ${schema.spec.region}
@@ -478,7 +467,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         s3BucketName: ${schema.spec.cloudtrail.s3BucketName}
         includeGlobalServiceEvents: ${schema.spec.cloudtrail.includeGlobalServiceEvents}
         isMultiRegionTrail: ${schema.spec.cloudtrail.isMultiRegionTrail}
@@ -501,7 +489,6 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        tags: ${schema.spec.tags}
         scope: ${schema.spec.waf.scope}
         description: ${schema.spec.waf.description}
         defaultAction: ${schema.spec.waf.defaultAction}

@@ -8,7 +8,6 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags: {}
   logGroupName: /base
   retentionInDays: 30
   kmsKeyID: ""

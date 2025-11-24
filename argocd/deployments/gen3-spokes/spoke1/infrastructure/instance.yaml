@@ -8,11 +8,7 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags:
-    ManagedBy: KRO
-    Owner: RDS Team
-    # Do not tag resources with "Name" tag here; it's set in individual resource templates
-    # Do not tag resources with "Environment" tag here; it's set in individual resource templates
+  project: Gen3
 
   # Feature Toggles - control which resources are deployed
   features:

@@ -8,7 +8,6 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags: {}
   scope: REGIONAL
   description:  WAF Web ACL
   defaultAction: ALLOW

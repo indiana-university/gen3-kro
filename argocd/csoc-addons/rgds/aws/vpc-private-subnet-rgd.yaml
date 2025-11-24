@@ -11,7 +11,7 @@ spec:
       namespace: string
       region: string | default="us-east-1"
       environment: string | default="dev"
-      tags: "map[string]string | default={}"
+      project: string | default="kro-managed"
       # Subnet configuration
       availabilityZone: string  # e.g., "us-east-1a"
       cidrBlock: string
@@ -37,11 +37,15 @@ spec:
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
       spec:
-        tags: |-
-          ${[
-            {"key": "Name", "value": "${schema.spec.name}-eip"},
-            {"key": "Environment", "value": "${schema.spec.environment}"}
-          ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-eip
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
 
   - id: natGateway
     readyWhen:
@@ -57,11 +61,15 @@ spec:
       spec:
         subnetID: ${schema.spec.publicSubnetID}
         allocationID: ${eip.status.allocationID}
-        tags: |-
-          ${[
-            {"key": "Name", "value": "${schema.spec.name}-nat-gateway"},
-            {"key": "Environment", "value": "${schema.spec.environment}"}
-          ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-nat-gateway
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
 
   - id: privateRoutetable
     readyWhen:
@@ -79,11 +87,15 @@ spec:
         routes:
         - destinationCIDRBlock: 0.0.0.0/0
           natGatewayID: ${natGateway.status.natGatewayID}
-        tags: |-
-          ${[
-            {"key": "Name", "value": "${schema.spec.name}-private-routetable"},
-            {"key": "Environment", "value": "${schema.spec.environment}"}
-          ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-private-routetable
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
 
   - id: privateSubnet
     readyWhen:
@@ -102,9 +114,14 @@ spec:
         vpcID: ${schema.spec.vpcID}
         routeTables:
         - ${privateRoutetable.status.routeTableID}
-        tags: |-
-          ${[
-            {"key": "Name", "value": "${schema.spec.name}-private-subnet"},
-            {"key": "Environment", "value": "${schema.spec.environment}"},
-            {"key": "kubernetes.io/role/internal-elb", "value": "1"}
-          ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-private-subnet
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
+        - key: kubernetes.io/role/internal-elb
+          value: "1"

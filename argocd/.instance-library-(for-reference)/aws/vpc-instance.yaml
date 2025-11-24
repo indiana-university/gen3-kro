@@ -8,7 +8,6 @@ spec:
   namespace: base
   region: us-east-1
   environment: dev
-  tags: {}
   cidr:
     vpcCidr: "10.0.0.0/16"
     publicSubnetCidr: "10.0.1.0/24"
