@@ -13,7 +13,8 @@ resources:
   - kms-rgd.yaml
   - opensearch-rgd.yaml
   - rds-rgd.yaml
-  - route53-rgd.yaml
+  - route53-private-rgd.yaml
+  - route53-public-rgd.yaml
   - s3bucket-rgd.yaml
   - secretsmanager-rgd.yaml
   - sns-rgd.yaml
