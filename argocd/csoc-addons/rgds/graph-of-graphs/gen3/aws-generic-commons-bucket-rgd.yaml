@@ -117,43 +117,43 @@ spec:
 
     status:
       # VPC Status - only include fields that are enabled via features
-      vpcID: "${ vpcCore.status.vpcID }"
-      vpcPublicSubnet1ID: "${ vpcCore.status.publicSubnetID }"
-      vpcPublicSubnet2ID: "${ schema.spec.vpc.features.enableSubnet2 ? publicSubnet2.status.subnetID : \"\" }"
-      vpcPublicSubnet3ID: "${ schema.spec.vpc.features.enableSubnet3 ? publicSubnet3.status.subnetID : \"\" }"
-      vpcPrivateSubnet1ID: "${ vpcCore.status.privateSubnetID }"
-      vpcPrivateSubnet2ID: "${ schema.spec.vpc.features.enableSubnet2 ? privateSubnet2.status.subnetID : \"\" }"
-      vpcPrivateSubnet3ID: "${ schema.spec.vpc.features.enableSubnet3 ? privateSubnet3.status.subnetID : \"\" }"
-      vpcDbSubnet1ID: "${ (schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch) ? dbSubnet1.status.subnetID : \"\" }"
-      vpcDbSubnet2ID: "${ schema.spec.vpc.features.enableDbSubnet2 && (schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch) ? dbSubnet2.status.subnetID : \"\" }"
+      vpcID: ${vpcCore.status.vpcID}
+      vpcPublicSubnet1ID: ${vpcCore.status.publicSubnetID}
+      vpcPublicSubnet2ID: "${schema.spec.vpc.features.enableSubnet2 ? publicSubnet2.status.subnetID : \"\"}"
+      vpcPublicSubnet3ID: "${schema.spec.vpc.features.enableSubnet3 ? publicSubnet3.status.subnetID : \"\"}"
+      vpcPrivateSubnet1ID: ${vpcCore.status.privateSubnetID}
+      vpcPrivateSubnet2ID: "${schema.spec.vpc.features.enableSubnet2 ? privateSubnet2.status.subnetID : \"\"}"
+      vpcPrivateSubnet3ID: "${schema.spec.vpc.features.enableSubnet3 ? privateSubnet3.status.subnetID : \"\"}"
+      vpcDbSubnet1ID: "${(schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch) ? dbSubnet1.status.subnetID : \"\"}"
+      vpcDbSubnet2ID: "${schema.spec.vpc.features.enableDbSubnet2 && (schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch) ? dbSubnet2.status.subnetID : \"\"}"
       # EKS Status
-      eksClusterName: "${ schema.spec.features.enableEKS ? eks.status.clusterName : \"\" }"
-      eksClusterEndpoint: "${ schema.spec.features.enableEKS ? eks.status.clusterEndpoint : \"\" }"
-      eksClusterARN: "${ schema.spec.features.enableEKS ? eks.status.clusterARN : \"\" }"
+      eksClusterName: "${schema.spec.features.enableEKS ? eks.status.clusterName : \"\"}"
+      eksClusterEndpoint: "${schema.spec.features.enableEKS ? eks.status.clusterEndpoint : \"\"}"
+      eksClusterARN: "${schema.spec.features.enableEKS ? eks.status.clusterARN : \"\"}"
       # Aurora Status
-      auroraClusterEndpoint: "${ schema.spec.features.enableAurora ? aurora.status.clusterEndpoint : \"\" }"
-      auroraReaderEndpoint: "${ schema.spec.features.enableAurora ? aurora.status.readerEndpoint : \"\" }"
+      auroraClusterEndpoint: "${schema.spec.features.enableAurora ? aurora.status.clusterEndpoint : \"\"}"
+      auroraReaderEndpoint: "${schema.spec.features.enableAurora ? aurora.status.readerEndpoint : \"\"}"
       # ElastiCache Status
-      elasticacheEndpoint: "${ schema.spec.features.enableElastiCache ? elasticache.status.endpoint : \"\" }"
+      elasticacheEndpoint: "${schema.spec.features.enableElastiCache ? elasticache.status.endpoint : \"\"}"
       # EFS Status
-      efsFileSystemID: "${ schema.spec.features.enableEFS ? efs.status.fileSystemID : \"\" }"
+      efsFileSystemID: "${schema.spec.features.enableEFS ? efs.status.fileSystemID : \"\"}"
       # KMS Status
-      kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyID : \"\" }"
-      kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
+      kmsKeyID: "${schema.spec.features.enableKMS ? kms.status.keyID : \"\"}"
+      kmsKeyARN: "${schema.spec.features.enableKMS ? kms.status.keyARN : \"\"}"
       # S3 Buckets Status
-      dataBucketName: "${ schema.spec.features.enableDataBucket ? dataBucket.status.s3Name : \"\" }"
-      dataBucketArn: "${ schema.spec.features.enableDataBucket ? dataBucket.status.s3ARN : \"\" }"
-      loggingBucketName: "${ schema.spec.features.enableLoggingBucket ? loggingBucket.status.s3Name : \"\" }"
-      loggingBucketArn: "${ schema.spec.features.enableLoggingBucket ? loggingBucket.status.s3ARN : \"\" }"
-      uploadBucketName: "${ schema.spec.features.enableUploadBucket ? uploadBucket.status.s3Name : \"\" }"
-      uploadBucketArn: "${ schema.spec.features.enableUploadBucket ? uploadBucket.status.s3ARN : \"\" }"
+      dataBucketName: "${schema.spec.features.enableDataBucket ? dataBucket.status.s3Name : \"\"}"
+      dataBucketArn: "${schema.spec.features.enableDataBucket ? dataBucket.status.s3ARN : \"\"}"
+      loggingBucketName: "${schema.spec.features.enableLoggingBucket ? loggingBucket.status.s3Name : \"\"}"
+      loggingBucketArn: "${schema.spec.features.enableLoggingBucket ? loggingBucket.status.s3ARN : \"\"}"
+      uploadBucketName: "${schema.spec.features.enableUploadBucket ? uploadBucket.status.s3Name : \"\"}"
+      uploadBucketArn: "${schema.spec.features.enableUploadBucket ? uploadBucket.status.s3ARN : \"\"}"
       # OpenSearch Status
-      opensearchDomainARN: "${ schema.spec.features.enableOpenSearch ? opensearch.status.domainARN : \"\" }"
-      opensearchDomainEndpoint: "${ schema.spec.features.enableOpenSearch ? opensearch.status.endpoint : \"\" }"
+      opensearchDomainARN: "${schema.spec.features.enableOpenSearch ? opensearch.status.domainARN : \"\"}"
+      opensearchDomainEndpoint: "${schema.spec.features.enableOpenSearch ? opensearch.status.endpoint : \"\"}"
       # CloudWatch Logs Status
-      cloudwatchLogsGroupARN: "${ schema.spec.features.enableCloudWatchLogs ? cloudwatchLogs.status.logGroupARN : \"\" }"
+      cloudwatchLogsGroupARN: "${schema.spec.features.enableCloudWatchLogs ? cloudwatchLogs.status.logGroupARN : \"\"}"
       # CloudTrail Status
-      cloudtrailARN: "${ schema.spec.features.enableCloudTrail ? cloudtrail.status.trailARN : \"\" }"
+      cloudtrailARN: "${schema.spec.features.enableCloudTrail ? cloudtrail.status.trailARN : \"\"}"
 
   resources:
   # 1. KMS Key - needed for encryption of other resources
