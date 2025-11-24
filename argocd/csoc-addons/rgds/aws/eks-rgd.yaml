@@ -59,7 +59,7 @@ spec:
           ${[
             {"key": "Name", "value": "${schema.spec.name}-eks-cluster-role"},
             {"key": "Environment", "value": "${schema.spec.environment}"}
-            ] + schema.spec.tags.map(k, v, {"key": k, "value": v})}
+            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
   - id: nodeRole
     readyWhen:
       - ${nodeRole.status.ackResourceMetadata.arn != ""}
@@ -93,7 +93,7 @@ spec:
           ${[
             {"key": "Name", "value": "${schema.spec.name}-eks-node-role"},
             {"key": "Environment", "value": "${schema.spec.environment}"}
-            ] + schema.spec.tags.map(k, v, {"key": k, "value": v})}
+            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
   - id: securityGroup
     readyWhen:
       - ${securityGroup.status.id != ""}
@@ -113,7 +113,7 @@ spec:
           ${[
             {"key": "Name", "value": "${schema.spec.name}-eks-sg"},
             {"key": "Environment", "value": "${schema.spec.environment}"}
-            ] + schema.spec.tags.map(k, v, {"key": k, "value": v})}
+            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
   - id: cluster
     readyWhen:
       - ${cluster.status.status == "ACTIVE"}
@@ -139,7 +139,7 @@ spec:
           ${[
             {"key": "Name", "value": "${schema.spec.name}-eks"},
             {"key": "Environment", "value": "${schema.spec.environment}"}
-          ] + schema.spec.tags.map(k, v, {"key": k, "value": v})}
+          ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
   - id: nodeGroup
     readyWhen:
       - ${nodeGroup.status.status == "ACTIVE"}
@@ -165,4 +165,4 @@ spec:
           ${[
             {"key": "Name", "value": "${schema.spec.name}-eks-nodegroup"},
             {"key": "Environment", "value": "${schema.spec.environment}"}
-            ] + schema.spec.tags.map(k, v, {"key": k, "value": v})}
+            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
