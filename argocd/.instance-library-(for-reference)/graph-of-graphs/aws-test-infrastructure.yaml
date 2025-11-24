@@ -6,7 +6,7 @@ metadata:
 spec:
   name: base
   namespace: base
-  overrideRegion: us-east-1
+  region: us-east-1
   environment: dev
   tags:
     Project: "gen3"
@@ -16,9 +16,9 @@ spec:
   vpc:
     cidr:
       vpcCidr: "10.0.0.0/16"
-      publicSubnet1Cidr: "10.0.1.0/24"
+      publicSubnetCidr: "10.0.1.0/24"
       publicSubnet2Cidr: "10.0.2.0/24"
-      privateSubnet1Cidr: "10.0.11.0/24"
+      privateSubnetCidr: "10.0.11.0/24"
       privateSubnet2Cidr: "10.0.12.0/24"
 
   # EKS Configuration
@@ -39,7 +39,8 @@ spec:
     instanceClass: "db.t3.medium"
     allocatedStorage: 100
     databaseName: "gen3"
-    ingressCIDR: "10.0.0.0/8"
+    ingressIPRanges:
+      - "10.0.0.0/8"
 
   # Aurora Configuration (disabled by default - alternative to RDS)
   aurora:
@@ -49,7 +50,8 @@ spec:
     instanceClass: "db.r5.large"
     instanceCount: 2
     databaseName: "gen3"
-    ingressCIDR: "10.0.0.0/8"
+    ingressIPRanges:
+      - "10.0.0.0/8"
 
   # ElastiCache Configuration
   elasticache:
@@ -58,7 +60,8 @@ spec:
     engineVersion: "7.0"
     nodeType: "cache.t3.micro"
     numCacheNodes: 1
-    ingressCIDR: "10.0.0.0/8"
+    ingressIPRanges:
+      - "10.0.0.0/8"
 
   # EFS Configuration
   efs:
@@ -67,7 +70,8 @@ spec:
     throughputMode: "bursting"
     encrypted: true
     kmsKeyID: ""
-    ingressCIDR: "10.0.0.0/8"
+    ingressIPRanges:
+      - "10.0.0.0/8"
 
   # S3 Data Bucket Configuration
   dataBucket:
@@ -90,7 +94,8 @@ spec:
     instanceType: "t3.small.search"
     instanceCount: 1
     volumeSize: 10
-    ingressCIDR: "10.0.0.0/8"
+    ingressIPRanges:
+      - "10.0.0.0/8"
 
   # Route53 Configuration
   route53:

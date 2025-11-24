@@ -9,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      overrideRegion: string | default=""
+      region: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
       queueName: string
@@ -36,7 +36,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         queueName: ${schema.spec.name}
         visibilityTimeout: ${string(schema.spec.visibilityTimeout)}
@@ -46,6 +46,5 @@ spec:
         receiveMessageWaitTimeSeconds: ${string(schema.spec.receiveMessageWaitTimeSeconds)}
         fifoQueue: ${string(schema.spec.fifoQueue)}
         contentBasedDeduplication: ${string(schema.spec.contentBasedDeduplication)}
-        tags:
-          Name: ${schema.spec.name}
-          Environment: dev
+        tags: |-
+          ${{"Name": "${schema.spec.name}", "Environment": "${schema.spec.environment}"} + schema.spec.tags}

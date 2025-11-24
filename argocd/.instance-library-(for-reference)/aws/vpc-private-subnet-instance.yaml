@@ -1,0 +1,15 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsVpcPrivateSubnet
+metadata:
+  name: vpc-private-subnet
+  namespace: base
+spec:
+  name: base-2
+  namespace: base
+  region: us-east-1
+  environment: dev
+  tags: {}
+  availabilityZone: "us-east-1b"
+  cidrBlock: "10.0.12.0/24"
+  vpcID: "vpc-xxxxx"  # Reference from AwsVpc status
+  publicSubnetID: "subnet-xxxxx"  # Reference from AwsVpcPublicSubnet status for NAT Gateway placement

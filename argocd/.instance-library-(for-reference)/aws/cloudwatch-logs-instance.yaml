@@ -6,7 +6,7 @@ metadata:
 spec:
   name: base
   namespace: base
-  overrideRegion: us-east-1
+  region: us-east-1
   environment: dev
   tags: {}
   logGroupName: /base

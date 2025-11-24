@@ -5,7 +5,7 @@ metadata:
   namespace: base
 spec:
   name: base
-  overrideRegion: us-east-1
+  region: us-east-1
   clusterName: base
   namespace: base
   serviceAccountName: fence
