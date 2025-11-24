@@ -447,7 +447,7 @@ spec:
       - ${route53.status.hostedZoneID != ""}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsRoute53
+      kind: AwsRoute53Private
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-route53
@@ -457,7 +457,6 @@ spec:
         environment: ${schema.spec.environment}
         tags: ${schema.spec.tags}
         zoneName: ${schema.spec.route53.zoneName}
-        privateZone: ${schema.spec.route53.privateZone}
         vpcID: ${vpcCore.status.vpcID}
         region: ${schema.spec.region}
         comment: ${schema.spec.route53.comment}
