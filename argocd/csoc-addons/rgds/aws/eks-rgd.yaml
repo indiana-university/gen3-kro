@@ -9,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      overrideRegion: string | default=""
+      region: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
       vpcID: string
@@ -104,7 +104,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks-sg
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.name}-eks-sg
         description: "EKS cluster security group"
@@ -124,7 +124,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.name}-eks
         version: ${schema.spec.version}
@@ -135,9 +135,11 @@ spec:
             - ${securityGroup.status.id}
           endpointPublicAccess: true
           endpointPrivateAccess: true
-        tags:
-          Name: ${schema.spec.name}-eks
-          Environment: ${schema.spec.environment}
+        tags: |-
+          ${{
+            "Name": "${schema.spec.name}-eks",
+            "Environment": "${schema.spec.environment}"
+          } + schema.spec.tags}
   - id: nodeGroup
     readyWhen:
       - ${nodeGroup.status.status == "ACTIVE"}
@@ -148,7 +150,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-nodegroup
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.name}-eks-nodegroup
         clusterName: ${cluster.spec.name}
@@ -159,6 +161,8 @@ spec:
           minSize: ${schema.spec.nodeGroupMinSize}
           maxSize: ${schema.spec.nodeGroupMaxSize}
         instanceTypes: ${schema.spec.nodeGroupInstanceTypes}
-        tags:
-          Name: ${schema.spec.name}-eks-nodegroup
-          Environment: ${schema.spec.environment}
+        tags: |-
+          ${{
+            "Name": "${schema.spec.name}-eks-nodegroup",
+            "Environment": "${schema.spec.environment}"
+          } + schema.spec.tags}

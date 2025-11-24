@@ -9,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      overrideRegion: string | default=""
+      region: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
       description: string | default="KMS encryption key"
@@ -33,17 +33,17 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         description: ${schema.spec.description}
         keyUsage: ${schema.spec.keyUsage}
         keySpec: ${schema.spec.customerMasterKeySpec}
         multiRegion: ${schema.spec.multiRegion}
-        tags:
-          - tagKey: "Name"
-            tagValue: ${schema.spec.name}
-          - tagKey: "Environment"
-            tagValue: ${schema.spec.environment}
+        tags: |-
+          ${[
+            {"tagKey": "Name", "tagValue": "${schema.spec.name}"},
+            {"tagKey": "Environment", "tagValue": "${schema.spec.environment}"}
+          ] + schema.spec.tags.map(k, {"tagKey": k, "tagValue": schema.spec.tags[k]})}
   - id: alias
     template:
       apiVersion: kms.services.k8s.aws/v1alpha1
@@ -52,7 +52,7 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-alias
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: alias/${schema.spec.name}
         targetKeyID: ${key.status.keyID}

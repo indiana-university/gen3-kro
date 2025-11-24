@@ -19,4 +19,7 @@ resources:
   - sns-rgd.yaml
   - sqs-rgd.yaml
   - vpc-rgd.yaml
+  - vpc-public-subnet-rgd.yaml
+  - vpc-private-subnet-rgd.yaml
+  - vpc-db-subnet-rgd.yaml
   - waf-rgd.yaml

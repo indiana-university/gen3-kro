@@ -6,11 +6,10 @@ metadata:
 spec:
   name: base
   namespace: base
-  overrideRegion: ""
+  region: ""
   environment: dev
   tags: {}
   zoneName: base.example.com
   privateZone: false
   vpcID: ""
-  vpcRegion: ""
   comment:  hosted zone

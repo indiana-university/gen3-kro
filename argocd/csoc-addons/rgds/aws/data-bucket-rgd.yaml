@@ -9,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      overrideRegion: string | default=""
+      region: string | default=""
       environment: string | default="dev"
       tags: "map[string]string | default={}"
       bucketName: string
@@ -35,17 +35,16 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.bucketName}
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.bucketName}
         tagging:
-          tagSet:
-            - key: "Name"
-              value: ${schema.spec.bucketName}
-            - key: "Environment"
-              value: ${schema.spec.environment}
-            - key: "Purpose"
-              value: "data-storage"
+          tagSet: |-
+            ${[
+              {"key": "Name", "value": "${schema.spec.bucketName}"},
+              {"key": "Environment", "value": "${schema.spec.environment}"},
+              {"key": "Purpose", "value": "data-storage"}
+            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
 
   - id: logBucket
     readyWhen:
@@ -57,17 +56,16 @@ spec:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.bucketName}-logs
         annotations:
-          services.k8s.aws/region: ${schema.spec.overrideRegion}
+          services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.bucketName}-logs
         tagging:
-          tagSet:
-            - key: "Name"
-              value: ${schema.spec.bucketName}-logs
-            - key: "Environment"
-              value: ${schema.spec.environment}
-            - key: "Purpose"
-              value: "access-logs"
+          tagSet: |-
+            ${[
+              {"key": "Name", "value": "${schema.spec.bucketName}-logs"},
+              {"key": "Environment", "value": "${schema.spec.environment}"},
+              {"key": "Purpose", "value": "access-logs"}
+            ] + schema.spec.tags.map(k, {"key": k, "value": schema.spec.tags[k]})}
 
   - id: rwPolicy
     template:

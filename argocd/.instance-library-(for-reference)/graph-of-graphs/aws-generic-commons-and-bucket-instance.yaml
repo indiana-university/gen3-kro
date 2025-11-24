@@ -6,18 +6,32 @@ metadata:
 spec:
   name: my-gen3-commons
   namespace: base
-  overrideRegion: us-east-1
+  region: us-east-1
   environment: dev
   tags:
     project: gen3
     managed-by: kro
+
+  # Feature Toggles - control which resources are deployed
+  features:
+    enableEKS: false
+    enableAurora: false
+    enableElastiCache: false
+    enableEFS: false
+    enableKMS: false
+    enableOpenSearch: false
+    enableCloudWatchLogs: false
+    enableCloudTrail: false
+    enableDataBucket: false
+    enableLoggingBucket: false
+    enableUploadBucket: false
 
   # VPC Configuration
   vpc:
     features:
       enableSubnet2: true
       enableSubnet3: false
-      enableDbSubnet2: false
+      enableDbSubnet2: true
     cidr:
       vpcCidr: "10.0.0.0/16"
       publicSubnet1Cidr: "10.0.1.0/24"

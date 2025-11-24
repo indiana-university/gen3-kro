@@ -6,7 +6,7 @@ metadata:
 spec:
   name: my-gen3-commons
   namespace: base
-  overrideRegion: us-east-1
+  region: us-east-1
   environment: dev
   tags:
     ManagedBy: KRO
@@ -16,7 +16,6 @@ spec:
 
   # Feature Toggles - control which resources are deployed
   features:
-    enableVPC: true
     enableEKS: false
     enableAurora: false
     enableElastiCache: false
