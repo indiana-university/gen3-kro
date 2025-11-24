@@ -35,5 +35,4 @@ spec:
         name: ${schema.spec.logGroupName}
         retentionDays: ${schema.spec.retentionInDays}
         kmsKeyID: ${schema.spec.kmsKeyID}
-        tags: |-
-          ${{"Name": schema.spec.name, "Environment": schema.spec.environment} + schema.spec.tags}
+        tags: ${schema.spec.tags}

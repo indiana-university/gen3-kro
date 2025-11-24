@@ -46,5 +46,4 @@ spec:
         receiveMessageWaitTimeSeconds: ${string(schema.spec.receiveMessageWaitTimeSeconds)}
         fifoQueue: ${string(schema.spec.fifoQueue)}
         contentBasedDeduplication: ${string(schema.spec.contentBasedDeduplication)}
-        tags: |-
-          ${{"Name": schema.spec.name, "Environment": schema.spec.environment} + schema.spec.tags}
+        tags: ${schema.spec.tags}
