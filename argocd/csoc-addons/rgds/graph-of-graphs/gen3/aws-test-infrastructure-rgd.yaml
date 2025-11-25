@@ -1,0 +1,494 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-test-infrastructure.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsTestInfrastructure
+    spec:
+      name: string
+      namespace: string
+      region: string | default=""
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # VPC Configuration
+      vpc:
+        cidr:
+          vpcCidr: string | default="10.0.0.0/16"
+          publicSubnetCidr: string | default="10.0.1.0/24"
+          publicSubnet2Cidr: string | default="10.0.2.0/24"
+          privateSubnetCidr: string | default="10.0.11.0/24"
+          privateSubnet2Cidr: string | default="10.0.12.0/24"
+
+      # EKS Configuration
+      eks:
+        enabled: boolean | default=true
+        version: string | default="1.33"
+        nodeGroupInstanceTypes: "[]string | default=[\"t3.large\"]"
+        nodeGroupDesiredSize: integer | default=3
+        nodeGroupMinSize: integer | default=2
+        nodeGroupMaxSize: integer | default=6
+
+      # RDS Configuration
+      rds:
+        enabled: boolean | default=true
+        engine: string | default="postgres"
+        engineVersion: string | default="15.4"
+        instanceClass: string | default="db.t3.medium"
+        allocatedStorage: integer | default=100
+        databaseName: string | default="gen3"
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
+
+      # Aurora Configuration (alternative to RDS)
+      aurora:
+        enabled: boolean | default=false
+        engine: string | default="aurora-postgresql"
+        engineVersion: string | default="15.4"
+        instanceClass: string | default="db.r5.large"
+        instanceCount: integer | default=2
+        databaseName: string | default="gen3"
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
+
+      # ElastiCache Configuration
+      elasticache:
+        enabled: boolean | default=true
+        engine: string | default="redis"
+        engineVersion: string | default="7.0"
+        nodeType: string | default="cache.t3.micro"
+        numCacheNodes: integer | default=1
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
+
+      # EFS Configuration
+      efs:
+        enabled: boolean | default=false
+        performanceMode: string | default="generalPurpose"
+        throughputMode: string | default="bursting"
+        encrypted: boolean | default=true
+        kmsKeyID: string | default=""
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
+
+      # S3 Data Bucket Configuration
+      dataBucket:
+        enabled: boolean | default=true
+        bucketName: string
+        versioning: boolean | default=true
+        encryption: boolean | default=true
+        publicAccess: boolean | default=false
+
+      # KMS Configuration
+      kms:
+        enabled: boolean | default=true
+        description: string | default="Gen3 encryption key"
+        enableKeyRotation: boolean | default=true
+
+      # OpenSearch Configuration
+      opensearch:
+        enabled: boolean | default=false
+        engineVersion: string | default="OpenSearch_2.11"
+        instanceType: string | default="t3.small.search"
+        instanceCount: integer | default=1
+        volumeSize: integer | default=10
+        ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
+
+      # Route53 Configuration
+      route53:
+        enabled: boolean | default=false
+        zoneName: string | default=""
+        privateZone: boolean | default=false
+        comment: string | default="Gen3 hosted zone"
+
+      # CloudTrail Configuration
+      cloudtrail:
+        enabled: boolean | default=false
+        s3BucketName: string | default=""
+        includeGlobalServiceEvents: boolean | default=true
+        isMultiRegionTrail: boolean | default=true
+
+      # WAF Configuration
+      waf:
+        enabled: boolean | default=false
+        scope: string | default="REGIONAL"
+        description: string | default="Gen3 WAF Web ACL"
+        defaultAction: string | default="ALLOW"
+
+    status:
+      # VPC Outputs
+      vpcID: ${vpcCore.status.vpcID}
+      publicSubnetID: ${vpcCore.status.publicSubnetID}
+      publicSubnet2ID: ${publicSubnet2.status.subnetID}
+      privateSubnetID: ${vpcCore.status.privateSubnetID}
+      privateSubnet2ID: ${privateSubnet2.status.subnetID}
+      internetGatewayID: ${vpcCore.status.internetGatewayID}
+
+      # EKS Outputs (conditional)
+      eksClusterARN: ${eks.?status.?clusterARN}
+      eksClusterName: ${eks.?status.?clusterName}
+      eksClusterEndpoint: ${eks.?status.?clusterEndpoint}
+
+      # Database Outputs (conditional - RDS or Aurora)
+      dbInstanceARN: ${rds.?status.?dbInstanceARN}
+      dbEndpoint: ${rds.?status.?endpoint}
+
+      # ElastiCache Outputs (conditional)
+      cacheClusterID: ${elasticache.?status.?cacheClusterID}
+      cacheEndpoint: ${elasticache.?status.?endpoint}
+
+      # EFS Outputs (conditional)
+      efsFileSystemID: ${efs.?status.?fileSystemID}
+
+      # S3 Outputs (conditional)
+      dataBucketARN: ${dataBucket.?status.?bucketARN}
+      dataBucketName: ${dataBucket.?status.?bucketName}
+      # KMS Outputs (conditional)
+      kmsKeyARN: ${kms.?status.?keyARN}
+      kmsKeyID: ${kms.?status.?keyID}
+
+  resources:
+  # Layer 1: VPC Core (foundational - no dependencies)
+  - id: vpcCore
+    readyWhen:
+      - ${vpcCore.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${vpcCore.status.vpcID != ""}
+      - ${vpcCore.status.publicSubnetID != ""}
+      - ${vpcCore.status.privateSubnetID != ""}
+      - ${vpcCore.status.internetGatewayID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpc
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-vpc
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        cidr:
+          vpcCidr: ${schema.spec.vpc.cidr.vpcCidr}
+          publicSubnetCidr: ${schema.spec.vpc.cidr.publicSubnetCidr}
+          privateSubnetCidr: ${schema.spec.vpc.cidr.privateSubnetCidr}
+
+  # Layer 2: Additional Public Subnet 2
+  - id: publicSubnet2
+    readyWhen:
+      - ${publicSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${publicSubnet2.status.subnetID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcPublicSubnet
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-public-subnet-2
+      spec:
+        name: ${schema.spec.name}-2
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: "us-east-1b"
+        cidrBlock: ${schema.spec.vpc.cidr.publicSubnet2Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        internetGatewayID: ${vpcCore.status.internetGatewayID}
+
+  # Layer 2: Additional Private Subnet 2
+  - id: privateSubnet2
+    readyWhen:
+      - ${privateSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${privateSubnet2.status.subnetID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcPrivateSubnet
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-private-subnet-2
+      spec:
+        name: ${schema.spec.name}-2
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: "us-east-1b"
+        cidrBlock: ${schema.spec.vpc.cidr.privateSubnet2Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        publicSubnetID: ${publicSubnet2.status.subnetID}
+
+  # Layer 3: KMS (independent resource)
+  - id: kms
+    includeWhen:
+      - ${schema.spec.kms.enabled}
+    readyWhen:
+      - ${kms.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${kms.status.keyID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsKMS
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-kms
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        description: ${schema.spec.kms.description}
+        enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
+
+  # Layer 4: EKS (depends on VPC)
+  - id: eks
+    includeWhen:
+      - ${schema.spec.eks.enabled}
+    readyWhen:
+      - ${eks.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${eks.status.clusterName != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsEKS
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-eks
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs:
+          - ${vpcCore.status.privateSubnetID}
+          - ${privateSubnet2.status.subnetID}
+        version: ${schema.spec.eks.version}
+        nodeGroupInstanceTypes: ${schema.spec.eks.nodeGroupInstanceTypes}
+        nodeGroupDesiredSize: ${schema.spec.eks.nodeGroupDesiredSize}
+        nodeGroupMinSize: ${schema.spec.eks.nodeGroupMinSize}
+        nodeGroupMaxSize: ${schema.spec.eks.nodeGroupMaxSize}
+
+  # Layer 4: RDS (depends on VPC)
+  - id: rds
+    includeWhen:
+      - ${schema.spec.rds.enabled}
+    readyWhen:
+      - ${rds.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${rds.status.dbInstanceARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsRDS
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-rds
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs:
+          - ${vpcCore.status.privateSubnetID}
+          - ${privateSubnet2.status.subnetID}
+        ingressIPRanges: ${schema.spec.rds.ingressIPRanges}
+        engine: ${schema.spec.rds.engine}
+        engineVersion: ${schema.spec.rds.engineVersion}
+        instanceClass: ${schema.spec.rds.instanceClass}
+        allocatedStorage: ${schema.spec.rds.allocatedStorage}
+        databaseName: ${schema.spec.rds.databaseName}
+
+  # Layer 4: Aurora (alternative to RDS - depends on VPC)
+  - id: aurora
+    includeWhen:
+      - ${schema.spec.aurora.enabled}
+    readyWhen:
+      - ${aurora.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${aurora.status.clusterARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsAurora
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-aurora
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs:
+          - ${vpcCore.status.privateSubnetID}
+          - ${privateSubnet2.status.subnetID}
+        ingressIPRanges: ${schema.spec.aurora.ingressIPRanges}
+        engine: ${schema.spec.aurora.engine}
+        engineVersion: ${schema.spec.aurora.engineVersion}
+        instanceClass: ${schema.spec.aurora.instanceClass}
+        instanceCount: ${schema.spec.aurora.instanceCount}
+        databaseName: ${schema.spec.aurora.databaseName}
+
+  # Layer 4: ElastiCache (depends on VPC)
+  - id: elasticache
+    includeWhen:
+      - ${schema.spec.elasticache.enabled}
+    readyWhen:
+      - ${elasticache.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${elasticache.status.cacheClusterID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsElastiCache
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-elasticache
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs:
+          - ${vpcCore.status.privateSubnetID}
+          - ${privateSubnet2.status.subnetID}
+        ingressIPRanges: ${schema.spec.elasticache.ingressIPRanges}
+        engine: ${schema.spec.elasticache.engine}
+        engineVersion: ${schema.spec.elasticache.engineVersion}
+        nodeType: ${schema.spec.elasticache.nodeType}
+        numCacheNodes: ${schema.spec.elasticache.numCacheNodes}
+
+  # Layer 4: EFS (depends on VPC)
+  - id: efs
+    includeWhen:
+      - ${schema.spec.efs.enabled}
+    readyWhen:
+      - ${efs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${efs.status.fileSystemID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsEFS
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-efs
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs:
+          - ${vpcCore.status.privateSubnetID}
+          - ${privateSubnet2.status.subnetID}
+        ingressIPRanges: ${schema.spec.efs.ingressIPRanges}
+        performanceMode: ${schema.spec.efs.performanceMode}
+        throughputMode: ${schema.spec.efs.throughputMode}
+        encrypted: ${schema.spec.efs.encrypted}
+        kmsKeyID: ${schema.spec.efs.kmsKeyID}
+
+  # Layer 4: OpenSearch (depends on VPC)
+  - id: opensearch
+    includeWhen:
+      - ${schema.spec.opensearch.enabled}
+    readyWhen:
+      - ${opensearch.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${opensearch.status.domainARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsOpenSearch
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-opensearch
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs:
+          - ${vpcCore.status.privateSubnetID}
+          - ${privateSubnet2.status.subnetID}
+        ingressIPRanges: ${schema.spec.opensearch.ingressIPRanges}
+        engineVersion: ${schema.spec.opensearch.engineVersion}
+        instanceType: ${schema.spec.opensearch.instanceType}
+        instanceCount: ${schema.spec.opensearch.instanceCount}
+        volumeSize: ${schema.spec.opensearch.volumeSize}
+
+  # Layer 2: Data Bucket (independent)
+  - id: dataBucket
+    includeWhen:
+      - ${schema.spec.dataBucket.enabled}
+    readyWhen:
+      - ${dataBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${dataBucket.status.bucketARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsDataBucket
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-data-bucket
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        bucketName: ${schema.spec.dataBucket.bucketName}
+        versioning: ${schema.spec.dataBucket.versioning}
+        encryption: ${schema.spec.dataBucket.encryption}
+        publicAccess: ${schema.spec.dataBucket.publicAccess}
+
+  # Layer 2: Route53 (independent)
+  - id: route53
+    includeWhen:
+      - ${schema.spec.route53.enabled}
+    readyWhen:
+      - ${route53.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${route53.status.hostedZoneID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsRoute53Private
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-route53
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        environment: ${schema.spec.environment}
+        zoneName: ${schema.spec.route53.zoneName}
+        vpcID: ${vpcCore.status.vpcID}
+        region: ${schema.spec.region}
+        comment: ${schema.spec.route53.comment}
+
+  # Layer 2: CloudTrail (may depend on S3 bucket)
+  - id: cloudtrail
+    includeWhen:
+      - ${schema.spec.cloudtrail.enabled}
+    readyWhen:
+      - ${cloudtrail.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${cloudtrail.status.trailARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsCloudTrail
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-cloudtrail
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        s3BucketName: ${schema.spec.cloudtrail.s3BucketName}
+        includeGlobalServiceEvents: ${schema.spec.cloudtrail.includeGlobalServiceEvents}
+        isMultiRegionTrail: ${schema.spec.cloudtrail.isMultiRegionTrail}
+
+  # Layer 5: WAF (may depend on other resources)
+  - id: waf
+    includeWhen:
+      - ${schema.spec.waf.enabled}
+    readyWhen:
+      - ${waf.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${waf.status.webACLARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsWAF
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-waf
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        scope: ${schema.spec.waf.scope}
+        description: ${schema.spec.waf.description}
+        defaultAction: ${schema.spec.waf.defaultAction}

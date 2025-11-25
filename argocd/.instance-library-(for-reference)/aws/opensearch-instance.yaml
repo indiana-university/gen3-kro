@@ -1,0 +1,18 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsOpenSearch
+metadata:
+  name: opensearch
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  ingressIPRanges:
+    - "10.0.0.0/8"
+  vpcID: ""  # Populated by overlay
+  subnetIDs: []  # Populated by overlay
+  engineVersion: "OpenSearch_2.11"
+  instanceType: "t3.medium.search"
+  instanceCount: 2
+  volumeSize: 100

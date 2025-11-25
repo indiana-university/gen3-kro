@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsDataBucket
+metadata:
+  name: databucket
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  bucketName: base-data
+  versioning: true
+  encryption: true
+  publicAccess: false

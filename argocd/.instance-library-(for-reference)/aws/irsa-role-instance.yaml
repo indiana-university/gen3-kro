@@ -1,0 +1,15 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsIRSARole
+metadata:
+  name: fenceirsa
+  namespace: base
+spec:
+  name: base
+  region: us-east-1
+  clusterName: base
+  namespace: base
+  serviceAccountName: fence
+  accountID: ""  # AWS Account ID - to be populated by overlay
+  oidcProvider: ""  # OIDC provider URL - to be populated by overlay
+  policyARNs: []
+  inlinePolicyDocument: ""

@@ -1,0 +1,597 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-generic-commons-and-bucket.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGenericCommonsAndBucket
+    spec:
+      name: string
+      namespace: string
+      region: string | default=""
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # Feature Toggles - control which resources are deployed
+      features:
+        enableEKS: boolean | default=true
+        enableAurora: boolean | default=true
+        enableElastiCache: boolean | default=true
+        enableEFS: boolean | default=true
+        enableKMS: boolean | default=true
+        enableOpenSearch: boolean | default=true
+        enableCloudWatchLogs: boolean | default=true
+        enableCloudTrail: boolean | default=true
+        enableDataBucket: boolean | default=true
+        enableLoggingBucket: boolean | default=true
+        enableUploadBucket: boolean | default=true
+
+      # VPC Configuration
+      vpc:
+        features:
+          enableSubnet2: boolean | default=true
+          enableSubnet3: boolean | default=false
+          enableDbSubnet2: boolean | default=true
+        cidr:
+          vpcCidr: string | default="10.0.0.0/16"
+          publicSubnet1Cidr: string | default="10.0.1.0/24"
+          publicSubnet2Cidr: string | default="10.0.2.0/24"
+          publicSubnet3Cidr: string | default="10.0.3.0/24"
+          privateSubnet1Cidr: string | default="10.0.11.0/24"
+          privateSubnet2Cidr: string | default="10.0.12.0/24"
+          privateSubnet3Cidr: string | default="10.0.13.0/24"
+          dbSubnet1Cidr: string | default="10.0.21.0/24"
+          dbSubnet2Cidr: string | default="10.0.22.0/24"
+
+      # EKS Configuration
+      eks:
+        version: string | default="1.33"
+        nodeGroupInstanceTypes: "[]string | default=[\"t3.large\"]"
+        nodeGroupDesiredSize: integer | default=3
+        nodeGroupMinSize: integer | default=2
+        nodeGroupMaxSize: integer | default=6
+
+      # Aurora PostgreSQL Configuration
+      aurora:
+        engine: string | default="aurora-postgresql"
+        engineVersion: string | default="15.4"
+        instanceClass: string | default="db.r5.large"
+        instanceCount: integer | default=2
+        databaseName: string | default="gen3"
+        masterUsername: string | default="admin"
+        backupRetentionPeriod: integer | default=7
+
+      # ElastiCache Configuration
+      elasticache:
+        engine: string | default="redis"
+        engineVersion: string | default="7.0"
+        nodeType: string | default="cache.t3.micro"
+        numCacheNodes: integer | default=1
+
+      # EFS Configuration
+      efs:
+        performanceMode: string | default="generalPurpose"
+        throughputMode: string | default="bursting"
+        encrypted: boolean | default=true
+
+      # S3 Buckets Configuration
+      buckets:
+        # Data bucket
+        dataBucket:
+          name: string
+          versioning: boolean | default=true
+          encryption: boolean | default=true
+        # Logging bucket
+        loggingBucket:
+          name: string
+          versioning: boolean | default=false
+          encryption: boolean | default=true
+        # Upload bucket
+        uploadBucket:
+          name: string
+          versioning: boolean | default=true
+          encryption: boolean | default=true
+
+      # KMS Configuration
+      kms:
+        description: string | default="Gen3 encryption key"
+        enableKeyRotation: boolean | default=true
+
+      # OpenSearch Configuration
+      opensearch:
+        engineVersion: string | default="OpenSearch_2.11"
+        instanceType: string | default="t3.small.search"
+        instanceCount: integer | default=1
+        volumeSize: integer | default=10
+
+      # CloudWatch Logs Configuration
+      cloudwatchLogs:
+        retentionInDays: integer | default=1827
+
+      # CloudTrail Configuration
+      cloudtrail:
+        enableLogFileValidation: boolean | default=true
+        includeGlobalServiceEvents: boolean | default=true
+        isMultiRegionTrail: boolean | default=true
+
+    status:
+      # VPC Status - only include fields that are enabled via features
+      vpcID: ${vpcCore.status.vpcID}
+      vpcPublicSubnet1ID: ${vpcCore.status.publicSubnetID}
+      vpcPublicSubnet2ID: ${publicSubnet2.?status.?subnetID}
+      vpcPublicSubnet3ID: ${publicSubnet3.?status.?subnetID}
+      vpcPrivateSubnet1ID: ${vpcCore.status.privateSubnetID}
+      vpcPrivateSubnet2ID: ${privateSubnet2.?status.?subnetID}
+      vpcPrivateSubnet3ID: ${privateSubnet3.?status.?subnetID}
+      vpcDbSubnet1ID: ${dbSubnet1.?status.?subnetID}
+      vpcDbSubnet2ID: ${dbSubnet2.?status.?subnetID}
+      # EKS Status
+      eksClusterName: ${eks.?status.?clusterName}
+      eksClusterEndpoint: ${eks.?status.?clusterEndpoint}
+      eksClusterARN: ${eks.?status.?clusterARN}
+      # Aurora Status
+      auroraClusterEndpoint: ${aurora.?status.?clusterEndpoint}
+      auroraReaderEndpoint: ${aurora.?status.?readerEndpoint}
+      # ElastiCache Status
+      elasticacheEndpoint: ${elasticache.?status.?endpoint}
+      # EFS Status
+      efsFileSystemID: ${efs.?status.?fileSystemID}
+      # KMS Status
+      kmsKeyID: ${kms.?status.?keyID}
+      kmsKeyARN: ${kms.?status.?keyARN}
+      # S3 Buckets Status
+      dataBucketName: ${dataBucket.?status.?s3Name}
+      dataBucketArn: ${dataBucket.?status.?s3ARN}
+      loggingBucketName: ${loggingBucket.?status.?s3Name}
+      loggingBucketArn: ${loggingBucket.?status.?s3ARN}
+      uploadBucketName: ${uploadBucket.?status.?s3Name}
+      uploadBucketArn: ${uploadBucket.?status.?s3ARN}
+      # OpenSearch Status
+      opensearchDomainARN: ${opensearch.?status.?domainARN}
+      opensearchDomainEndpoint: ${opensearch.?status.?endpoint}
+      # CloudWatch Logs Status
+      cloudwatchLogsGroupARN: ${cloudwatchLogs.?status.?logGroupARN}
+      # CloudTrail Status
+      cloudtrailARN: ${cloudtrail.?status.?trailARN}
+
+  resources:
+  # 1. KMS Key - needed for encryption of other resources
+  - id: kms
+    includeWhen:
+      - ${schema.spec.features.enableKMS}
+    readyWhen:
+      - ${kms.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${kms.status.keyID != ""}
+      - ${kms.status.keyARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsKMS
+      metadata:
+        name: ${schema.spec.name}-kms
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        description: ${schema.spec.kms.description}
+        enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
+
+  # 2. VPC - Core network infrastructure (VPC, IGW, EIP for NAT)
+  - id: vpcCore
+    readyWhen:
+      - ${vpcCore.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${vpcCore.status.vpcID != ""}
+      - ${vpcCore.status.internetGatewayID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpc
+      metadata:
+        name: ${schema.spec.name}-vpc
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        cidr:
+          vpcCidr: ${schema.spec.vpc.cidr.vpcCidr}
+          publicSubnetCidr: ${schema.spec.vpc.cidr.publicSubnet1Cidr}
+          privateSubnetCidr: ${schema.spec.vpc.cidr.privateSubnet1Cidr}
+
+  # 3. Public Subnet 2 (optional)
+  - id: publicSubnet2
+    includeWhen:
+      - ${schema.spec.vpc.features.enableSubnet2}
+    readyWhen:
+      - ${publicSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${publicSubnet2.status.subnetID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcPublicSubnet
+      metadata:
+        name: ${schema.spec.name}-public-subnet-2
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}-2
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: ${schema.spec.region}b
+        cidrBlock: ${schema.spec.vpc.cidr.publicSubnet2Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        internetGatewayID: ${vpcCore.status.internetGatewayID}
+
+  # 4. Public Subnet 3 (optional)
+  - id: publicSubnet3
+    includeWhen:
+      - ${schema.spec.vpc.features.enableSubnet3}
+    readyWhen:
+      - ${publicSubnet3.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${publicSubnet3.status.subnetID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcPublicSubnet
+      metadata:
+        name: ${schema.spec.name}-public-subnet-3
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}-3
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: ${schema.spec.region}c
+        cidrBlock: ${schema.spec.vpc.cidr.publicSubnet3Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        internetGatewayID: ${vpcCore.status.internetGatewayID}
+
+  # 5. Private Subnet 2 (optional)
+  - id: privateSubnet2
+    includeWhen:
+      - ${schema.spec.vpc.features.enableSubnet2}
+    readyWhen:
+      - ${privateSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${privateSubnet2.status.subnetID != ""}
+      - ${privateSubnet2.status.natGatewayID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcPrivateSubnet
+      metadata:
+        name: ${schema.spec.name}-private-subnet-2
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}-2
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: ${schema.spec.region}b
+        cidrBlock: ${schema.spec.vpc.cidr.privateSubnet2Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        publicSubnetID: ${publicSubnet2.status.subnetID}
+
+  # 6. Private Subnet 3 (optional)
+  - id: privateSubnet3
+    includeWhen:
+      - ${schema.spec.vpc.features.enableSubnet3}
+    readyWhen:
+      - ${privateSubnet3.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${privateSubnet3.status.subnetID != ""}
+      - ${privateSubnet3.status.natGatewayID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcPrivateSubnet
+      metadata:
+        name: ${schema.spec.name}-private-subnet-3
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}-3
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: ${schema.spec.region}c
+        cidrBlock: ${schema.spec.vpc.cidr.privateSubnet3Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        publicSubnetID: ${publicSubnet3.status.subnetID}
+
+  # 7. DB Subnet 1 (for Aurora, ElastiCache, OpenSearch)
+  - id: dbSubnet1
+    includeWhen:
+      - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
+    readyWhen:
+      - ${dbSubnet1.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${dbSubnet1.status.subnetID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcDbSubnet
+      metadata:
+        name: ${schema.spec.name}-db-subnet-1
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}-1
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: ${schema.spec.region}a
+        cidrBlock: ${schema.spec.vpc.cidr.dbSubnet1Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        privateRouteTableID: ${vpcCore.status.privateRouteTableID}
+
+  # 8. DB Subnet 2 (optional)
+  - id: dbSubnet2
+    includeWhen:
+      - ${schema.spec.vpc.features.enableDbSubnet2}
+      - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
+    readyWhen:
+      - ${dbSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${dbSubnet2.status.subnetID != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsVpcDbSubnet
+      metadata:
+        name: ${schema.spec.name}-db-subnet-2
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}-2
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        availabilityZone: ${schema.spec.region}b
+        cidrBlock: ${schema.spec.vpc.cidr.dbSubnet2Cidr}
+        vpcID: ${vpcCore.status.vpcID}
+        privateRouteTableID: "${ schema.spec.vpc.features.enableSubnet2 ? privateSubnet2.status.privateRouteTableID : vpcCore.status.privateRouteTableID }"
+
+  # 3. CloudWatch Log Group - needed for CloudTrail and other logging
+  - id: cloudwatchLogs
+    includeWhen:
+      - ${schema.spec.features.enableCloudWatchLogs}
+    readyWhen:
+      - ${cloudwatchLogs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${cloudwatchLogs.status.logGroupARN != ""}
+      - ${cloudwatchLogs.status.logGroupName != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsCloudWatchLogs
+      metadata:
+        name: ${schema.spec.name}-logs
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        logGroupName: /aws/${schema.spec.name}
+        retentionInDays: ${schema.spec.cloudwatchLogs.retentionInDays}
+        kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyID : \"\" }"
+
+  # 4. Logging S3 Bucket - needed for CloudTrail and other buckets
+  - id: loggingBucket
+    includeWhen:
+      - ${schema.spec.features.enableLoggingBucket}
+    readyWhen:
+      - ${loggingBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${loggingBucket.status.s3Name != ""}
+      - ${loggingBucket.status.s3ARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsS3Bucket
+      metadata:
+        name: ${schema.spec.buckets.loggingBucket.name}
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.buckets.loggingBucket.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        versioning: ${schema.spec.buckets.loggingBucket.versioning}
+        encryption: ${schema.spec.buckets.loggingBucket.encryption}
+
+  # 5. CloudTrail - depends on logging bucket and CloudWatch logs
+  - id: cloudtrail
+    includeWhen:
+      - ${schema.spec.features.enableCloudTrail}
+    readyWhen:
+      - ${cloudtrail.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${cloudtrail.status.trailARN != ""}
+      - ${cloudtrail.status.trailName != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsCloudTrail
+      metadata:
+        name: ${schema.spec.name}-trail
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        s3BucketName: ${loggingBucket.status.s3Name}
+        cloudWatchLogsLogGroupARN: ${cloudwatchLogs.status.logGroupARN}
+        enableLogFileValidation: ${schema.spec.cloudtrail.enableLogFileValidation}
+        includeGlobalServiceEvents: ${schema.spec.cloudtrail.includeGlobalServiceEvents}
+        isMultiRegionTrail: ${schema.spec.cloudtrail.isMultiRegionTrail}
+        kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
+
+  # 6. EKS Cluster - depends on VPC
+  - id: eks
+    includeWhen:
+      - ${schema.spec.features.enableEKS}
+    readyWhen:
+      - ${eks.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${eks.status.clusterEndpoint != ""}
+      - ${eks.status.clusterARN != ""}
+      - ${eks.status.clusterName != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsEKS
+      metadata:
+        name: ${schema.spec.name}-eks
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs: "${ [vpcCore.status.privateSubnetID] + (schema.spec.vpc.features.enableSubnet2 ? [privateSubnet2.status.subnetID] : []) + (schema.spec.vpc.features.enableSubnet3 ? [privateSubnet3.status.subnetID] : []) }"
+        version: ${schema.spec.eks.version}
+        nodeGroupInstanceTypes: ${schema.spec.eks.nodeGroupInstanceTypes}
+        nodeGroupDesiredSize: ${schema.spec.eks.nodeGroupDesiredSize}
+        nodeGroupMinSize: ${schema.spec.eks.nodeGroupMinSize}
+        nodeGroupMaxSize: ${schema.spec.eks.nodeGroupMaxSize}
+
+  # 7. Aurora PostgreSQL - depends on VPC
+  - id: aurora
+    includeWhen:
+      - ${schema.spec.features.enableAurora}
+    readyWhen:
+      - ${aurora.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${aurora.status.clusterEndpoint != ""}
+      - ${aurora.status.clusterARN != ""}
+      - ${aurora.status.readerEndpoint != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsAurora
+      metadata:
+        name: ${schema.spec.name}-aurora
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs: "${ [dbSubnet1.status.subnetID] + (schema.spec.vpc.features.enableDbSubnet2 ? [dbSubnet2.status.subnetID] : []) }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
+        engine: ${schema.spec.aurora.engine}
+        engineVersion: ${schema.spec.aurora.engineVersion}
+        instanceClass: ${schema.spec.aurora.instanceClass}
+        instanceCount: ${schema.spec.aurora.instanceCount}
+        databaseName: ${schema.spec.aurora.databaseName}
+        masterUsername: ${schema.spec.aurora.masterUsername}
+        backupRetentionPeriod: ${schema.spec.aurora.backupRetentionPeriod}
+
+  # 8. ElastiCache - depends on VPC
+  - id: elasticache
+    includeWhen:
+      - ${schema.spec.features.enableElastiCache}
+    readyWhen:
+      - ${elasticache.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${elasticache.status.endpoint != ""}
+      - ${elasticache.status.cacheClusterARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsElastiCache
+      metadata:
+        name: ${schema.spec.name}-elasticache
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs: "${ [dbSubnet1.status.subnetID] + (schema.spec.vpc.features.enableDbSubnet2 ? [dbSubnet2.status.subnetID] : []) }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
+        engine: ${schema.spec.elasticache.engine}
+        engineVersion: ${schema.spec.elasticache.engineVersion}
+        nodeType: ${schema.spec.elasticache.nodeType}
+        numCacheNodes: ${schema.spec.elasticache.numCacheNodes}
+
+  # 9. EFS - depends on VPC
+  - id: efs
+    includeWhen:
+      - ${schema.spec.features.enableEFS}
+    readyWhen:
+      - ${efs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${efs.status.fileSystemID != ""}
+      - ${efs.status.fileSystemARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsEFS
+      metadata:
+        name: ${schema.spec.name}-efs
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs: "${ [vpcCore.status.privateSubnetID] + (schema.spec.vpc.features.enableSubnet2 ? [privateSubnet2.status.subnetID] : []) + (schema.spec.vpc.features.enableSubnet3 ? [privateSubnet3.status.subnetID] : []) }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
+        performanceMode: ${schema.spec.efs.performanceMode}
+        throughputMode: ${schema.spec.efs.throughputMode}
+        encrypted: ${schema.spec.efs.encrypted}
+        kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyID : \"\" }"
+
+  # 10. Data Bucket - depends on KMS and logging bucket
+  - id: dataBucket
+    includeWhen:
+      - ${schema.spec.features.enableDataBucket}
+    readyWhen:
+      - ${dataBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${dataBucket.status.s3Name != ""}
+      - ${dataBucket.status.s3ARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsS3Bucket
+      metadata:
+        name: ${schema.spec.buckets.dataBucket.name}
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.buckets.dataBucket.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        versioning: ${schema.spec.buckets.dataBucket.versioning}
+        encryption: ${schema.spec.buckets.dataBucket.encryption}
+
+  # 11. Upload Bucket - depends on KMS and logging bucket
+  - id: uploadBucket
+    includeWhen:
+      - ${schema.spec.features.enableUploadBucket}
+    readyWhen:
+      - ${uploadBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${uploadBucket.status.s3Name != ""}
+      - ${uploadBucket.status.s3ARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsS3Bucket
+      metadata:
+        name: ${schema.spec.buckets.uploadBucket.name}
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.buckets.uploadBucket.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        versioning: ${schema.spec.buckets.uploadBucket.versioning}
+        encryption: ${schema.spec.buckets.uploadBucket.encryption}
+
+  # 12. OpenSearch - depends on VPC
+  - id: opensearch
+    includeWhen:
+      - ${schema.spec.features.enableOpenSearch}
+    readyWhen:
+      - ${opensearch.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
+      - ${opensearch.status.endpoint != ""}
+      - ${opensearch.status.domainARN != ""}
+    template:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsOpenSearch
+      metadata:
+        name: ${schema.spec.name}-opensearch
+        namespace: ${schema.spec.namespace}
+      spec:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        vpcID: ${vpcCore.status.vpcID}
+        subnetIDs: "${ [dbSubnet1.status.subnetID] }"
+        ingressIPRanges: "${ [schema.spec.vpc.cidr.privateSubnet1Cidr] + (schema.spec.vpc.features.enableSubnet2 ? [schema.spec.vpc.cidr.privateSubnet2Cidr] : []) + (schema.spec.vpc.features.enableSubnet3 ? [schema.spec.vpc.cidr.privateSubnet3Cidr] : []) }"
+        engineVersion: ${schema.spec.opensearch.engineVersion}
+        instanceType: ${schema.spec.opensearch.instanceType}
+        instanceCount: ${schema.spec.opensearch.instanceCount}
+        volumeSize: ${schema.spec.opensearch.volumeSize}

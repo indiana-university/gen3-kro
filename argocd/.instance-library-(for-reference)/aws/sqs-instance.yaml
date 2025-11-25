@@ -1,0 +1,17 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsSQS
+metadata:
+  name: sqs
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  queueName: base-queue
+  visibilityTimeout: 30
+  messageRetentionPeriod: 345600
+  maxMessageSize: 262144
+  delaySeconds: 0
+  receiveMessageWaitTimeSeconds: 0
+  fifoQueue: false

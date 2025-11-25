@@ -1,0 +1,37 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-cloudwatchlogs.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsCloudWatchLogs
+    spec:
+      name: string
+      namespace: string
+      region: string | default=""
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+      logGroupName: string
+      retentionInDays: integer | default=30
+      kmsKeyID: string | default=""
+    status:
+      logGroupARN: ${logGroup.status.ackResourceMetadata.arn}
+      logGroupName: ${logGroup.spec.name}
+
+  resources:
+  - id: logGroup
+    readyWhen:
+      - ${logGroup.status.ackResourceMetadata.arn != ""}
+    template:
+      apiVersion: cloudwatchlogs.services.k8s.aws/v1alpha1
+      kind: LogGroup
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.logGroupName}
+        retentionDays: ${schema.spec.retentionInDays}
+        kmsKeyID: ${schema.spec.kmsKeyID}

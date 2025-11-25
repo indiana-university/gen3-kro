@@ -29,7 +29,7 @@ variable "cluster_oidc_issuer_url" {
 }
 
 variable "namespace" {
-  description = "Kubernetes namespace"
+  description = "Kubernetes namespace (single mode)"
   type        = string
 }
 

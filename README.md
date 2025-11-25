@@ -1,29 +1,24 @@
 # Gen3-KRO
 
- This is a platform for deploying cloud resources in a provider account via Terragrunt-managed Terraform modules, then bootstraps created Kubernetes clusters with cloud-specific controllers (ASO, ACKs, Config Connector) and KRO through a GitOps-driven continuous delivery (ArgoCD-managed). The csoc then uses boilerplate KRO resource graphs to deploy multiple customizable instances of the application infrastructure in the destination cloud account using their respective controllers.
-
- The application we deploy in this repository is the Gen3 data commons platform.
+Platform for deploying Gen3 data commons infrastructure with Terragrunt-managed Terraform and GitOps (ArgoCD + KRO). A central **csoc** hub provisions cloud resources and bootstraps controllers; spoke environments consume shared KRO graphs to launch application stacks.
 
 ## Overview
 
 `gen3-kro` provides a hub-and-spoke architecture for deploying and managing Gen3 data commons infrastructure. The platform provisions cloud resources (VPCs, Kubernetes clusters, IAM roles) via Terragrunt-managed Terraform modules, then bootstraps GitOps-driven continuous delivery using ArgoCD, cloud-specific controllers, and Kubernetes Resource Orchestrator (KRO) ResourceGraphDefinitions.
 
-**Testing Status:**
-- ✅ **AWS cross-account deployment**: Fully tested and production-ready
-- 🚧 **Azure deployment**: Implementation complete, testing pending
-- 🚧 **Google Cloud deployment**: Implementation complete, testing pending
-- 🚧 **Cross-provider scenarios**: Pending validation
+**Status**
+- ✅ AWS cross-account: production-ready
+- 🚧 Azure & GCP: implementation complete, validation pending
+- 🚧 Cross-provider scenarios: pending
 
-**Important Notes:**
-- **KRO Controller**: Currently in pre-1.0 minor releases (0.x). Major 1.0 release planned before 2026.
-- **Terragrunt**: Pre-1.0 minor releases (0.x). Production-stable despite version numbering.
+**Notes**
+- KRO controller and Terragrunt are pre-1.0 but stable for production.
 
-**Key features:**
-- **Multi-cloud support**: AWS (EKS), Azure (AKS), Google Cloud (GKE)
-- **Hub-spoke topology**:  Central control plane (csoc) managing multiple spoke environments
-- **GitOps workflow**:     ArgoCD ApplicationSets and KRO graphs for declarative deployments
-- **IAM policy layering**: Environment-specific and default policies for fine-grained access control
-- **Terragrunt-based**:    Promotes DRY principles with hierarchical configuration (catalog → combinations → units → live stacks)
+**Highlights**
+- Multi-cloud (AWS EKS, Azure AKS, GCP GKE)
+- Hub-spoke: csoc hub manages multiple spokes
+- GitOps-first: ArgoCD ApplicationSets + KRO graphs
+- Layered IAM policies and DRY Terragrunt catalog
 
 ## Repository Structure
 
@@ -60,52 +55,18 @@
 
 ## Quick Start
 
-### 1. Launch Development Environment
-
-Open this repository in a VS Code dev container (requires Docker):
-
-```bash
-# VS Code will detect .devcontainer/devcontainer.json
-# Select "Reopen in Container" when prompted
-
-# Or use Docker CLI directly with the root Dockerfile:
-docker build -t gen3-kro-dev .
-docker run -it --rm -v $(pwd):/workspace -w /workspace gen3-kro-dev bash
-```
-
-The Docker container includes all required tools: Terragrunt, Terraform, kubectl, ArgoCD CLI, AWS CLI, Azure CLI, gcloud.
-
-### 2. Configure Environment
-
-Navigate to your environment directory (or copy the example):
-
+1) Launch the VS Code devcontainer (Docker required). It ships Terraform, Terragrunt, kubectl, ArgoCD CLI, AWS/Azure/gcloud CLIs.  
+2) Copy an environment and set secrets:
 ```bash
 cd live/aws/us-east-1/<csoc_alias>
 cp secrets-example.yaml secrets.yaml
-# Edit secrets.yaml with your cloud credentials and configuration
 ```
-
-See [`live/README.md`](live/README.md) for secrets schema and [`docs/guides/setup.md`](docs/guides/setup.md) for detailed first-time setup.
-
-### 3. Deploy Infrastructure
-
-Run the bootstrap script from the repository root:
-
+3) Plan and apply from repo root:
 ```bash
-./init.sh plan   # Preview changes (runs terragrunt plan --all)
-./init.sh apply  # Deploy csoc hub and spokes (runs terragrunt apply --all)
+./init.sh plan   # terragrunt plan --all
+./init.sh apply  # terragrunt apply --all
 ```
-
-This will:
-1. Provision cloud resources (VPC, cluster, IAM roles) using the Terraform catalog
-2. Install ArgoCD on the hub cluster
-3. Deploy bootstrap ApplicationSets that sync addons and spoke configurations from the GitOps repository
-4. Automatically configure kubectl and ArgoCD CLI access
-
-### 4. Verify Cluster Access
-
-After deployment completes, verify connectivity:
-
+4) Check access:
 ```bash
 kubectl get nodes
 argocd app list
@@ -129,46 +90,12 @@ argocd app list
 
 ## Day-2 Operations
 
-**Plan changes:**
-```bash
-cd live/<provider>/<region>/<csoc_alias>
-terragrunt plan --all
-```
-
-**Apply updates:**
-```bash
-terragrunt apply --all
-```
-
-**Sync ArgoCD applications:**
-```bash
-argocd app sync -l argocd.argoproj.io/instance=csoc-addons
-```
-
-**Review logs:**
-```bash
-./outputs/logs/terragrunt-*.log
-./outputs/logs/connect-cluster-*.log
-```
-
-See [`docs/operations.md`](docs/guides/operations.md) for troubleshooting drift, rotating credentials, and managing spoke environments.
+Plan/apply from `live/<provider>/<region>/<csoc_alias>` using `terragrunt plan --all` and `terragrunt apply --all`. Sync ArgoCD addons with `argocd app sync -l argocd.argoproj.io/instance=csoc-addons`. Logs land in `outputs/logs/`. See `docs/guides/operations.md` for drift, sync, and troubleshooting.
 
 ## Contributing
 
-We welcome contributions! Please review:
-- [Contribution guidelines](CONTRIBUTING.md) for branching conventions and PR requirements
-- [Terraform module standards](terraform/catalog/modules/README.md) for authoring new modules
-
-Lint and format before committing:
-```bash
-terraform fmt -recursive terraform/
-terragrunt hcl format
-```
+We welcome contributions. Start with `CONTRIBUTING.md` and `terraform/catalog/modules/README.md`. Format with `terraform fmt -recursive terraform/` and `terragrunt hcl format` before committing.
 
 ## License
 
-See [LICENSE](LICENSE) for details.
-See [Apache 2.0 License](third-party-licenses/apache-2.0) for licensing information.
-
----
-**Last updated:** 2025-10-28
+See `LICENSE` and `third-party-licenses/apache-2.0`.

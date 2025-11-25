@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - adoptedresources.services.k8s.aws.yaml
+  - fieldexports.services.k8s.aws.yaml
+  - platformapplications.sns.services.k8s.aws.yaml
+  - platformendpoints.sns.services.k8s.aws.yaml
+  - subscriptions.sns.services.k8s.aws.yaml
+  - topics.sns.services.k8s.aws.yaml

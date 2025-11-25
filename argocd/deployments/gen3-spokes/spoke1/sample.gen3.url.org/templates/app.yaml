@@ -1,0 +1,41 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gen3-covid19prod
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "4"
+spec:
+  project: default
+  sources:
+    - path: helm/gen3
+      repoURL: https://github.com/uc-cdis/gen3-helm
+      targetRevision: feat/deployment-canary
+      helm:
+        releaseName: gen3-covid19prod
+        valueFiles:
+          - $values/covid19prod/chicagoland.pandemicresponsecommons.org/values/values.yaml
+    - repoURL: 'https://github.com/uc-cdis/gen3-gitops.git'
+      targetRevision: master
+      ref: values
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: covid19prod-helm
+  syncPolicy:
+    managedNamespaceMetadata:
+      labels:
+        role: gen3
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+      - PrunePropagationPolicy=foreground
+      - PruneLast=true
+    automated:
+      prune: true
+      selfHeal: true
+    retry:
+      limit: 5
+      backoff:
+        duration: 5s
+        factor: 2
+        maxDuration: 3m

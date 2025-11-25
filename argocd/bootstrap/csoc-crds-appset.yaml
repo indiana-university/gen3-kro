@@ -1,0 +1,82 @@
+# CSOC CRDs ApplicationSet
+#
+# This ApplicationSet deploys CRDs per controller.
+#
+# Data Sources:
+# 1. Addon Catalog (argocd/csoc-addons/catalog.yaml):
+#    - Defines available addons and their configurations
+#    - CRDs are deployed from argocd/csoc-addons/crds/{addon} directories
+#
+# Each addon's CRDs get their own Application for fine-grained control.
+#
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: csoc-crds
+  namespace: argocd
+  annotations:
+    # Deploy CRDs early; AppSet evaluation earlier than controllers
+    argocd.argoproj.io/sync-wave: "-40"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    # Matrix generator: Clusters × Addon Catalog
+    - matrix:
+        generators:
+          # CSOC/Hub cluster selection
+          - clusters:
+              selector:
+                matchLabels:
+                  fleet_member: control-plane
+
+          # Load addon catalog (shared with controller AppSet)
+          - git:
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              revision: '{{.metadata.annotations.repo_revision}}'
+              files:
+                - path: 'argocd/csoc-addons/controller-crd-catalog.yaml'
+  template:
+    metadata:
+      # Create one Application per addon's CRDs
+      name: 'csoc-{{.addon}}-crds'
+      labels:
+        app.kubernetes.io/part-of: crds
+        app.kubernetes.io/addon: '{{.addon}}'
+      annotations:
+        # Sync wave for generated CRD Applications (ensure they apply before readiness checks)
+        argocd.argoproj.io/sync-wave: "-35"
+      # Enable cascade deletion - when app is deleted, all resources including CRDs are deleted
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      source:
+        # Values repository source for CRDs
+        repoURL: '{{.metadata.annotations.repo_url}}'
+        targetRevision: '{{.metadata.annotations.repo_revision}}'
+        path: 'argocd/csoc-addons/crds/{{.addon}}'
+      destination:
+        name: '{{.name}}'
+      syncPolicy:
+        automated:
+          prune: false  # Never auto-prune CRDs to avoid accidental deletion
+          selfHeal: true
+          allowEmpty: true  # Allow empty directories for addons that manage their own CRDs (e.g., external-secrets)
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          # - Replace=true removed: avoid delete-and-recreate of CRDs which would delete all CRs
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      # Ignore differences in CRD conversion webhooks (common with large CRDs)
+      ignoreDifferences:
+        - group: apiextensions.k8s.io
+          kind: CustomResourceDefinition
+          jsonPointers:
+            - /spec/conversion/webhook/clientConfig/caBundle
+            - /status

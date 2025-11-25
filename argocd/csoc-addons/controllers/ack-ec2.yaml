@@ -1,0 +1,11 @@
+# KRO controller resources
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+serviceAccount:
+  name: ack-ec2-sa
+  create: false

@@ -1,0 +1,13 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsWAF
+metadata:
+  name: waf
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  scope: REGIONAL
+  description:  WAF Web ACL
+  defaultAction: ALLOW

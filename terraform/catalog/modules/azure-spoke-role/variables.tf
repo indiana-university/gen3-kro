@@ -8,18 +8,14 @@ variable "create" {
   type        = bool
 }
 
-variable "spoke_alias" {
-  description = "Spoke alias"
+variable "override_id" {
+  description = "Override identity ID (use existing identity instead of creating new role assignment). When set, create is ignored and this value is returned."
   type        = string
+  default     = null
 }
 
-variable "service_name" {
-  description = "Service name"
-  type        = string
-}
-
-variable "hub_managed_identity_principal_id" {
-  description = "Principal ID of hub managed identity"
+variable "csoc_managed_identity_principal_id" {
+  description = "Principal ID of CSOC managed identity"
   type        = string
 }
 
@@ -36,9 +32,4 @@ variable "role_definition_name" {
 variable "custom_role_definition_id" {
   description = "Custom role definition ID"
   type        = string
-}
-
-variable "tags" {
-  description = "Tags to apply"
-  type        = map(string)
 }
