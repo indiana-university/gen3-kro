@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsRoute53
+metadata:
+  name: route53
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: ""
+  environment: dev
+  zoneName: base.example.com
+  privateZone: false
+  vpcID: ""
+  comment:  hosted zone

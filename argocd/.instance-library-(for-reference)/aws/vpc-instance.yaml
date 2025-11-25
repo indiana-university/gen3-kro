@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsVpc
+metadata:
+  name: vpc
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  cidr:
+    vpcCidr: "10.0.0.0/16"
+    publicSubnetCidr: "10.0.1.0/24"
+    privateSubnetCidr: "10.0.11.0/24"

@@ -1,0 +1,48 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-sqs.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsSQS
+    spec:
+      name: string
+      namespace: string
+      region: string | default=""
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+      queueName: string
+      visibilityTimeout: integer | default=30
+      messageRetentionPeriod: integer | default=345600
+      maxMessageSize: integer | default=262144
+      delaySeconds: integer | default=0
+      receiveMessageWaitTimeSeconds: integer | default=0
+      fifoQueue: boolean | default=false
+      contentBasedDeduplication: boolean | default=false
+    status:
+      queueARN: ${queue.status.ackResourceMetadata.arn}
+      queueURL: ${queue.status.queueURL}
+      queueName: ${queue.spec.queueName}
+
+  resources:
+  - id: queue
+    readyWhen:
+      - ${queue.status.queueURL != ""}
+    template:
+      apiVersion: sqs.services.k8s.aws/v1alpha1
+      kind: Queue
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        queueName: ${schema.spec.name}
+        visibilityTimeout: ${string(schema.spec.visibilityTimeout)}
+        messageRetentionPeriod: ${string(schema.spec.messageRetentionPeriod)}
+        maximumMessageSize: ${string(schema.spec.maxMessageSize)}
+        delaySeconds: ${string(schema.spec.delaySeconds)}
+        receiveMessageWaitTimeSeconds: ${string(schema.spec.receiveMessageWaitTimeSeconds)}
+        fifoQueue: ${string(schema.spec.fifoQueue)}
+        contentBasedDeduplication: ${string(schema.spec.contentBasedDeduplication)}

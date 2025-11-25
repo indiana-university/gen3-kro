@@ -1,0 +1,18 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsEKS
+metadata:
+  name: eks
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  vpcID: ""  # Populated by overlay or external reference
+  subnetIDs: []  # Populated by overlay or external reference
+  version: "1.33"
+  nodeGroupInstanceTypes:
+    - "t3.large"
+  nodeGroupDesiredSize: 3
+  nodeGroupMinSize: 2
+  nodeGroupMaxSize: 6

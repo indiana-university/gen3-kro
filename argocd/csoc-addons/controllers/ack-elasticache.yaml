@@ -1,0 +1,11 @@
+# ACK ElastiCache controller resources
+resources:
+  limits:
+    cpu: 200m
+    memory: 256Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+serviceAccount:
+  name: ack-elasticache-sa
+  create: false

@@ -1,0 +1,19 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsRDS
+metadata:
+  name: rds
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  ingressIPRanges:
+    - "10.0.0.0/8"
+  vpcID: ""  # Populated by overlay
+  subnetIDs: []  # Populated by overlay
+  engine: "postgres"
+  engineVersion: "15.4"
+  instanceClass: "db.t3.medium"
+  allocatedStorage: 100
+  databaseName: ""

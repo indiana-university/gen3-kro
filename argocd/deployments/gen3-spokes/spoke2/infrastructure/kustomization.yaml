@@ -1,0 +1,21 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  # External repository reference for the spoke
+  - github.com/jayadeyemi/Gen3-Kro-Demo//a-vpc-deployment?ref=main
+
+# Patches to Finalize Namespace for Account Deployment
+patches:
+  - target:
+      group: kro.run
+    patch: |-
+      - op: replace
+        path: /spec/namespace
+        value: spoke2-infrastructure
+  - target:
+      group: kro.run
+    patch: |-
+      - op: replace
+        path: /metadata/namespace
+        value: spoke2-infrastructure

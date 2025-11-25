@@ -1,0 +1,13 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsCloudWatchLogs
+metadata:
+  name: cloudwatchlogs
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  logGroupName: /base
+  retentionInDays: 30
+  kmsKeyID: ""

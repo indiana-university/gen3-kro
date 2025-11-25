@@ -1,16 +1,16 @@
 output "role_arn" {
   description = "ARN of the spoke account IAM role"
-  value       = var.create ? aws_iam_role.spoke[0].arn : null
+  value       = var.override_id != null ? var.override_id : (var.create ? aws_iam_role.spoke[0].arn : null)
 }
 
 output "role_name" {
   description = "Name of the spoke account IAM role"
-  value       = var.create ? aws_iam_role.spoke[0].name : null
+  value       = var.override_id != null ? null : (var.create ? aws_iam_role.spoke[0].name : null)
 }
 
 output "role_unique_id" {
   description = "Stable and unique string identifying the IAM role"
-  value       = var.create ? aws_iam_role.spoke[0].unique_id : null
+  value       = var.override_id != null ? null : (var.create ? aws_iam_role.spoke[0].unique_id : null)
 }
 
 output "service_name" {

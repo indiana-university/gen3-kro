@@ -12,7 +12,8 @@ IFS=$'\n\t'
 ###############################################################################
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/.." && pwd -P)"
-LOG_DIR="${REPO_ROOT}/outputs/logs"
+# Use TG_OUTPUTS_DIR if set (called by dev.sh/prod.sh), otherwise use default location
+LOG_DIR="${TG_OUTPUTS_DIR:-${REPO_ROOT}/outputs/logs}"
 STACK_DIR="${STACK_DIR:-${REPO_ROOT}/live/aws/us-east-1/gen3-kro-dev}"
 
 source "${SCRIPT_DIR}/lib-logging.sh"
@@ -44,9 +45,19 @@ done
 ###############################################################################
 # Main Execution
 ###############################################################################
-mkdir -p "$LOG_DIR"
-
-LOG_FILE="${LOG_DIR}/connect-cluster-$(date +%Y%m%d-%H%M%S).log"
+# Use LOG_FILE if already set by calling script (dev.sh/prod.sh),
+# otherwise create a new log in the LOG_DIR
+if [[ -z "$LOG_FILE" ]]; then
+  mkdir -p "$LOG_DIR"
+  # Get timezone from log-config.yaml
+  CONFIG_FILE="${REPO_ROOT}/log-config.yaml"
+  if [ -f "$CONFIG_FILE" ]; then
+    LOG_TIMEZONE=$(grep "^timezone:" "$CONFIG_FILE" | sed -E 's/^timezone: *"?([^"# ]+)"?.*/\1/' || echo "UTC")
+  else
+    LOG_TIMEZONE="UTC"
+  fi
+  LOG_FILE="${LOG_DIR}/connect-cluster-$(TZ="$LOG_TIMEZONE" date +%Y%m%d-%H%M%S).log"
+fi
 export LOG_FILE
 
 log_info "========================================="
@@ -182,6 +193,18 @@ if [[ -n "$ARGOCD_PASSWORD" ]]; then
     log_info "  URL: https://$ARGOCD_LB_URL"
   fi
 fi
+
+# Add port-forward instructions (without log prefix for easy copy)
+log_info ""
+log_info "Port-Forward Commands (copy and paste):"
+log_info "========================================="
+echo ""
+echo "# ArgoCD UI (https://localhost:8080)"
+echo "kubectl port-forward -n argocd svc/argo-cd-argocd-server 8080:443"
+echo ""
+echo "# ArgoCD API/CLI (localhost:8081)"
+echo "kubectl port-forward -n argocd svc/argo-cd-argocd-server 8081:443"
+echo ""
 
 ###############################################################################
 # End of File

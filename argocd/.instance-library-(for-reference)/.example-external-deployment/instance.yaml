@@ -1,0 +1,119 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsTestInfrastructure
+metadata:
+  name: awstestinfrastructure
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  tags:
+    Project: "gen3"
+    ManagedBy: "kro"
+
+  # VPC Configuration
+  vpc:
+    cidr:
+      vpcCidr: "10.0.0.0/16"
+      publicSubnetCidr: "10.0.1.0/24"
+      publicSubnet2Cidr: "10.0.2.0/24"
+      privateSubnetCidr: "10.0.11.0/24"
+      privateSubnet2Cidr: "10.0.12.0/24"
+
+  # EKS Configuration
+  eks:
+    enabled: true
+    version: "1.33"
+    nodeGroupInstanceTypes:
+      - "t3.large"
+    nodeGroupDesiredSize: 3
+    nodeGroupMinSize: 2
+    nodeGroupMaxSize: 6
+
+  # RDS Configuration
+  rds:
+    enabled: true
+    engine: "postgres"
+    engineVersion: "15.4"
+    instanceClass: "db.t3.medium"
+    allocatedStorage: 100
+    databaseName: "gen3"
+    ingressIPRanges:
+      - "10.0.0.0/8"
+
+  # Aurora Configuration (disabled by default - alternative to RDS)
+  aurora:
+    enabled: false
+    engine: "aurora-postgresql"
+    engineVersion: "15.4"
+    instanceClass: "db.r5.large"
+    instanceCount: 2
+    databaseName: "gen3"
+    ingressIPRanges:
+      - "10.0.0.0/8"
+
+  # ElastiCache Configuration
+  elasticache:
+    enabled: true
+    engine: "redis"
+    engineVersion: "7.0"
+    nodeType: "cache.t3.micro"
+    numCacheNodes: 1
+    ingressIPRanges:
+      - "10.0.0.0/8"
+
+  # EFS Configuration
+  efs:
+    enabled: false
+    performanceMode: "generalPurpose"
+    throughputMode: "bursting"
+    encrypted: true
+    kmsKeyID: ""
+    ingressIPRanges:
+      - "10.0.0.0/8"
+
+  # S3 Data Bucket Configuration
+  dataBucket:
+    enabled: true
+    bucketName: "gen3-data-bucket-base"
+    versioning: true
+    encryption: true
+    publicAccess: false
+
+  # KMS Configuration
+  kms:
+    enabled: true
+    description: "Gen3 encryption key"
+    enableKeyRotation: true
+
+  # OpenSearch Configuration
+  opensearch:
+    enabled: false
+    engineVersion: "OpenSearch_2.11"
+    instanceType: "t3.small.search"
+    instanceCount: 1
+    volumeSize: 10
+    ingressIPRanges:
+      - "10.0.0.0/8"
+
+  # Route53 Configuration
+  route53:
+    enabled: false
+    zoneName: ""
+    privateZone: false
+    comment: "Gen3 hosted zone"
+
+  # CloudTrail Configuration
+  cloudtrail:
+    enabled: false
+    s3BucketName: ""
+    includeGlobalServiceEvents: true
+    isMultiRegionTrail: true
+
+  # WAF Configuration
+  waf:
+    enabled: false
+    scope: "REGIONAL"
+    description: "Gen3 WAF Web ACL"
+    defaultAction: "ALLOW"

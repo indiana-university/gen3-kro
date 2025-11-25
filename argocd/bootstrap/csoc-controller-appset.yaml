@@ -1,0 +1,105 @@
+# CSOC Addons ApplicationSet
+#
+# This ApplicationSet deploys cluster addons (KRO, ACK controllers, and platform components)
+# to CSOC/control-plane clusters only.
+#
+# Data Sources:
+# 1. Cluster Secret Annotations (from CSOC):
+#    - repo_url, repo_revision, repo_basepath
+#    - csoc.kro.dev/addons-config (YAML map of addon identities and settings)
+#    - csoc.kro.dev/gitops-context (repository + region context)
+#
+# 2. Addon Catalog (argocd/csoc-addons/controllers/catalog.yaml):
+#    - Defines available addons with their Helm chart sources and versions
+#
+# 3. Values Configuration (argocd/csoc-addons/controllers/*.yaml):
+#    - Provides addon-specific configuration (resource limits, role ARNs, etc.)
+#
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: csoc-controllers
+  namespace: argocd
+  annotations:
+    # Schedule controllers after CRDs and the CRD readiness check
+    argocd.argoproj.io/sync-wave: "-25"
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - matrix:
+        generators:
+          # CSOC/Hub cluster only
+          - clusters:
+              selector:
+                matchLabels:
+                  fleet_member: control-plane
+          # Addon catalog from git repository
+          - git:
+              repoURL: '{{.metadata.annotations.repo_url}}'
+              revision: '{{.metadata.annotations.repo_revision}}'
+              files:
+                - path: 'argocd/csoc-addons/controller-crd-catalog.yaml'
+  template:
+    metadata:
+      # Create one Application per enabled addon controller
+      name: 'csoc-{{.addon}}-controller'
+      labels:
+        app.kubernetes.io/part-of: addons
+        app.kubernetes.io/addon: '{{.addon}}'
+      annotations:
+        # Sync wave from catalog (KRO at -1, controllers at 0, etc.)
+        argocd.argoproj.io/sync-wave: '{{.sync_wave}}'
+      # Enable cascade deletion - when app is deleted, all resources including CRDs are deleted
+      finalizers:
+        - resources-finalizer.argocd.argoproj.io
+    spec:
+      project: default
+      sources:
+        # Values repository source
+        - repoURL: '{{.metadata.annotations.repo_url}}'
+          targetRevision: '{{.metadata.annotations.repo_revision}}'
+          ref: values
+        # Addon Helm chart source
+        - repoURL: '{{.repoURL}}'
+          targetRevision: '{{.revision}}'
+          chart: '{{.chart}}'
+          helm:
+            skipCrds: true  # CRDs are managed separately via crds-appset
+            releaseName: '{{.addon}}'
+            # Load per-addon values file
+            valueFiles:
+              - $values/argocd/csoc-addons/controllers/{{.addon}}.yaml
+            # Inline values from cluster annotations
+            values: |
+              aws:
+                region: {{ index .metadata.annotations "region" | quote }}
+      destination:
+        name: '{{.name}}'
+        namespace: '{{.namespace}}'
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+          allowEmpty: false
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - RespectIgnoreDifferences=true
+          - PrunePropagationPolicy=foreground
+          - PruneLast=true
+          # - Replace=true removed: avoid destructive replace operations at AppSet/controller level
+        retry:
+          limit: 5
+          backoff:
+            duration: 5s
+            factor: 2
+            maxDuration: 3m
+      ignoreDifferences:
+        # Kyverno ClusterPolicies are dynamic resources that update at runtime
+        - group: kyverno.io
+          kind: ClusterPolicy
+          jqPathExpressions:
+            - .spec.rules[]?.exclude[]?.resources.namespaces[]?
+            - .spec.rules[]?.match[]?.resources.namespaces[]?
+            - .status

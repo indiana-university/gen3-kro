@@ -1,0 +1,15 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsKMS
+metadata:
+  name: kms
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  description: "encryption key"
+  keyUsage: "ENCRYPT_DECRYPT"
+  customerMasterKeySpec: "SYMMETRIC_DEFAULT"
+  multiRegion: false
+  enableKeyRotation: true

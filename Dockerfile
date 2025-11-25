@@ -7,7 +7,7 @@ FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
 ENV DEBIAN_FRONTEND=noninteractive
 
 # Set versions for consistency
-ARG TERRAFORM_VERSION=1.13.3
+ARG TERRAFORM_VERSION=1.13.5
 ARG TERRAGRUNT_VERSION=0.89.3
 ARG KUBECTL_VERSION=1.34.1
 ARG HELM_VERSION=3.16.1
@@ -110,6 +110,13 @@ RUN echo "Downloading kustomize..."; \
     | tar xz -C /tmp && mv /tmp/kustomize /usr/local/bin/kustomize && chmod +x /usr/local/bin/kustomize \
     && kustomize version
 
+# Install k9s (Kubernetes CLI UI)
+RUN echo "Downloading k9s..."; \
+    curl -fsSL --retry 3 --retry-delay 2 https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz \
+    | tar xz -C /tmp \
+    && mv /tmp/k9s /usr/local/bin/k9s \
+    && chmod +x /usr/local/bin/k9s \
+    && k9s version
 
 # Set up bash completion for kubectl and helm
 RUN kubectl completion bash > /etc/bash_completion.d/kubectl \
