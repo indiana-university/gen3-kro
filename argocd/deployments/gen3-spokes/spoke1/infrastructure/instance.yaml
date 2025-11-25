@@ -2,10 +2,10 @@ apiVersion: kro.run/v1alpha1
 kind: AwsGenericCommonsAndBucket
 metadata:
   name: awsgenericcommonsandbucket
-  namespace: base
+  namespace: spoke1-infrastructure
 spec:
   name: my-gen3-commons
-  namespace: base
+  namespace: spoke1-infrastructure
   region: us-east-1
   environment: dev
   project: Gen3
