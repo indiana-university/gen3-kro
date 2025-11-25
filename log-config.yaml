@@ -1,0 +1,59 @@
+# Logging and Reporting Configuration
+# Controls log directory location and which reports are generated
+
+# Global settings
+enabled: true                    # Master switch for all reports
+logs_dir: "outputs/logs"         # Base directory for logs (relative to repo root)
+uniform_timestamp: true          # Use same timestamp across all reports in a run
+timezone: "America/Indiana/Indianapolis"  # Timezone for timestamps
+
+# Report groups configuration
+reports:
+  # List reports - text files with resource paths
+  lists:
+    - applied-resources:
+        enabled: true
+        subfolder: apply
+    - created-resources:
+        enabled: true
+        subfolder: apply
+    - changed-resources:
+        enabled: true
+        subfolder: apply
+    - destroyed-resources:
+        enabled: true
+        subfolder: summaries
+    - planned-resources:
+        enabled: true
+        subfolder: plan
+    - to-be-created-resources:
+        enabled: true
+        subfolder: plan
+    - to-be-changed-resources:
+        enabled: true
+        subfolder: plan
+    - to-be-destroyed-resources:
+        enabled: true
+        subfolder: plan
+
+  # Summary reports - includes both text summaries and JSON maps
+  summary:
+    - summary:
+        enabled: true
+        subfolder: summaries
+    - errors:
+        enabled: true
+        subfolder: summaries
+    - resources-json:
+        enabled: true
+        subfolder: summaries
+
+  # Raw logs
+  logs:
+    - terragrunt-log:
+        enabled: true
+        subfolder: ""
+    - terragrunt:
+        enabled: true
+        subfolder: ""
+

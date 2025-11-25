@@ -18,11 +18,6 @@ variable "service_account_name" {
   type        = string
 }
 
-variable "cluster_name" {
-  description = "Name of the GKE cluster"
-  type        = string
-}
-
 variable "namespace" {
   description = "Kubernetes namespace"
   type        = string

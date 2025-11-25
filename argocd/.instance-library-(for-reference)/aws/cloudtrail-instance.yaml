@@ -1,0 +1,17 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsCloudTrail
+metadata:
+  name: cloudtrail
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  s3BucketName: base-cloudtrail
+  includeGlobalServiceEvents: true
+  isMultiRegionTrail: true
+  enableLogFileValidation: true
+  cloudWatchLogsLogGroupARN: ""
+  cloudWatchLogsRoleARN: ""
+  kmsKeyID: ""

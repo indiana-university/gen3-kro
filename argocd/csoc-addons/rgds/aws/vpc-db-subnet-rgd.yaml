@@ -1,0 +1,53 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-vpc-db-subnet.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsVpcDbSubnet
+    spec:
+      name: string
+      namespace: string
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+      # Subnet configuration
+      availabilityZone: string  # e.g., "us-east-1a"
+      cidrBlock: string
+      # External references
+      vpcID: string
+      privateRouteTableID: string  # DB subnets use private route tables
+
+    status:
+      subnetID: ${dbSubnet.status.subnetID}
+
+  resources:
+  - id: dbSubnet
+    readyWhen:
+      - ${dbSubnet.status.state == "available"}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: Subnet
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-db-subnet
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        availabilityZone: ${schema.spec.availabilityZone}
+        cidrBlock: ${schema.spec.cidrBlock}
+        vpcID: ${schema.spec.vpcID}
+        routeTables:
+        - ${schema.spec.privateRouteTableID}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-db-subnet
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
+        - key: Tier
+          value: database

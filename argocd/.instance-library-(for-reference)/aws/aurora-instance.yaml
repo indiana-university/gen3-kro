@@ -1,0 +1,23 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsAurora
+metadata:
+  name: aurora
+  namespace: base
+spec:
+  name: base
+  namespace: base
+  region: us-east-1
+  environment: dev
+  ingressIPRanges:
+    - "10.0.0.0/8"
+  vpcID: ""  # Will be populated by VPC instance
+  subnetIDs: []  # Will be populated by VPC instance
+  engine: aurora-postgresql
+  engineVersion: "15.4"
+  instanceClass: db.r5.large
+  instanceCount: 2
+  databaseName: db
+  masterUsername: admin
+  backupRetentionPeriod: 7
+  preferredBackupWindow: "03:00-04:00"
+  preferredMaintenanceWindow: "sun:04:00-sun:05:00"

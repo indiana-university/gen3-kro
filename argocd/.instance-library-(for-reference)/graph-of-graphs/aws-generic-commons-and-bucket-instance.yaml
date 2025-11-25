@@ -1,0 +1,113 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsGenericCommonsAndBucket
+metadata:
+  name: my-gen3-commons
+  namespace: base
+spec:
+  name: my-gen3-commons
+  namespace: base
+  region: us-east-1
+  environment: dev
+
+  # Feature Toggles - control which resources are deployed
+  features:
+    enableEKS: false
+    enableAurora: false
+    enableElastiCache: false
+    enableEFS: false
+    enableKMS: false
+    enableOpenSearch: false
+    enableCloudWatchLogs: false
+    enableCloudTrail: false
+    enableDataBucket: false
+    enableLoggingBucket: false
+    enableUploadBucket: false
+
+  # VPC Configuration
+  vpc:
+    features:
+      enableSubnet2: true
+      enableSubnet3: false
+      enableDbSubnet2: true
+    cidr:
+      vpcCidr: "10.0.0.0/16"
+      publicSubnet1Cidr: "10.0.1.0/24"
+      publicSubnet2Cidr: "10.0.2.0/24"
+      publicSubnet3Cidr: "10.0.3.0/24"
+      privateSubnet1Cidr: "10.0.11.0/24"
+      privateSubnet2Cidr: "10.0.12.0/24"
+      privateSubnet3Cidr: "10.0.13.0/24"
+      dbSubnet1Cidr: "10.0.21.0/24"
+      dbSubnet2Cidr: "10.0.22.0/24"
+
+  # EKS Configuration
+  eks:
+    version: "1.33"
+    nodeGroupInstanceTypes:
+      - "t3.large"
+    nodeGroupDesiredSize: 3
+    nodeGroupMinSize: 2
+    nodeGroupMaxSize: 6
+
+  # Aurora PostgreSQL Configuration
+  aurora:
+    engine: "aurora-postgresql"
+    engineVersion: "15.4"
+    instanceClass: "db.r5.large"
+    instanceCount: 2
+    databaseName: "gen3"
+    masterUsername: "gen3admin"
+    backupRetentionPeriod: 7
+
+  # ElastiCache Configuration
+  elasticache:
+    engine: "redis"
+    engineVersion: "7.0"
+    nodeType: "cache.t3.micro"
+    numCacheNodes: 1
+
+  # EFS Configuration
+  efs:
+    performanceMode: "generalPurpose"
+    throughputMode: "bursting"
+    encrypted: true
+
+  # S3 Buckets Configuration
+  buckets:
+    # Data bucket for storing Gen3 data
+    dataBucket:
+      name: "my-gen3-commons-data-bucket"
+      versioning: true
+      encryption: true
+    # Logging bucket for audit logs
+    loggingBucket:
+      name: "my-gen3-commons-logging-bucket"
+      versioning: false
+      encryption: true
+    # Upload bucket for user uploads
+    uploadBucket:
+      name: "my-gen3-commons-upload-bucket"
+      versioning: true
+      encryption: true
+
+  # KMS Configuration
+  kms:
+    description: "Gen3 commons encryption key"
+    enableKeyRotation: true
+
+  # OpenSearch Configuration
+  opensearch:
+    engineVersion: "OpenSearch_2.11"
+    instanceType: "t3.small.search"
+    instanceCount: 1
+    volumeSize: 10
+
+  # CloudWatch Logs Configuration
+  cloudwatchLogs:
+    retentionInDays: 1827
+
+  # CloudTrail Configuration
+  cloudtrail:
+    enableLogFileValidation: true
+    includeGlobalServiceEvents: true
+    isMultiRegionTrail: true

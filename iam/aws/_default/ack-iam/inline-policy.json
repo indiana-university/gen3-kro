@@ -12,6 +12,7 @@
         "iam:UpdateRole",
         "iam:TagRole",
         "iam:UntagRole",
+        "iam:ListRoleTags",
         "iam:AttachRolePolicy",
         "iam:DetachRolePolicy",
         "iam:PutRolePolicy",

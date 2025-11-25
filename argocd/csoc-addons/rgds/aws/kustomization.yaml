@@ -1,0 +1,26 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - aurora-rgd.yaml
+  - cloudtrail-rgd.yaml
+  - cloudwatch-logs-rgd.yaml
+  - data-bucket-rgd.yaml
+  - efs-rgd.yaml
+  - eks-rgd.yaml
+  - elasticache-rgd.yaml
+  - irsa-role-rgd.yaml
+  - kms-rgd.yaml
+  - opensearch-rgd.yaml
+  - rds-rgd.yaml
+  - route53-private-rgd.yaml
+  - route53-public-rgd.yaml
+  - s3bucket-rgd.yaml
+  - secretsmanager-rgd.yaml
+  - sns-rgd.yaml
+  - sqs-rgd.yaml
+  - vpc-rgd.yaml
+  - vpc-public-subnet-rgd.yaml
+  - vpc-private-subnet-rgd.yaml
+  - vpc-db-subnet-rgd.yaml
+  - waf-rgd.yaml

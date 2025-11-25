@@ -1,0 +1,14 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsVpcDbSubnet
+metadata:
+  name: vpc-db-subnet
+  namespace: base
+spec:
+  name: base-db-1
+  namespace: base
+  region: us-east-1
+  environment: dev
+  availabilityZone: "us-east-1a"
+  cidrBlock: "10.0.21.0/24"
+  vpcID: "vpc-xxxxx"  # Reference from AwsVpc status
+  privateRouteTableID: "rtb-xxxxx"  # Reference from AwsVpcPrivateSubnet status

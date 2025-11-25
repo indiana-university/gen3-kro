@@ -8,14 +8,10 @@ variable "create" {
   type        = bool
 }
 
-variable "spoke_alias" {
-  description = "Spoke alias"
+variable "override_id" {
+  description = "Override service account email (use existing identity instead of creating new bindings). When set, create is ignored and this value is returned."
   type        = string
-}
-
-variable "service_name" {
-  description = "Service name"
-  type        = string
+  default     = null
 }
 
 variable "project_id" {
@@ -23,8 +19,8 @@ variable "project_id" {
   type        = string
 }
 
-variable "hub_service_account_email" {
-  description = "Email of hub service account"
+variable "csoc_service_account_email" {
+  description = "Email of CSOC service account"
   type        = string
 }
 
