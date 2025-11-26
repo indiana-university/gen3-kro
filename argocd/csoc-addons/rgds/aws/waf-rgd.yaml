@@ -22,8 +22,6 @@ spec:
 
   resources:
   - id: webACL
-    readyWhen:
-      - ${webACL.status.id != ""}
     template:
       apiVersion: wafv2.services.k8s.aws/v1alpha1
       kind: WebACL

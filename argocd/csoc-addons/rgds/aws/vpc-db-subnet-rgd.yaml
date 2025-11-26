@@ -24,8 +24,6 @@ spec:
 
   resources:
   - id: dbSubnet
-    readyWhen:
-      - ${dbSubnet.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
