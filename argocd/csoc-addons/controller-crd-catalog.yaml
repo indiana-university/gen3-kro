@@ -1,7 +1,7 @@
 - addon: kro
   namespace: kro-system
   repoURL: oci://registry.k8s.io/kro/charts/kro
-  revision: 0.6.3
+  revision: 0.7.0
   chart: kro
   sync_wave: "-20"
 
