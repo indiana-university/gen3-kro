@@ -23,8 +23,6 @@ spec:
 
   resources:
   - id: role
-    readyWhen:
-      - ${role.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role

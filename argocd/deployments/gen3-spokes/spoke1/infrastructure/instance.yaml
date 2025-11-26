@@ -12,8 +12,8 @@ spec:
 
   # Feature Toggles - control which resources are deployed
   features:
-    enableEKS: true
-    enableAurora: true
+    enableEKS: false
+    enableAurora: false
     enableElastiCache: false
     enableEFS: false
     enableKMS: false

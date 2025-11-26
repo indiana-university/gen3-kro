@@ -26,8 +26,6 @@ spec:
       privateRouteTableID: ${privateRoutetable.status.routeTableID}
   resources:
   - id: vpc
-    readyWhen:
-      - ${vpc.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: VPC
@@ -52,8 +50,6 @@ spec:
           value: ${schema.spec.project}
 
   - id: internetGateway
-    readyWhen:
-      - ${internetGateway.status.internetGatewayID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: InternetGateway
@@ -75,8 +71,6 @@ spec:
           value: ${schema.spec.project}
 
   - id: eip
-    readyWhen:
-      - ${eip.status.allocationID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: ElasticIPAddress
@@ -97,8 +91,6 @@ spec:
           value: ${schema.spec.project}
 
   - id: natGateway
-    readyWhen:
-      - ${natGateway.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: NATGateway
@@ -121,8 +113,6 @@ spec:
           value: ${schema.spec.project}
 
   - id: publicRoutetable
-    readyWhen:
-      - ${publicRoutetable.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -147,8 +137,6 @@ spec:
           value: ${schema.spec.project}
 
   - id: privateRoutetable
-    readyWhen:
-      - ${privateRoutetable.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -173,8 +161,6 @@ spec:
           value: ${schema.spec.project}
 
   - id: publicSubnet
-    readyWhen:
-      - ${publicSubnet.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
@@ -203,8 +189,6 @@ spec:
           value: "1"
 
   - id: privateSubnet
-    readyWhen:
-      - ${privateSubnet.status.state == "available"}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet

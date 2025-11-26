@@ -160,9 +160,6 @@ spec:
   - id: kms
     includeWhen:
       - ${schema.spec.features.enableKMS}
-    readyWhen:
-      - ${kms.status.keyID != ""}
-      - ${kms.status.keyARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsKMS
@@ -179,9 +176,6 @@ spec:
 
   # 2. VPC - Core network infrastructure (VPC, IGW, EIP for NAT)
   - id: vpcCore
-    readyWhen:
-      - ${vpcCore.status.vpcID != ""}
-      - ${vpcCore.status.internetGatewayID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpc
@@ -202,8 +196,6 @@ spec:
   - id: publicSubnet2
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet2}
-    readyWhen:
-      - ${publicSubnet2.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPublicSubnet
@@ -224,8 +216,6 @@ spec:
   - id: publicSubnet3
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet3}
-    readyWhen:
-      - ${publicSubnet3.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPublicSubnet
@@ -246,9 +236,6 @@ spec:
   - id: privateSubnet2
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet2}
-    readyWhen:
-      - ${privateSubnet2.status.subnetID != ""}
-      - ${privateSubnet2.status.natGatewayID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPrivateSubnet
@@ -269,9 +256,6 @@ spec:
   - id: privateSubnet3
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet3}
-    readyWhen:
-      - ${privateSubnet3.status.subnetID != ""}
-      - ${privateSubnet3.status.natGatewayID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPrivateSubnet
@@ -292,8 +276,6 @@ spec:
   - id: dbSubnet1
     includeWhen:
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
-    readyWhen:
-      - ${dbSubnet1.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcDbSubnet
@@ -315,8 +297,6 @@ spec:
     includeWhen:
       - ${schema.spec.vpc.features.enableDbSubnet2}
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
-    readyWhen:
-      - ${dbSubnet2.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcDbSubnet
@@ -337,9 +317,6 @@ spec:
   - id: cloudwatchLogs
     includeWhen:
       - ${schema.spec.features.enableCloudWatchLogs}
-    readyWhen:
-      - ${cloudwatchLogs.status.logGroupARN != ""}
-      - ${cloudwatchLogs.status.logGroupName != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudWatchLogs
@@ -359,9 +336,6 @@ spec:
   - id: loggingBucket
     includeWhen:
       - ${schema.spec.features.enableLoggingBucket}
-    readyWhen:
-      - ${loggingBucket.status.s3Name != ""}
-      - ${loggingBucket.status.s3ARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -380,9 +354,6 @@ spec:
   - id: cloudtrail
     includeWhen:
       - ${schema.spec.features.enableCloudTrail}
-    readyWhen:
-      - ${cloudtrail.status.trailARN != ""}
-      - ${cloudtrail.status.trailName != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudTrail
@@ -405,10 +376,6 @@ spec:
   - id: eks
     includeWhen:
       - ${schema.spec.features.enableEKS}
-    readyWhen:
-      - ${eks.status.clusterEndpoint != ""}
-      - ${eks.status.clusterARN != ""}
-      - ${eks.status.clusterName != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEKS
@@ -432,10 +399,6 @@ spec:
   - id: aurora
     includeWhen:
       - ${schema.spec.features.enableAurora}
-    readyWhen:
-      - ${aurora.status.clusterEndpoint != ""}
-      - ${aurora.status.clusterARN != ""}
-      - ${aurora.status.readerEndpoint != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsAurora
@@ -462,9 +425,6 @@ spec:
   - id: elasticache
     includeWhen:
       - ${schema.spec.features.enableElastiCache}
-    readyWhen:
-      - ${elasticache.status.endpoint != ""}
-      - ${elasticache.status.cacheClusterARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsElastiCache
@@ -488,9 +448,6 @@ spec:
   - id: efs
     includeWhen:
       - ${schema.spec.features.enableEFS}
-    readyWhen:
-      - ${efs.status.fileSystemID != ""}
-      - ${efs.status.fileSystemARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEFS
@@ -514,9 +471,6 @@ spec:
   - id: dataBucket
     includeWhen:
       - ${schema.spec.features.enableDataBucket}
-    readyWhen:
-      - ${dataBucket.status.s3Name != ""}
-      - ${dataBucket.status.s3ARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -535,9 +489,6 @@ spec:
   - id: uploadBucket
     includeWhen:
       - ${schema.spec.features.enableUploadBucket}
-    readyWhen:
-      - ${uploadBucket.status.s3Name != ""}
-      - ${uploadBucket.status.s3ARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -556,9 +507,6 @@ spec:
   - id: opensearch
     includeWhen:
       - ${schema.spec.features.enableOpenSearch}
-    readyWhen:
-      - ${opensearch.status.endpoint != ""}
-      - ${opensearch.status.domainARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsOpenSearch
