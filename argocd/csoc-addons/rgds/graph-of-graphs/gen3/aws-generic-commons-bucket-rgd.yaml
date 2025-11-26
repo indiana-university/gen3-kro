@@ -161,7 +161,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableKMS}
     readyWhen:
-      - ${kms.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${kms.status.keyID != ""}
       - ${kms.status.keyARN != ""}
     template:
@@ -181,7 +180,6 @@ spec:
   # 2. VPC - Core network infrastructure (VPC, IGW, EIP for NAT)
   - id: vpcCore
     readyWhen:
-      - ${vpcCore.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${vpcCore.status.vpcID != ""}
       - ${vpcCore.status.internetGatewayID != ""}
     template:
@@ -205,7 +203,6 @@ spec:
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet2}
     readyWhen:
-      - ${publicSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${publicSubnet2.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -228,7 +225,6 @@ spec:
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet3}
     readyWhen:
-      - ${publicSubnet3.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${publicSubnet3.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -251,7 +247,6 @@ spec:
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet2}
     readyWhen:
-      - ${privateSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${privateSubnet2.status.subnetID != ""}
       - ${privateSubnet2.status.natGatewayID != ""}
     template:
@@ -275,7 +270,6 @@ spec:
     includeWhen:
       - ${schema.spec.vpc.features.enableSubnet3}
     readyWhen:
-      - ${privateSubnet3.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${privateSubnet3.status.subnetID != ""}
       - ${privateSubnet3.status.natGatewayID != ""}
     template:
@@ -299,7 +293,6 @@ spec:
     includeWhen:
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
     readyWhen:
-      - ${dbSubnet1.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${dbSubnet1.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -323,7 +316,6 @@ spec:
       - ${schema.spec.vpc.features.enableDbSubnet2}
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
     readyWhen:
-      - ${dbSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${dbSubnet2.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -346,7 +338,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableCloudWatchLogs}
     readyWhen:
-      - ${cloudwatchLogs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${cloudwatchLogs.status.logGroupARN != ""}
       - ${cloudwatchLogs.status.logGroupName != ""}
     template:
@@ -369,7 +360,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableLoggingBucket}
     readyWhen:
-      - ${loggingBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${loggingBucket.status.s3Name != ""}
       - ${loggingBucket.status.s3ARN != ""}
     template:
@@ -391,7 +381,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableCloudTrail}
     readyWhen:
-      - ${cloudtrail.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${cloudtrail.status.trailARN != ""}
       - ${cloudtrail.status.trailName != ""}
     template:
@@ -417,7 +406,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableEKS}
     readyWhen:
-      - ${eks.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${eks.status.clusterEndpoint != ""}
       - ${eks.status.clusterARN != ""}
       - ${eks.status.clusterName != ""}
@@ -445,7 +433,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableAurora}
     readyWhen:
-      - ${aurora.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${aurora.status.clusterEndpoint != ""}
       - ${aurora.status.clusterARN != ""}
       - ${aurora.status.readerEndpoint != ""}
@@ -476,7 +463,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableElastiCache}
     readyWhen:
-      - ${elasticache.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${elasticache.status.endpoint != ""}
       - ${elasticache.status.cacheClusterARN != ""}
     template:
@@ -503,7 +489,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableEFS}
     readyWhen:
-      - ${efs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${efs.status.fileSystemID != ""}
       - ${efs.status.fileSystemARN != ""}
     template:
@@ -530,7 +515,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableDataBucket}
     readyWhen:
-      - ${dataBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${dataBucket.status.s3Name != ""}
       - ${dataBucket.status.s3ARN != ""}
     template:
@@ -552,7 +536,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableUploadBucket}
     readyWhen:
-      - ${uploadBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${uploadBucket.status.s3Name != ""}
       - ${uploadBucket.status.s3ARN != ""}
     template:
@@ -574,7 +557,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableOpenSearch}
     readyWhen:
-      - ${opensearch.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${opensearch.status.endpoint != ""}
       - ${opensearch.status.domainARN != ""}
     template:

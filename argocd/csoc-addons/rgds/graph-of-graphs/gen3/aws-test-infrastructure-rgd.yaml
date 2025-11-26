@@ -149,7 +149,6 @@ spec:
   # Layer 1: VPC Core (foundational - no dependencies)
   - id: vpcCore
     readyWhen:
-      - ${vpcCore.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${vpcCore.status.vpcID != ""}
       - ${vpcCore.status.publicSubnetID != ""}
       - ${vpcCore.status.privateSubnetID != ""}
@@ -174,7 +173,6 @@ spec:
   # Layer 2: Additional Public Subnet 2
   - id: publicSubnet2
     readyWhen:
-      - ${publicSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${publicSubnet2.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -195,7 +193,6 @@ spec:
   # Layer 2: Additional Private Subnet 2
   - id: privateSubnet2
     readyWhen:
-      - ${privateSubnet2.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${privateSubnet2.status.subnetID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -218,7 +215,6 @@ spec:
     includeWhen:
       - ${schema.spec.kms.enabled}
     readyWhen:
-      - ${kms.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${kms.status.keyID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -239,7 +235,6 @@ spec:
     includeWhen:
       - ${schema.spec.eks.enabled}
     readyWhen:
-      - ${eks.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${eks.status.clusterName != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -267,7 +262,6 @@ spec:
     includeWhen:
       - ${schema.spec.rds.enabled}
     readyWhen:
-      - ${rds.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${rds.status.dbInstanceARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -296,7 +290,6 @@ spec:
     includeWhen:
       - ${schema.spec.aurora.enabled}
     readyWhen:
-      - ${aurora.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${aurora.status.clusterARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -325,7 +318,6 @@ spec:
     includeWhen:
       - ${schema.spec.elasticache.enabled}
     readyWhen:
-      - ${elasticache.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${elasticache.status.cacheClusterID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -353,7 +345,6 @@ spec:
     includeWhen:
       - ${schema.spec.efs.enabled}
     readyWhen:
-      - ${efs.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${efs.status.fileSystemID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -381,7 +372,6 @@ spec:
     includeWhen:
       - ${schema.spec.opensearch.enabled}
     readyWhen:
-      - ${opensearch.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${opensearch.status.domainARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -409,7 +399,6 @@ spec:
     includeWhen:
       - ${schema.spec.dataBucket.enabled}
     readyWhen:
-      - ${dataBucket.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${dataBucket.status.bucketARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -432,7 +421,6 @@ spec:
     includeWhen:
       - ${schema.spec.route53.enabled}
     readyWhen:
-      - ${route53.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${route53.status.hostedZoneID != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -454,7 +442,6 @@ spec:
     includeWhen:
       - ${schema.spec.cloudtrail.enabled}
     readyWhen:
-      - ${cloudtrail.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${cloudtrail.status.trailARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
@@ -476,7 +463,6 @@ spec:
     includeWhen:
       - ${schema.spec.waf.enabled}
     readyWhen:
-      - ${waf.status.conditions.exists(x, x.type == 'Ready' && x.status == "True")}
       - ${waf.status.webACLARN != ""}
     template:
       apiVersion: kro.run/v1alpha1
