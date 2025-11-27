@@ -1,11 +1,11 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: csoc-rgds-per-cloud
+  name: csoc-policies
   namespace: argocd
   annotations:
-    # Atomic RGDs deploy after controllers are ready
-    argocd.argoproj.io/sync-wave: "-10"
+    # Deploy policies after Kyverno controller is installed
+    argocd.argoproj.io/sync-wave: "-18"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -20,20 +20,15 @@ spec:
               repoURL: '{{.metadata.annotations.repo_url}}'
               revision: '{{.metadata.annotations.repo_revision}}'
               directories:
-                - path: 'argocd/csoc-addons/rgds/aws'
-                - path: 'argocd/csoc-addons/rgds/azure'
-                - path: 'argocd/csoc-addons/rgds/gcp'
+                - path: 'argocd/csoc-addons/policies'
   template:
     metadata:
-      name: "csoc-{{.path.basename}}-rgds"
+      name: "csoc-kyverno-policies"
       labels:
-        app.kubernetes.io/part-of: graphs
-        app.kubernetes.io/name: rgds
-        app.kubernetes.io/cloud-provider: "{{.path.basename}}"
+        app.kubernetes.io/part-of: policies
+        app.kubernetes.io/name: kyverno-policies
       annotations:
-        argocd.argoproj.io/sync-wave: "-9"
-      finalizers:
-        - resources-finalizer.argocd.argoproj.io
+        argocd.argoproj.io/sync-wave: "-18"
     spec:
       project: default
       source:
@@ -42,21 +37,18 @@ spec:
         path: '{{.path.path}}'
       destination:
         name: '{{.name}}'
+        namespace: kyverno
       syncPolicy:
         automated:
           prune: true
           selfHeal: true
-          allowEmpty: true
+          allowEmpty: false
         syncOptions:
-          - CreateNamespace=true
+          - CreateNamespace=false  # Kyverno namespace created by controller
           - ServerSideApply=true
-          - SkipDryRunOnMissingResource=true
-          - RespectIgnoreDifferences=true
-          - PrunePropagationPolicy=foreground
-          - PruneLast=true
         retry:
           limit: 5
           backoff:
-            duration: 10s
+            duration: 5s
             factor: 2
-            maxDuration: 5m
+            maxDuration: 3m

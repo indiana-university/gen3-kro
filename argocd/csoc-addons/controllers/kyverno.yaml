@@ -1,0 +1,53 @@
+# Kyverno Policy Engine
+# Provides Kubernetes-native policy management via admission controller
+
+# Resource limits for Kyverno controller
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 200m
+    memory: 256Mi
+
+# Replica count
+replicaCount: 1
+
+# Enable features
+features:
+  policyExceptions:
+    enabled: true
+  admissionReports:
+    enabled: true
+  backgroundScan:
+    enabled: true
+
+# Background scan settings
+backgroundController:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Cleanup controller
+cleanupController:
+  resources:
+    limits:
+      cpu: 100m
+      memory: 128Mi
+    requests:
+      cpu: 50m
+      memory: 64Mi
+
+# Reports controller
+reportsController:
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi

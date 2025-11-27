@@ -7,3 +7,4 @@ kind: Kustomization
 resources:
   - aws-test-infrastructure-rgd.yaml
   - aws-generic-commons-bucket-rgd.yaml
+  - gen3-application-rgd.yaml

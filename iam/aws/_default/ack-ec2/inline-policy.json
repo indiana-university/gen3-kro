@@ -2,29 +2,145 @@
     "Version": "2012-10-17",
     "Statement": [
         {
-            "Action": "ec2:*",
+            "Sid": "EC2DescribeOperations",
             "Effect": "Allow",
+            "Action": [
+                "ec2:DescribeVpcs",
+                "ec2:DescribeSubnets",
+                "ec2:DescribeSecurityGroups",
+                "ec2:DescribeInternetGateways",
+                "ec2:DescribeNatGateways",
+                "ec2:DescribeAddresses",
+                "ec2:DescribeRouteTables",
+                "ec2:DescribeAvailabilityZones",
+                "ec2:DescribeAccountAttributes",
+                "ec2:DescribeVpcAttribute",
+                "ec2:DescribeNetworkInterfaces"
+            ],
             "Resource": "*"
         },
         {
+            "Sid": "VPCManagement",
             "Effect": "Allow",
-            "Action": "elasticloadbalancing:*",
-            "Resource": "*"
+            "Action": [
+                "ec2:CreateVpc",
+                "ec2:DeleteVpc",
+                "ec2:ModifyVpcAttribute",
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:<ACCOUNT_ID>:vpc/*"
+            ]
         },
         {
+            "Sid": "SubnetManagement",
             "Effect": "Allow",
-            "Action": "cloudwatch:*",
-            "Resource": "*"
+            "Action": [
+                "ec2:CreateSubnet",
+                "ec2:DeleteSubnet",
+                "ec2:ModifySubnetAttribute",
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:<ACCOUNT_ID>:subnet/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:vpc/*"
+            ]
         },
         {
+            "Sid": "SecurityGroupManagement",
             "Effect": "Allow",
-            "Action": "autoscaling:*",
-            "Resource": "*"
+            "Action": [
+                "ec2:CreateSecurityGroup",
+                "ec2:DeleteSecurityGroup",
+                "ec2:AuthorizeSecurityGroupIngress",
+                "ec2:AuthorizeSecurityGroupEgress",
+                "ec2:RevokeSecurityGroupIngress",
+                "ec2:RevokeSecurityGroupEgress",
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:<ACCOUNT_ID>:security-group/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:vpc/*"
+            ]
         },
         {
+            "Sid": "InternetGatewayManagement",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateInternetGateway",
+                "ec2:DeleteInternetGateway",
+                "ec2:AttachInternetGateway",
+                "ec2:DetachInternetGateway",
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:<ACCOUNT_ID>:internet-gateway/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:vpc/*"
+            ]
+        },
+        {
+            "Sid": "NATGatewayManagement",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateNatGateway",
+                "ec2:DeleteNatGateway",
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:<ACCOUNT_ID>:natgateway/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:subnet/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:elastic-ip/*"
+            ]
+        },
+        {
+            "Sid": "ElasticIPManagement",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:AllocateAddress",
+                "ec2:ReleaseAddress",
+                "ec2:AssociateAddress",
+                "ec2:DisassociateAddress",
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:<ACCOUNT_ID>:elastic-ip/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:network-interface/*"
+            ]
+        },
+        {
+            "Sid": "RouteTableManagement",
+            "Effect": "Allow",
+            "Action": [
+                "ec2:CreateRouteTable",
+                "ec2:DeleteRouteTable",
+                "ec2:CreateRoute",
+                "ec2:DeleteRoute",
+                "ec2:ReplaceRoute",
+                "ec2:AssociateRouteTable",
+                "ec2:DisassociateRouteTable",
+                "ec2:ReplaceRouteTableAssociation",
+                "ec2:CreateTags",
+                "ec2:DeleteTags"
+            ],
+            "Resource": [
+                "arn:aws:ec2:*:<ACCOUNT_ID>:route-table/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:vpc/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:subnet/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:internet-gateway/*",
+                "arn:aws:ec2:*:<ACCOUNT_ID>:natgateway/*"
+            ]
+        },
+        {
+            "Sid": "ServiceLinkedRoleCreation",
             "Effect": "Allow",
             "Action": "iam:CreateServiceLinkedRole",
-            "Resource": "*",
+            "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/aws-service-role/*",
             "Condition": {
                 "StringEquals": {
                     "iam:AWSServiceName": [

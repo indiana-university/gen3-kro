@@ -1,0 +1,125 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsGenericCommonsAndBucket
+metadata:
+  name: awsgenericcommonsandbucket
+  namespace: spoke1
+  annotations:
+    # Sync wave: deploy infrastructure first
+    argocd.argoproj.io/sync-wave: "1"
+spec:
+  name: my-gen3-commons
+  namespace: spoke1
+  region: us-east-1 # Specify your desired to override Controller region for all resources
+  environment: dev # For tagging resources
+  project: Gen3  # For tagging resources
+
+  # Feature Toggles - control which resources are deployed
+  # Dependencies are listed in order: resource depends on listed features
+  features:
+    # Layer 1: Foundation (no dependencies)
+    enableVPC: true              # standalone
+    enableKMS: false             # standalone
+
+    # Layer 2: Network Extensions (depends on: 1.2 - VPC core)
+    enableSubnet2: true
+    enableSubnet3: false
+    enableDbSubnet2: true        # depends on: enableSubnet2
+
+    # Layer 3: Audit & Compliance (depends on: enableKMS, enableLoggingBucket, enableCloudWatchLogs)
+    enableLoggingBucket: false   # standalone
+    enableCloudWatchLogs: false  # depends on: enableKMS
+    enableCloudTrail: false      # depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS
+
+    # Layer 4: Compute (depends on: vpcCore, enableSubnet2/3)
+    enableEKS: false              # depends on: vpcCore, enableSubnet2/3
+
+    # Layer 5: Storage - Databases (depends on: vpcCore, enableDbSubnet2)
+    enableAurora: false           # depends on: vpcCore, dbSubnet1, enableDbSubnet2
+    enableElastiCache: false     # depends on: vpcCore, dbSubnet1, enableDbSubnet2
+
+    # Layer 5: Storage - File & Object (depends on: vpcCore, enableKMS)
+    enableDataBucket: false      # standalone
+    enableUploadBucket: false    # standalone
+    enableEFS: false             # depends on: vpcCore, enableSubnet2/3, enableKMS
+    enableOpenSearch: false      # depends on: vpcCore, dbSubnet1
+
+  # VPC Configuration
+  vpc:
+    vpcCidr: "10.1.0.0/16"
+    publicSubnet1Cidr: "10.1.1.0/24"
+    publicSubnet2Cidr: "10.1.2.0/24"
+    publicSubnet3Cidr: "10.1.3.0/24"
+    privateSubnet1Cidr: "10.1.11.0/24"
+    privateSubnet2Cidr: "10.1.12.0/24"
+    privateSubnet3Cidr: "10.1.13.0/24"
+    dbSubnet1Cidr: "10.1.21.0/24"
+    dbSubnet2Cidr: "10.1.22.0/24"
+
+  # EKS Configuration
+  eks:
+    version: "1.33"
+    nodeGroupInstanceTypes:
+      - "t3.large"
+    nodeGroupDesiredSize: 3
+    nodeGroupMinSize: 2
+    nodeGroupMaxSize: 6
+
+  # Aurora PostgreSQL Configuration
+  aurora:
+    engine: "aurora-postgresql"
+    engineVersion: "15.13"
+    instanceClass: "db.r5.large"
+    instanceCount: 2
+    databaseName: "gen3"
+    masterUsername: "gen3admin"
+    backupRetentionPeriod: 7
+
+  # ElastiCache Configuration
+  elasticache:
+    engine: "redis"
+    engineVersion: "7.0"
+    nodeType: "cache.t3.micro"
+    numCacheNodes: 1
+
+  # EFS Configuration
+  efs:
+    performanceMode: "generalPurpose"
+    throughputMode: "bursting"
+    encrypted: true
+
+  # S3 Buckets Configuration
+  buckets:
+    # Data bucket for storing Gen3 data
+    dataBucket:
+      versioning: true
+      encryption: true
+    # Logging bucket for audit logs
+    loggingBucket:
+      versioning: false
+      encryption: true
+    # Upload bucket for user uploads
+    uploadBucket:
+      versioning: true
+      encryption: true
+
+  # KMS Configuration
+  kms:
+    description: "Gen3 commons encryption key"
+    enableKeyRotation: true
+
+  # OpenSearch Configuration
+  opensearch:
+    engineVersion: "OpenSearch_2.11"
+    instanceType: "t3.small.search"
+    instanceCount: 1
+    volumeSize: 10
+
+  # CloudWatch Logs Configuration
+  cloudwatchLogs:
+    retentionInDays: 1827
+
+  # CloudTrail Configuration
+  cloudtrail:
+    enableLogFileValidation: true
+    includeGlobalServiceEvents: true
+    isMultiRegionTrail: true

@@ -12,10 +12,10 @@ patches:
     patch: |-
       - op: replace
         path: /spec/namespace
-        value: spoke2-infrastructure
+        value: spoke2
   - target:
       group: kro.run
     patch: |-
       - op: replace
         path: /metadata/namespace
-        value: spoke2-infrastructure
+        value: spoke2

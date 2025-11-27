@@ -2,19 +2,29 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "SNSListOperations",
+      "Effect": "Allow",
+      "Action": [
+        "sns:ListTopics",
+        "sns:ListSubscriptions",
+        "sns:ListSubscriptionsByTopic",
+        "sns:GetTopicAttributes",
+        "sns:GetSubscriptionAttributes",
+        "sns:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "SNSTopicManagement",
       "Effect": "Allow",
       "Action": [
         "sns:CreateTopic",
         "sns:DeleteTopic",
-        "sns:GetTopicAttributes",
         "sns:SetTopicAttributes",
-        "sns:ListTopics",
         "sns:TagResource",
-        "sns:UntagResource",
-        "sns:ListTagsForResource"
+        "sns:UntagResource"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:sns:*:<ACCOUNT_ID>:*"
     },
     {
       "Sid": "SNSSubscriptionManagement",
@@ -22,12 +32,9 @@
       "Action": [
         "sns:Subscribe",
         "sns:Unsubscribe",
-        "sns:ListSubscriptions",
-        "sns:ListSubscriptionsByTopic",
-        "sns:GetSubscriptionAttributes",
         "sns:SetSubscriptionAttributes"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:sns:*:<ACCOUNT_ID>:*"
     },
     {
       "Sid": "SNSPublish",
@@ -35,7 +42,7 @@
       "Action": [
         "sns:Publish"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:sns:*:<ACCOUNT_ID>:*"
     }
   ]
 }

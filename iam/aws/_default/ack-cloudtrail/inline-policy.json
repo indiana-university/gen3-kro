@@ -2,39 +2,40 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "CloudTrailManagement",
+      "Sid": "CloudTrailDescribeOperations",
       "Effect": "Allow",
       "Action": [
-        "cloudtrail:CreateTrail",
-        "cloudtrail:DeleteTrail",
         "cloudtrail:DescribeTrails",
         "cloudtrail:GetTrailStatus",
-        "cloudtrail:StartLogging",
-        "cloudtrail:StopLogging",
-        "cloudtrail:UpdateTrail",
-        "cloudtrail:PutEventSelectors",
         "cloudtrail:GetEventSelectors",
-        "cloudtrail:AddTags",
-        "cloudtrail:RemoveTags",
+        "cloudtrail:ListTrails",
         "cloudtrail:ListTags"
       ],
       "Resource": "*"
     },
     {
+      "Sid": "CloudTrailManagement",
+      "Effect": "Allow",
+      "Action": [
+        "cloudtrail:CreateTrail",
+        "cloudtrail:DeleteTrail",
+        "cloudtrail:StartLogging",
+        "cloudtrail:StopLogging",
+        "cloudtrail:UpdateTrail",
+        "cloudtrail:PutEventSelectors",
+        "cloudtrail:AddTags",
+        "cloudtrail:RemoveTags"
+      ],
+      "Resource": "arn:aws:cloudtrail:*:<ACCOUNT_ID>:trail/*"
+    },
+    {
       "Sid": "S3BucketAccess",
       "Effect": "Allow",
       "Action": [
-        "s3:CreateBucket",
-        "s3:PutBucketPolicy",
         "s3:GetBucketPolicy",
-        "s3:DeleteBucket"
+        "s3:PutBucketPolicy"
       ],
-      "Resource": "*",
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": ["cloudtrail/*", "*/cloudtrail/*"]
-        }
-      }
+      "Resource": "arn:aws:s3:::<ACCOUNT_ID>-*"
     }
   ]
 }

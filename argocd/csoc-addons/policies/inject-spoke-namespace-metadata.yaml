@@ -1,0 +1,38 @@
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: inject-account-id-and-name
+  annotations:
+    policies.kyverno.io/title: Inject Account ID and Name with Conditional Fallback
+    policies.kyverno.io/category: Multi-Tenancy
+    policies.kyverno.io/severity: medium
+    policies.kyverno.io/subject: AwsGenericCommonsAndBucket
+    policies.kyverno.io/description: >-
+      This policy automatically injects AWS account ID and instance name into
+      AwsGenericCommonsAndBucket resources ONLY if namespace annotations exist.
+      Otherwise, leaves spec values unchanged (uses existing or empty).
+      Expected annotations: services.k8s.aws/owner-account-id, kro.run/instance-name
+spec:
+  rules:
+  - name: inject-account-id-with-fallback
+    match:
+      any:
+      - resources:
+          kinds:
+          - AwsGenericCommonsAndBucket
+    # Only apply if namespace has annotations OR spec already has values
+    preconditions:
+      any:
+      - key: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" || '' }}"
+        operator: NotEquals
+        value: ""
+      - key: "{{ request.object.spec.accountId || '' }}"
+        operator: NotEquals
+        value: ""
+    mutate:
+      patchStrategicMerge:
+        spec:
+          # Use namespace annotation if exists, otherwise keep existing spec value
+          accountId: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" || request.object.spec.accountId || '' }}"
+          # Instance name from annotation (fallback to spec.name)
+          name: "{{ request.namespace.metadata.annotations.\"kro.run/instance-name\" || request.object.spec.name || '' }}"

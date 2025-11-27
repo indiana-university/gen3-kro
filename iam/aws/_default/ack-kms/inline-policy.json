@@ -2,27 +2,37 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "KMSDescribeOperations",
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey",
+        "kms:ListKeys",
+        "kms:ListAliases",
+        "kms:GetKeyPolicy",
+        "kms:ListResourceTags"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "KMSKeyManagement",
       "Effect": "Allow",
       "Action": [
         "kms:CreateKey",
-        "kms:DescribeKey",
-        "kms:ListKeys",
         "kms:ScheduleKeyDeletion",
         "kms:CancelKeyDeletion",
         "kms:EnableKey",
         "kms:DisableKey",
-        "kms:GetKeyPolicy",
         "kms:PutKeyPolicy",
         "kms:CreateAlias",
         "kms:DeleteAlias",
-        "kms:ListAliases",
         "kms:UpdateAlias",
         "kms:TagResource",
-        "kms:UntagResource",
-        "kms:ListResourceTags"
+        "kms:UntagResource"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:kms:*:<ACCOUNT_ID>:key/*",
+        "arn:aws:kms:*:<ACCOUNT_ID>:alias/*"
+      ]
     },
     {
       "Sid": "KMSCryptographicOperations",
@@ -34,7 +44,7 @@
         "kms:GenerateDataKeyWithoutPlaintext",
         "kms:ReEncrypt*"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:kms:*:<ACCOUNT_ID>:key/*"
     }
   ]
 }
