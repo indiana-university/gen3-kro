@@ -1,0 +1,367 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: gen3-application.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: Gen3Application
+    spec:
+      # Basic application configuration
+      name: string
+      namespace: string
+      environment: string | default="dev"
+
+      # Database credentials
+      auroraUsername: string | default="gen3admin"
+      auroraPasswordSecretName: string  # Secret containing password
+
+      # Gen3 application configuration
+      hostname: string
+      dictionaryUrl: string | default="https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
+      chartVersion: string | default="0.1.x"
+
+      # Feature flags for Gen3 services
+      services:
+        ambassador: boolean | default=true
+        arborist: boolean | default=true
+        argo: boolean | default=false
+        audit: boolean | default=true
+        awsEsProxy: boolean | default=true
+        fence: boolean | default=true
+        guppy: boolean | default=true
+        hatchery: boolean | default=true
+        indexd: boolean | default=true
+        manifestservice: boolean | default=true
+        metadata: boolean | default=true
+        peregrine: boolean | default=true
+        portal: boolean | default=true
+        revproxy: boolean | default=true
+        sheepdog: boolean | default=true
+
+    status:
+      # Infrastructure status (from external reference)
+      clusterEndpoint: ${infrastructureInstance.status.eksClusterEndpoint}
+      clusterName: ${infrastructureInstance.status.eksClusterName}
+      region: ${infrastructureInstance.status.region}
+      # Application status
+      helmReleaseName: ${argoApplication.metadata.name}
+      argoApplicationStatus: ${argoApplication.status.sync.status}
+      argoHealthStatus: ${argoApplication.status.health.status}
+      gen3Namespace: ${gen3Namespace.metadata.name}
+      externalSecretsReady: ${externalSecrets.status.conditions[?(@.type=="Ready")].status}
+
+  resources:
+  # 0. Reference external infrastructure instance
+  - id: infrastructureInstance
+    externalRef:
+      apiVersion: kro.run/v1alpha1
+      kind: AwsGenericCommonsAndBucket
+      metadata:
+        name: awsgenericcommonsandbucket
+        namespace: ${schema.metadata.namespace}
+
+  # 1. Create dedicated namespace for Gen3
+  - id: gen3Namespace
+    template:
+      apiVersion: v1
+      kind: Namespace
+      metadata:
+        name: ${schema.spec.namespace}
+        labels:
+          name: ${schema.spec.namespace}
+          environment: ${schema.spec.environment}
+          app.kubernetes.io/name: gen3
+          app.kubernetes.io/instance: ${schema.spec.name}
+
+  # 2. Create IRSA role for External Secrets Operator
+  - id: externalSecretsRole
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: Role
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-external-secrets
+      spec:
+        name: ${schema.spec.name}-external-secrets-role
+        description: "IAM role for External Secrets to access AWS Secrets Manager"
+        assumeRolePolicyDocument: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "${infrastructureInstance.status.eksOIDCProviderARN}"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:sub": "system:serviceaccount:${schema.spec.namespace}:external-secrets",
+                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:aud": "sts.amazonaws.com"
+                  }
+                }
+              }
+            ]
+          }
+        policies:
+          - "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+        tags:
+          - key: "Name"
+            value: "${schema.spec.name}-external-secrets"
+          - key: "Environment"
+            value: "${schema.spec.environment}"
+
+  # 3. Create IRSA role for Fence (S3 access)
+  - id: fenceRole
+    includeWhen:
+      - ${schema.spec.services.fence}
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: Role
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-fence
+      spec:
+        name: ${schema.spec.name}-fence-role
+        description: "IAM role for Fence to access S3 buckets"
+        assumeRolePolicyDocument: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Federated": "${infrastructureInstance.status.eksOIDCProviderARN}"
+                },
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {
+                  "StringEquals": {
+                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:sub": "system:serviceaccount:${schema.spec.namespace}:fence",
+                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:aud": "sts.amazonaws.com"
+                  }
+                }
+              }
+            ]
+          }
+        tags:
+          - key: "Name"
+            value: "${schema.spec.name}-fence"
+          - key: "Environment"
+            value: "${schema.spec.environment}"
+
+  # 4. Fence S3 access policy
+  - id: fenceS3Policy
+    includeWhen:
+      - ${schema.spec.services.fence}
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: Policy
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-fence-s3
+      spec:
+        name: ${schema.spec.name}-fence-s3-policy
+        description: "S3 access policy for Fence"
+        policyDocument: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "s3:GetObject",
+                  "s3:PutObject",
+                  "s3:DeleteObject",
+                  "s3:ListBucket"
+                ],
+                "Resource": [
+                  "arn:aws:s3:::${infrastructureInstance.status.dataBucketName}",
+                  "arn:aws:s3:::${infrastructureInstance.status.dataBucketName}/*",
+                  "arn:aws:s3:::${infrastructureInstance.status.uploadBucketName}",
+                  "arn:aws:s3:::${infrastructureInstance.status.uploadBucketName}/*"
+                ]
+              }
+            ]
+          }
+
+  # 5. Attach S3 policy to Fence role
+  - id: fencePolicyAttachment
+    includeWhen:
+      - ${schema.spec.services.fence}
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: PolicyAttachment
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-fence-s3-attachment
+      spec:
+        policyARN: ${fenceS3Policy.status.ackResourceMetadata.arn}
+        targetARN: ${fenceRole.status.ackResourceMetadata.arn}
+
+  # 6. External Secrets for database credentials
+  - id: externalSecrets
+    template:
+      apiVersion: external-secrets.io/v1beta1
+      kind: SecretStore
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-aws-secrets
+      spec:
+        provider:
+          aws:
+            service: SecretsManager
+            region: ${infrastructureInstance.status.region}
+            auth:
+              jwt:
+                serviceAccountRef:
+                  name: external-secrets
+
+  # 7. Aurora master password secret
+  - id: auroraPasswordSecret
+    template:
+      apiVersion: external-secrets.io/v1beta1
+      kind: ExternalSecret
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-aurora-password
+      spec:
+        refreshInterval: 1h
+        secretStoreRef:
+          name: ${externalSecrets.metadata.name}
+          kind: SecretStore
+        target:
+          name: ${schema.spec.auroraPasswordSecretName}
+          creationPolicy: Owner
+        data:
+          - secretKey: password
+            remoteRef:
+              key: ${schema.spec.auroraPasswordSecretName}
+
+  # 8. Register EKS cluster with ArgoCD
+  - id: argoClusterSecret
+    template:
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        namespace: argocd
+        name: cluster-${infrastructureInstance.status.eksClusterName}
+        labels:
+          argocd.argoproj.io/secret-type: cluster
+      type: Opaque
+      stringData:
+        name: ${infrastructureInstance.status.eksClusterName}
+        server: ${infrastructureInstance.status.eksClusterEndpoint}
+        config: |
+          {
+            "tlsClientConfig": {
+              "insecure": false,
+              "caData": "${infrastructureInstance.status.eksClusterCertificateAuthority}"
+            },
+            "awsAuthConfig": {
+              "clusterName": "${infrastructureInstance.status.eksClusterName}"
+            }
+          }
+
+  # 9. ArgoCD Application for Gen3 Helm Chart
+  - id: argoApplication
+    template:
+      apiVersion: argoproj.io/v1alpha1
+      kind: Application
+      metadata:
+        namespace: argocd
+        name: ${schema.spec.name}-gen3-helm
+        labels:
+          app.kubernetes.io/instance: ${schema.spec.name}
+          app.kubernetes.io/managed-by: kro
+      spec:
+        project: default
+        source:
+          chart: gen3
+          repoURL: https://helm.gen3.org
+          targetRevision: ${schema.spec.chartVersion}
+          helm:
+            releaseName: ${schema.spec.name}-gen3
+            valuesObject:
+              global:
+                aws:
+                  enabled: true
+                dev: false
+                externalSecrets:
+                  deploy: true
+                postgres:
+                  dbCreate: true
+                  master:
+                    host: ${infrastructureInstance.status.auroraClusterEndpoint}
+                    username: ${schema.spec.auroraUsername}
+                    password: ${schema.spec.auroraPasswordSecretName}
+                environment: ${schema.spec.environment}
+                hostname: ${schema.spec.hostname}
+                dictionaryUrl: ${schema.spec.dictionaryUrl}
+
+              ambassador:
+                enabled: ${schema.spec.services.ambassador}
+
+              arborist:
+                enabled: ${schema.spec.services.arborist}
+
+              argo-wrapper:
+                enabled: ${schema.spec.services.argo}
+
+              audit:
+                enabled: ${schema.spec.services.audit}
+
+              aws-es-proxy:
+                enabled: ${schema.spec.services.awsEsProxy}
+                esEndpoint: ${infrastructureInstance.status.opensearchDomainEndpoint}
+
+              fence:
+                enabled: ${schema.spec.services.fence}
+                serviceAccount:
+                  annotations:
+                    eks.amazonaws.com/role-arn: ${fenceRole.?status.?ackResourceMetadata.?arn}
+
+              guppy:
+                enabled: ${schema.spec.services.guppy}
+
+              hatchery:
+                enabled: ${schema.spec.services.hatchery}
+
+              indexd:
+                enabled: ${schema.spec.services.indexd}
+
+              manifestservice:
+                enabled: ${schema.spec.services.manifestservice}
+
+              metadata:
+                enabled: ${schema.spec.services.metadata}
+
+              peregrine:
+                enabled: ${schema.spec.services.peregrine}
+
+              portal:
+                enabled: ${schema.spec.services.portal}
+
+              revproxy:
+                enabled: ${schema.spec.services.revproxy}
+
+              sheepdog:
+                enabled: ${schema.spec.services.sheepdog}
+
+        destination:
+          server: ${infrastructureInstance.status.eksClusterEndpoint}
+          namespace: ${schema.spec.namespace}
+
+        syncPolicy:
+          automated:
+            prune: true
+            selfHeal: true
+          syncOptions:
+            - CreateNamespace=true
+            - ServerSideApply=true
+          retry:
+            limit: 5
+            backoff:
+              duration: 5s
+              factor: 2
+              maxDuration: 3m

@@ -117,26 +117,26 @@
   chart: wafv2-chart
   sync_wave: "-20"
 
-# - addon: external-secrets
-#   namespace: external-secrets
-#   repoURL: https://charts.external-secrets.io
-#   revision: 0.20.2
-#   chart: external-secrets
-#   sync_wave: "-20"
+- addon: external-secrets
+  namespace: external-secrets
+  repoURL: https://charts.external-secrets.io
+  revision: 1.1.0
+  chart: external-secrets
+  sync_wave: "-20"
 
-# - addon: kyverno
+- addon: kyverno
+  namespace: kyverno
+  repoURL: https://kyverno.github.io/kyverno/
+  revision: 3.5.2
+  chart: kyverno
+  sync_wave: "-20"
+
+# - addon: kyverno-policieses
 #   namespace: kyverno
 #   repoURL: https://kyverno.github.io/kyverno/
 #   revision: 3.5.2
-#   chart: kyverno
-#   sync_wave: "-20"
-
-# - addon: kyverno-policies
-#   namespace: kyverno-policies
-#   repoURL: https://kyverno.github.io/kyverno/
-#   revision: 3.5.2
 #   chart: kyverno-policies
-#   sync_wave: "-20"
+#   sync_wave: "-19"
 
 # - addon: metrics-server
 #   namespace: kube-system

@@ -1,62 +1,66 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: csoc-rgds-per-cloud
+  name: gen3-spokes-addons-instances
   namespace: argocd
   annotations:
-    # Atomic RGDs deploy after controllers are ready
-    argocd.argoproj.io/sync-wave: "-10"
+    # Deploy cluster addons before infrastructure (if any exist)
+    argocd.argoproj.io/sync-wave: "-5"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
   generators:
     - matrix:
         generators:
+          # CSOC/Hub cluster selection
           - clusters:
               selector:
                 matchLabels:
                   fleet_member: control-plane
+
+          # Discover spoke addons directories (optional)
           - git:
               repoURL: '{{.metadata.annotations.repo_url}}'
               revision: '{{.metadata.annotations.repo_revision}}'
               directories:
-                - path: 'argocd/csoc-addons/rgds/aws'
-                - path: 'argocd/csoc-addons/rgds/azure'
-                - path: 'argocd/csoc-addons/rgds/gcp'
+                - path: 'argocd/deployments/gen3-spokes/*/cluster-addons'
+
   template:
     metadata:
-      name: "csoc-{{.path.basename}}-rgds"
+      name: 'gen3-spoke-{{.path[1]}}-addons'
       labels:
-        app.kubernetes.io/part-of: graphs
-        app.kubernetes.io/name: rgds
-        app.kubernetes.io/cloud-provider: "{{.path.basename}}"
+        app.kubernetes.io/part-of: gen3-deployments
+        app.kubernetes.io/component: cluster-addons
+        app.kubernetes.io/spoke: '{{.path[1]}}'
       annotations:
-        argocd.argoproj.io/sync-wave: "-9"
-      finalizers:
-        - resources-finalizer.argocd.argoproj.io
+        argocd.argoproj.io/sync-wave: "-5"
+
     spec:
       project: default
+
       source:
         repoURL: '{{.metadata.annotations.repo_url}}'
         targetRevision: '{{.metadata.annotations.repo_revision}}'
         path: '{{.path.path}}'
+
       destination:
         name: '{{.name}}'
+
       syncPolicy:
-        automated:
-          prune: true
-          selfHeal: true
-          allowEmpty: true
         syncOptions:
-          - CreateNamespace=true
+          - CreateNamespace=false
           - ServerSideApply=true
-          - SkipDryRunOnMissingResource=true
-          - RespectIgnoreDifferences=true
-          - PrunePropagationPolicy=foreground
-          - PruneLast=true
         retry:
           limit: 5
           backoff:
-            duration: 10s
+            duration: 5s
             factor: 2
-            maxDuration: 5m
+            maxDuration: 3m
+
+      # Ignore KRO status fields to prevent sync loops
+      ignoreDifferences:
+        - group: "*"
+          kind: "*"
+          jsonPointers:
+            - /status
+            - /metadata/*

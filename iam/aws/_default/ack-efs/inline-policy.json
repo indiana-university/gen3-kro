@@ -2,23 +2,62 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "EFSManagement",
+      "Sid": "EFSDescribeOperations",
+      "Effect": "Allow",
+      "Action": [
+        "elasticfilesystem:DescribeFileSystems",
+        "elasticfilesystem:DescribeMountTargets",
+        "elasticfilesystem:DescribeAccessPoints",
+        "elasticfilesystem:DescribeMountTargetSecurityGroups",
+        "elasticfilesystem:DescribeFileSystemPolicy",
+        "elasticfilesystem:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EFSFileSystemManagement",
       "Effect": "Allow",
       "Action": [
         "elasticfilesystem:CreateFileSystem",
         "elasticfilesystem:DeleteFileSystem",
-        "elasticfilesystem:DescribeFileSystems",
+        "elasticfilesystem:UpdateFileSystem",
+        "elasticfilesystem:TagResource",
+        "elasticfilesystem:UntagResource"
+      ],
+      "Resource": "arn:aws:elasticfilesystem:*:<ACCOUNT_ID>:file-system/*"
+    },
+    {
+      "Sid": "EFSMountTargetManagement",
+      "Effect": "Allow",
+      "Action": [
         "elasticfilesystem:CreateMountTarget",
         "elasticfilesystem:DeleteMountTarget",
-        "elasticfilesystem:DescribeMountTargets",
-        "elasticfilesystem:DescribeMountTargetSecurityGroups",
-        "elasticfilesystem:ModifyMountTargetSecurityGroups",
+        "elasticfilesystem:ModifyMountTargetSecurityGroups"
+      ],
+      "Resource": "arn:aws:elasticfilesystem:*:<ACCOUNT_ID>:file-system/*"
+    },
+    {
+      "Sid": "EFSAccessPointManagement",
+      "Effect": "Allow",
+      "Action": [
         "elasticfilesystem:CreateAccessPoint",
         "elasticfilesystem:DeleteAccessPoint",
-        "elasticfilesystem:DescribeAccessPoints",
         "elasticfilesystem:TagResource",
-        "elasticfilesystem:UntagResource",
-        "elasticfilesystem:ListTagsForResource"
+        "elasticfilesystem:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:elasticfilesystem:*:<ACCOUNT_ID>:file-system/*",
+        "arn:aws:elasticfilesystem:*:<ACCOUNT_ID>:access-point/*"
+      ]
+    },
+    {
+      "Sid": "EC2NetworkingRead",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeAvailabilityZones"
       ],
       "Resource": "*"
     }

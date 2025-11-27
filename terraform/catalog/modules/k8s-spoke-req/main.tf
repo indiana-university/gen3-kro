@@ -17,7 +17,7 @@ locals {
   namespaces = {
     for spoke in var.spokes :
     spoke.alias => {
-      name  = "${spoke.alias}-infrastructure"
+      name  = "${spoke.alias}"
       alias = spoke.alias
       # Provider-specific annotations - detect from spoke_identity_mappings
       annotations = try(var.spoke_identity_mappings[spoke.alias].account_id, null) != null ? merge({

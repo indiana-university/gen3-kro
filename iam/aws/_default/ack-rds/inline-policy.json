@@ -2,21 +2,41 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "RDSDescribeOperations",
+      "Effect": "Allow",
+      "Action": [
+        "rds:DescribeDBInstances",
+        "rds:DescribeDBClusters",
+        "rds:DescribeDBSubnetGroups",
+        "rds:DescribeDBParameterGroups",
+        "rds:DescribeDBParameters",
+        "rds:DescribeDBClusterParameterGroups",
+        "rds:DescribeDBClusterParameters",
+        "rds:DescribeDBSnapshots",
+        "rds:DescribeDBClusterSnapshots",
+        "rds:DescribeDBClusterEndpoints",
+        "rds:DescribeDBEngineVersions",
+        "rds:DescribeOrderableDBInstanceOptions",
+        "rds:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "RDSInstanceManagement",
       "Effect": "Allow",
       "Action": [
         "rds:CreateDBInstance",
         "rds:DeleteDBInstance",
-        "rds:DescribeDBInstances",
         "rds:ModifyDBInstance",
         "rds:StartDBInstance",
         "rds:StopDBInstance",
         "rds:RebootDBInstance",
         "rds:AddTagsToResource",
-        "rds:RemoveTagsFromResource",
-        "rds:ListTagsForResource"
+        "rds:RemoveTagsFromResource"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:rds:*:<ACCOUNT_ID>:db:*"
+      ]
     },
     {
       "Sid": "RDSClusterManagement",
@@ -24,12 +44,49 @@
       "Action": [
         "rds:CreateDBCluster",
         "rds:DeleteDBCluster",
-        "rds:DescribeDBClusters",
         "rds:ModifyDBCluster",
         "rds:StartDBCluster",
-        "rds:StopDBCluster"
+        "rds:StopDBCluster",
+        "rds:CreateDBClusterEndpoint",
+        "rds:DeleteDBClusterEndpoint",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:rds:*:<ACCOUNT_ID>:cluster:*"
+      ]
+    },
+    {
+      "Sid": "RDSSubnetGroupManagement",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBSubnetGroup",
+        "rds:DeleteDBSubnetGroup",
+        "rds:ModifyDBSubnetGroup",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:*:<ACCOUNT_ID>:subgrp:*"
+      ]
+    },
+    {
+      "Sid": "RDSParameterGroupManagement",
+      "Effect": "Allow",
+      "Action": [
+        "rds:CreateDBParameterGroup",
+        "rds:DeleteDBParameterGroup",
+        "rds:ModifyDBParameterGroup",
+        "rds:CreateDBClusterParameterGroup",
+        "rds:DeleteDBClusterParameterGroup",
+        "rds:ModifyDBClusterParameterGroup",
+        "rds:AddTagsToResource",
+        "rds:RemoveTagsFromResource"
+      ],
+      "Resource": [
+        "arn:aws:rds:*:<ACCOUNT_ID>:pg:*",
+        "arn:aws:rds:*:<ACCOUNT_ID>:cluster-pg:*"
+      ]
     },
     {
       "Sid": "RDSSnapshotManagement",
@@ -37,10 +94,47 @@
       "Action": [
         "rds:CreateDBSnapshot",
         "rds:DeleteDBSnapshot",
-        "rds:DescribeDBSnapshots",
         "rds:CreateDBClusterSnapshot",
-        "rds:DeleteDBClusterSnapshot",
-        "rds:DescribeDBClusterSnapshots"
+        "rds:DeleteDBClusterSnapshot"
+      ],
+      "Resource": [
+        "arn:aws:rds:*:<ACCOUNT_ID>:snapshot:*",
+        "arn:aws:rds:*:<ACCOUNT_ID>:cluster-snapshot:*",
+        "arn:aws:rds:*:<ACCOUNT_ID>:db:*",
+        "arn:aws:rds:*:<ACCOUNT_ID>:cluster:*"
+      ]
+    },
+    {
+      "Sid": "SecretsManagerDescribe",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:ListSecrets"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "RDSSecretManagement",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:TagResource",
+        "secretsmanager:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:secretsmanager:*:<ACCOUNT_ID>:secret:rds!*"
+      ]
+    },
+    {
+      "Sid": "EC2NetworkAccess",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs"
       ],
       "Resource": "*"
     }

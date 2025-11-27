@@ -2,19 +2,27 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "SQSListOperations",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:ListQueues",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes",
+        "sqs:ListQueueTags"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "SQSQueueManagement",
       "Effect": "Allow",
       "Action": [
         "sqs:CreateQueue",
         "sqs:DeleteQueue",
-        "sqs:GetQueueAttributes",
         "sqs:SetQueueAttributes",
-        "sqs:ListQueues",
         "sqs:TagQueue",
-        "sqs:UntagQueue",
-        "sqs:ListQueueTags"
+        "sqs:UntagQueue"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:sqs:*:<ACCOUNT_ID>:*"
     },
     {
       "Sid": "SQSMessageOperations",
@@ -26,7 +34,7 @@
         "sqs:ChangeMessageVisibility",
         "sqs:PurgeQueue"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:sqs:*:<ACCOUNT_ID>:*"
     }
   ]
 }

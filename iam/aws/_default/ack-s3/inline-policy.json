@@ -20,9 +20,11 @@
         "s3:GetBucketEncryption",
         "s3:PutBucketEncryption",
         "s3:GetBucketPublicAccessBlock",
-        "s3:PutBucketPublicAccessBlock"
+        "s3:PutBucketPublicAccessBlock",
+        "s3:PutBucketLogging",
+        "s3:GetBucketLogging"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:s3:::<ACCOUNT_ID>-*"
     },
     {
       "Sid": "S3ObjectOperations",
@@ -35,6 +37,12 @@
         "s3:PutObjectTagging",
         "s3:DeleteObjectTagging"
       ],
+      "Resource": "arn:aws:s3:::<ACCOUNT_ID>-*/*"
+    },
+    {
+      "Sid": "S3ListAllBuckets",
+      "Effect": "Allow",
+      "Action": "s3:ListAllMyBuckets",
       "Resource": "*"
     }
   ]

@@ -2,20 +2,33 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "EKSDescribeOperations",
+      "Effect": "Allow",
+      "Action": [
+        "eks:DescribeCluster",
+        "eks:ListClusters",
+        "eks:DescribeNodegroup",
+        "eks:ListNodegroups",
+        "eks:DescribeAddon",
+        "eks:DescribeAddonVersions",
+        "eks:ListAddons",
+        "eks:DescribeUpdate",
+        "eks:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "EKSClusterManagement",
       "Effect": "Allow",
       "Action": [
         "eks:CreateCluster",
         "eks:DeleteCluster",
-        "eks:DescribeCluster",
-        "eks:ListClusters",
         "eks:UpdateClusterConfig",
         "eks:UpdateClusterVersion",
         "eks:TagResource",
-        "eks:UntagResource",
-        "eks:ListTagsForResource"
+        "eks:UntagResource"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:eks:*:<ACCOUNT_ID>:cluster/*"
     },
     {
       "Sid": "EKSNodeGroupManagement",
@@ -23,12 +36,15 @@
       "Action": [
         "eks:CreateNodegroup",
         "eks:DeleteNodegroup",
-        "eks:DescribeNodegroup",
-        "eks:ListNodegroups",
         "eks:UpdateNodegroupConfig",
-        "eks:UpdateNodegroupVersion"
+        "eks:UpdateNodegroupVersion",
+        "eks:TagResource",
+        "eks:UntagResource"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:eks:*:<ACCOUNT_ID>:cluster/*",
+        "arn:aws:eks:*:<ACCOUNT_ID>:nodegroup/*/*/*"
+      ]
     },
     {
       "Sid": "EKSAddonManagement",
@@ -36,12 +52,39 @@
       "Action": [
         "eks:CreateAddon",
         "eks:DeleteAddon",
-        "eks:DescribeAddon",
-        "eks:DescribeAddonVersions",
-        "eks:ListAddons",
         "eks:UpdateAddon"
       ],
+      "Resource": [
+        "arn:aws:eks:*:<ACCOUNT_ID>:cluster/*",
+        "arn:aws:eks:*:<ACCOUNT_ID>:addon/*/*/*"
+      ]
+    },
+    {
+      "Sid": "IAMPassRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*",
+      "Condition": {
+        "StringEquals": {
+          "iam:PassedToService": "eks.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Sid": "EC2NetworkingForEKS",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs"
+      ],
       "Resource": "*"
+    },
+    {
+      "Sid": "IAMServiceLinkedRole",
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/aws-service-role/eks.amazonaws.com/*"
     }
   ]
 }

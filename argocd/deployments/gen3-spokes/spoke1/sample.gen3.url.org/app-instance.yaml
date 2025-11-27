@@ -1,0 +1,36 @@
+apiVersion: kro.run/v1alpha1
+kind: Gen3Application
+metadata:
+  name: gen3-app-spoke1
+  namespace: spoke1-infrastructure
+spec:
+  name: spoke1-gen3
+  namespace: gen3
+  environment: dev
+
+  # Database credentials
+  auroraUsername: "gen3admin"
+  auroraPasswordSecretName: "my-gen3-commons-aurora-master-password"
+
+  # Gen3 application configuration
+  hostname: "spoke1.gen3.datascience.iu.edu"
+  dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
+  chartVersion: "0.1.x"
+
+  # Gen3 services to enable
+  services:
+    ambassador: true
+    arborist: true
+    argo: false
+    audit: true
+    awsEsProxy: true
+    fence: true
+    guppy: true
+    hatchery: true
+    indexd: true
+    manifestservice: true
+    metadata: true
+    peregrine: true
+    portal: true
+    revproxy: true
+    sheepdog: true

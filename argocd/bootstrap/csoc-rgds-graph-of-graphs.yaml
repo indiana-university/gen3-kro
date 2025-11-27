@@ -4,8 +4,8 @@ metadata:
   name: csoc-rgds-graph-of-graphs
   namespace: argocd
   annotations:
-    # Multi-controller RGDs deploy all composite graphs
-    argocd.argoproj.io/sync-wave: "-4"
+    # Composite RGDs deploy after atomic RGDs are ready
+    argocd.argoproj.io/sync-wave: "-8"
 spec:
   goTemplate: true
   goTemplateOptions: ["missingkey=error"]
@@ -29,7 +29,7 @@ spec:
         app.kubernetes.io/name: rgds
         app.kubernetes.io/cloud-provider: "all-clouds"
       annotations:
-        argocd.argoproj.io/sync-wave: "-5"
+        argocd.argoproj.io/sync-wave: "-7"
       finalizers:
         - resources-finalizer.argocd.argoproj.io
     spec:

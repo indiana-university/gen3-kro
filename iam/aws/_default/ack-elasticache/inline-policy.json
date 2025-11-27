@@ -2,40 +2,127 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "ElastiCacheDescribeOperations",
       "Effect": "Allow",
       "Action": [
-        "elasticache:*",
-        "ec2:DescribeAvailabilityZones",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DescribeSubnets",
-        "ec2:DescribeVpcs",
-        "ec2:CreateSecurityGroup",
-        "ec2:AuthorizeSecurityGroupIngress",
-        "ec2:RevokeSecurityGroupIngress",
-        "ec2:DeleteSecurityGroup",
-        "kms:DescribeCustomKeyStores",
-        "kms:ListKeys",
-        "kms:DeleteCustomKeyStore",
-        "kms:GenerateRandom",
-        "kms:UpdateCustomKeyStore",
-        "kms:ListAliases",
-        "kms:DisconnectCustomKeyStore",
-        "kms:CreateKey",
-        "kms:ConnectCustomKeyStore",
-        "kms:CreateCustomKeyStore",
-        "logs:DescribeResourcePolicies",
-        "logs:CreateLogGroup",
-        "logs:DeleteLogGroup"
+        "elasticache:DescribeCacheClusters",
+        "elasticache:DescribeReplicationGroups",
+        "elasticache:DescribeCacheSubnetGroups",
+        "elasticache:DescribeCacheParameterGroups",
+        "elasticache:DescribeCacheParameters",
+        "elasticache:DescribeSnapshots",
+        "elasticache:DescribeCacheEngineVersions",
+        "elasticache:DescribeServiceUpdates",
+        "elasticache:ListTagsForResource"
       ],
       "Resource": "*"
     },
     {
+      "Sid": "ElastiCacheClusterManagement",
       "Effect": "Allow",
-      "Action": "kms:*",
+      "Action": [
+        "elasticache:CreateCacheCluster",
+        "elasticache:DeleteCacheCluster",
+        "elasticache:ModifyCacheCluster",
+        "elasticache:RebootCacheCluster",
+        "elasticache:AddTagsToResource",
+        "elasticache:RemoveTagsFromResource"
+      ],
+      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:cluster:*"
+    },
+    {
+      "Sid": "ElastiCacheReplicationGroupManagement",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateReplicationGroup",
+        "elasticache:DeleteReplicationGroup",
+        "elasticache:ModifyReplicationGroup",
+        "elasticache:AddTagsToResource",
+        "elasticache:RemoveTagsFromResource"
+      ],
+      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:replicationgroup:*"
+    },
+    {
+      "Sid": "ElastiCacheSubnetGroupManagement",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateCacheSubnetGroup",
+        "elasticache:DeleteCacheSubnetGroup",
+        "elasticache:ModifyCacheSubnetGroup",
+        "elasticache:AddTagsToResource",
+        "elasticache:RemoveTagsFromResource"
+      ],
+      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:subnetgroup:*"
+    },
+    {
+      "Sid": "ElastiCacheParameterGroupManagement",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateCacheParameterGroup",
+        "elasticache:DeleteCacheParameterGroup",
+        "elasticache:ModifyCacheParameterGroup",
+        "elasticache:ResetCacheParameterGroup",
+        "elasticache:AddTagsToResource",
+        "elasticache:RemoveTagsFromResource"
+      ],
+      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:parametergroup:*"
+    },
+    {
+      "Sid": "ElastiCacheSnapshotManagement",
+      "Effect": "Allow",
+      "Action": [
+        "elasticache:CreateSnapshot",
+        "elasticache:DeleteSnapshot",
+        "elasticache:CopySnapshot"
+      ],
+      "Resource": [
+        "arn:aws:elasticache:*:<ACCOUNT_ID>:cluster:*",
+        "arn:aws:elasticache:*:<ACCOUNT_ID>:snapshot:*"
+      ]
+    },
+    {
+      "Sid": "EC2NetworkingRead",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "KMSKeyManagement",
+      "Effect": "Allow",
+      "Action": [
+        "kms:CreateKey",
+        "kms:DescribeKey",
+        "kms:GetKeyPolicy",
+        "kms:PutKeyPolicy",
+        "kms:ListKeys",
+        "kms:ListAliases",
+        "kms:CreateAlias",
+        "kms:DeleteAlias",
+        "kms:UpdateAlias",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "kms:ListResourceTags"
+      ],
       "Resource": [
         "arn:aws:kms:*:<ACCOUNT_ID>:key/*",
         "arn:aws:kms:*:<ACCOUNT_ID>:alias/*"
       ]
+    },
+    {
+      "Sid": "CloudWatchLogsManagement",
+      "Effect": "Allow",
+      "Action": [
+        "logs:CreateLogGroup",
+        "logs:DeleteLogGroup",
+        "logs:DescribeLogGroups",
+        "logs:PutRetentionPolicy"
+      ],
+      "Resource": "arn:aws:logs:*:<ACCOUNT_ID>:log-group:*"
     }
   ]
 }

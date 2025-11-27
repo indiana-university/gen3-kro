@@ -13,7 +13,7 @@
         "route53:ChangeTagsForResource",
         "route53:ListTagsForResource"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:route53:::hostedzone/*"
     },
     {
       "Sid": "Route53RecordManagement",
@@ -23,7 +23,10 @@
         "route53:ListResourceRecordSets",
         "route53:GetChange"
       ],
-      "Resource": "*"
+      "Resource": [
+        "arn:aws:route53:::hostedzone/*",
+        "arn:aws:route53:::change/*"
+      ]
     }
   ]
 }

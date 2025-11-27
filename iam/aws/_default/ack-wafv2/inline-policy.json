@@ -2,7 +2,7 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "WAFv2Management",
+      "Sid": "WAFv2WebACLManagement",
       "Effect": "Allow",
       "Action": [
         "wafv2:CreateWebACL",
@@ -10,21 +10,39 @@
         "wafv2:GetWebACL",
         "wafv2:ListWebACLs",
         "wafv2:UpdateWebACL",
+        "wafv2:TagResource",
+        "wafv2:UntagResource",
+        "wafv2:ListTagsForResource"
+      ],
+      "Resource": "arn:aws:wafv2:*:<ACCOUNT_ID>:*/webacl/*/*"
+    },
+    {
+      "Sid": "WAFv2RuleGroupManagement",
+      "Effect": "Allow",
+      "Action": [
         "wafv2:CreateRuleGroup",
         "wafv2:DeleteRuleGroup",
         "wafv2:GetRuleGroup",
         "wafv2:ListRuleGroups",
         "wafv2:UpdateRuleGroup",
+        "wafv2:TagResource",
+        "wafv2:UntagResource"
+      ],
+      "Resource": "arn:aws:wafv2:*:<ACCOUNT_ID>:*/rulegroup/*/*"
+    },
+    {
+      "Sid": "WAFv2IPSetManagement",
+      "Effect": "Allow",
+      "Action": [
         "wafv2:CreateIPSet",
         "wafv2:DeleteIPSet",
         "wafv2:GetIPSet",
         "wafv2:ListIPSets",
         "wafv2:UpdateIPSet",
         "wafv2:TagResource",
-        "wafv2:UntagResource",
-        "wafv2:ListTagsForResource"
+        "wafv2:UntagResource"
       ],
-      "Resource": "*"
+      "Resource": "arn:aws:wafv2:*:<ACCOUNT_ID>:*/ipset/*/*"
     }
   ]
 }

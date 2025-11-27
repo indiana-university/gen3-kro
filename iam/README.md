@@ -52,28 +52,9 @@ Use cluster-specific policies to:
 - **Grant additional permissions for dev/test**: Allow deletion, unrestricted access for experimentation
 - **Implement organization policies**: Enforce tagging requirements, restrict regions
 
-**Example: Production S3 policy with restrictions** (`iam/aws/<csoc_alias>/csoc/<addon_name>/inline-policy.json`):
-
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "s3:CreateBucket",
-        "s3:PutBucketPolicy",
-        "s3:PutBucketTagging"
-      ],
-      "Resource": "arn:aws:s3:::<resource-prefix>-*",
-      "Condition": {
-        "StringEquals": {
-          "aws:RequestedRegion": "<region>"
-        }
-      }
-    }
-  ]
-}
+**Example: List all unique AWS IAM actions in the default ACK EC2 policy**
+```sh
+cat /workspaces/gen3-kro/iam/aws/_default/ack-ec2/inline-policy.json | jq -r '.Statement[] | select(.Action | type == "array") | .Action[]' | sort | uniq
 ```
 
 **Note on file naming conventions:**
