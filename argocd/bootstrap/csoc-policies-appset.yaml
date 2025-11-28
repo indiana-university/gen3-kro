@@ -20,7 +20,7 @@ spec:
               repoURL: '{{.metadata.annotations.repo_url}}'
               revision: '{{.metadata.annotations.repo_revision}}'
               directories:
-                - path: 'argocd/csoc-addons/policies'
+                - path: 'argocd/csoc-addons/cluster-policies'
   template:
     metadata:
       name: "csoc-kyverno-policies"
