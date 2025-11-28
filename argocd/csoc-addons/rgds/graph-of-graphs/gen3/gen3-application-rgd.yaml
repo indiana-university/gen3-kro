@@ -201,7 +201,7 @@ spec:
   # 6. External Secrets for database credentials
   - id: externalSecrets
     template:
-      apiVersion: external-secrets.io/v1beta1
+      apiVersion: external-secrets.io/v1
       kind: SecretStore
       metadata:
         namespace: ${schema.spec.namespace}
@@ -219,7 +219,7 @@ spec:
   # 7. Aurora master password secret
   - id: auroraPasswordSecret
     template:
-      apiVersion: external-secrets.io/v1beta1
+      apiVersion: external-secrets.io/v1
       kind: ExternalSecret
       metadata:
         namespace: ${schema.spec.namespace}
