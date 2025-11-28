@@ -16,6 +16,11 @@ spec:
       auroraUsername: string | default="gen3admin"
       auroraPasswordSecretName: string  # Secret containing password
 
+      # Infrastructure reference (defaults to co-located AwsGenericCommonsAndBucket instance)
+      infrastructureRef:
+        name: string | default="awsgenericcommonsandbucket"
+        namespace: string | default=""
+
       # Gen3 application configuration
       hostname: string
       dictionaryUrl: string | default="https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
@@ -54,12 +59,16 @@ spec:
   resources:
   # 0. Reference external infrastructure instance
   - id: infrastructureInstance
+    readyWhen:
+      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
+      - ${has(infrastructureInstance.status.eksClusterCertificateAuthority)}
+      - ${has(infrastructureInstance.status.auroraClusterEndpoint)}
     externalRef:
       apiVersion: kro.run/v1alpha1
       kind: AwsGenericCommonsAndBucket
       metadata:
-        name: awsgenericcommonsandbucket
-        namespace: ${schema.metadata.namespace}
+        name: ${schema.spec.infrastructureRef.name}
+        namespace: "${ schema.spec.infrastructureRef.namespace != \"\" ? schema.spec.infrastructureRef.namespace : schema.metadata.namespace }"
 
   # 1. Create dedicated namespace for Gen3
   - id: gen3Namespace
