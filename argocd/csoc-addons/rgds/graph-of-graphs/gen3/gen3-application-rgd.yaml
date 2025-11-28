@@ -56,6 +56,8 @@ spec:
     readyWhen:
       - ${has(infrastructureInstance.status.eksClusterEndpoint)}
       - ${has(infrastructureInstance.status.eksClusterCertificateAuthority)}
+      - ${has(infrastructureInstance.status.eksOIDCProviderARN)}
+      - ${has(infrastructureInstance.status.eksClusterOIDCIssuer)}
       - ${has(infrastructureInstance.status.auroraClusterEndpoint)}
     externalRef:
       apiVersion: kro.run/v1alpha1
