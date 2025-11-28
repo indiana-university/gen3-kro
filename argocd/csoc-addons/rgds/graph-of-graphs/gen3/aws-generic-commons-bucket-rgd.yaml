@@ -154,19 +154,18 @@ spec:
       eksClusterOIDCIssuer: "${eks.?status.?clusterOIDCIssuer ?: ''}"
       eksOIDCProviderARN: "${eks.?status.?oidcProviderARN ?: ''}"
       # Layer 5: Data Services
-      auroraClusterEndpoint: ${aurora.?status.?clusterEndpoint}
-      auroraReaderEndpoint: ${aurora.?status.?readerEndpoint}
-      # AWS-managed master password secret ARN (when manageMasterUserPassword: true)
-      # Use with External Secrets Operator to retrieve password
-      auroraMasterPasswordSecretARN: ${aurora.?status.?masterPasswordSecretARN}
-      elasticacheEndpoint: ${elasticache.?status.?endpoint}
-      dataBucketName: ${dataBucket.?status.?s3Name}
-      dataBucketArn: ${dataBucket.?status.?s3ARN}
-      efsFileSystemID: ${efs.?status.?fileSystemID}
-      uploadBucketName: ${uploadBucket.?status.?s3Name}
-      uploadBucketArn: ${uploadBucket.?status.?s3ARN}
-      opensearchDomainARN: ${opensearch.?status.?domainARN}
-      opensearchDomainEndpoint: ${opensearch.?status.?endpoint}
+      # NOTE: Using defaults for fields that may be referenced by dependent RGDs
+      auroraClusterEndpoint: "${aurora.?status.?clusterEndpoint ?: ''}"
+      auroraReaderEndpoint: "${aurora.?status.?readerEndpoint ?: ''}"
+      auroraMasterPasswordSecretARN: "${aurora.?status.?masterPasswordSecretARN ?: ''}"
+      elasticacheEndpoint: "${elasticache.?status.?endpoint ?: ''}"
+      dataBucketName: "${dataBucket.?status.?s3Name ?: ''}"
+      dataBucketArn: "${dataBucket.?status.?s3ARN ?: ''}"
+      efsFileSystemID: "${efs.?status.?fileSystemID ?: ''}"
+      uploadBucketName: "${uploadBucket.?status.?s3Name ?: ''}"
+      uploadBucketArn: "${uploadBucket.?status.?s3ARN ?: ''}"
+      opensearchDomainARN: "${opensearch.?status.?domainARN ?: ''}"
+      opensearchDomainEndpoint: "${opensearch.?status.?endpoint ?: ''}"
 
   resources:
   # LAYER 1: Foundational Network and Encryption
