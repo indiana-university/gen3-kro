@@ -50,6 +50,26 @@ kubectl apply -k argocd/csoc-addons/rgds/aws
 kubectl get resourcegraphdefinitions -n kro-system
 ```
 
+## Gen3 application manual sync checklist
+
+ArgoCD deliberately pauses the `gen3-spoke-*-application` apps (sync wave `5`) until you manually trigger them. Before pressing **Sync**, verify the dependent infrastructure is Ready:
+
+1. Confirm the AwsGenericCommonsAndBucket instance reports the required status fields:
+  ```bash
+  kubectl get awsgenericcommonsandbucket -n <spoke-namespace> \
+    -o jsonpath='{.items[0].status}' | jq
+  ```
+  Ensure the output includes `eksClusterEndpoint`, `eksClusterCertificateAuthority`, and `auroraClusterEndpoint`.
+2. Validate ArgoCD shows the spoke infrastructure app as `Synced` and `Healthy`:
+  ```bash
+  argocd app get <spoke>-infrastructure
+  ```
+3. Once the checks pass, manually sync the Gen3 application:
+  ```bash
+  argocd app sync gen3-spoke-<spoke>-application
+  ```
+  Monitor until status is `Synced`/`Healthy`. If sync fails, re-check infrastructure status fields before retrying.
+
 ## Create Instances (copy from reference library)
 
 Example: base VPC, private subnet, and EKS that consume each other’s status:

@@ -16,34 +16,39 @@ spec:
 
       # Feature Toggles - control which resources are deployed
       # Dependencies are listed in order: resource depends on listed features
+      # Ordered to match resources block deployment sequence
       features:
         # Layer 1: Foundation (no dependencies)
-        enableVPC: boolean | default=true             # standalone - VPC is foundational
-        enableKMS: boolean | default=true             # standalone
+        enableKMS: boolean | default=true             # 1.1 - standalone
+        enableVPC: boolean | default=true             # 1.2 - standalone, VPC is foundational
 
         # Layer 2: Network Extensions (depends on: 1.2 - VPC core)
-        enableSubnet2: boolean | default=true
-        enableSubnet3: boolean | default=false
-        enableDbSubnet2: boolean | default=true  # depends on: enableSubnet2
+        enableSubnet2: boolean | default=true         # 2.1, 2.3 - public/private subnet 2
+        enableSubnet3: boolean | default=false        # 2.2, 2.4 - public/private subnet 3
+        enableDbSubnet2: boolean | default=true       # 2.6 - depends on: enableSubnet2
 
         # Layer 3: Audit & Compliance (depends on: enableKMS, enableLoggingBucket, enableCloudWatchLogs)
-        enableLoggingBucket: boolean | default=false   # standalone
-        enableCloudWatchLogs: boolean | default=false  # depends on: enableKMS
-        enableCloudTrail: boolean | default=false      # depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS
+        enableCloudWatchLogs: boolean | default=false # 3.1 - depends on: enableKMS
+        enableLoggingBucket: boolean | default=false  # 3.2 - standalone
+        enableCloudTrail: boolean | default=false     # 3.3 - depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS
 
         # Layer 4: Compute (depends on: vpcCore, enableSubnet2/3)
-        enableEKS: boolean | default=true             # depends on: vpcCore, enableSubnet2/3
+        enableEKS: boolean | default=true             # 4.1 - depends on: vpcCore, enableSubnet2/3
 
-        # Layer 5: Data Services - Databases (depends on: vpcCore, enableDbSubnet2)
-        enableAurora: boolean | default=true          # depends on: vpcCore, dbSubnet1, enableDbSubnet2
-        enableElastiCache: boolean | default=false     # depends on: vpcCore, dbSubnet1, enableDbSubnet2
+        # Layer 5: Data Services - File & Object (standalone or VPC/KMS dependent)
+        enableDataBucket: boolean | default=false     # 5.1 - standalone
+        enableUploadBucket: boolean | default=false   # 5.2 - standalone
+        enableEFS: boolean | default=false            # 5.3 - depends on: vpcCore, enableSubnet2/3, enableKMS
+        enableElastiCache: boolean | default=false    # 5.4 - depends on: vpcCore, dbSubnet1, enableDbSubnet2
+        enableOpenSearch: boolean | default=false     # 5.5 - depends on: vpcCore, dbSubnet1
+        enableAurora: boolean | default=true          # 5.6 - depends on: vpcCore, dbSubnet1, enableDbSubnet2
 
-        # Layer 5: Data Services - File & Object (depends on: vpcCore, enableKMS)
-        enableDataBucket: boolean | default=false      # standalone
-        enableUploadBucket: boolean | default=false    # standalone
-        enableEFS: boolean | default=false             # depends on: vpcCore, enableSubnet2/3, enableKMS
-        enableOpenSearch: boolean | default=false      # depends on: vpcCore, dbSubnet1
+      # Layer 1: KMS Configuration
+      kms:
+        description: string | default="Gen3 encryption key"
+        enableKeyRotation: boolean | default=true
 
+      # Layer 1-2: VPC Configuration
       vpc:
         vpcCidr: string | default="10.0.0.0/16"
         publicSubnet1Cidr: string | default="10.0.1.0/24"
@@ -55,7 +60,34 @@ spec:
         dbSubnet1Cidr: string | default="10.0.21.0/24"
         dbSubnet2Cidr: string | default="10.0.22.0/24"
 
-      # EKS Configuration
+      # Layer 3: CloudWatch Logs Configuration
+      cloudwatchLogs:
+        retentionInDays: integer | default=1827
+
+      # Layer 3: S3 Buckets Configuration
+      # Bucket names are auto-generated as: ${name}-${bucket-type}-${accountId}-${region}
+      # Example: my-gen3-commons-data-859011005590-us-east-1
+      buckets:
+        # Logging bucket
+        loggingBucket:
+          versioning: boolean | default=false
+          encryption: boolean | default=true
+        # Data bucket
+        dataBucket:
+          versioning: boolean | default=true
+          encryption: boolean | default=true
+        # Upload bucket
+        uploadBucket:
+          versioning: boolean | default=true
+          encryption: boolean | default=true
+
+      # Layer 3: CloudTrail Configuration
+      cloudtrail:
+        enableLogFileValidation: boolean | default=true
+        includeGlobalServiceEvents: boolean | default=true
+        isMultiRegionTrail: boolean | default=true
+
+      # Layer 4: EKS Configuration
       eks:
         version: string | default="1.33"
         nodeGroupInstanceTypes: "[]string | default=[\"t3.large\"]"
@@ -63,7 +95,27 @@ spec:
         nodeGroupMinSize: integer | default=2
         nodeGroupMaxSize: integer | default=6
 
-      # Aurora PostgreSQL Configuration
+      # Layer 5: EFS Configuration
+      efs:
+        performanceMode: string | default="generalPurpose"
+        throughputMode: string | default="bursting"
+        encrypted: boolean | default=true
+
+      # Layer 5: ElastiCache Configuration
+      elasticache:
+        engine: string | default="redis"
+        engineVersion: string | default="7.0"
+        nodeType: string | default="cache.t3.micro"
+        numCacheNodes: integer | default=1
+
+      # Layer 5: OpenSearch Configuration
+      opensearch:
+        engineVersion: string | default="OpenSearch_2.11"
+        instanceType: string | default="t3.small.search"
+        instanceCount: integer | default=1
+        volumeSize: integer | default=10
+
+      # Layer 5: Aurora PostgreSQL Configuration
       aurora:
         engine: string | default="aurora-postgresql"
         engineVersion: string | default="15.4"
@@ -72,58 +124,6 @@ spec:
         databaseName: string | default="gen3"
         masterUsername: string | default="admin"
         backupRetentionPeriod: integer | default=7
-
-      # ElastiCache Configuration
-      elasticache:
-        engine: string | default="redis"
-        engineVersion: string | default="7.0"
-        nodeType: string | default="cache.t3.micro"
-        numCacheNodes: integer | default=1
-
-      # EFS Configuration
-      efs:
-        performanceMode: string | default="generalPurpose"
-        throughputMode: string | default="bursting"
-        encrypted: boolean | default=true
-
-      # S3 Buckets Configuration
-      # Bucket names are auto-generated as: ${name}-${bucket-type}-${accountId}-${region}
-      # Example: my-gen3-commons-data-859011005590-us-east-1
-      buckets:
-        # Data bucket
-        dataBucket:
-          versioning: boolean | default=true
-          encryption: boolean | default=true
-        # Logging bucket
-        loggingBucket:
-          versioning: boolean | default=false
-          encryption: boolean | default=true
-        # Upload bucket
-        uploadBucket:
-          versioning: boolean | default=true
-          encryption: boolean | default=true
-
-      # KMS Configuration
-      kms:
-        description: string | default="Gen3 encryption key"
-        enableKeyRotation: boolean | default=true
-
-      # OpenSearch Configuration
-      opensearch:
-        engineVersion: string | default="OpenSearch_2.11"
-        instanceType: string | default="t3.small.search"
-        instanceCount: integer | default=1
-        volumeSize: integer | default=10
-
-      # CloudWatch Logs Configuration
-      cloudwatchLogs:
-        retentionInDays: integer | default=1827
-
-      # CloudTrail Configuration
-      cloudtrail:
-        enableLogFileValidation: boolean | default=true
-        includeGlobalServiceEvents: boolean | default=true
-        isMultiRegionTrail: boolean | default=true
 
     status:
       # Layer 1: Foundation
@@ -345,6 +345,7 @@ spec:
   - id: cloudwatchLogs
     includeWhen:
       - ${schema.spec.features.enableCloudWatchLogs}
+      - ${schema.spec.features.enableKMS}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudWatchLogs
@@ -385,6 +386,9 @@ spec:
   - id: cloudtrail
     includeWhen:
       - ${schema.spec.features.enableCloudTrail}
+      - ${schema.spec.features.enableLoggingBucket}
+      - ${schema.spec.features.enableCloudWatchLogs}
+      - ${schema.spec.features.enableKMS}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudTrail
@@ -476,6 +480,7 @@ spec:
   - id: efs
     includeWhen:
       - ${schema.spec.features.enableEFS}
+      - ${schema.spec.features.enableKMS}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEFS
