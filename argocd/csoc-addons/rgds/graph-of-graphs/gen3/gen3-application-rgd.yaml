@@ -46,15 +46,14 @@ spec:
 
     status:
       # Infrastructure status (from external reference)
-      clusterEndpoint: ${infrastructureInstance.status.eksClusterEndpoint}
-      clusterName: ${infrastructureInstance.status.eksClusterName}
+      clusterEndpoint: ${infrastructureInstance.?status.?eksClusterEndpoint}
+      clusterName: ${infrastructureInstance.?status.?eksClusterName}
       region: ${infrastructureInstance.spec.region}
       # Application status
       helmReleaseName: ${argoApplication.metadata.name}
       argoApplicationStatus: ${argoApplication.status.sync.status}
       argoHealthStatus: ${argoApplication.status.health.status}
-      gen3Namespace: ${gen3Namespace.metadata.name}
-      externalSecretsReady: ${externalSecrets.status.conditions[?(@.type=="Ready")].status}
+      externalSecretsReady: ${externalSecrets.?status.?conditions[?(@.type=="Ready")].status}
 
   resources:
   # 0. Reference external infrastructure instance
@@ -70,21 +69,10 @@ spec:
         name: ${schema.spec.infrastructureRef.name}
         namespace: "${ schema.spec.infrastructureRef.namespace != \"\" ? schema.spec.infrastructureRef.namespace : schema.metadata.namespace }"
 
-  # 1. Create dedicated namespace for Gen3
-  - id: gen3Namespace
-    template:
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: ${schema.spec.namespace}
-        labels:
-          name: ${schema.spec.namespace}
-          environment: ${schema.spec.environment}
-          app.kubernetes.io/name: gen3
-          app.kubernetes.io/instance: ${schema.spec.name}
-
-  # 2. Create IRSA role for External Secrets Operator
+  # 1. Create IRSA role for External Secrets Operator
   - id: externalSecretsRole
+    includeWhen:
+      - ${has(infrastructureInstance.status.eksOIDCProviderARN)}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
@@ -121,7 +109,7 @@ spec:
           - key: "Environment"
             value: "${schema.spec.environment}"
 
-  # 3. Create IRSA role for Fence (S3 access)
+  # 2. Create IRSA role for Fence (S3 access)
   - id: fenceRole
     includeWhen:
       - ${schema.spec.services.fence}
@@ -163,10 +151,11 @@ spec:
           - key: "Environment"
             value: "${schema.spec.environment}"
 
-  # 4. Fence S3 access policy
+  # 3. Fence S3 access policy
   - id: fenceS3Policy
     includeWhen:
       - ${schema.spec.services.fence}
+      - ${has(infrastructureInstance.status.dataBucketName) || has(infrastructureInstance.status.uploadBucketName)}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Policy
@@ -198,8 +187,10 @@ spec:
             ]
           }
 
-  # 6. External Secrets for database credentials
+  # 4. External Secrets for database credentials
   - id: externalSecrets
+    includeWhen:
+      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
     template:
       apiVersion: external-secrets.io/v1
       kind: SecretStore
@@ -216,8 +207,10 @@ spec:
                 serviceAccountRef:
                   name: external-secrets
 
-  # 7. Aurora master password secret
+  # 5. Aurora master password secret
   - id: auroraPasswordSecret
+    includeWhen:
+      - ${has(infrastructureInstance.status.auroraClusterEndpoint)}
     template:
       apiVersion: external-secrets.io/v1
       kind: ExternalSecret
@@ -237,8 +230,11 @@ spec:
             remoteRef:
               key: ${schema.spec.auroraPasswordSecretName}
 
-  # 8. Register EKS cluster with ArgoCD
+  # 6. Register EKS cluster with ArgoCD
   - id: argoClusterSecret
+    includeWhen:
+      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
+      - ${has(infrastructureInstance.status.eksClusterCertificateAuthority)}
     template:
       apiVersion: v1
       kind: Secret
@@ -262,8 +258,11 @@ spec:
             }
           }
 
-  # 9. ArgoCD Application for Gen3 Helm Chart
+  # 7. ArgoCD Application for Gen3 Helm Chart
   - id: argoApplication
+    includeWhen:
+      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
+      - ${has(infrastructureInstance.status.auroraClusterEndpoint)}
     template:
       apiVersion: argoproj.io/v1alpha1
       kind: Application
@@ -312,7 +311,7 @@ spec:
 
               aws-es-proxy:
                 enabled: ${schema.spec.services.awsEsProxy}
-                esEndpoint: ${infrastructureInstance.status.opensearchDomainEndpoint}
+                esEndpoint: ${infrastructureInstance.?status.?opensearchDomainEndpoint}
 
               fence:
                 enabled: ${schema.spec.services.fence}
