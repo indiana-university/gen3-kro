@@ -3,6 +3,13 @@ kind: ResourceGraphDefinition
 metadata:
   name: gen3-application.kro.run
 spec:
+  # REQUIREMENTS:
+  # - The referenced AwsGenericCommonsAndBucket infrastructure instance MUST have:
+  #   - features.enableEKS: true (required - Gen3 deploys to EKS)
+  #   - features.enableAurora: true (required - Gen3 needs a database)
+  #   - features.enableDataBucket: true (recommended for Fence)
+  #   - features.enableUploadBucket: true (recommended for Fence)
+  #   - features.enableOpenSearch: true (optional - for aws-es-proxy)
   schema:
     apiVersion: v1alpha1
     kind: Gen3Application
@@ -69,7 +76,7 @@ spec:
   # 1. Create IRSA role for External Secrets Operator
   - id: externalSecretsRole
     includeWhen:
-      - ${has(infrastructureInstance.status.eksOIDCProviderARN)}
+      - ${infrastructureInstance.status.eksOIDCProviderARN != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role

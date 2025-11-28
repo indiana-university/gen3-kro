@@ -145,12 +145,14 @@ spec:
       loggingBucketArn: ${loggingBucket.?status.?s3ARN}
       cloudtrailARN: ${cloudtrail.?status.?trailARN}
       # Layer 4: Compute - EKS Cluster
-      eksClusterName: ${eks.?status.?clusterName}
-      eksClusterEndpoint: ${eks.?status.?clusterEndpoint}
-      eksClusterARN: ${eks.?status.?clusterARN}
-      eksClusterCertificateAuthority: ${eks.?status.?clusterCertificateAuthority}
-      eksClusterOIDCIssuer: ${eks.?status.?clusterOIDCIssuer}
-      eksOIDCProviderARN: ${eks.?status.?oidcProviderARN}
+      # NOTE: These fields use default empty strings so they're always defined in the schema
+      # This allows dependent RGDs (like gen3-application) to reference them without optional chaining
+      eksClusterName: "${eks.?status.?clusterName ?: ''}"
+      eksClusterEndpoint: "${eks.?status.?clusterEndpoint ?: ''}"
+      eksClusterARN: "${eks.?status.?clusterARN ?: ''}"
+      eksClusterCertificateAuthority: "${eks.?status.?clusterCertificateAuthority ?: ''}"
+      eksClusterOIDCIssuer: "${eks.?status.?clusterOIDCIssuer ?: ''}"
+      eksOIDCProviderARN: "${eks.?status.?oidcProviderARN ?: ''}"
       # Layer 5: Data Services
       auroraClusterEndpoint: ${aurora.?status.?clusterEndpoint}
       auroraReaderEndpoint: ${aurora.?status.?readerEndpoint}
