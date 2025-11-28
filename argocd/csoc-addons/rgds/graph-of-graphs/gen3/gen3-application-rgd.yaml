@@ -75,8 +75,6 @@ spec:
 
   # 1. Create IRSA role for External Secrets Operator
   - id: externalSecretsRole
-    includeWhen:
-      - ${infrastructureInstance.status.eksOIDCProviderARN != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
@@ -159,7 +157,6 @@ spec:
   - id: fenceS3Policy
     includeWhen:
       - ${schema.spec.services.fence}
-      - ${has(infrastructureInstance.status.dataBucketName) || has(infrastructureInstance.status.uploadBucketName)}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Policy
@@ -193,8 +190,6 @@ spec:
 
   # 4. External Secrets for database credentials
   - id: externalSecrets
-    includeWhen:
-      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
     template:
       apiVersion: external-secrets.io/v1
       kind: SecretStore
@@ -213,8 +208,6 @@ spec:
 
   # 5. Aurora master password secret
   - id: auroraPasswordSecret
-    includeWhen:
-      - ${has(infrastructureInstance.status.auroraClusterEndpoint)}
     template:
       apiVersion: external-secrets.io/v1
       kind: ExternalSecret
@@ -236,9 +229,6 @@ spec:
 
   # 6. Register EKS cluster with ArgoCD
   - id: argoClusterSecret
-    includeWhen:
-      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
-      - ${has(infrastructureInstance.status.eksClusterCertificateAuthority)}
     template:
       apiVersion: v1
       kind: Secret
@@ -264,9 +254,6 @@ spec:
 
   # 7. ArgoCD Application for Gen3 Helm Chart
   - id: argoApplication
-    includeWhen:
-      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
-      - ${has(infrastructureInstance.status.auroraClusterEndpoint)}
     template:
       apiVersion: argoproj.io/v1alpha1
       kind: Application
