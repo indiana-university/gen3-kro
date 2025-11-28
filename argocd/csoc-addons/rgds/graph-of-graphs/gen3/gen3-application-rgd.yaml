@@ -53,7 +53,6 @@ spec:
       helmReleaseName: ${argoApplication.metadata.name}
       argoApplicationStatus: ${argoApplication.status.sync.status}
       argoHealthStatus: ${argoApplication.status.health.status}
-      externalSecretsReady: ${externalSecrets.?status.?conditions[?(@.type=="Ready")].status}
 
   resources:
   # 0. Reference external infrastructure instance
