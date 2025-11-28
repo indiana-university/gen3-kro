@@ -96,8 +96,8 @@ spec:
                 "Action": "sts:AssumeRoleWithWebIdentity",
                 "Condition": {
                   "StringEquals": {
-                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:sub": "system:serviceaccount:${schema.spec.namespace}:external-secrets",
-                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:aud": "sts.amazonaws.com"
+                    "${infrastructureInstance.status.eksClusterOIDCIssuer.replace('https://', '')}:sub": "system:serviceaccount:${schema.spec.namespace}:external-secrets",
+                    "${infrastructureInstance.status.eksClusterOIDCIssuer.replace('https://', '')}:aud": "sts.amazonaws.com"
                   }
                 }
               }
@@ -136,8 +136,8 @@ spec:
                 "Action": "sts:AssumeRoleWithWebIdentity",
                 "Condition": {
                   "StringEquals": {
-                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:sub": "system:serviceaccount:${schema.spec.namespace}:fence",
-                    "${replace(infrastructureInstance.status.eksClusterOIDCIssuer, "https://", "")}:aud": "sts.amazonaws.com"
+                    "${infrastructureInstance.status.eksClusterOIDCIssuer.replace('https://', '')}:sub": "system:serviceaccount:${schema.spec.namespace}:fence",
+                    "${infrastructureInstance.status.eksClusterOIDCIssuer.replace('https://', '')}:aud": "sts.amazonaws.com"
                   }
                 }
               }
