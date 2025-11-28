@@ -27,11 +27,11 @@ spec:
 
   template:
     metadata:
-      name: 'gen3-spoke-{{.path[1]}}-addons'
+      name: 'gen3-spoke-{{ .path.path | trimPrefix "argocd/deployments/gen3-spokes/" | trimSuffix "/cluster-addons" }}-addons'
       labels:
         app.kubernetes.io/part-of: gen3-deployments
         app.kubernetes.io/component: cluster-addons
-        app.kubernetes.io/spoke: '{{.path[1]}}'
+        app.kubernetes.io/spoke: '{{ .path.path | trimPrefix "argocd/deployments/gen3-spokes/" | trimSuffix "/cluster-addons" }}'
       annotations:
         argocd.argoproj.io/sync-wave: "-5"
 
