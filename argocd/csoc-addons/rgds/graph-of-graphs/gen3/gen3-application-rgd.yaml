@@ -61,11 +61,11 @@ spec:
   # 0. Reference external infrastructure instance
   - id: infrastructureInstance
     readyWhen:
-      - ${has(infrastructureInstance.status.eksClusterEndpoint)}
-      - ${has(infrastructureInstance.status.eksClusterCertificateAuthority)}
-      - ${has(infrastructureInstance.status.eksOIDCProviderARN)}
-      - ${has(infrastructureInstance.status.eksClusterOIDCIssuer)}
-      - ${has(infrastructureInstance.status.auroraClusterEndpoint)}
+      - ${infrastructureInstance.status.eksClusterEndpoint != ""}
+      - ${infrastructureInstance.status.eksClusterCertificateAuthority != ""}
+      - ${infrastructureInstance.status.eksOIDCProviderARN != ""}
+      - ${infrastructureInstance.status.eksClusterOIDCIssuer != ""}
+      - ${infrastructureInstance.status.auroraClusterEndpoint != ""}
     externalRef:
       apiVersion: kro.run/v1alpha1
       kind: AwsGenericCommonsAndBucket

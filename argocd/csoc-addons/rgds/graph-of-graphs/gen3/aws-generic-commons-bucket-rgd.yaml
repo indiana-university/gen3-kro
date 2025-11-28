@@ -147,25 +147,25 @@ spec:
       # Layer 4: Compute - EKS Cluster
       # NOTE: These fields use default empty strings so they're always defined in the schema
       # This allows dependent RGDs (like gen3-application) to reference them without optional chaining
-      eksClusterName: "${eks.?status.?clusterName ?: ''}"
-      eksClusterEndpoint: "${eks.?status.?clusterEndpoint ?: ''}"
-      eksClusterARN: "${eks.?status.?clusterARN ?: ''}"
-      eksClusterCertificateAuthority: "${eks.?status.?clusterCertificateAuthority ?: ''}"
-      eksClusterOIDCIssuer: "${eks.?status.?clusterOIDCIssuer ?: ''}"
-      eksOIDCProviderARN: "${eks.?status.?oidcProviderARN ?: ''}"
+      eksClusterName: "${ has(eks.status.clusterName) ? eks.status.clusterName : '' }"
+      eksClusterEndpoint: "${ has(eks.status.clusterEndpoint) ? eks.status.clusterEndpoint : '' }"
+      eksClusterARN: "${ has(eks.status.clusterARN) ? eks.status.clusterARN : '' }"
+      eksClusterCertificateAuthority: "${ has(eks.status.clusterCertificateAuthority) ? eks.status.clusterCertificateAuthority : '' }"
+      eksClusterOIDCIssuer: "${ has(eks.status.clusterOIDCIssuer) ? eks.status.clusterOIDCIssuer : '' }"
+      eksOIDCProviderARN: "${ has(eks.status.oidcProviderARN) ? eks.status.oidcProviderARN : '' }"
       # Layer 5: Data Services
       # NOTE: Using defaults for fields that may be referenced by dependent RGDs
-      auroraClusterEndpoint: "${aurora.?status.?clusterEndpoint ?: ''}"
-      auroraReaderEndpoint: "${aurora.?status.?readerEndpoint ?: ''}"
-      auroraMasterPasswordSecretARN: "${aurora.?status.?masterPasswordSecretARN ?: ''}"
-      elasticacheEndpoint: "${elasticache.?status.?endpoint ?: ''}"
-      dataBucketName: "${dataBucket.?status.?s3Name ?: ''}"
-      dataBucketArn: "${dataBucket.?status.?s3ARN ?: ''}"
-      efsFileSystemID: "${efs.?status.?fileSystemID ?: ''}"
-      uploadBucketName: "${uploadBucket.?status.?s3Name ?: ''}"
-      uploadBucketArn: "${uploadBucket.?status.?s3ARN ?: ''}"
-      opensearchDomainARN: "${opensearch.?status.?domainARN ?: ''}"
-      opensearchDomainEndpoint: "${opensearch.?status.?endpoint ?: ''}"
+      auroraClusterEndpoint: "${ has(aurora.status.clusterEndpoint) ? aurora.status.clusterEndpoint : '' }"
+      auroraReaderEndpoint: "${ has(aurora.status.readerEndpoint) ? aurora.status.readerEndpoint : '' }"
+      auroraMasterPasswordSecretARN: "${ has(aurora.status.masterPasswordSecretARN) ? aurora.status.masterPasswordSecretARN : '' }"
+      elasticacheEndpoint: "${ has(elasticache.status.endpoint) ? elasticache.status.endpoint : '' }"
+      dataBucketName: "${ has(dataBucket.status.s3Name) ? dataBucket.status.s3Name : '' }"
+      dataBucketArn: "${ has(dataBucket.status.s3ARN) ? dataBucket.status.s3ARN : '' }"
+      efsFileSystemID: "${ has(efs.status.fileSystemID) ? efs.status.fileSystemID : '' }"
+      uploadBucketName: "${ has(uploadBucket.status.s3Name) ? uploadBucket.status.s3Name : '' }"
+      uploadBucketArn: "${ has(dataBucket.status.s3ARN) ? dataBucket.status.s3ARN : '' }"
+      opensearchDomainARN: "${ has(opensearch.status.domainARN) ? opensearch.status.domainARN : '' }"
+      opensearchDomainEndpoint: "${ has(opensearch.status.endpoint) ? opensearch.status.endpoint : '' }"
 
   resources:
   # LAYER 1: Foundational Network and Encryption
