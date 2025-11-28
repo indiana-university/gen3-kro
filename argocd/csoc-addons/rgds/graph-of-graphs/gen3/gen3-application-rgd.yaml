@@ -45,10 +45,6 @@ spec:
         sheepdog: boolean | default=true
 
     status:
-      # Infrastructure status (from external reference)
-      clusterEndpoint: ${infrastructureInstance.?status.?eksClusterEndpoint}
-      clusterName: ${infrastructureInstance.?status.?eksClusterName}
-      region: ${infrastructureInstance.spec.region}
       # Application status
       helmReleaseName: ${argoApplication.metadata.name}
       argoApplicationStatus: ${argoApplication.status.sync.status}
