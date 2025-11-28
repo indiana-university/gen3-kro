@@ -48,7 +48,7 @@ spec:
       # Infrastructure status (from external reference)
       clusterEndpoint: ${infrastructureInstance.status.eksClusterEndpoint}
       clusterName: ${infrastructureInstance.status.eksClusterName}
-      region: ${infrastructureInstance.status.region}
+      region: ${infrastructureInstance.spec.region}
       # Application status
       helmReleaseName: ${argoApplication.metadata.name}
       argoApplicationStatus: ${argoApplication.status.sync.status}
@@ -210,7 +210,7 @@ spec:
         provider:
           aws:
             service: SecretsManager
-            region: ${infrastructureInstance.status.region}
+            region: ${infrastructureInstance.spec.region}
             auth:
               jwt:
                 serviceAccountRef:
