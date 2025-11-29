@@ -361,7 +361,7 @@ spec:
         environment: ${schema.spec.environment}
         logGroupName: /aws/${schema.spec.name}
         retentionInDays: ${schema.spec.cloudwatchLogs.retentionInDays}
-        kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyID : \"\" }"
+        kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
 
   # 3.2 Logging S3 bucket
   # Contains: S3 bucket for logs
@@ -407,7 +407,7 @@ spec:
         enableLogFileValidation: ${schema.spec.cloudtrail.enableLogFileValidation}
         includeGlobalServiceEvents: ${schema.spec.cloudtrail.includeGlobalServiceEvents}
         isMultiRegionTrail: ${schema.spec.cloudtrail.isMultiRegionTrail}
-        kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
+        kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
 
   # LAYER 4: Compute
 
@@ -500,7 +500,7 @@ spec:
         performanceMode: ${schema.spec.efs.performanceMode}
         throughputMode: ${schema.spec.efs.throughputMode}
         encrypted: ${schema.spec.efs.encrypted}
-        kmsKeyID: "${ schema.spec.features.enableKMS ? kms.status.keyID : \"\" }"
+        kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
 
   # 5.4 ElastiCache Redis (depends on: 1.2 - VPC core, 2.5 - Database subnet 1, 2.6 - Database subnet 2)
   # Contains: ElastiCache cluster, subnet group, security group

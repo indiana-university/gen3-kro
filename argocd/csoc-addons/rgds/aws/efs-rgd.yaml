@@ -18,7 +18,7 @@ spec:
       performanceMode: string | default="generalPurpose"
       throughputMode: string | default="bursting"
       encrypted: boolean | default=true
-      kmsKeyID: string | default=""
+      kmsKeyARN: string | default=""
     status:
       fileSystemARN: ${fileSystem.status.ackResourceMetadata.arn}
       fileSystemID: ${fileSystem.status.fileSystemID}
@@ -65,7 +65,7 @@ spec:
         performanceMode: ${schema.spec.performanceMode}
         throughputMode: ${schema.spec.throughputMode}
         encrypted: ${schema.spec.encrypted}
-        kmsKeyID: ${schema.spec.kmsKeyID}
+        kmsKeyID: ${schema.spec.kmsKeyARN}
         tags:
         - key: Name
           value: ${schema.spec.name}
