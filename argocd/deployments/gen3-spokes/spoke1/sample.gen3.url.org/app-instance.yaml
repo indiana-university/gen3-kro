@@ -13,9 +13,9 @@ spec:
   auroraPasswordSecretName: "my-gen3-commons-aurora-master-password"
 
   # Gen3 application configuration
+  chartVersion: "0.2.97"
   hostname: "spoke1.gen3.datascience.iu.edu"
   dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
-  chartVersion: "0.1.x"
 
   # Gen3 services to enable
   services:

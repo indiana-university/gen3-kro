@@ -28,4 +28,4 @@ spec:
     mutate:
       patchStrategicMerge:
         spec:
-          accountId: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" || request.object.spec.accountId || '' }}"
+          accountId: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" }}"

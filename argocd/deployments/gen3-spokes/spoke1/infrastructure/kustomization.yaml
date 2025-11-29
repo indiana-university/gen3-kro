@@ -3,17 +3,3 @@ kind: Kustomization
 
 resources:
   - infrastructure-instance.yaml
-
-patches:
-  - target:
-      group: kro.run
-    patch: |-
-      - op: replace
-        path: /spec/namespace
-        value: spoke1
-  - target:
-      group: kro.run
-    patch: |-
-      - op: replace
-        path: /metadata/namespace
-        value: spoke1
