@@ -20,13 +20,17 @@ spec:
       - resources:
           kinds:
           - AwsGenericCommonsAndBucket
+    context:
+    - name: namespaceSpokeName
+      apiCall:
+        urlPath: "/api/v1/namespaces/{{request.namespace}}"
+        jmesPath: "metadata.annotations.\"spec/name\" || ''"
     preconditions:
       any:
-      - key: "{{ request.namespace.metadata.annotations.\"spec/name\" || '' }}"
+      - key: "{{ namespaceSpokeName }}"
         operator: NotEquals
         value: ""
     mutate:
-      patchesJson6902: |-
-        - op: replace
-          path: /spec/name
-          value: "{{ request.namespace.metadata.annotations.\"spec/name\" }}"
+      patchStrategicMerge:
+        spec:
+          name: "{{ namespaceSpokeName }}"

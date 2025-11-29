@@ -2,127 +2,134 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "ElastiCacheDescribeOperations",
+      "Sid": "ElastiCacheManagementActions",
       "Effect": "Allow",
-      "Action": [
-        "elasticache:DescribeCacheClusters",
-        "elasticache:DescribeReplicationGroups",
-        "elasticache:DescribeCacheSubnetGroups",
-        "elasticache:DescribeCacheParameterGroups",
-        "elasticache:DescribeCacheParameters",
-        "elasticache:DescribeSnapshots",
-        "elasticache:DescribeCacheEngineVersions",
-        "elasticache:DescribeServiceUpdates",
-        "elasticache:ListTagsForResource"
-      ],
+      "Action": "elasticache:*",
       "Resource": "*"
     },
     {
-      "Sid": "ElastiCacheClusterManagement",
+      "Sid": "CreateServiceLinkedRole",
       "Effect": "Allow",
-      "Action": [
-        "elasticache:CreateCacheCluster",
-        "elasticache:DeleteCacheCluster",
-        "elasticache:ModifyCacheCluster",
-        "elasticache:RebootCacheCluster",
-        "elasticache:AddTagsToResource",
-        "elasticache:RemoveTagsFromResource"
-      ],
-      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:cluster:*"
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "arn:aws:iam::*:role/aws-service-role/elasticache.amazonaws.com/AWSServiceRoleForElastiCache",
+      "Condition": {
+        "StringLike": {
+          "iam:AWSServiceName": "elasticache.amazonaws.com"
+        }
+      }
     },
     {
-      "Sid": "ElastiCacheReplicationGroupManagement",
+      "Sid": "CreateVPCEndpoints",
       "Effect": "Allow",
-      "Action": [
-        "elasticache:CreateReplicationGroup",
-        "elasticache:DeleteReplicationGroup",
-        "elasticache:ModifyReplicationGroup",
-        "elasticache:AddTagsToResource",
-        "elasticache:RemoveTagsFromResource"
-      ],
-      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:replicationgroup:*"
+      "Action": "ec2:CreateVpcEndpoint",
+      "Resource": "arn:aws:ec2:*:*:vpc-endpoint/*",
+      "Condition": {
+        "StringLike": {
+          "ec2:VpceServiceName": "com.amazonaws.elasticache.serverless.*"
+        }
+      }
     },
     {
-      "Sid": "ElastiCacheSubnetGroupManagement",
+      "Sid": "AllowAccessToElastiCacheTaggedVpcEndpoints",
       "Effect": "Allow",
       "Action": [
-        "elasticache:CreateCacheSubnetGroup",
-        "elasticache:DeleteCacheSubnetGroup",
-        "elasticache:ModifyCacheSubnetGroup",
-        "elasticache:AddTagsToResource",
-        "elasticache:RemoveTagsFromResource"
+        "ec2:CreateVpcEndpoint"
       ],
-      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:subnetgroup:*"
+      "NotResource": "arn:aws:ec2:*:*:vpc-endpoint/*"
     },
     {
-      "Sid": "ElastiCacheParameterGroupManagement",
+      "Sid": "TagVPCEndpointsOnCreation",
       "Effect": "Allow",
       "Action": [
-        "elasticache:CreateCacheParameterGroup",
-        "elasticache:DeleteCacheParameterGroup",
-        "elasticache:ModifyCacheParameterGroup",
-        "elasticache:ResetCacheParameterGroup",
-        "elasticache:AddTagsToResource",
-        "elasticache:RemoveTagsFromResource"
+        "ec2:CreateTags"
       ],
-      "Resource": "arn:aws:elasticache:*:<ACCOUNT_ID>:parametergroup:*"
+      "Resource": "arn:aws:ec2:*:*:vpc-endpoint/*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:CreateAction": "CreateVpcEndpoint",
+          "aws:RequestTag/AmazonElastiCacheManaged": "true"
+        }
+      }
     },
     {
-      "Sid": "ElastiCacheSnapshotManagement",
+      "Sid": "AllowAccessToEc2",
       "Effect": "Allow",
       "Action": [
-        "elasticache:CreateSnapshot",
-        "elasticache:DeleteSnapshot",
-        "elasticache:CopySnapshot"
-      ],
-      "Resource": [
-        "arn:aws:elasticache:*:<ACCOUNT_ID>:cluster:*",
-        "arn:aws:elasticache:*:<ACCOUNT_ID>:snapshot:*"
-      ]
-    },
-    {
-      "Sid": "EC2NetworkingRead",
-      "Effect": "Allow",
-      "Action": [
-        "ec2:DescribeAvailabilityZones",
-        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs",
         "ec2:DescribeSubnets",
-        "ec2:DescribeVpcs"
+        "ec2:DescribeSecurityGroups"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "KMSKeyManagement",
+      "Sid": "AllowAccessToKMS",
       "Effect": "Allow",
       "Action": [
-        "kms:CreateKey",
         "kms:DescribeKey",
-        "kms:GetKeyPolicy",
-        "kms:PutKeyPolicy",
-        "kms:ListKeys",
         "kms:ListAliases",
-        "kms:CreateAlias",
-        "kms:DeleteAlias",
-        "kms:UpdateAlias",
-        "kms:TagResource",
-        "kms:UntagResource",
-        "kms:ListResourceTags"
+        "kms:ListKeys"
       ],
-      "Resource": [
-        "arn:aws:kms:*:<ACCOUNT_ID>:key/*",
-        "arn:aws:kms:*:<ACCOUNT_ID>:alias/*"
-      ]
+      "Resource": "*"
     },
     {
-      "Sid": "CloudWatchLogsManagement",
+      "Sid": "AllowAccessToCloudWatch",
       "Effect": "Allow",
       "Action": [
-        "logs:CreateLogGroup",
-        "logs:DeleteLogGroup",
-        "logs:DescribeLogGroups",
-        "logs:PutRetentionPolicy"
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:GetMetricData"
       ],
-      "Resource": "arn:aws:logs:*:<ACCOUNT_ID>:log-group:*"
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowAccessToAutoScaling",
+      "Effect": "Allow",
+      "Action": [
+        "application-autoscaling:DescribeScalableTargets",
+        "application-autoscaling:DescribeScheduledActions",
+        "application-autoscaling:DescribeScalingPolicies",
+        "application-autoscaling:DescribeScalingActivities"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DescribeLogGroups",
+      "Effect": "Allow",
+      "Action": [
+        "logs:DescribeLogGroups"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ListLogDeliveryStreams",
+      "Effect": "Allow",
+      "Action": [
+        "firehose:ListDeliveryStreams"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "DescribeS3Buckets",
+      "Effect": "Allow",
+      "Action": [
+        "s3:ListAllMyBuckets"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowAccessToOutposts",
+      "Effect": "Allow",
+      "Action": [
+        "outposts:ListOutposts"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "AllowAccessToSNS",
+      "Effect": "Allow",
+      "Action": [
+        "sns:ListTopics"
+      ],
+      "Resource": "*"
     }
   ]
 }

@@ -2,89 +2,94 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "EKSDescribeOperations",
+      "Sid": "AmazonEKSClusterPolicy",
       "Effect": "Allow",
       "Action": [
-        "eks:DescribeCluster",
-        "eks:ListClusters",
-        "eks:DescribeNodegroup",
-        "eks:ListNodegroups",
-        "eks:DescribeAddon",
-        "eks:DescribeAddonVersions",
-        "eks:ListAddons",
-        "eks:DescribeUpdate",
-        "eks:ListTagsForResource"
+        "autoscaling:DescribeAutoScalingGroups",
+        "autoscaling:UpdateAutoScalingGroup",
+        "ec2:AttachVolume",
+        "ec2:AuthorizeSecurityGroupIngress",
+        "ec2:CreateRoute",
+        "ec2:CreateSecurityGroup",
+        "ec2:CreateTags",
+        "ec2:CreateVolume",
+        "ec2:DeleteRoute",
+        "ec2:DeleteSecurityGroup",
+        "ec2:DeleteVolume",
+        "ec2:DescribeInstances",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVolumes",
+        "ec2:DescribeVolumesModifications",
+        "ec2:DescribeVpcs",
+        "ec2:DescribeDhcpOptions",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DetachVolume",
+        "ec2:ModifyInstanceAttribute",
+        "ec2:ModifyVolume",
+        "ec2:RevokeSecurityGroupIngress",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeInstanceTopology",
+        "elasticloadbalancing:AddTags",
+        "elasticloadbalancing:ApplySecurityGroupsToLoadBalancer",
+        "elasticloadbalancing:AttachLoadBalancerToSubnets",
+        "elasticloadbalancing:ConfigureHealthCheck",
+        "elasticloadbalancing:CreateListener",
+        "elasticloadbalancing:CreateLoadBalancer",
+        "elasticloadbalancing:CreateLoadBalancerListeners",
+        "elasticloadbalancing:CreateLoadBalancerPolicy",
+        "elasticloadbalancing:CreateTargetGroup",
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:DeleteLoadBalancerListeners",
+        "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:DeregisterInstancesFromLoadBalancer",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeLoadBalancerPolicies",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DetachLoadBalancerFromSubnets",
+        "elasticloadbalancing:ModifyListener",
+        "elasticloadbalancing:ModifyLoadBalancerAttributes",
+        "elasticloadbalancing:ModifyTargetGroup",
+        "elasticloadbalancing:ModifyTargetGroupAttributes",
+        "elasticloadbalancing:RegisterInstancesWithLoadBalancer",
+        "elasticloadbalancing:RegisterTargets",
+        "elasticloadbalancing:SetLoadBalancerPoliciesForBackendServer",
+        "elasticloadbalancing:SetLoadBalancerPoliciesOfListener",
+        "kms:DescribeKey"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "EKSClusterManagement",
+      "Sid": "AmazonEKSClusterPolicySLRCreate",
       "Effect": "Allow",
-      "Action": [
-        "eks:CreateCluster",
-        "eks:DeleteCluster",
-        "eks:UpdateClusterConfig",
-        "eks:UpdateClusterVersion",
-        "eks:TagResource",
-        "eks:UntagResource"
-      ],
-      "Resource": "arn:aws:eks:*:<ACCOUNT_ID>:cluster/*"
-    },
-    {
-      "Sid": "EKSNodeGroupManagement",
-      "Effect": "Allow",
-      "Action": [
-        "eks:CreateNodegroup",
-        "eks:DeleteNodegroup",
-        "eks:UpdateNodegroupConfig",
-        "eks:UpdateNodegroupVersion",
-        "eks:TagResource",
-        "eks:UntagResource"
-      ],
-      "Resource": [
-        "arn:aws:eks:*:<ACCOUNT_ID>:cluster/*",
-        "arn:aws:eks:*:<ACCOUNT_ID>:nodegroup/*/*/*"
-      ]
-    },
-    {
-      "Sid": "EKSAddonManagement",
-      "Effect": "Allow",
-      "Action": [
-        "eks:CreateAddon",
-        "eks:DeleteAddon",
-        "eks:UpdateAddon"
-      ],
-      "Resource": [
-        "arn:aws:eks:*:<ACCOUNT_ID>:cluster/*",
-        "arn:aws:eks:*:<ACCOUNT_ID>:addon/*/*/*"
-      ]
-    },
-    {
-      "Sid": "IAMPassRole",
-      "Effect": "Allow",
-      "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "iam:PassedToService": "eks.amazonaws.com"
+          "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"
         }
       }
     },
     {
-      "Sid": "EC2NetworkingForEKS",
+      "Sid": "AmazonEKSClusterPolicyENIDelete",
       "Effect": "Allow",
-      "Action": [
-        "ec2:DescribeSubnets",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DescribeVpcs"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "IAMServiceLinkedRole",
-      "Effect": "Allow",
-      "Action": "iam:CreateServiceLinkedRole",
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/aws-service-role/eks.amazonaws.com/*"
+      "Action": "ec2:DeleteNetworkInterface",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "ec2:ResourceTag/eks:eni:owner": "amazon-vpc-cni"
+        }
+      }
     }
   ]
 }

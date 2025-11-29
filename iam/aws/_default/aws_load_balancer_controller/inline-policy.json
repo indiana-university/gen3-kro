@@ -3,25 +3,51 @@
   "Statement": [
     {
       "Effect": "Allow",
+      "Action": "elasticloadbalancing:*",
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
       "Action": [
-        "elasticloadbalancing:DescribeLoadBalancers",
-        "elasticloadbalancing:DescribeTargetGroups",
-        "elasticloadbalancing:DescribeListeners",
-        "elasticloadbalancing:CreateLoadBalancer",
-        "elasticloadbalancing:CreateTargetGroup",
-        "elasticloadbalancing:CreateListener",
-        "elasticloadbalancing:DeleteLoadBalancer",
-        "elasticloadbalancing:DeleteTargetGroup",
-        "elasticloadbalancing:DeleteListener",
-        "elasticloadbalancing:ModifyLoadBalancerAttributes",
-        "elasticloadbalancing:ModifyTargetGroup",
-        "elasticloadbalancing:RegisterTargets",
-        "elasticloadbalancing:DeregisterTargets",
-        "ec2:DescribeSubnets",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAddresses",
+        "ec2:DescribeInternetGateways",
         "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
         "ec2:DescribeVpcs",
-        "ec2:CreateSecurityGroup",
-        "ec2:CreateTags"
+        "ec2:DescribeVpcClassicLink",
+        "ec2:DescribeInstances",
+        "ec2:DescribeNetworkInterfaces",
+        "ec2:DescribeClassicLinkInstances",
+        "ec2:DescribeRouteTables",
+        "ec2:DescribeCoipPools",
+        "ec2:GetCoipPoolUsage",
+        "ec2:GetSecurityGroupsForVpc",
+        "ec2:DescribeVpcPeeringConnections",
+        "cognito-idp:DescribeUserPoolClient"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringEquals": {
+          "iam:AWSServiceName": "elasticloadbalancing.amazonaws.com"
+        }
+      }
+    },
+    {
+      "Effect": "Allow",
+      "Action": "arc-zonal-shift:*",
+      "Resource": "arn:aws:elasticloadbalancing:*:*:loadbalancer/*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "arc-zonal-shift:ListManagedResources",
+        "arc-zonal-shift:ListZonalShifts"
       ],
       "Resource": "*"
     }

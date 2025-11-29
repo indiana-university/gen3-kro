@@ -2,47 +2,11 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "S3BucketManagement",
       "Effect": "Allow",
       "Action": [
-        "s3:CreateBucket",
-        "s3:DeleteBucket",
-        "s3:ListBucket",
-        "s3:GetBucketLocation",
-        "s3:GetBucketVersioning",
-        "s3:PutBucketVersioning",
-        "s3:GetBucketPolicy",
-        "s3:PutBucketPolicy",
-        "s3:DeleteBucketPolicy",
-        "s3:GetBucketTagging",
-        "s3:PutBucketTagging",
-        "s3:DeleteBucketTagging",
-        "s3:GetBucketEncryption",
-        "s3:PutBucketEncryption",
-        "s3:GetBucketPublicAccessBlock",
-        "s3:PutBucketPublicAccessBlock",
-        "s3:PutBucketLogging",
-        "s3:GetBucketLogging"
+        "s3:*",
+        "s3-object-lambda:*"
       ],
-      "Resource": "arn:aws:s3:::<ACCOUNT_ID>-*"
-    },
-    {
-      "Sid": "S3ObjectOperations",
-      "Effect": "Allow",
-      "Action": [
-        "s3:GetObject",
-        "s3:PutObject",
-        "s3:DeleteObject",
-        "s3:GetObjectTagging",
-        "s3:PutObjectTagging",
-        "s3:DeleteObjectTagging"
-      ],
-      "Resource": "arn:aws:s3:::<ACCOUNT_ID>-*/*"
-    },
-    {
-      "Sid": "S3ListAllBuckets",
-      "Effect": "Allow",
-      "Action": "s3:ListAllMyBuckets",
       "Resource": "*"
     }
   ]

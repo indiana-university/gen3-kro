@@ -1,46 +1,131 @@
+###############################################################################
+# AWS Gen3 Commons and Bucket - Resource Graph Instance
+#
+# This is a composite ResourceGraph that orchestrates the deployment of a
+# complete Gen3 data commons infrastructure on AWS.
+#
+# IMPORTANT NOTES:
+# - The 'name' field should include a random suffix (e.g., gen3-test-x7y2)
+#   to ensure S3 bucket name uniqueness across all AWS accounts globally
+# - The 'cluster' field is automatically injected by Kyverno policy
+#   and does not need to be specified in this manifest
+#
+# DEPLOYMENT LAYERS:
+# Layer 1: Foundation (KMS, VPC core)
+# Layer 2: Network Extensions (additional subnets)
+# Layer 3: Audit & Compliance (CloudWatch Logs, S3 logging, CloudTrail)
+# Layer 4: Compute (EKS cluster)
+# Layer 5: Data Services (S3, EFS, ElastiCache, OpenSearch, Aurora)
+#
+# DEPENDENCIES:
+# - KMS key must exist before encrypted resources (CloudWatch Logs, CloudTrail, EFS)
+# - VPC must exist before subnet-dependent resources (EKS, EFS, ElastiCache, OpenSearch, Aurora)
+# - CloudWatch Logs and Logging S3 bucket must exist before CloudTrail
+###############################################################################
 apiVersion: kro.run/v1alpha1
 kind: AwsGenericCommonsAndBucket
 metadata:
-  name: my-gen3-commons
+  name: my-gen3-commons  # CHANGE THIS: Add random suffix for uniqueness (e.g., my-gen3-commons-x7y2 or annotate the namespace and it will be overridden via Kyverno)
   namespace: base
 spec:
-  name: my-gen3-commons
+  name: my-gen3-commons  # CHANGE THIS: Add random suffix for uniqueness (e.g., my-gen3-commons-x7y2 or annotate the namespace and it will be overridden via Kyverno)
   namespace: base
   region: us-east-1
   environment: dev
+  # AWS account ID  is annotated via Kyverno policy and does not need to be specified here
 
-  # Feature Toggles - control which resources are deployed
+  ###############################################################################
+  # FEATURE TOGGLES
+  # Control which resources are deployed. Dependencies are enforced by the RGD.
+  ###############################################################################
   features:
-    enableEKS: false
-    enableAurora: false
-    enableElastiCache: false
-    enableEFS: false
-    enableKMS: false
-    enableOpenSearch: false
-    enableCloudWatchLogs: false
-    enableCloudTrail: false
-    enableDataBucket: false
-    enableLoggingBucket: false
-    enableUploadBucket: false
+    # Layer 1: Foundation (no dependencies)
+    enableKMS: true              # 1.1 - Customer-managed KMS key for encryption
+    enableVPC: true              # 1.2 - VPC core with first public/private subnets and NAT
 
-  # VPC Configuration
+    # Layer 2: Network Extensions (depends on: VPC)
+    enableSubnet2: true          # 2.1, 2.3 - Public/private subnet 2 (AZ-b)
+    enableSubnet3: false         # 2.2, 2.4 - Public/private subnet 3 (AZ-c)
+    enableDbSubnet2: true        # 2.6 - Database subnet 2 (depends on: enableSubnet2)
+
+    # Layer 3: Audit & Compliance (depends on: KMS)
+    enableCloudWatchLogs: true   # 3.1 - CloudWatch log groups (depends on: enableKMS)
+    enableLoggingBucket: true    # 3.2 - S3 bucket for logs
+    enableCloudTrail: true       # 3.3 - CloudTrail audit logging (depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS)
+
+    # Layer 4: Compute (depends on: VPC, subnets)
+    enableEKS: false             # 4.1 - EKS cluster with node group (depends on: VPC, enableSubnet2/3)
+
+    # Layer 5: Data Services
+    enableDataBucket: false      # 5.1 - S3 bucket for Gen3 data
+    enableUploadBucket: false    # 5.2 - S3 bucket for user uploads
+    enableEFS: false             # 5.3 - EFS file system (depends on: VPC, enableSubnet2/3, enableKMS)
+    enableElastiCache: false     # 5.4 - ElastiCache Redis (depends on: VPC, dbSubnet1, enableDbSubnet2)
+    enableOpenSearch: false      # 5.5 - OpenSearch domain (depends on: VPC, dbSubnet1)
+    enableAurora: false          # 5.6 - Aurora PostgreSQL cluster (depends on: VPC, dbSubnet1, enableDbSubnet2)
+
+  ###############################################################################
+  # LAYER 1: KMS CONFIGURATION
+  # Customer-managed encryption key for CloudWatch Logs, CloudTrail, EFS, Secrets
+  ###############################################################################
+  kms:
+    description: "Gen3 commons encryption key"
+    enableKeyRotation: true
+
+  ###############################################################################
+  # LAYER 1-2: VPC CONFIGURATION
+  # Network layout with up to 3 AZs (a, b, c)
+  # Each AZ can have: public subnet, private subnet, database subnet
+  ###############################################################################
   vpc:
-    features:
-      enableSubnet2: true
-      enableSubnet3: false
-      enableDbSubnet2: true
-    cidr:
-      vpcCidr: "10.0.0.0/16"
-      publicSubnet1Cidr: "10.0.1.0/24"
-      publicSubnet2Cidr: "10.0.2.0/24"
-      publicSubnet3Cidr: "10.0.3.0/24"
-      privateSubnet1Cidr: "10.0.11.0/24"
-      privateSubnet2Cidr: "10.0.12.0/24"
-      privateSubnet3Cidr: "10.0.13.0/24"
-      dbSubnet1Cidr: "10.0.21.0/24"
-      dbSubnet2Cidr: "10.0.22.0/24"
+    vpcCidr: "10.1.0.0/16"
+    # Public subnets (internet-accessible via IGW)
+    publicSubnet1Cidr: "10.1.1.0/24"   # AZ-a
+    publicSubnet2Cidr: "10.1.2.0/24"   # AZ-b
+    publicSubnet3Cidr: "10.1.3.0/24"   # AZ-c
+    # Private subnets (internet-accessible via NAT Gateway)
+    privateSubnet1Cidr: "10.1.11.0/24" # AZ-a
+    privateSubnet2Cidr: "10.1.12.0/24" # AZ-b
+    privateSubnet3Cidr: "10.1.13.0/24" # AZ-c
+    # Database subnets (no internet access)
+    dbSubnet1Cidr: "10.1.21.0/24"      # AZ-a
+    dbSubnet2Cidr: "10.1.22.0/24"      # AZ-b
 
-  # EKS Configuration
+  ###############################################################################
+  # LAYER 3: CLOUDWATCH LOGS CONFIGURATION
+  # Retention period in days (1827 = 5 years)
+  ###############################################################################
+  cloudwatchLogs:
+    retentionInDays: 1827
+
+  ###############################################################################
+  # LAYER 3: S3 BUCKETS CONFIGURATION
+  # Bucket names are auto-generated with format: ${name}-${bucket-type}
+  ###############################################################################
+  buckets:
+    loggingBucket:
+      versioning: false
+      encryption: true
+    dataBucket:
+      versioning: true
+      encryption: true
+    uploadBucket:
+      versioning: true
+      encryption: true
+
+  ###############################################################################
+  # LAYER 3: CLOUDTRAIL CONFIGURATION
+  # AWS audit logging for compliance and security monitoring
+  ###############################################################################
+  cloudtrail:
+    enableLogFileValidation: true
+    includeGlobalServiceEvents: true
+    isMultiRegionTrail: true
+
+  ###############################################################################
+  # LAYER 4: EKS CONFIGURATION
+  # Kubernetes cluster for running Gen3 services
+  ###############################################################################
   eks:
     version: "1.33"
     nodeGroupInstanceTypes:
@@ -49,65 +134,44 @@ spec:
     nodeGroupMinSize: 2
     nodeGroupMaxSize: 6
 
-  # Aurora PostgreSQL Configuration
-  aurora:
-    engine: "aurora-postgresql"
-    engineVersion: "15.4"
-    instanceClass: "db.r5.large"
-    instanceCount: 2
-    databaseName: "gen3"
-    masterUsername: "gen3admin"
-    backupRetentionPeriod: 7
+  ###############################################################################
+  # LAYER 5: EFS CONFIGURATION
+  # Encrypted shared file system for persistent storage
+  ###############################################################################
+  efs:
+    performanceMode: "generalPurpose"
+    throughputMode: "bursting"
+    encrypted: true
 
-  # ElastiCache Configuration
+  ###############################################################################
+  # LAYER 5: ELASTICACHE CONFIGURATION
+  # Redis cluster for caching and session storage
+  ###############################################################################
   elasticache:
     engine: "redis"
     engineVersion: "7.0"
     nodeType: "cache.t3.micro"
     numCacheNodes: 1
 
-  # EFS Configuration
-  efs:
-    performanceMode: "generalPurpose"
-    throughputMode: "bursting"
-    encrypted: true
-
-  # S3 Buckets Configuration
-  buckets:
-    # Data bucket for storing Gen3 data
-    dataBucket:
-      name: "my-gen3-commons-data-bucket"
-      versioning: true
-      encryption: true
-    # Logging bucket for audit logs
-    loggingBucket:
-      name: "my-gen3-commons-logging-bucket"
-      versioning: false
-      encryption: true
-    # Upload bucket for user uploads
-    uploadBucket:
-      name: "my-gen3-commons-upload-bucket"
-      versioning: true
-      encryption: true
-
-  # KMS Configuration
-  kms:
-    description: "Gen3 commons encryption key"
-    enableKeyRotation: true
-
-  # OpenSearch Configuration
+  ###############################################################################
+  # LAYER 5: OPENSEARCH CONFIGURATION
+  # Search and analytics engine for metadata indexing
+  ###############################################################################
   opensearch:
     engineVersion: "OpenSearch_2.11"
     instanceType: "t3.small.search"
     instanceCount: 1
     volumeSize: 10
 
-  # CloudWatch Logs Configuration
-  cloudwatchLogs:
-    retentionInDays: 1827
-
-  # CloudTrail Configuration
-  cloudtrail:
-    enableLogFileValidation: true
-    includeGlobalServiceEvents: true
-    isMultiRegionTrail: true
+  ###############################################################################
+  # LAYER 5: AURORA CONFIGURATION
+  # PostgreSQL-compatible database cluster for Gen3 metadata
+  ###############################################################################
+  aurora:
+    engine: "aurora-postgresql"
+    engineVersion: "15.13"
+    instanceClass: "db.r5.large"
+    instanceCount: 2
+    databaseName: "gen3"
+    masterUsername: "gen3admin"
+    backupRetentionPeriod: 7
