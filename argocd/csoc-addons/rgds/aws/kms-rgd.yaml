@@ -10,6 +10,7 @@ spec:
       name: string
       namespace: string
       region: string | default=""
+      accountId: string
       environment: string | default="dev"
       project: string | default="kro-managed"
       description: string | default="KMS encryption key"
@@ -37,6 +38,94 @@ spec:
         keyUsage: ${schema.spec.keyUsage}
         keySpec: ${schema.spec.customerMasterKeySpec}
         multiRegion: ${schema.spec.multiRegion}
+        policy: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "Enable IAM User Permissions",
+                "Effect": "Allow",
+                "Principal": {
+                  "AWS": "arn:aws:iam::${schema.spec.accountId}:root"
+                },
+                "Action": "kms:*",
+                "Resource": "*"
+              },
+              {
+                "Sid": "Allow CloudWatch Logs",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "logs.${schema.spec.region}.amazonaws.com"
+                },
+                "Action": [
+                  "kms:Encrypt",
+                  "kms:Decrypt",
+                  "kms:ReEncrypt*",
+                  "kms:GenerateDataKey*",
+                  "kms:CreateGrant",
+                  "kms:DescribeKey"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "ArnLike": {
+                    "kms:EncryptionContext:aws:logs:arn": "arn:aws:logs:${schema.spec.region}:${schema.spec.accountId}:*"
+                  }
+                }
+              },
+              {
+                "Sid": "Allow CloudTrail",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "cloudtrail.amazonaws.com"
+                },
+                "Action": [
+                  "kms:Encrypt",
+                  "kms:Decrypt",
+                  "kms:ReEncrypt*",
+                  "kms:GenerateDataKey*",
+                  "kms:DescribeKey"
+                ],
+                "Resource": "*",
+                "Condition": {
+                  "StringLike": {
+                    "kms:EncryptionContext:aws:cloudtrail:arn": "arn:aws:cloudtrail:*:${schema.spec.accountId}:trail/*"
+                  }
+                }
+              },
+              {
+                "Sid": "Allow EFS",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "elasticfilesystem.amazonaws.com"
+                },
+                "Action": [
+                  "kms:Encrypt",
+                  "kms:Decrypt",
+                  "kms:ReEncrypt*",
+                  "kms:GenerateDataKey*",
+                  "kms:CreateGrant",
+                  "kms:DescribeKey"
+                ],
+                "Resource": "*"
+              },
+              {
+                "Sid": "Allow Secrets Manager",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "secretsmanager.amazonaws.com"
+                },
+                "Action": [
+                  "kms:Encrypt",
+                  "kms:Decrypt",
+                  "kms:ReEncrypt*",
+                  "kms:GenerateDataKey*",
+                  "kms:CreateGrant",
+                  "kms:DescribeKey"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
         tags:
         - tagKey: Name
           tagValue: ${schema.spec.name}

@@ -189,29 +189,6 @@ spec:
         description: ${schema.spec.kms.description}
         enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
 
-  # 1.1b KMS service grants (depends on: 1.1 - KMS key)
-  # Contains: Grants for AWS services to use the KMS key
-  - id: kmsServiceGrant
-    includeWhen:
-      - ${schema.spec.features.enableKMS}
-    template:
-      apiVersion: kro.run/v1alpha1
-      kind: AwsKmsServiceGrant
-      metadata:
-        name: ${schema.spec.name}-kms-grants
-        namespace: ${schema.spec.namespace}
-      spec:
-        name: ${schema.spec.name}
-        namespace: ${schema.spec.namespace}
-        region: ${schema.spec.region}
-        accountId: ${schema.spec.accountId}
-        kmsKeyID: ${kms.status.keyID}
-        services:
-          cloudwatchLogs: ${schema.spec.features.enableCloudWatchLogs}
-          cloudtrail: ${schema.spec.features.enableCloudTrail}
-          efs: ${schema.spec.features.enableEFS}
-          secretsmanager: true
-
   # 1.2 VPC core infrastructure
   # Contains: VPC, IGW, first public/private subnets, NAT
   - id: vpcCore
