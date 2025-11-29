@@ -21,8 +21,7 @@ spec:
       kmsKeyARN: string | default=""
       accountId: string
     status:
-      trailARN: ${trail.status.ackResourceMetadata.arn}
-      trailName: ${trail.spec.name}
+      trailARN: ${trail.?status.?ackResourceMetadata.?arn}
 
   resources:
   - id: bucketPolicy
