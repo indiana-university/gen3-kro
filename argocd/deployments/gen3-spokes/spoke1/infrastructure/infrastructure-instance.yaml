@@ -9,7 +9,7 @@ spec:
   region:      us-east-1 # Specify your desired to override Controller region for all resources
   environment: dev # For tagging resources
   project:     Gen3  # For tagging resources
-  # accountId is annotated via Kyverno policy and does not need to be specified here
+  accountId:   ""    # accountId is annotated via Kyverno policy and does not need to be specified here
 
   # Feature Toggles - control which resources are deployed
   # Dependencies are listed in order: resource depends on listed features

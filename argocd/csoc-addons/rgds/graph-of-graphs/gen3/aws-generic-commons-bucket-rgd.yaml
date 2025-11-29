@@ -185,6 +185,7 @@ spec:
         name: ${schema.spec.name}
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
+        accountId: ${schema.spec.accountId}
         environment: ${schema.spec.environment}
         description: ${schema.spec.kms.description}
         enableKeyRotation: ${schema.spec.kms.enableKeyRotation}
