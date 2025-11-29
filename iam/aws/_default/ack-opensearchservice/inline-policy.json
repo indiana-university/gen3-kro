@@ -2,41 +2,11 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "OpenSearchDomainManagement",
       "Effect": "Allow",
       "Action": [
-        "es:CreateDomain",
-        "es:DeleteDomain",
-        "es:DescribeDomain",
-        "es:DescribeDomainConfig",
-        "es:ListDomainNames",
-        "es:UpdateDomainConfig",
-        "es:AddTags",
-        "es:RemoveTags",
-        "es:ListTags"
-      ],
-      "Resource": "arn:aws:es:*:<ACCOUNT_ID>:domain/*"
-    },
-    {
-      "Sid": "EC2NetworkingRead",
-      "Effect": "Allow",
-      "Action": [
-        "ec2:DescribeSubnets",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DescribeVpcs"
+        "es:*"
       ],
       "Resource": "*"
-    },
-    {
-      "Sid": "IAMPassRole",
-      "Effect": "Allow",
-      "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*",
-      "Condition": {
-        "StringEquals": {
-          "iam:PassedToService": "es.amazonaws.com"
-        }
-      }
     }
   ]
 }

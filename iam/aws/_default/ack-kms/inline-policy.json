@@ -2,49 +2,22 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "KMSDescribeOperations",
       "Effect": "Allow",
       "Action": [
-        "kms:DescribeKey",
-        "kms:ListKeys",
-        "kms:ListAliases",
-        "kms:GetKeyPolicy",
-        "kms:ListResourceTags"
+        "kms:CreateAlias",
+        "kms:CreateKey",
+        "kms:DeleteAlias",
+        "kms:Describe*",
+        "kms:GenerateRandom",
+        "kms:Get*",
+        "kms:List*",
+        "kms:TagResource",
+        "kms:UntagResource",
+        "iam:ListGroups",
+        "iam:ListRoles",
+        "iam:ListUsers"
       ],
       "Resource": "*"
-    },
-    {
-      "Sid": "KMSKeyManagement",
-      "Effect": "Allow",
-      "Action": [
-        "kms:CreateKey",
-        "kms:ScheduleKeyDeletion",
-        "kms:CancelKeyDeletion",
-        "kms:EnableKey",
-        "kms:DisableKey",
-        "kms:PutKeyPolicy",
-        "kms:CreateAlias",
-        "kms:DeleteAlias",
-        "kms:UpdateAlias",
-        "kms:TagResource",
-        "kms:UntagResource"
-      ],
-      "Resource": [
-        "arn:aws:kms:*:<ACCOUNT_ID>:key/*",
-        "arn:aws:kms:*:<ACCOUNT_ID>:alias/*"
-      ]
-    },
-    {
-      "Sid": "KMSCryptographicOperations",
-      "Effect": "Allow",
-      "Action": [
-        "kms:Encrypt",
-        "kms:Decrypt",
-        "kms:GenerateDataKey",
-        "kms:GenerateDataKeyWithoutPlaintext",
-        "kms:ReEncrypt*"
-      ],
-      "Resource": "arn:aws:kms:*:<ACCOUNT_ID>:key/*"
     }
   ]
 }

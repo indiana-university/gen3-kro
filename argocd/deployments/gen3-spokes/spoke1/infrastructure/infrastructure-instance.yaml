@@ -4,28 +4,29 @@ metadata:
   name: awsgenericcommonsandbucket
   namespace: spoke1
 spec:
-  name:        my-gen3-commons
-  namespace:   spoke1
+  name:        my-gen3-commons # Override with namespace annotation for bucket uniqueness and to keep away from git. (kyverno will override this value)
+  namespace:   spoke1 # overriden by kustomize files per spoke
   region:      us-east-1 # Specify your desired to override Controller region for all resources
   environment: dev # For tagging resources
   project:     Gen3  # For tagging resources
+  # accountId is annotated via Kyverno policy and does not need to be specified here
 
   # Feature Toggles - control which resources are deployed
   # Dependencies are listed in order: resource depends on listed features
   features:
     # Layer 1: Foundation (no dependencies)
-    enableVPC:            false  # standalone
-    enableKMS:            false  # standalone
+    enableVPC:            true  # standalone
+    enableKMS:            true  # standalone
 
     # Layer 2: Network Extensions (depends on: 1.2 - VPC core)
-    enableSubnet2:        false  # depends on: vpcCore
+    enableSubnet2:        true  # depends on: vpcCore
     enableSubnet3:        false  # depends on: vpcCore
     enableDbSubnet2:      false  # depends on: enableSubnet2
 
     # Layer 3: Audit & Compliance (depends on: enableKMS, enableLoggingBucket, enableCloudWatchLogs)
-    enableLoggingBucket:  false  # standalone
-    enableCloudWatchLogs: false  # depends on: enableKMS
-    enableCloudTrail:     false  # depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS
+    enableLoggingBucket:  true  # standalone
+    enableCloudWatchLogs: true  # depends on: enableKMS
+    enableCloudTrail:     true  # depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS
 
     # Layer 4: Compute (depends on: vpcCore, enableSubnet2/3)
     enableEKS:            false  # depends on: vpcCore, enableSubnet2/3

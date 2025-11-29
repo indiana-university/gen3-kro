@@ -1,0 +1,111 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: aws-kms-service-grant.kro.run
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsKmsServiceGrant
+    spec:
+      name: string
+      namespace: string
+      region: string | default=""
+      accountId: string
+      kmsKeyID: string
+      services:
+        cloudwatchLogs: boolean | default=false
+        cloudtrail: boolean | default=false
+        efs: boolean | default=false
+        secretsmanager: boolean | default=false
+    status:
+      grantsCreated: "[]string"
+
+  resources:
+  # Grant for CloudWatch Logs service
+  - id: cloudwatchLogsGrant
+    includeWhen:
+      - ${schema.spec.services.cloudwatchLogs}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Grant
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-cwl-grant
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        keyID: ${schema.spec.kmsKeyID}
+        granteePrincipal: logs.${schema.spec.region}.amazonaws.com
+        operations:
+          - Encrypt
+          - Decrypt
+          - GenerateDataKey
+          - DescribeKey
+        constraints:
+          encryptionContextSubset:
+            "aws:logs:arn": "arn:aws:logs:${schema.spec.region}:${schema.spec.accountId}:log-group:*"
+
+  # Grant for CloudTrail service
+  - id: cloudtrailGrant
+    includeWhen:
+      - ${schema.spec.services.cloudtrail}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Grant
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-ct-grant
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        keyID: ${schema.spec.kmsKeyID}
+        granteePrincipal: cloudtrail.amazonaws.com
+        operations:
+          - Encrypt
+          - Decrypt
+          - GenerateDataKey
+          - DescribeKey
+
+  # Grant for EFS service
+  - id: efsGrant
+    includeWhen:
+      - ${schema.spec.services.efs}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Grant
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-efs-grant
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        keyID: ${schema.spec.kmsKeyID}
+        granteePrincipal: elasticfilesystem.${schema.spec.region}.amazonaws.com
+        operations:
+          - Encrypt
+          - Decrypt
+          - GenerateDataKey
+          - DescribeKey
+          - CreateGrant
+
+  # Grant for Secrets Manager service
+  - id: secretsmanagerGrant
+    includeWhen:
+      - ${schema.spec.services.secretsmanager}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Grant
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-sm-grant
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        keyID: ${schema.spec.kmsKeyID}
+        granteePrincipal: secretsmanager.${schema.spec.region}.amazonaws.com
+        operations:
+          - Encrypt
+          - Decrypt
+          - GenerateDataKey
+          - DescribeKey
+          - CreateGrant

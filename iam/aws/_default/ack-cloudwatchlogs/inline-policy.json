@@ -2,32 +2,14 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "CloudWatchLogsDescribeOperations",
+      "Sid": "CloudWatchLogsFullAccess",
       "Effect": "Allow",
       "Action": [
-        "logs:DescribeLogGroups",
-        "logs:DescribeLogStreams",
-        "logs:ListTagsLogGroup"
+        "logs:*",
+        "cloudwatch:GenerateQuery",
+        "cloudwatch:GenerateQueryResultsSummary"
       ],
       "Resource": "*"
-    },
-    {
-      "Sid": "CloudWatchLogsManagement",
-      "Effect": "Allow",
-      "Action": [
-        "logs:CreateLogGroup",
-        "logs:CreateLogStream",
-        "logs:DeleteLogGroup",
-        "logs:DeleteLogStream",
-        "logs:PutLogEvents",
-        "logs:PutRetentionPolicy",
-        "logs:TagLogGroup",
-        "logs:UntagLogGroup"
-      ],
-      "Resource": [
-        "arn:aws:logs:*:<ACCOUNT_ID>:log-group:*",
-        "arn:aws:logs:*:<ACCOUNT_ID>:log-group:*:log-stream:*"
-      ]
     }
   ]
 }

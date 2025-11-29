@@ -2,141 +2,83 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "RDSDescribeOperations",
       "Effect": "Allow",
       "Action": [
-        "rds:DescribeDBInstances",
-        "rds:DescribeDBClusters",
-        "rds:DescribeDBSubnetGroups",
-        "rds:DescribeDBParameterGroups",
-        "rds:DescribeDBParameters",
-        "rds:DescribeDBClusterParameterGroups",
-        "rds:DescribeDBClusterParameters",
-        "rds:DescribeDBSnapshots",
-        "rds:DescribeDBClusterSnapshots",
-        "rds:DescribeDBClusterEndpoints",
-        "rds:DescribeDBEngineVersions",
-        "rds:DescribeOrderableDBInstanceOptions",
-        "rds:ListTagsForResource"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "RDSInstanceManagement",
-      "Effect": "Allow",
-      "Action": [
-        "rds:CreateDBInstance",
-        "rds:DeleteDBInstance",
-        "rds:ModifyDBInstance",
-        "rds:StartDBInstance",
-        "rds:StopDBInstance",
-        "rds:RebootDBInstance",
-        "rds:AddTagsToResource",
-        "rds:RemoveTagsFromResource"
-      ],
-      "Resource": [
-        "arn:aws:rds:*:<ACCOUNT_ID>:db:*"
-      ]
-    },
-    {
-      "Sid": "RDSClusterManagement",
-      "Effect": "Allow",
-      "Action": [
-        "rds:CreateDBCluster",
-        "rds:DeleteDBCluster",
-        "rds:ModifyDBCluster",
-        "rds:StartDBCluster",
-        "rds:StopDBCluster",
-        "rds:CreateDBClusterEndpoint",
-        "rds:DeleteDBClusterEndpoint",
-        "rds:AddTagsToResource",
-        "rds:RemoveTagsFromResource"
-      ],
-      "Resource": [
-        "arn:aws:rds:*:<ACCOUNT_ID>:cluster:*"
-      ]
-    },
-    {
-      "Sid": "RDSSubnetGroupManagement",
-      "Effect": "Allow",
-      "Action": [
-        "rds:CreateDBSubnetGroup",
-        "rds:DeleteDBSubnetGroup",
-        "rds:ModifyDBSubnetGroup",
-        "rds:AddTagsToResource",
-        "rds:RemoveTagsFromResource"
-      ],
-      "Resource": [
-        "arn:aws:rds:*:<ACCOUNT_ID>:subgrp:*"
-      ]
-    },
-    {
-      "Sid": "RDSParameterGroupManagement",
-      "Effect": "Allow",
-      "Action": [
-        "rds:CreateDBParameterGroup",
-        "rds:DeleteDBParameterGroup",
-        "rds:ModifyDBParameterGroup",
-        "rds:CreateDBClusterParameterGroup",
-        "rds:DeleteDBClusterParameterGroup",
-        "rds:ModifyDBClusterParameterGroup",
-        "rds:AddTagsToResource",
-        "rds:RemoveTagsFromResource"
-      ],
-      "Resource": [
-        "arn:aws:rds:*:<ACCOUNT_ID>:pg:*",
-        "arn:aws:rds:*:<ACCOUNT_ID>:cluster-pg:*"
-      ]
-    },
-    {
-      "Sid": "RDSSnapshotManagement",
-      "Effect": "Allow",
-      "Action": [
-        "rds:CreateDBSnapshot",
-        "rds:DeleteDBSnapshot",
-        "rds:CreateDBClusterSnapshot",
-        "rds:DeleteDBClusterSnapshot"
-      ],
-      "Resource": [
-        "arn:aws:rds:*:<ACCOUNT_ID>:snapshot:*",
-        "arn:aws:rds:*:<ACCOUNT_ID>:cluster-snapshot:*",
-        "arn:aws:rds:*:<ACCOUNT_ID>:db:*",
-        "arn:aws:rds:*:<ACCOUNT_ID>:cluster:*"
-      ]
-    },
-    {
-      "Sid": "SecretsManagerDescribe",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecrets"
-      ],
-      "Resource": "*"
-    },
-    {
-      "Sid": "RDSSecretManagement",
-      "Effect": "Allow",
-      "Action": [
-        "secretsmanager:CreateSecret",
-        "secretsmanager:DeleteSecret",
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:PutSecretValue",
-        "secretsmanager:TagResource",
-        "secretsmanager:UntagResource"
-      ],
-      "Resource": [
-        "arn:aws:secretsmanager:*:<ACCOUNT_ID>:secret:rds!*"
-      ]
-    },
-    {
-      "Sid": "EC2NetworkAccess",
-      "Effect": "Allow",
-      "Action": [
+        "rds:*",
+        "application-autoscaling:DeleteScalingPolicy",
+        "application-autoscaling:DeregisterScalableTarget",
+        "application-autoscaling:DescribeScalableTargets",
+        "application-autoscaling:DescribeScalingActivities",
+        "application-autoscaling:DescribeScalingPolicies",
+        "application-autoscaling:PutScalingPolicy",
+        "application-autoscaling:RegisterScalableTarget",
+        "cloudwatch:DescribeAlarms",
+        "cloudwatch:GetMetricStatistics",
+        "cloudwatch:PutMetricAlarm",
+        "cloudwatch:DeleteAlarms",
+        "cloudwatch:ListMetrics",
+        "cloudwatch:GetMetricData",
+        "ec2:DescribeAccountAttributes",
+        "ec2:DescribeAvailabilityZones",
+        "ec2:DescribeCoipPools",
+        "ec2:DescribeInternetGateways",
+        "ec2:DescribeLocalGatewayRouteTablePermissions",
+        "ec2:DescribeLocalGatewayRouteTables",
+        "ec2:DescribeLocalGatewayRouteTableVpcAssociations",
+        "ec2:DescribeLocalGateways",
         "ec2:DescribeSecurityGroups",
         "ec2:DescribeSubnets",
-        "ec2:DescribeVpcs"
+        "ec2:DescribeVpcAttribute",
+        "ec2:DescribeVpcs",
+        "ec2:GetCoipPoolUsage",
+        "sns:ListSubscriptions",
+        "sns:ListTopics",
+        "sns:Publish",
+        "logs:DescribeLogStreams",
+        "logs:GetLogEvents",
+        "outposts:GetOutpostInstanceTypes",
+        "devops-guru:GetResourceCollection"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": "pi:*",
+      "Resource": [
+        "arn:aws:pi:*:*:metrics/rds/*",
+        "arn:aws:pi:*:*:perf-reports/rds/*"
+      ]
+    },
+    {
+      "Effect": "Allow",
+      "Action": "iam:CreateServiceLinkedRole",
+      "Resource": "*",
+      "Condition": {
+        "StringLike": {
+          "iam:AWSServiceName": [
+            "rds.amazonaws.com",
+            "rds.application-autoscaling.amazonaws.com"
+          ]
+        }
+      }
+    },
+    {
+      "Action": [
+        "devops-guru:SearchInsights",
+        "devops-guru:ListAnomaliesForInsight"
+      ],
+      "Effect": "Allow",
+      "Resource": "*",
+      "Condition": {
+        "ForAllValues:StringEquals": {
+          "devops-guru:ServiceNames": [
+            "RDS"
+          ]
+        },
+        "Null": {
+          "devops-guru:ServiceNames": "false"
+        }
+      }
     }
   ]
 }

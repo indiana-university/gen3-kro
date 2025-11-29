@@ -2,77 +2,21 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "IAMRoleManagement",
       "Effect": "Allow",
       "Action": [
-        "iam:CreateRole",
-        "iam:DeleteRole",
-        "iam:GetRole",
-        "iam:ListRoles",
-        "iam:UpdateRole",
-        "iam:TagRole",
-        "iam:UntagRole",
-        "iam:ListRoleTags",
-        "iam:AttachRolePolicy",
-        "iam:DetachRolePolicy",
-        "iam:PutRolePolicy",
-        "iam:DeleteRolePolicy",
-        "iam:GetRolePolicy",
-        "iam:ListRolePolicies",
-        "iam:ListAttachedRolePolicies"
+        "iam:*",
+        "organizations:DescribeAccount",
+        "organizations:DescribeOrganization",
+        "organizations:DescribeOrganizationalUnit",
+        "organizations:DescribePolicy",
+        "organizations:ListChildren",
+        "organizations:ListParents",
+        "organizations:ListPoliciesForTarget",
+        "organizations:ListRoots",
+        "organizations:ListPolicies",
+        "organizations:ListTargetsForPolicy"
       ],
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*"
-    },
-    {
-      "Sid": "IAMPolicyManagement",
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreatePolicy",
-        "iam:DeletePolicy",
-        "iam:GetPolicy",
-        "iam:GetPolicyVersion",
-        "iam:ListPolicies",
-        "iam:ListPolicyVersions",
-        "iam:CreatePolicyVersion",
-        "iam:DeletePolicyVersion",
-        "iam:TagPolicy",
-        "iam:UntagPolicy"
-      ],
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:policy/*"
-    },
-    {
-      "Sid": "IAMOIDCProviderManagement",
-      "Effect": "Allow",
-      "Action": [
-        "iam:CreateOpenIDConnectProvider",
-        "iam:DeleteOpenIDConnectProvider",
-        "iam:GetOpenIDConnectProvider",
-        "iam:ListOpenIDConnectProviders",
-        "iam:TagOpenIDConnectProvider",
-        "iam:UntagOpenIDConnectProvider",
-        "iam:UpdateOpenIDConnectProviderThumbprint"
-      ],
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:oidc-provider/*"
-    },
-    {
-      "Sid": "IAMPassRole",
-      "Effect": "Allow",
-      "Action": "iam:PassRole",
-      "Resource": "arn:aws:iam::<ACCOUNT_ID>:role/*",
-      "Condition": {
-        "StringEquals": {
-          "iam:PassedToService": [
-            "ec2.amazonaws.com",
-            "eks.amazonaws.com",
-            "rds.amazonaws.com",
-            "lambda.amazonaws.com",
-            "ecs-tasks.amazonaws.com",
-            "elasticache.amazonaws.com",
-            "es.amazonaws.com",
-            "opensearchservice.amazonaws.com"
-          ]
-        }
-      }
+      "Resource": "*"
     }
   ]
 }

@@ -20,13 +20,17 @@ spec:
       - resources:
           kinds:
           - AwsGenericCommonsAndBucket
+    context:
+    - name: namespaceAccountId
+      apiCall:
+        urlPath: "/api/v1/namespaces/{{request.namespace}}"
+        jmesPath: "metadata.annotations.\"services.k8s.aws/owner-account-id\" || ''"
     preconditions:
       any:
-      - key: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" || '' }}"
+      - key: "{{ namespaceAccountId }}"
         operator: NotEquals
         value: ""
     mutate:
-      patchesJson6902: |-
-        - op: replace
-          path: /spec/accountId
-          value: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" }}"
+      patchStrategicMerge:
+        spec:
+          accountId: "{{ namespaceAccountId }}"

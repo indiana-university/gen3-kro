@@ -2,28 +2,64 @@
   "Version": "2012-10-17",
   "Statement": [
     {
-      "Sid": "SecretsManagerDescribe",
+      "Sid": "BasePermissions",
       "Effect": "Allow",
       "Action": [
-        "secretsmanager:DescribeSecret",
-        "secretsmanager:ListSecrets"
+        "secretsmanager:*",
+        "cloudformation:CreateChangeSet",
+        "cloudformation:DescribeChangeSet",
+        "cloudformation:DescribeStackResource",
+        "cloudformation:DescribeStacks",
+        "cloudformation:ExecuteChangeSet",
+        "docdb-elastic:GetCluster",
+        "docdb-elastic:ListClusters",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeSubnets",
+        "ec2:DescribeVpcs",
+        "kms:DescribeKey",
+        "kms:ListAliases",
+        "kms:ListKeys",
+        "lambda:ListFunctions",
+        "rds:DescribeDBClusters",
+        "rds:DescribeDBInstances",
+        "redshift:DescribeClusters",
+        "redshift-serverless:ListWorkgroups",
+        "redshift-serverless:GetNamespace",
+        "tag:GetResources"
       ],
       "Resource": "*"
     },
     {
-      "Sid": "SecretsManagerManagement",
+      "Sid": "LambdaPermissions",
       "Effect": "Allow",
       "Action": [
-        "secretsmanager:CreateSecret",
-        "secretsmanager:DeleteSecret",
-        "secretsmanager:GetSecretValue",
-        "secretsmanager:PutSecretValue",
-        "secretsmanager:UpdateSecret",
-        "secretsmanager:RestoreSecret",
-        "secretsmanager:TagResource",
-        "secretsmanager:UntagResource"
+        "lambda:AddPermission",
+        "lambda:CreateFunction",
+        "lambda:GetFunction",
+        "lambda:InvokeFunction",
+        "lambda:UpdateFunctionConfiguration"
       ],
-      "Resource": "arn:aws:secretsmanager:*:<ACCOUNT_ID>:secret:*"
+      "Resource": "arn:aws:lambda:*:*:function:SecretsManager*"
+    },
+    {
+      "Sid": "SARPermissions",
+      "Effect": "Allow",
+      "Action": [
+        "serverlessrepo:CreateCloudFormationChangeSet",
+        "serverlessrepo:GetApplication"
+      ],
+      "Resource": "arn:aws:serverlessrepo:*:*:applications/SecretsManager*"
+    },
+    {
+      "Sid": "S3Permissions",
+      "Effect": "Allow",
+      "Action": [
+        "s3:GetObject"
+      ],
+      "Resource": [
+        "arn:aws:s3:::awsserverlessrepo-changesets*",
+        "arn:aws:s3:::secrets-manager-rotation-apps-*/*"
+      ]
     }
   ]
 }

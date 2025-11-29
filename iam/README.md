@@ -3,6 +3,7 @@
 Cloud provider IAM policy definitions for Gen3 platform controllers and services, organized by provider, cluster, and service type. Currently supports only AWS, Azure, and GCP.
 The iam policies in this folder are resource-based policies.
 Only default policies are committed to this repository; custom policies must be created per csoc or spoke.
+Full access policies are used in default configurations to ensure functionality, but should be restricted in production environments.
 
 ## Policy Organization
 
