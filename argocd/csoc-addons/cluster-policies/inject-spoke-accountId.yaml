@@ -26,6 +26,7 @@ spec:
         operator: NotEquals
         value: ""
     mutate:
-      patchStrategicMerge:
-        spec:
-          accountId: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" }}"
+      patchesJson6902: |-
+        - op: replace
+          path: /spec/accountId
+          value: "{{ request.namespace.metadata.annotations.\"services.k8s.aws/owner-account-id\" }}"

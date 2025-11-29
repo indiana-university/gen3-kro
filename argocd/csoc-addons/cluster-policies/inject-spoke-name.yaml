@@ -26,6 +26,7 @@ spec:
         operator: NotEquals
         value: ""
     mutate:
-      patchStrategicMerge:
-        spec:
-          name: "{{ request.namespace.metadata.annotations.\"spec/name\" }}"
+      patchesJson6902: |-
+        - op: replace
+          path: /spec/name
+          value: "{{ request.namespace.metadata.annotations.\"spec/name\" }}"
