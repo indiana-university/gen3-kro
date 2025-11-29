@@ -580,3 +580,4 @@ spec:
         databaseName: ${schema.spec.aurora.databaseName}
         masterUsername: ${schema.spec.aurora.masterUsername}
         backupRetentionPeriod: ${schema.spec.aurora.backupRetentionPeriod}
+        kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"

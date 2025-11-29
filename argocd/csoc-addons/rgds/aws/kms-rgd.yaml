@@ -123,6 +123,22 @@ spec:
                   "kms:DescribeKey"
                 ],
                 "Resource": "*"
+              },
+              {
+                "Sid": "Allow RDS",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "rds.amazonaws.com"
+                },
+                "Action": [
+                  "kms:Encrypt",
+                  "kms:Decrypt",
+                  "kms:ReEncrypt*",
+                  "kms:GenerateDataKey*",
+                  "kms:CreateGrant",
+                  "kms:DescribeKey"
+                ],
+                "Resource": "*"
               }
             ]
           }
