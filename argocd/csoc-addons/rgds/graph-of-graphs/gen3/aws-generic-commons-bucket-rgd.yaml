@@ -403,6 +403,7 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
+        accountId: ${schema.spec.accountId}
         s3BucketName: ${loggingBucket.status.s3Name}
         cloudWatchLogsLogGroupARN: ${cloudwatchLogs.status.logGroupARN}
         enableLogFileValidation: ${schema.spec.cloudtrail.enableLogFileValidation}

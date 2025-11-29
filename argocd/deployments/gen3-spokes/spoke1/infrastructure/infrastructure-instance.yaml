@@ -32,13 +32,13 @@ spec:
     enableEKS:            false  # depends on: vpcCore, enableSubnet2/3
 
     # Layer 5: Storage - File & Object (depends on: vpcCore, enableKMS)
-    enableDataBucket:     false  # standalone
-    enableUploadBucket:   false  # standalone
+    enableDataBucket:     true  # standalone
+    enableUploadBucket:   true  # standalone
     enableOpenSearch:     false  # depends on: vpcCore, dbSubnet1
     enableEFS:            false  # depends on: vpcCore, enableSubnet2/3, enableKMS
     # Layer 5: Storage - Databases (depends on: vpcCore, enableDbSubnet2)
-    enableAurora:         false  # depends on: vpcCore, dbSubnet1, enableDbSubnet2
-    enableElastiCache:    false  # depends on: vpcCore, dbSubnet1, enableDbSubnet2
+    enableAurora:         true  # depends on: vpcCore, dbSubnet1, enableDbSubnet2 (optional)
+    enableElastiCache:    false  # depends on: vpcCore, dbSubnet1, enableDbSubnet2 (optional)
 
   # VPC Configuration
   vpc:

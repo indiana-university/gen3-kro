@@ -5,7 +5,6 @@ resources:
   - aurora-rgd.yaml
   - cloudtrail-rgd.yaml
   - cloudwatch-logs-rgd.yaml
-  - data-bucket-rgd.yaml
   - efs-rgd.yaml
   - eks-rgd.yaml
   - elasticache-rgd.yaml
@@ -19,8 +18,8 @@ resources:
   - secretsmanager-rgd.yaml
   - sns-rgd.yaml
   - sqs-rgd.yaml
-  - vpc-rgd.yaml
-  - vpc-public-subnet-rgd.yaml
-  - vpc-private-subnet-rgd.yaml
   - vpc-db-subnet-rgd.yaml
+  - vpc-private-subnet-rgd.yaml
+  - vpc-public-subnet-rgd.yaml
+  - vpc-rgd.yaml
   - waf-rgd.yaml
