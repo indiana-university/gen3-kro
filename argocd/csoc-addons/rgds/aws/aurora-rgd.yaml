@@ -24,6 +24,7 @@ spec:
       backupRetentionPeriod: integer | default=7
       preferredBackupWindow: string | default="03:00-04:00"
       preferredMaintenanceWindow: string | default="sun:04:00-sun:05:00"
+      kmsKeyARN: string | default=""
     status:
       clusterARN: ${cluster.status.ackResourceMetadata.arn}
       clusterID: ${cluster.spec.dbClusterIdentifier}
@@ -110,6 +111,7 @@ spec:
         preferredBackupWindow: ${schema.spec.preferredBackupWindow}
         preferredMaintenanceWindow: ${schema.spec.preferredMaintenanceWindow}
         storageEncrypted: true
+        kmsKeyID: ${schema.spec.kmsKeyARN}
         enableCloudwatchLogsExports:
           - postgresql
         tags:
