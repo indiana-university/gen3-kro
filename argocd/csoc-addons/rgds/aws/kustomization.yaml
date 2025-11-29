@@ -11,7 +11,6 @@ resources:
   - elasticache-rgd.yaml
   - irsa-role-rgd.yaml
   - kms-rgd.yaml
-  - kms-service-grant-rgd.yaml
   - opensearch-rgd.yaml
   - rds-rgd.yaml
   - route53-private-rgd.yaml
