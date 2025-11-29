@@ -19,11 +19,52 @@ spec:
       cloudWatchLogsLogGroupARN: string | default=""
       cloudWatchLogsRoleARN: string | default=""
       kmsKeyARN: string | default=""
+      accountId: string
     status:
       trailARN: ${trail.status.ackResourceMetadata.arn}
       trailName: ${trail.spec.name}
 
   resources:
+  - id: bucketPolicy
+    template:
+      apiVersion: s3.services.k8s.aws/v1alpha1
+      kind: Bucket
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.s3BucketName}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+      spec:
+        name: ${schema.spec.s3BucketName}
+        policy: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Sid": "AWSCloudTrailAclCheck",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "cloudtrail.amazonaws.com"
+                },
+                "Action": "s3:GetBucketAcl",
+                "Resource": "arn:aws:s3:::${schema.spec.s3BucketName}"
+              },
+              {
+                "Sid": "AWSCloudTrailWrite",
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "cloudtrail.amazonaws.com"
+                },
+                "Action": "s3:PutObject",
+                "Resource": "arn:aws:s3:::${schema.spec.s3BucketName}/AWSLogs/${schema.spec.accountId}/*",
+                "Condition": {
+                  "StringEquals": {
+                    "s3:x-amz-acl": "bucket-owner-full-control"
+                  }
+                }
+              }
+            ]
+          }
   - id: trail
     template:
       apiVersion: cloudtrail.services.k8s.aws/v1alpha1
