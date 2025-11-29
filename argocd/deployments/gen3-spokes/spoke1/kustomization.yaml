@@ -2,8 +2,10 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 
 resources:
-  # App instance 1
-  - sample.gen3.url.org
+  - infrastructure # Infrastructure instance
+  - cluster-addons # Cluster addons
+  - sample.gen3.url.org # App instance 1 (more can be added)
+
 
 patches:
   - target:

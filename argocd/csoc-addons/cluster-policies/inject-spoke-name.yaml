@@ -28,4 +28,4 @@ spec:
     mutate:
       patchStrategicMerge:
         spec:
-          name: "{{ request.namespace.metadata.annotations.\"spec/name\" || request.object.spec.name || '' }}"
+          name: "{{ request.namespace.metadata.annotations.\"spec/name\" }}"
