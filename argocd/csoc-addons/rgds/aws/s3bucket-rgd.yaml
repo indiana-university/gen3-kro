@@ -15,6 +15,7 @@ spec:
       access: string | default="write"
       versioning: boolean | default=true
       encryption: boolean | default=true
+      kmsKeyARN: string | default=""
     status:
       s3ARN: ${s3bucket.status.ackResourceMetadata.arn}
       s3Name: ${s3bucket.spec.name}
@@ -32,6 +33,12 @@ spec:
           services.k8s.aws/region: ${schema.spec.region}
       spec:
         name: ${schema.spec.name}
+        encryption:
+          rules:
+          - applyServerSideEncryptionByDefault:
+              sseAlgorithm: "${ schema.spec.kmsKeyARN != \"\" ? \"aws:kms\" : \"AES256\" }"
+              kmsMasterKeyID: ${schema.spec.kmsKeyARN}
+            bucketKeyEnabled: true
         tagging:
           tagSet:
           - key: Name
