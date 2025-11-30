@@ -20,6 +20,7 @@ spec:
       - resources:
           kinds:
           - AwsGenericCommonsAndBucket
+          - awsgenericcommonsandbuckets
     context:
     - name: namespaceAccountId
       apiCall:
