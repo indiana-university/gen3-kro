@@ -37,6 +37,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks-cluster-role
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-eks-cluster-role
         description: "EKS cluster IAM role"
@@ -67,6 +69,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-eks-node-role
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-eks-node-role
         description: "EKS node IAM role"
@@ -101,6 +105,7 @@ spec:
         name: ${schema.spec.name}-eks-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-eks-sg
         description: "EKS cluster security group"
@@ -123,6 +128,7 @@ spec:
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-eks
         version: ${schema.spec.version}
@@ -147,6 +153,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-oidc
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         url: ${cluster.status.identity.oidc.issuer}
         clientIDs:
@@ -172,6 +180,7 @@ spec:
         name: ${schema.spec.name}-nodegroup
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-eks-nodegroup
         clusterName: ${cluster.spec.name}
@@ -198,6 +207,7 @@ spec:
         name: ${schema.spec.name}-vpc-cni
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: vpc-cni
         clusterName: ${cluster.spec.name}
@@ -214,6 +224,7 @@ spec:
         name: ${schema.spec.name}-kube-proxy
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: kube-proxy
         clusterName: ${cluster.spec.name}
@@ -230,6 +241,7 @@ spec:
         name: ${schema.spec.name}-coredns
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: coredns
         clusterName: ${cluster.spec.name}
@@ -246,6 +258,7 @@ spec:
         name: ${schema.spec.name}-ebs-csi
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: aws-ebs-csi-driver
         clusterName: ${cluster.spec.name}

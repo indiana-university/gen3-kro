@@ -34,6 +34,7 @@ spec:
         name: ${schema.spec.name}-eip
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         tags:
         - key: Name
@@ -54,6 +55,7 @@ spec:
         name: ${schema.spec.name}-nat-gateway
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         subnetID: ${schema.spec.publicSubnetID}
         allocationID: ${eip.status.allocationID}
@@ -76,6 +78,7 @@ spec:
         name: ${schema.spec.name}-private-routetable
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         vpcID: ${schema.spec.vpcID}
         routes:
@@ -100,6 +103,7 @@ spec:
         name: ${schema.spec.name}-private-subnet
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         availabilityZone: ${schema.spec.availabilityZone}
         cidrBlock: ${schema.spec.cidrBlock}

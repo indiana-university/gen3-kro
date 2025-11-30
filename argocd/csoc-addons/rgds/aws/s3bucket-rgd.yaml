@@ -31,6 +31,7 @@ spec:
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}
         encryption:
@@ -52,6 +53,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-s3-policy
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-s3-policy
         policyDocument: |

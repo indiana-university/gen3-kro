@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-rds-sa
   create: false
+featureGates:
+  ResourceAdoption: true

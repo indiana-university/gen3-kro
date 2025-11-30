@@ -29,6 +29,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-irsa
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-irsa
         description: "IRSA role for ${schema.spec.serviceAccountName}"

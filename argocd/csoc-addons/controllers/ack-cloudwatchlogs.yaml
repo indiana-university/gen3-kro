@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-cloudwatchlogs-sa
   create: false
+featureGates:
+  ResourceAdoption: true

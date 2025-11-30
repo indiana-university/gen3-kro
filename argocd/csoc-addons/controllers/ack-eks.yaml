@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-eks-sa
   create: false
+featureGates:
+  ResourceAdoption: true

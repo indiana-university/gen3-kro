@@ -37,6 +37,7 @@ spec:
         name: ${schema.spec.name}-db-subnet-group
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-db-subnet-group
         description: "RDS subnet group"
@@ -59,6 +60,7 @@ spec:
         name: ${schema.spec.name}-db-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-db-sg
         description: "RDS security group"
@@ -87,6 +89,7 @@ spec:
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         dbInstanceIdentifier: ${schema.spec.name}-db
         dbInstanceClass: ${schema.spec.instanceClass}
