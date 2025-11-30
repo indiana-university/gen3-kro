@@ -218,6 +218,7 @@ spec:
   - id: publicSubnet2
     includeWhen:
       - ${schema.spec.features.enableSubnet2}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPublicSubnet
@@ -239,6 +240,7 @@ spec:
   - id: publicSubnet3
     includeWhen:
       - ${schema.spec.features.enableSubnet3}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPublicSubnet
@@ -260,6 +262,7 @@ spec:
   - id: privateSubnet2
     includeWhen:
       - ${schema.spec.features.enableSubnet2}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPrivateSubnet
@@ -281,6 +284,7 @@ spec:
   - id: privateSubnet3
     includeWhen:
       - ${schema.spec.features.enableSubnet3}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPrivateSubnet
@@ -302,6 +306,7 @@ spec:
   - id: dbSubnet1
     includeWhen:
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcDbSubnet
@@ -324,6 +329,7 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableDbSubnet2}
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcDbSubnet
@@ -418,6 +424,7 @@ spec:
   - id: eks
     includeWhen:
       - ${schema.spec.features.enableEKS}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEKS
@@ -487,6 +494,7 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableEFS}
       - ${schema.spec.features.enableKMS}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEFS
@@ -511,6 +519,7 @@ spec:
   - id: elasticache
     includeWhen:
       - ${schema.spec.features.enableElastiCache}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsElastiCache
@@ -535,6 +544,7 @@ spec:
   - id: opensearch
     includeWhen:
       - ${schema.spec.features.enableOpenSearch}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsOpenSearch
@@ -560,6 +570,7 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableAurora}
       - ${schema.spec.features.enableKMS}
+      - ${schema.spec.features.enableVPC}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsAurora

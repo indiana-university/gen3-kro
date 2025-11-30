@@ -19,8 +19,7 @@ spec:
       any:
       - resources:
           kinds:
-          - AwsGenericCommonsAndBucket
-          - awsgenericcommonsandbuckets
+          - kro.run/v1alpha1/AwsGenericCommonsAndBucket
     context:
     - name: namespaceAccountId
       apiCall:
