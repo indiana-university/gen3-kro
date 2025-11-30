@@ -218,8 +218,6 @@ spec:
   - id: publicSubnet2
     includeWhen:
       - ${schema.spec.features.enableSubnet2}
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ vpcCore.?status.?internetGatewayID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPublicSubnet
@@ -241,8 +239,6 @@ spec:
   - id: publicSubnet3
     includeWhen:
       - ${schema.spec.features.enableSubnet3}
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ vpcCore.?status.?internetGatewayID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPublicSubnet
@@ -264,8 +260,6 @@ spec:
   - id: privateSubnet2
     includeWhen:
       - ${schema.spec.features.enableSubnet2}
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ publicSubnet2.?status.?subnetID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPrivateSubnet
@@ -287,8 +281,6 @@ spec:
   - id: privateSubnet3
     includeWhen:
       - ${schema.spec.features.enableSubnet3}
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ publicSubnet3.?status.?subnetID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcPrivateSubnet
@@ -310,8 +302,6 @@ spec:
   - id: dbSubnet1
     includeWhen:
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ vpcCore.?status.?privateRouteTableID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcDbSubnet
@@ -334,8 +324,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableDbSubnet2}
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ privateSubnet2.?status.?privateRouteTableID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsVpcDbSubnet
@@ -360,7 +348,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableCloudWatchLogs}
       - ${schema.spec.features.enableKMS}
-      - ${ kms.?status.?keyARN != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudWatchLogs
@@ -382,7 +369,6 @@ spec:
   - id: loggingBucket
     includeWhen:
       - ${schema.spec.features.enableLoggingBucket}
-      - ${ !(schema.spec.features.enableKMS) || kms.?status.?keyARN != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -406,9 +392,6 @@ spec:
       - ${schema.spec.features.enableLoggingBucket}
       - ${schema.spec.features.enableCloudWatchLogs}
       - ${schema.spec.features.enableKMS}
-      - ${ loggingBucket.?status.?s3Name != "" }
-      - ${ cloudwatchLogs.?status.?logGroupARN != "" }
-      - ${ kms.?status.?keyARN != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudTrail
@@ -435,9 +418,6 @@ spec:
   - id: eks
     includeWhen:
       - ${schema.spec.features.enableEKS}
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ !(schema.spec.features.enableSubnet2) || privateSubnet2.?status.?subnetID != "" }
-      - ${ !(schema.spec.features.enableSubnet3) || privateSubnet3.?status.?subnetID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEKS
@@ -465,7 +445,6 @@ spec:
   - id: dataBucket
     includeWhen:
       - ${schema.spec.features.enableDataBucket}
-      - ${ !(schema.spec.features.enableKMS) || kms.?status.?keyARN != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -487,7 +466,6 @@ spec:
   - id: uploadBucket
     includeWhen:
       - ${schema.spec.features.enableUploadBucket}
-      - ${ !(schema.spec.features.enableKMS) || kms.?status.?keyARN != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
@@ -509,10 +487,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableEFS}
       - ${schema.spec.features.enableKMS}
-      - ${ vpcCore.?status.?vpcID != "" }
-      - ${ !(schema.spec.features.enableSubnet2) || privateSubnet2.?status.?subnetID != "" }
-      - ${ !(schema.spec.features.enableSubnet3) || privateSubnet3.?status.?subnetID != "" }
-      - ${ kms.?status.?keyARN != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEFS
@@ -537,8 +511,6 @@ spec:
   - id: elasticache
     includeWhen:
       - ${schema.spec.features.enableElastiCache}
-      - ${ dbSubnet1.?status.?subnetID != "" }
-      - ${ !(schema.spec.features.enableDbSubnet2) || dbSubnet2.?status.?subnetID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsElastiCache
@@ -563,7 +535,6 @@ spec:
   - id: opensearch
     includeWhen:
       - ${schema.spec.features.enableOpenSearch}
-      - ${ dbSubnet1.?status.?subnetID != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsOpenSearch
@@ -589,9 +560,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableAurora}
       - ${schema.spec.features.enableKMS}
-      - ${ dbSubnet1.?status.?subnetID != "" }
-      - ${ !(schema.spec.features.enableDbSubnet2) || dbSubnet2.?status.?subnetID != "" }
-      - ${ kms.?status.?keyARN != "" }
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsAurora
