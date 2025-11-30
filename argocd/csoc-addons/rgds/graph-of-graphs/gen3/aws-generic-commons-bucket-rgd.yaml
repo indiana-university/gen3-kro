@@ -516,10 +516,12 @@ spec:
 
   # 5.4 ElastiCache Redis (depends on: 1.2 - VPC core, 2.5 - Database subnet 1, 2.6 - Database subnet 2)
   # Contains: ElastiCache cluster, subnet group, security group
+  # NOTE: Requires at least 2 subnets in different AZs for high availability
   - id: elasticache
     includeWhen:
       - ${schema.spec.features.enableElastiCache}
       - ${schema.spec.features.enableVPC}
+      - ${schema.spec.features.enableDbSubnet2}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsElastiCache
@@ -566,11 +568,13 @@ spec:
 
   # 5.6 Aurora PostgreSQL (depends on: 1.2 - VPC core, 2.5 - Database subnet 1, 2.6 - Database subnet 2)
   # Contains: Aurora cluster, instances, subnet group, security group
+  # NOTE: Requires at least 2 subnets in different AZs for multi-AZ DB cluster
   - id: aurora
     includeWhen:
       - ${schema.spec.features.enableAurora}
       - ${schema.spec.features.enableKMS}
       - ${schema.spec.features.enableVPC}
+      - ${schema.spec.features.enableDbSubnet2}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsAurora
