@@ -66,7 +66,7 @@ spec:
           chart: '{{.chart}}'
           helm:
             skipCrds: true  # CRDs are managed separately via crds-appset
-            releaseName: '{{.addon}}'
+            releaseName: '{{ if hasPrefix "ack-" .addon }}ack{{ else }}{{.addon}}{{ end }}'
             # Load per-addon values file
             valueFiles:
               - $values/argocd/csoc-addons/controllers/{{.addon}}.yaml
