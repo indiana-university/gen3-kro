@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-s3-sa
   create: false
+featureGates:
+  ResourceAdoption: true

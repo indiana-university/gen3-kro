@@ -1,4 +1,4 @@
-# ACK ElastiCache controller resources
+# KRO controller resources
 resources:
   limits:
     cpu: 200m
@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-elasticache-sa
   create: false
+featureGates:
+  ResourceAdoption: true

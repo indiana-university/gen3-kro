@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-kms-sa
   create: false
+featureGates:
+  ResourceAdoption: true

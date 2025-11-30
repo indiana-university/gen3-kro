@@ -33,6 +33,7 @@ spec:
         name: ${schema.spec.s3BucketName}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.s3BucketName}
         policy: |
@@ -73,6 +74,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cloudtrail-cw-role
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-cloudtrail-cloudwatch-role
         assumeRolePolicyDocument: |
@@ -108,6 +111,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-cloudtrail-cw-policy
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-cloudtrail-cloudwatch-policy
         policyDocument: |
@@ -142,6 +147,7 @@ spec:
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}
         s3BucketName: ${schema.spec.s3BucketName}

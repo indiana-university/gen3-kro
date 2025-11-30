@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-route53-sa
   create: false
+featureGates:
+  ResourceAdoption: true

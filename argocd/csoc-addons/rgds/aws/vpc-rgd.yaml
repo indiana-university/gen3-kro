@@ -34,6 +34,7 @@ spec:
         name: ${schema.spec.name}-vpc
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         cidrBlocks:
         - ${schema.spec.cidr.vpcCidr}
@@ -58,6 +59,7 @@ spec:
         name: ${schema.spec.name}-igw
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         vpc: ${vpc.status.vpcID}
         tags:
@@ -79,6 +81,7 @@ spec:
         name: ${schema.spec.name}-1-eip
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         tags:
         - key: Name
@@ -99,6 +102,7 @@ spec:
         name: ${schema.spec.name}-1-nat-gateway
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         subnetID: ${publicSubnet.status.subnetID}
         allocationID: ${eip.status.allocationID}
@@ -121,6 +125,7 @@ spec:
         name: ${schema.spec.name}-1-public-routetable
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         vpcID: ${vpc.status.vpcID}
         routes:
@@ -145,6 +150,7 @@ spec:
         name: ${schema.spec.name}-1-private-routetable
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         vpcID: ${vpc.status.vpcID}
         routes:
@@ -169,6 +175,7 @@ spec:
         name: ${schema.spec.name}-1-public-subnet
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         availabilityZone: ${schema.spec.region}a
         cidrBlock: ${schema.spec.cidr.publicSubnetCidr}
@@ -197,6 +204,7 @@ spec:
         name: ${schema.spec.name}-1-private-subnet
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         availabilityZone: ${schema.spec.region}a
         cidrBlock: ${schema.spec.cidr.privateSubnetCidr}

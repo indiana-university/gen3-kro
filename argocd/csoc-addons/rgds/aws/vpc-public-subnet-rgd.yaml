@@ -33,6 +33,7 @@ spec:
         name: ${schema.spec.name}-public-routetable
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         vpcID: ${schema.spec.vpcID}
         routes:
@@ -57,6 +58,7 @@ spec:
         name: ${schema.spec.name}-public-subnet
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         availabilityZone: ${schema.spec.availabilityZone}
         cidrBlock: ${schema.spec.cidrBlock}

@@ -36,6 +36,7 @@ spec:
         name: ${schema.spec.name}-cache-subnet-group
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         cacheSubnetGroupName: ${schema.spec.name}-cache-subnet-group
         cacheSubnetGroupDescription: "ElastiCache subnet group"
@@ -58,6 +59,7 @@ spec:
         name: ${schema.spec.name}-cache-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-cache-sg
         description: "ElastiCache security group"
@@ -86,6 +88,7 @@ spec:
         name: ${schema.spec.name}-cache
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         cacheClusterID: ${schema.spec.name}-cache
         cacheNodeType: ${schema.spec.nodeType}

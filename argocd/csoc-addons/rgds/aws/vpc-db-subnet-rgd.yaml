@@ -32,6 +32,7 @@ spec:
         name: ${schema.spec.name}-db-subnet
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         availabilityZone: ${schema.spec.availabilityZone}
         cidrBlock: ${schema.spec.cidrBlock}

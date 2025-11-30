@@ -81,6 +81,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-external-secrets
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-external-secrets-role
         description: "IAM role for External Secrets to access AWS Secrets Manager"
@@ -121,6 +123,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-fence
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-fence-role
         description: "IAM role for Fence to access S3 buckets"
@@ -163,6 +167,8 @@ spec:
       metadata:
         namespace: ${schema.spec.namespace}
         name: ${schema.spec.name}-fence-s3
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-fence-s3-policy
         description: "S3 access policy for Fence"

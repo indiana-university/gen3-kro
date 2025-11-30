@@ -33,6 +33,7 @@ spec:
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         description: ${schema.spec.description}
         keyUsage: ${schema.spec.keyUsage}
@@ -160,6 +161,7 @@ spec:
         name: ${schema.spec.name}-alias
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: alias/${schema.spec.name}
         targetKeyID: ${key.status.keyID}

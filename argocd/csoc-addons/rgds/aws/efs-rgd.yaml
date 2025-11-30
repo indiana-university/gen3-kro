@@ -33,6 +33,7 @@ spec:
         name: ${schema.spec.name}-efs-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         name: ${schema.spec.name}-efs-sg
         description: "EFS security group"
@@ -61,6 +62,7 @@ spec:
         name: ${schema.spec.name}
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
         performanceMode: ${schema.spec.performanceMode}
         throughputMode: ${schema.spec.throughputMode}

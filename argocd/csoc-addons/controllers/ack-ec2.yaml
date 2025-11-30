@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-ec2-sa
   create: false
+featureGates:
+  ResourceAdoption: true

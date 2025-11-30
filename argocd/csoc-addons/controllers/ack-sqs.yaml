@@ -9,3 +9,5 @@ resources:
 serviceAccount:
   name: ack-sqs-sa
   create: false
+featureGates:
+  ResourceAdoption: true
