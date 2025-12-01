@@ -1,11 +1,11 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: aws-vpc-public-subnet.kro.run
+  name: aws-public-subnet.kro.run
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsVpcPublicSubnet
+    kind: AwsPublicSubnet
     spec:
       name: string
       namespace: string
@@ -25,6 +25,9 @@ spec:
 
   resources:
   - id: publicRoutetable
+    readyWhen:
+      - ${publicRoutetable.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${publicRoutetable.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -50,6 +53,10 @@ spec:
           value: ${schema.spec.project}
 
   - id: publicSubnet
+    readyWhen:
+      - ${publicSubnet.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${publicSubnet.status.state == "available"}
+      - ${publicSubnet.status.subnetID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet

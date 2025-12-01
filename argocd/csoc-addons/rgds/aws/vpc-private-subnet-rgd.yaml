@@ -1,11 +1,11 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: aws-vpc-private-subnet.kro.run
+  name: aws-private-subnet.kro.run
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsVpcPrivateSubnet
+    kind: AwsPrivateSubnet
     spec:
       name: string
       namespace: string
@@ -26,6 +26,9 @@ spec:
 
   resources:
   - id: eip
+    readyWhen:
+      - ${eip.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${eip.status.allocationID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: ElasticIPAddress
@@ -47,6 +50,10 @@ spec:
           value: ${schema.spec.project}
 
   - id: natGateway
+    readyWhen:
+      - ${natGateway.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${natGateway.status.state == "available"}
+      - ${natGateway.status.natGatewayID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: NATGateway
@@ -70,6 +77,9 @@ spec:
           value: ${schema.spec.project}
 
   - id: privateRoutetable
+    readyWhen:
+      - ${privateRoutetable.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${privateRoutetable.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -95,6 +105,10 @@ spec:
           value: ${schema.spec.project}
 
   - id: privateSubnet
+    readyWhen:
+      - ${privateSubnet.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${privateSubnet.status.state == "available"}
+      - ${privateSubnet.status.subnetID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet

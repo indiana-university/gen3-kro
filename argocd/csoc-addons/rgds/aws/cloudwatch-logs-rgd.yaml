@@ -21,6 +21,9 @@ spec:
 
   resources:
   - id: logGroup
+    readyWhen:
+      - ${logGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${logGroup.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: cloudwatchlogs.services.k8s.aws/v1alpha1
       kind: LogGroup

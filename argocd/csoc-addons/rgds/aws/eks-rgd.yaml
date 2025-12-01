@@ -31,6 +31,9 @@ spec:
 
   resources:
   - id: clusterRole
+    readyWhen:
+      - ${clusterRole.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${clusterRole.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
@@ -63,6 +66,9 @@ spec:
           - key: "Environment"
             value: "${schema.spec.environment}"
   - id: nodeRole
+    readyWhen:
+      - ${nodeRole.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${nodeRole.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
@@ -97,6 +103,9 @@ spec:
           - key: "Environment"
             value: "${schema.spec.environment}"
   - id: securityGroup
+    readyWhen:
+      - ${securityGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${securityGroup.status.id != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: SecurityGroup
@@ -120,6 +129,12 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   - id: cluster
+    readyWhen:
+      - ${cluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${cluster.status.status == "ACTIVE"}
+      - ${cluster.status.endpoint != ""}
+      - ${cluster.status.certificateAuthority.data != ""}
+      - ${cluster.status.identity.oidc.issuer != ""}
     template:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Cluster
@@ -147,6 +162,9 @@ spec:
 
   # OIDC Provider for IRSA (IAM Roles for Service Accounts)
   - id: oidcProvider
+    readyWhen:
+      - ${oidcProvider.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${oidcProvider.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: OpenIDConnectProvider
@@ -172,6 +190,9 @@ spec:
             value: "${schema.spec.name}-eks"
 
   - id: nodeGroup
+    readyWhen:
+      - ${nodeGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${nodeGroup.status.status == "ACTIVE"}
     template:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Nodegroup
@@ -199,6 +220,9 @@ spec:
 
   # EKS Addon: VPC-CNI (Amazon VPC networking)
   - id: addonVpcCni
+    readyWhen:
+      - ${addonVpcCni.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${addonVpcCni.status.status == "ACTIVE"}
     template:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Addon
@@ -216,6 +240,9 @@ spec:
 
   # EKS Addon: kube-proxy
   - id: addonKubeProxy
+    readyWhen:
+      - ${addonKubeProxy.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${addonKubeProxy.status.status == "ACTIVE"}
     template:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Addon
@@ -233,6 +260,9 @@ spec:
 
   # EKS Addon: CoreDNS
   - id: addonCoreDns
+    readyWhen:
+      - ${addonCoreDns.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${addonCoreDns.status.status == "ACTIVE"}
     template:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Addon
@@ -250,6 +280,9 @@ spec:
 
   # EKS Addon: EBS CSI Driver
   - id: addonEbsCsi
+    readyWhen:
+      - ${addonEbsCsi.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${addonEbsCsi.status.status == "ACTIVE"}
     template:
       apiVersion: eks.services.k8s.aws/v1alpha1
       kind: Addon

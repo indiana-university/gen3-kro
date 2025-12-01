@@ -25,6 +25,8 @@ spec:
 
   resources:
   - id: bucketPolicy
+    readyWhen:
+      - ${bucketPolicy.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
       apiVersion: s3.services.k8s.aws/v1alpha1
       kind: Bucket
@@ -68,6 +70,9 @@ spec:
   - id: cloudwatchRole
     includeWhen:
       - ${schema.spec.cloudWatchLogsLogGroupARN != ""}
+    readyWhen:
+      - ${cloudwatchRole.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${cloudwatchRole.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
@@ -105,6 +110,8 @@ spec:
   - id: cloudwatchPolicy
     includeWhen:
       - ${schema.spec.cloudWatchLogsLogGroupARN != ""}
+    readyWhen:
+      - ${cloudwatchPolicy.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Policy
@@ -139,6 +146,8 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   - id: trail
+    readyWhen:
+      - ${trail.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
       apiVersion: cloudtrail.services.k8s.aws/v1alpha1
       kind: Trail
@@ -154,8 +163,8 @@ spec:
         includeGlobalServiceEvents: ${schema.spec.includeGlobalServiceEvents}
         isMultiRegionTrail: ${schema.spec.isMultiRegionTrail}
         enableLogFileValidation: ${schema.spec.enableLogFileValidation}
-        cloudWatchLogsLogGroupARN: ${schema.spec.cloudWatchLogsLogGroupARN}
-        cloudWatchLogsRoleARN: "${ schema.spec.cloudWatchLogsLogGroupARN != \"\" ? cloudwatchRole.status.ackResourceMetadata.arn : \"\" }"
+        cloudWatchLogsLogGroupARN: ${schema.spec.cloudWatchLogsLogGroupARN}:*
+        cloudWatchLogsRoleARN: "${ cloudwatchRole.status.ackResourceMetadata.arn != \"\" ? cloudwatchRole.status.ackResourceMetadata.arn : \"\" }"
         kmsKeyID: ${schema.spec.kmsKeyARN}
         tags:
         - key: Name

@@ -23,6 +23,9 @@ spec:
 
   resources:
   - id: role
+    readyWhen:
+      - ${role.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${role.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Role
