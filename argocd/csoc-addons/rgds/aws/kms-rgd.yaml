@@ -25,6 +25,10 @@ spec:
 
   resources:
   - id: key
+    readyWhen:
+      - ${key.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${key.status.keyState == "Enabled"}
+      - ${key.status.keyID != ""}
     template:
       apiVersion: kms.services.k8s.aws/v1alpha1
       kind: Key
@@ -153,6 +157,8 @@ spec:
         - tagKey: Project
           tagValue: ${schema.spec.project}
   - id: alias
+    readyWhen:
+      - ${alias.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
       apiVersion: kms.services.k8s.aws/v1alpha1
       kind: Alias

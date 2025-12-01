@@ -23,6 +23,8 @@ spec:
 
   resources:
   - id: s3bucket
+    readyWhen:
+      - ${s3bucket.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
       apiVersion: s3.services.k8s.aws/v1alpha1
       kind: Bucket
@@ -47,6 +49,8 @@ spec:
           - key: Environment
             value: ${schema.spec.environment}
   - id: s3Policy
+    readyWhen:
+      - ${s3Policy.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
       apiVersion: iam.services.k8s.aws/v1alpha1
       kind: Policy

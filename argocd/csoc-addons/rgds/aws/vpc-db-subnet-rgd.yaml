@@ -1,11 +1,11 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: aws-vpc-db-subnet.kro.run
+  name: aws-db-subnet.kro.run
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsVpcDbSubnet
+    kind: AwsDbSubnet
     spec:
       name: string
       namespace: string
@@ -24,6 +24,10 @@ spec:
 
   resources:
   - id: dbSubnet
+    readyWhen:
+      - ${dbSubnet.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${dbSubnet.status.state == "available"}
+      - ${dbSubnet.status.subnetID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet

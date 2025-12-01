@@ -175,6 +175,8 @@ spec:
   - id: kms
     includeWhen:
       - ${schema.spec.features.enableKMS}
+    readyWhen:
+      - ${kms.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsKMS
@@ -195,9 +197,11 @@ spec:
   - id: vpcCore
     includeWhen:
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${vpcCore.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsVpc
+      kind: AwsVPC
       metadata:
         name: ${schema.spec.name}-vpc
         namespace: ${schema.spec.namespace}
@@ -219,9 +223,11 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableSubnet2}
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${publicSubnet2.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsVpcPublicSubnet
+      kind: AwsPublicSubnet
       metadata:
         name: ${schema.spec.name}-public-subnet-2
         namespace: ${schema.spec.namespace}
@@ -241,9 +247,11 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableSubnet3}
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${publicSubnet3.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsVpcPublicSubnet
+      kind: AwsPublicSubnet
       metadata:
         name: ${schema.spec.name}-public-subnet-3
         namespace: ${schema.spec.namespace}
@@ -263,9 +271,11 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableSubnet2}
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${privateSubnet2.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsVpcPrivateSubnet
+      kind: AwsPrivateSubnet
       metadata:
         name: ${schema.spec.name}-private-subnet-2
         namespace: ${schema.spec.namespace}
@@ -285,9 +295,11 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableSubnet3}
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${privateSubnet3.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsVpcPrivateSubnet
+      kind: AwsPrivateSubnet
       metadata:
         name: ${schema.spec.name}-private-subnet-3
         namespace: ${schema.spec.namespace}
@@ -307,9 +319,11 @@ spec:
     includeWhen:
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${dbSubnet1.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsVpcDbSubnet
+      kind: AwsDbSubnet
       metadata:
         name: ${schema.spec.name}-db-subnet-1
         namespace: ${schema.spec.namespace}
@@ -330,9 +344,11 @@ spec:
       - ${schema.spec.features.enableDbSubnet2}
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${dbSubnet2.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
-      kind: AwsVpcDbSubnet
+      kind: AwsDbSubnet
       metadata:
         name: ${schema.spec.name}-db-subnet-2
         namespace: ${schema.spec.namespace}
@@ -354,11 +370,13 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableCloudWatchLogs}
       - ${schema.spec.features.enableKMS}
+    readyWhen:
+      - ${cloudwatchLogs.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudWatchLogs
       metadata:
-        name: ${schema.spec.name}-logs
+        name: ${schema.spec.name}-cloudwatch
         namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
@@ -375,11 +393,13 @@ spec:
   - id: loggingBucket
     includeWhen:
       - ${schema.spec.features.enableLoggingBucket}
+    readyWhen:
+      - ${loggingBucket.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
       metadata:
-        name: "${schema.spec.name}-logging-bucket"
+        name: ${schema.spec.name}-logging-bucket
         namespace: ${schema.spec.namespace}
       spec:
         name: "${schema.spec.name}-logging-bucket"
@@ -398,11 +418,13 @@ spec:
       - ${schema.spec.features.enableLoggingBucket}
       - ${schema.spec.features.enableCloudWatchLogs}
       - ${schema.spec.features.enableKMS}
+    readyWhen:
+      - ${cloudtrail.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsCloudTrail
       metadata:
-        name: ${schema.spec.name}-trail
+        name: ${schema.spec.name}-cloudtrail
         namespace: ${schema.spec.namespace}
       spec:
         name: ${schema.spec.name}
@@ -425,6 +447,8 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableEKS}
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${eks.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEKS
@@ -452,11 +476,13 @@ spec:
   - id: dataBucket
     includeWhen:
       - ${schema.spec.features.enableDataBucket}
+    readyWhen:
+      - ${dataBucket.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
       metadata:
-        name: "${schema.spec.name}-data-bucket"
+        name: ${schema.spec.name}-data-bucket
         namespace: ${schema.spec.namespace}
       spec:
         name: "${schema.spec.name}-data-bucket"
@@ -473,11 +499,13 @@ spec:
   - id: uploadBucket
     includeWhen:
       - ${schema.spec.features.enableUploadBucket}
+    readyWhen:
+      - ${uploadBucket.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsS3Bucket
       metadata:
-        name: "${schema.spec.name}-upload-bucket"
+        name: ${schema.spec.name}-upload-bucket
         namespace: ${schema.spec.namespace}
       spec:
         name: "${schema.spec.name}-upload-bucket"
@@ -495,6 +523,8 @@ spec:
       - ${schema.spec.features.enableEFS}
       - ${schema.spec.features.enableKMS}
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${efs.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsEFS
@@ -522,6 +552,8 @@ spec:
       - ${schema.spec.features.enableElastiCache}
       - ${schema.spec.features.enableVPC}
       - ${schema.spec.features.enableDbSubnet2}
+    readyWhen:
+      - ${elasticache.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsElastiCache
@@ -547,6 +579,8 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableOpenSearch}
       - ${schema.spec.features.enableVPC}
+    readyWhen:
+      - ${opensearch.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsOpenSearch
@@ -575,6 +609,8 @@ spec:
       - ${schema.spec.features.enableKMS}
       - ${schema.spec.features.enableVPC}
       - ${schema.spec.features.enableDbSubnet2}
+    readyWhen:
+      - ${aurora.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
       apiVersion: kro.run/v1alpha1
       kind: AwsAurora

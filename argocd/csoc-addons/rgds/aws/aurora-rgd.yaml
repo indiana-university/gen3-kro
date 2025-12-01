@@ -38,6 +38,8 @@ spec:
 
   resources:
   - id: dbSubnetGroup
+    readyWhen:
+      - ${dbSubnetGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBSubnetGroup
@@ -61,6 +63,9 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   - id: securityGroup
+    readyWhen:
+      - ${securityGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${securityGroup.status.id != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: SecurityGroup
@@ -78,7 +83,9 @@ spec:
           - fromPort: 5432
             toPort: 5432
             ipProtocol: tcp
-            ipRanges: "${ schema.spec.ingressIPRanges.map(ip, {'cidrIP': ip}) }"
+            ipRanges:
+              - cidrIP: ${schema.spec.ingressIPRanges[0]}
+              - cidrIP: ${schema.spec.ingressIPRanges[1]}
         tags:
         - key: Name
           value: ${schema.spec.name}-aurora-sg
@@ -89,6 +96,12 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   - id: cluster
+    readyWhen:
+      - ${cluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${cluster.status.status == "available"}
+      - ${cluster.status.endpoint != ""}
+      - ${cluster.status.readerEndpoint != ""}
+      - ${cluster.status.masterUserSecret.secretARN != ""}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBCluster
@@ -105,6 +118,7 @@ spec:
         databaseName: ${schema.spec.databaseName}
         masterUsername: ${schema.spec.masterUsername}
         manageMasterUserPassword: true
+        masterUserSecretKMSKeyID: ${schema.spec.kmsKeyARN}
         dbSubnetGroupName: ${dbSubnetGroup.spec.name}
         vpcSecurityGroupIDs:
           - ${securityGroup.status.id}
@@ -125,6 +139,9 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   - id: instance1
+    readyWhen:
+      - ${instance1.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance1.status.dbInstanceStatus == "available"}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance
@@ -152,6 +169,9 @@ spec:
   - id: instance2
     includeWhen:
       - ${schema.spec.instanceCount >= 2}
+    readyWhen:
+      - ${instance2.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance2.status.dbInstanceStatus == "available"}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance

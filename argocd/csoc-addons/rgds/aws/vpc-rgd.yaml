@@ -5,7 +5,7 @@ metadata:
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsVpc
+    kind: AwsVPC
     spec:
       name: string
       namespace: string
@@ -26,6 +26,9 @@ spec:
       privateRouteTableID: ${privateRoutetable.status.routeTableID}
   resources:
   - id: vpc
+    readyWhen:
+      - ${vpc.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${vpc.status.vpcID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: VPC
@@ -51,6 +54,9 @@ spec:
           value: ${schema.spec.project}
 
   - id: internetGateway
+    readyWhen:
+      - ${internetGateway.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${internetGateway.status.internetGatewayID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: InternetGateway
@@ -73,6 +79,9 @@ spec:
           value: ${schema.spec.project}
 
   - id: eip
+    readyWhen:
+      - ${eip.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${eip.status.allocationID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: ElasticIPAddress
@@ -94,6 +103,10 @@ spec:
           value: ${schema.spec.project}
 
   - id: natGateway
+    readyWhen:
+      - ${natGateway.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${natGateway.status.state == "available"}
+      - ${natGateway.status.natGatewayID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: NATGateway
@@ -117,6 +130,9 @@ spec:
           value: ${schema.spec.project}
 
   - id: publicRoutetable
+    readyWhen:
+      - ${publicRoutetable.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${publicRoutetable.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -142,6 +158,9 @@ spec:
           value: ${schema.spec.project}
 
   - id: privateRoutetable
+    readyWhen:
+      - ${privateRoutetable.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${privateRoutetable.status.routeTableID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: RouteTable
@@ -167,6 +186,10 @@ spec:
           value: ${schema.spec.project}
 
   - id: publicSubnet
+    readyWhen:
+      - ${publicSubnet.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${publicSubnet.status.state == "available"}
+      - ${publicSubnet.status.subnetID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
@@ -196,6 +219,10 @@ spec:
           value: "1"
 
   - id: privateSubnet
+    readyWhen:
+      - ${privateSubnet.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${privateSubnet.status.state == "available"}
+      - ${privateSubnet.status.subnetID != ""}
     template:
       apiVersion: ec2.services.k8s.aws/v1alpha1
       kind: Subnet
