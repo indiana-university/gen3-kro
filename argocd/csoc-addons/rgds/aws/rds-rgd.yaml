@@ -133,8 +133,8 @@ spec:
             value: "${schema.spec.environment}"
           - key: "ManagedBy"
             value: "Kro"
-  # PostgreSQL RDS instance without enhanced monitoring
-  - id: dbInstance-without-monitoring
+  # PostgreSQL RDS instance with enhanced monitoring
+  - id: dbInstanceWithMonitoring
     includeWhen:
       - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
