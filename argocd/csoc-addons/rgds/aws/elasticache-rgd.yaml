@@ -26,11 +26,11 @@ spec:
         logGroupName: string | default=""
         retentionInDays: integer | default=1827
     status:
-      cacheClusterARN: ${cacheCluster.status.ackResourceMetadata.arn}
-      cacheClusterID: ${cacheCluster.spec.cacheClusterID}
+      cacheClusterARN: "${ has(cacheClusterWithLogging.status.ackResourceMetadata.arn) ? cacheClusterWithLogging.status.ackResourceMetadata.arn : cacheClusterWithoutLogging.status.ackResourceMetadata.arn }"
+      cacheClusterID: "${ has(cacheClusterWithLogging.spec.cacheClusterID) ? cacheClusterWithLogging.spec.cacheClusterID : cacheClusterWithoutLogging.spec.cacheClusterID }"
       subnetGroupName: ${cacheSubnetGroup.spec.cacheSubnetGroupName}
-      endpoint: ${cacheCluster.status.cacheNodes[0].endpoint.address}
-      port: ${cacheCluster.status.cacheNodes[0].endpoint.port}
+      endpoint: "${ has(cacheClusterWithLogging.status.cacheNodes[0].endpoint.address) ? cacheClusterWithLogging.status.cacheNodes[0].endpoint.address : cacheClusterWithoutLogging.status.cacheNodes[0].endpoint.address }"
+      port: "${ has(cacheClusterWithLogging.status.cacheNodes[0].endpoint.port) ? cacheClusterWithLogging.status.cacheNodes[0].endpoint.port : cacheClusterWithoutLogging.status.cacheNodes[0].endpoint.port }"
       slowLogGroupARN: ${slowLogGroup.?status.?ackResourceMetadata.?arn}
 
   resources:

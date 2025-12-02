@@ -40,6 +40,8 @@ spec:
       # Example: rds!cluster-my-gen3-commons-aurora-a1b2c3
       masterPasswordSecretARN: ${cluster.status.masterUserSecret.secretARN}
       monitoringRoleARN: ${monitoringRole.?status.?ackResourceMetadata.?arn}
+      instance1Status: "${ has(instance1WithMonitoring.status.dbInstanceStatus) ? instance1WithMonitoring.status.dbInstanceStatus : (has(instance1WithoutMonitoring.status.dbInstanceStatus) ? instance1WithoutMonitoring.status.dbInstanceStatus : '') }"
+      instance2Status: "${ has(instance2WithMonitoring.status.dbInstanceStatus) ? instance2WithMonitoring.status.dbInstanceStatus : (has(instance2WithoutMonitoring.status.dbInstanceStatus) ? instance2WithoutMonitoring.status.dbInstanceStatus : '') }"
 
   resources:
   - id: dbSubnetGroup
@@ -187,8 +189,8 @@ spec:
     includeWhen:
       - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
-      - ${instance1.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${instance1.status.dbInstanceStatus == "available"}
+      - ${instance1WithoutMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance1WithoutMonitoring.status.dbInstanceStatus == "available"}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance
@@ -219,8 +221,8 @@ spec:
     includeWhen:
       - ${schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
-      - ${instance1.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${instance1.status.dbInstanceStatus == "available"}
+      - ${instance1WithMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance1WithMonitoring.status.dbInstanceStatus == "available"}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance
@@ -250,11 +252,11 @@ spec:
   # Aurora instance 2 without enhanced monitoring
   - id: instance2WithoutMonitoring
     includeWhen:
-      - ${schema.spec.instanceCount >= 2}
+      - ${schema.spec.instanceCount > 1}
       - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
-      - ${instance2.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${instance2.status.dbInstanceStatus == "available"}
+      - ${instance2WithoutMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance2WithoutMonitoring.status.dbInstanceStatus == "available"}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance
@@ -283,11 +285,11 @@ spec:
   # Aurora instance 2 with enhanced monitoring
   - id: instance2WithMonitoring
     includeWhen:
-      - ${schema.spec.instanceCount >= 2}
+      - ${schema.spec.instanceCount > 1}
       - ${schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
-      - ${instance2.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${instance2.status.dbInstanceStatus == "available"}
+      - ${instance2WithMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance2WithMonitoring.status.dbInstanceStatus == "available"}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance

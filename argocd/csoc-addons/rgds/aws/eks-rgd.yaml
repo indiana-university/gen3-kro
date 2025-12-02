@@ -25,11 +25,11 @@ spec:
         enableControlPlaneLogs: boolean | default=false
         logTypes: "[]string | default=[\"api\", \"audit\", \"authenticator\"]"
     status:
-      clusterARN: ${cluster.status.ackResourceMetadata.arn}
-      clusterName: ${cluster.spec.name}
-      clusterEndpoint: ${cluster.status.endpoint}
-      clusterCertificateAuthority: ${cluster.status.certificateAuthority.data}
-      clusterOIDCIssuer: ${cluster.status.identity.oidc.issuer}
+      clusterARN: "${ has(clusterWithLogging.status.ackResourceMetadata.arn) ? clusterWithLogging.status.ackResourceMetadata.arn : clusterWithoutLogging.status.ackResourceMetadata.arn }"
+      clusterName: "${ has(clusterWithLogging.spec.name) ? clusterWithLogging.spec.name : clusterWithoutLogging.spec.name }"
+      clusterEndpoint: "${ has(clusterWithLogging.status.endpoint) ? clusterWithLogging.status.endpoint : clusterWithoutLogging.status.endpoint }"
+      clusterCertificateAuthority: "${ has(clusterWithLogging.status.certificateAuthority.data) ? clusterWithLogging.status.certificateAuthority.data : clusterWithoutLogging.status.certificateAuthority.data }"
+      clusterOIDCIssuer: "${ has(clusterWithLogging.status.identity.oidc.issuer) ? clusterWithLogging.status.identity.oidc.issuer : clusterWithoutLogging.status.identity.oidc.issuer }"
       oidcProviderARN: ${oidcProvider.status.ackResourceMetadata.arn}
       nodeGroupARN: ${nodeGroup.status.ackResourceMetadata.arn}
       nodeGroupStatus: ${nodeGroup.status.status}
