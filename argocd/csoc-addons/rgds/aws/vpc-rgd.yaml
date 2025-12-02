@@ -30,7 +30,7 @@ spec:
       publicRouteTableID: ${publicRoutetable.status.routeTableID}
       privateRouteTableID: ${privateRoutetable.status.routeTableID}
       flowLogID: ${flowLog.?status.?flowLogID}
-      flowLogGroupARN: ${flowLogGroup.?status.?logGroupARN}
+      flowLogGroupARN: ${flowLogGroup.?status.?ackResourceMetadata.?arn}
   resources:
   - id: vpc
     readyWhen:
@@ -314,59 +314,24 @@ spec:
             value: "${schema.spec.environment}"
           - key: "ManagedBy"
             value: "Kro"
-
-  - id: flowLogPolicy
-    includeWhen:
-      - ${schema.spec.flowLogs.enabled}
-    readyWhen:
-      - ${flowLogPolicy.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    template:
-      apiVersion: iam.services.k8s.aws/v1alpha1
-      kind: Policy
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-vpc-flow-logs-policy
-        annotations:
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        name: ${schema.spec.name}-vpc-flow-logs-policy
-        description: "VPC Flow Logs policy"
-        policyDocument: |
-          {
-            "Version": "2012-10-17",
-            "Statement": [
-              {
-                "Effect": "Allow",
-                "Action": [
-                  "logs:CreateLogGroup",
-                  "logs:CreateLogStream",
-                  "logs:PutLogEvents",
-                  "logs:DescribeLogGroups",
-                  "logs:DescribeLogStreams"
-                ],
-                "Resource": "*"
-              }
-            ]
-          }
-
-  - id: flowLogRolePolicyAttachment
-    includeWhen:
-      - ${schema.spec.flowLogs.enabled}
-    readyWhen:
-      - ${flowLogRolePolicyAttachment.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    template:
-      apiVersion: iam.services.k8s.aws/v1alpha1
-      kind: RolePolicyAttachment
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-vpc-flow-logs-attachment
-        annotations:
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        policyARN: ${flowLogPolicy.status.ackResourceMetadata.arn}
-        roleRef:
-          from:
-            name: ${flowLogRole.metadata.name}
+        inlinePolicies:
+          flowLogPolicy: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents",
+                    "logs:DescribeLogGroups",
+                    "logs:DescribeLogStreams"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
 
   - id: flowLog
     includeWhen:

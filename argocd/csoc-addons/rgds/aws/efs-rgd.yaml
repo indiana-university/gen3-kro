@@ -131,7 +131,6 @@ spec:
       - ${fileSystem.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${fileSystem.status.lifeCycleState == "available"}
       - ${fileSystem.status.fileSystemID != ""}
-      - ${securityGroupSubnet1.status.id != ""}
     template:
       apiVersion: efs.services.k8s.aws/v1alpha1
       kind: FileSystem

@@ -31,7 +31,7 @@ spec:
       subnetGroupName: ${cacheSubnetGroup.spec.cacheSubnetGroupName}
       endpoint: ${cacheCluster.status.cacheNodes[0].endpoint.address}
       port: ${cacheCluster.status.cacheNodes[0].endpoint.port}
-      slowLogGroupARN: ${slowLogGroup.?status.?logGroupARN}
+      slowLogGroupARN: ${slowLogGroup.?status.?ackResourceMetadata.?arn}
 
   resources:
   - id: cacheSubnetGroup
