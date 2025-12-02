@@ -520,10 +520,11 @@ spec:
         versioning: ${schema.spec.buckets.dataBucket.versioning}
         encryption: ${schema.spec.buckets.dataBucket.encryption}
         kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
-        logging:
-          enabled: ${schema.spec.buckets.dataBucket.enableAccessLogging}
-          targetBucket: "${ schema.spec.buckets.dataBucket.enableAccessLogging ? loggingBucket.status.s3Name : \"\" }"
-          targetPrefix: "data-bucket/"
+        # TODO: Re-enable S3 access logging after fixing schema validation issue
+        # logging:
+        #   enabled: ${schema.spec.buckets.dataBucket.enableAccessLogging}
+        #   targetBucket: "${ schema.spec.buckets.dataBucket.enableAccessLogging ? loggingBucket.status.s3Name : \"\" }"
+        #   targetPrefix: "data-bucket/"
 
   # 5.2 Upload S3 bucket
   # Contains: S3 bucket for uploads
@@ -547,10 +548,11 @@ spec:
         versioning: ${schema.spec.buckets.uploadBucket.versioning}
         encryption: ${schema.spec.buckets.uploadBucket.encryption}
         kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
-        logging:
-          enabled: ${schema.spec.buckets.uploadBucket.enableAccessLogging}
-          targetBucket: "${ schema.spec.buckets.uploadBucket.enableAccessLogging ? loggingBucket.status.s3Name : \"\" }"
-          targetPrefix: "upload-bucket/"
+        # TODO: Re-enable S3 access logging after fixing schema validation issue
+        # logging:
+        #   enabled: ${schema.spec.buckets.uploadBucket.enableAccessLogging}
+        #   targetBucket: "${ schema.spec.buckets.uploadBucket.enableAccessLogging ? loggingBucket.status.s3Name : \"\" }"
+        #   targetPrefix: "upload-bucket/"
 
   # 5.3 EFS file system (depends on: 1.1 - KMS encryption key, 1.2 - VPC core, 2.3 - Private subnet 2, 2.4 - Private subnet 3)
   # Contains: EFS file system, mount targets, security group

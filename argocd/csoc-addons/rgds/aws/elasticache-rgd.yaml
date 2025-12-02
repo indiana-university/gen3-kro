@@ -182,7 +182,6 @@ spec:
       - ${cacheCluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${cacheCluster.status.cacheClusterStatus == "available"}
       - ${cacheCluster.status.cacheNodes[0].endpoint.address != ""}
-      - ${securityGroupSubnet1.status.id != ""}
     template:
       apiVersion: elasticache.services.k8s.aws/v1alpha1
       kind: CacheCluster
