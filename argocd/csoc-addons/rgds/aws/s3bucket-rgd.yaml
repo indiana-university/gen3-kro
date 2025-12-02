@@ -46,7 +46,10 @@ spec:
               sseAlgorithm: "${ schema.spec.kmsKeyARN != \"\" ? \"aws:kms\" : \"AES256\" }"
               kmsMasterKeyID: ${schema.spec.kmsKeyARN}
             bucketKeyEnabled: true
-        logging: "${ schema.spec.logging.enabled ? {\"loggingEnabled\": {\"targetBucket\": schema.spec.logging.targetBucket, \"targetPrefix\": (schema.spec.logging.targetPrefix != \"\" ? schema.spec.logging.targetPrefix : schema.spec.name + \"/\")}} : {} }"
+        logging:
+          loggingEnabled:
+            targetBucket: "${ schema.spec.logging.enabled ? schema.spec.logging.targetBucket : \"\" }"
+            targetPrefix: "${ schema.spec.logging.enabled ? (schema.spec.logging.targetPrefix != \"\" ? schema.spec.logging.targetPrefix : schema.spec.name + \"/\") : \"\" }"
         tagging:
           tagSet:
           - key: Name
