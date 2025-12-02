@@ -19,6 +19,9 @@ spec:
       nodeGroupDesiredSize: integer | default=2
       nodeGroupMinSize: integer | default=1
       nodeGroupMaxSize: integer | default=4
+      logging:
+        enableControlPlaneLogs: boolean | default=false
+        logTypes: "[]string | default=[\"api\", \"audit\", \"authenticator\"]"
     status:
       clusterARN: ${cluster.status.ackResourceMetadata.arn}
       clusterName: ${cluster.spec.name}
@@ -154,6 +157,7 @@ spec:
             - ${securityGroup.status.id}
           endpointPublicAccess: true
           endpointPrivateAccess: true
+        logging: "${ schema.spec.logging.enableControlPlaneLogs ? {\"clusterLogging\": [{\"enabled\": true, \"types\": schema.spec.logging.logTypes}]} : {} }"
         tags:
           Name: ${schema.spec.name}-eks
           Environment: ${schema.spec.environment}

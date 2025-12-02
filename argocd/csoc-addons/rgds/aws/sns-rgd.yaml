@@ -19,6 +19,9 @@ spec:
 
   resources:
   - id: topic
+    readyWhen:
+      - ${topic.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${topic.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: sns.services.k8s.aws/v1alpha1
       kind: Topic

@@ -16,6 +16,11 @@ spec:
         vpcCidr: string | default="10.0.0.0/16"
         publicSubnetCidr: string | default="10.0.1.0/24"
         privateSubnetCidr: string | default="10.0.11.0/24"
+      flowLogs:
+        enabled: boolean | default=false
+        trafficType: string | default="ALL"
+        logGroupName: string | default=""
+        retentionInDays: integer | default=1827
     status:
       vpcID: ${vpc.status.vpcID}
       publicSubnetID: ${publicSubnet.status.subnetID}
@@ -24,6 +29,8 @@ spec:
       natGatewayID: ${natGateway.status.natGatewayID}
       publicRouteTableID: ${publicRoutetable.status.routeTableID}
       privateRouteTableID: ${privateRoutetable.status.routeTableID}
+      flowLogID: ${flowLog.?status.?flowLogID}
+      flowLogGroupARN: ${flowLogGroup.?status.?logGroupARN}
   resources:
   - id: vpc
     readyWhen:
@@ -249,3 +256,146 @@ spec:
           value: ${schema.spec.project}
         - key: kubernetes.io/role/internal-elb
           value: "1"
+
+  # VPC Flow Logs
+  - id: flowLogGroup
+    includeWhen:
+      - ${schema.spec.flowLogs.enabled}
+    readyWhen:
+      - ${flowLogGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${flowLogGroup.status.ackResourceMetadata.arn != ""}
+    template:
+      apiVersion: cloudwatchlogs.services.k8s.aws/v1alpha1
+      kind: LogGroup
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-vpc-flow-logs
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        name: "${ schema.spec.flowLogs.logGroupName != \"\" ? schema.spec.flowLogs.logGroupName : \"/aws/vpc/\" + schema.spec.name + \"/flow-logs\" }"
+        retentionDays: ${schema.spec.flowLogs.retentionInDays}
+
+  - id: flowLogRole
+    includeWhen:
+      - ${schema.spec.flowLogs.enabled}
+    readyWhen:
+      - ${flowLogRole.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${flowLogRole.status.ackResourceMetadata.arn != ""}
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: Role
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-vpc-flow-logs-role
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        name: ${schema.spec.name}-vpc-flow-logs-role
+        description: "VPC Flow Logs IAM role"
+        assumeRolePolicyDocument: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "vpc-flow-logs.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+        tags:
+          - key: "Name"
+            value: "${schema.spec.name}-vpc-flow-logs-role"
+          - key: "Environment"
+            value: "${schema.spec.environment}"
+          - key: "ManagedBy"
+            value: "Kro"
+
+  - id: flowLogPolicy
+    includeWhen:
+      - ${schema.spec.flowLogs.enabled}
+    readyWhen:
+      - ${flowLogPolicy.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: Policy
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-vpc-flow-logs-policy
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        name: ${schema.spec.name}-vpc-flow-logs-policy
+        description: "VPC Flow Logs policy"
+        policyDocument: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Action": [
+                  "logs:CreateLogGroup",
+                  "logs:CreateLogStream",
+                  "logs:PutLogEvents",
+                  "logs:DescribeLogGroups",
+                  "logs:DescribeLogStreams"
+                ],
+                "Resource": "*"
+              }
+            ]
+          }
+
+  - id: flowLogRolePolicyAttachment
+    includeWhen:
+      - ${schema.spec.flowLogs.enabled}
+    readyWhen:
+      - ${flowLogRolePolicyAttachment.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: RolePolicyAttachment
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-vpc-flow-logs-attachment
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        policyARN: ${flowLogPolicy.status.ackResourceMetadata.arn}
+        roleRef:
+          from:
+            name: ${flowLogRole.metadata.name}
+
+  - id: flowLog
+    includeWhen:
+      - ${schema.spec.flowLogs.enabled}
+    readyWhen:
+      - ${flowLog.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${flowLog.status.flowLogID != ""}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: FlowLog
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-vpc-flow-log
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        resourceID: ${vpc.status.vpcID}
+        resourceType: VPC
+        trafficType: ${schema.spec.flowLogs.trafficType}
+        logDestinationType: cloud-watch-logs
+        logGroupName: ${flowLogGroup.spec.name}
+        deliverLogsPermissionARN: ${flowLogRole.status.ackResourceMetadata.arn}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-vpc-flow-log
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}

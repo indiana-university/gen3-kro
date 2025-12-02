@@ -21,7 +21,6 @@ spec:
     # Layer 2: Network Extensions (depends on: 1.2 - VPC core)
     enableSubnet2:        true  # depends on: vpcCore
     enableSubnet3:        false  # depends on: vpcCore
-    enableDbSubnet2:      false  # depends on: enableSubnet2
 
     # Layer 3: Audit & Compliance (depends on: enableKMS, enableLoggingBucket, enableCloudWatchLogs)
     enableLoggingBucket:  true  # standalone
@@ -29,16 +28,16 @@ spec:
     enableCloudTrail:     true  # depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS
 
     # Layer 4: Compute (depends on: vpcCore, enableSubnet2/3)
-    enableEKS:            false  # depends on: vpcCore, enableSubnet2/3
+    enableEKS:            true  # depends on: vpcCore, enableSubnet2/3
 
     # Layer 5: Storage - File & Object (depends on: vpcCore, enableKMS)
     enableDataBucket:     true  # standalone
     enableUploadBucket:   true  # standalone
-    enableOpenSearch:     false  # depends on: vpcCore, dbSubnet1
-    enableEFS:            false  # depends on: vpcCore, enableSubnet2/3, enableKMS
+    enableOpenSearch:     true  # depends on: vpcCore, dbSubnet1
+    enableEFS:            true  # depends on: vpcCore, enableSubnet2/3, enableKMS
     # Layer 5: Storage - Databases (depends on: vpcCore, enableDbSubnet2)
-    enableAurora:         true  # depends on: vpcCore, dbSubnet1, enableDbSubnet2 (optional)
-    enableElastiCache:    false  # depends on: vpcCore, dbSubnet1, enableDbSubnet2 (optional)
+    enableAurora:         true  # depends on: vpcCore, dbSubnet1, enableDbSubnet2
+    enableElastiCache:    true  # depends on: vpcCore, dbSubnet1, enableDbSubnet2
 
   # VPC Configuration
   vpc:
@@ -51,6 +50,9 @@ spec:
     privateSubnet3Cidr: "10.1.13.0/24"
     dbSubnet1Cidr:      "10.1.21.0/24"
     dbSubnet2Cidr:      "10.1.22.0/24"
+    enableFlowLogs: false # VPC Flow Logs (disabled by default for cost control)
+    flowLogsTrafficType: "ALL"
+    flowLogsRetentionInDays: 1827
 
   # EKS Configuration
   eks:
@@ -60,6 +62,11 @@ spec:
     nodeGroupDesiredSize: 3
     nodeGroupMinSize: 2
     nodeGroupMaxSize: 6
+    enableControlPlaneLogs: false # EKS Control Plane Logging (disabled by default for cost control)
+    controlPlaneLogTypes:
+      - "api"
+      - "audit"
+      - "authenticator"
 
   # Aurora PostgreSQL Configuration
   aurora:
@@ -70,6 +77,8 @@ spec:
     databaseName: "gen3"
     masterUsername: "gen3admin"
     backupRetentionPeriod: 7
+    enableEnhancedMonitoring: false # Aurora Enhanced Monitoring (disabled by default for cost control)
+    monitoringInterval: 60
 
   # ElastiCache Configuration
   elasticache:
@@ -77,27 +86,31 @@ spec:
     engineVersion: "7.0"
     nodeType: "cache.t3.micro"
     numCacheNodes: 1
+    enableSlowLog: false # ElastiCache Slow Log (disabled by default for cost control)
+    slowLogRetentionInDays: 1827
 
   # EFS Configuration
   efs:
-    performanceMode: "generalPurpose"
-    throughputMode: "bursting"
+    performanceMode: "generalPurpose"  # default from child RGD
+    throughputMode: "bursting"         # default from child RGD
     encrypted: true
 
   # S3 Buckets Configuration
   buckets:
-    # Data bucket for storing Gen3 data
-    dataBucket:
-      versioning: true
-      encryption: true
     # Logging bucket for audit logs
     loggingBucket:
       versioning: false
       encryption: true
+    # Data bucket for storing Gen3 data
+    dataBucket:
+      versioning: true
+      encryption: true
+      enableAccessLogging: false # S3 Access Logging (disabled by default for cost control)
     # Upload bucket for user uploads
     uploadBucket:
       versioning: true
       encryption: true
+      enableAccessLogging: false # S3 Access Logging (disabled by default for cost control)
 
   # KMS Configuration
   kms:
@@ -110,6 +123,11 @@ spec:
     instanceType: "t3.small.search"
     instanceCount: 1
     volumeSize: 10
+    enableAuditLogs: false # OpenSearch Logging (disabled by default for cost control)
+    enableErrorLogs: false
+    enableIndexSlowLogs: false
+    enableSearchSlowLogs: false
+    logRetentionInDays: 1827
 
   # CloudWatch Logs Configuration
   cloudwatchLogs:

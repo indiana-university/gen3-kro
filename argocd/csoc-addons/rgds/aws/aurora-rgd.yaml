@@ -14,7 +14,8 @@ spec:
       project: string | default="kro-managed"
       vpcID: string
       subnetIDs: "[]string"
-      ingressIPRanges: "[]string | default=[\"10.0.0.0/8\"]"
+      dbSubnet1Cidr: string | default=""
+      dbSubnet2Cidr: string | default=""
       engine: string | default="aurora-postgresql"
       engineVersion: string | default="15.4"
       instanceClass: string | default="db.r5.large"
@@ -25,6 +26,9 @@ spec:
       preferredBackupWindow: string | default="03:00-04:00"
       preferredMaintenanceWindow: string | default="sun:04:00-sun:05:00"
       kmsKeyARN: string | default=""
+      monitoring:
+        enableEnhancedMonitoring: boolean | default=false
+        monitoringInterval: integer | default=60
     status:
       clusterARN: ${cluster.status.ackResourceMetadata.arn}
       clusterID: ${cluster.spec.dbClusterIdentifier}
@@ -35,6 +39,7 @@ spec:
       # Naming pattern: rds!cluster-{dbClusterIdentifier}-{random-6-char}
       # Example: rds!cluster-my-gen3-commons-aurora-a1b2c3
       masterPasswordSecretARN: ${cluster.status.masterUserSecret.secretARN}
+      monitoringRoleARN: ${monitoringRole.?status.?ackResourceMetadata.?arn}
 
   resources:
   - id: dbSubnetGroup
@@ -84,8 +89,8 @@ spec:
             toPort: 5432
             ipProtocol: tcp
             ipRanges:
-              - cidrIP: ${schema.spec.ingressIPRanges[0]}
-              - cidrIP: ${schema.spec.ingressIPRanges[1]}
+              - cidrIP: ${schema.spec.dbSubnet1Cidr}
+              - cidrIP: ${schema.spec.dbSubnet2Cidr}
         tags:
         - key: Name
           value: ${schema.spec.name}-aurora-sg
@@ -95,6 +100,45 @@ spec:
           value: Kro
         - key: Project
           value: ${schema.spec.project}
+  - id: monitoringRole
+    includeWhen:
+      - ${schema.spec.monitoring.enableEnhancedMonitoring}
+    readyWhen:
+      - ${monitoringRole.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${monitoringRole.status.ackResourceMetadata.arn != ""}
+    template:
+      apiVersion: iam.services.k8s.aws/v1alpha1
+      kind: Role
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-aurora-monitoring-role
+        annotations:
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        name: ${schema.spec.name}-aurora-monitoring-role
+        description: "Aurora enhanced monitoring IAM role"
+        assumeRolePolicyDocument: |
+          {
+            "Version": "2012-10-17",
+            "Statement": [
+              {
+                "Effect": "Allow",
+                "Principal": {
+                  "Service": "monitoring.rds.amazonaws.com"
+                },
+                "Action": "sts:AssumeRole"
+              }
+            ]
+          }
+        policies:
+          - "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
+        tags:
+          - key: "Name"
+            value: "${schema.spec.name}-aurora-monitoring-role"
+          - key: "Environment"
+            value: "${schema.spec.environment}"
+          - key: "ManagedBy"
+            value: "Kro"
   - id: cluster
     readyWhen:
       - ${cluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -112,7 +156,7 @@ spec:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        dbClusterIdentifier: ${schema.spec.name}-aurora
+        dbClusterIdentifier: ${schema.spec.name}
         engine: ${schema.spec.engine}
         engineVersion: ${schema.spec.engineVersion}
         databaseName: ${schema.spec.databaseName}
@@ -157,6 +201,8 @@ spec:
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
         publiclyAccessible: false
+        monitoringInterval: "${ schema.spec.monitoring.enableEnhancedMonitoring ? schema.spec.monitoring.monitoringInterval : 0 }"
+        monitoringRoleARN: "${ schema.spec.monitoring.enableEnhancedMonitoring ? monitoringRole.status.ackResourceMetadata.arn : \"\" }"
         tags:
         - key: Name
           value: ${schema.spec.name}-aurora-instance-1
@@ -187,6 +233,8 @@ spec:
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
         publiclyAccessible: false
+        monitoringInterval: "${ schema.spec.monitoring.enableEnhancedMonitoring ? schema.spec.monitoring.monitoringInterval : 0 }"
+        monitoringRoleARN: "${ schema.spec.monitoring.enableEnhancedMonitoring ? monitoringRole.status.ackResourceMetadata.arn : \"\" }"
         tags:
         - key: Name
           value: ${schema.spec.name}-aurora-instance-2
