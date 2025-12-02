@@ -9,9 +9,7 @@
         "sns:SetTopicAttributes",
         "sns:GetTopicAttributes"
       ],
-      "Resource": [
-        "arn:aws:sns:*:*:aws-cloudtrail-logs*"
-      ]
+      "Resource": "*"
     },
     {
       "Effect": "Allow",
@@ -27,9 +25,7 @@
         "s3:PutBucketPolicy",
         "s3:PutBucketPublicAccessBlock"
       ],
-      "Resource": [
-        "arn:aws:s3:::aws-cloudtrail-logs*"
-      ]
+      "Resource": "*"
     },
     {
       "Effect": "Allow",
@@ -48,18 +44,23 @@
     {
       "Effect": "Allow",
       "Action": [
-        "logs:CreateLogGroup"
+        "logs:CreateLogGroup",
+        "logs:PutResourcePolicy",
+        "logs:DescribeResourcePolicies",
+        "logs:DescribeLogGroups",
+        "logs:DescribeLogStreams"
       ],
-      "Resource": [
-        "arn:aws:logs:*:*:log-group:aws-cloudtrail-logs*"
-      ]
+      "Resource": "*"
     },
     {
       "Effect": "Allow",
       "Action": [
         "iam:ListRoles",
         "iam:GetRolePolicy",
-        "iam:GetUser"
+        "iam:GetUser",
+        "iam:CreateRole",
+        "iam:PutRolePolicy",
+        "iam:AttachRolePolicy"
       ],
       "Resource": "*"
     },
@@ -81,7 +82,12 @@
         "kms:CreateKey",
         "kms:CreateAlias",
         "kms:ListKeys",
-        "kms:ListAliases"
+        "kms:ListAliases",
+        "kms:DescribeKey",
+        "kms:CreateGrant",
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:GenerateDataKey*"
       ],
       "Resource": "*"
     },

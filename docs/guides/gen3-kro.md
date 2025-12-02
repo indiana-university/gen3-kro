@@ -95,7 +95,7 @@ spec:
 ```yaml
 # private-subnet-instance.yaml
 apiVersion: kro.run/v1alpha1
-kind: AwsVpcPrivateSubnet
+kind: AwsPrivateSubnet
 metadata:
   name: demo-private
   namespace: platform

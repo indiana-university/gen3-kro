@@ -22,6 +22,9 @@ spec:
 
   resources:
   - id: webACL
+    readyWhen:
+      - ${webACL.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${webACL.status.ackResourceMetadata.arn != ""}
     template:
       apiVersion: wafv2.services.k8s.aws/v1alpha1
       kind: WebACL

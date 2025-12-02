@@ -79,6 +79,28 @@
           "devops-guru:ServiceNames": "false"
         }
       }
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey",
+        "kms:CreateGrant",
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:GenerateDataKey*"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:TagResource",
+        "secretsmanager:PutResourcePolicy",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:GetSecretValue"
+      ],
+      "Resource": "*"
     }
   ]
 }

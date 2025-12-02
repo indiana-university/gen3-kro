@@ -9,7 +9,7 @@ spec:
     spec:
       name: string
       namespace: string
-      region: string | default=""
+      region: string | default="us-east-1"
       environment: string | default="dev"
       project: string | default="kro-managed"
       accountId: string | default=""
@@ -25,7 +25,6 @@ spec:
         # Layer 2: Network Extensions (depends on: 1.2 - VPC core)
         enableSubnet2: boolean | default=true         # 2.1, 2.3 - public/private subnet 2
         enableSubnet3: boolean | default=false        # 2.2, 2.4 - public/private subnet 3
-        enableDbSubnet2: boolean | default=true       # 2.6 - depends on: enableSubnet2
 
         # Layer 3: Audit & Compliance (depends on: enableKMS, enableLoggingBucket, enableCloudWatchLogs)
         enableCloudWatchLogs: boolean | default=false # 3.1 - depends on: enableKMS
@@ -39,9 +38,9 @@ spec:
         enableDataBucket: boolean | default=false     # 5.1 - standalone
         enableUploadBucket: boolean | default=false   # 5.2 - standalone
         enableEFS: boolean | default=false            # 5.3 - depends on: vpcCore, enableSubnet2/3, enableKMS
-        enableElastiCache: boolean | default=false    # 5.4 - depends on: vpcCore, dbSubnet1, enableDbSubnet2
-        enableOpenSearch: boolean | default=false     # 5.5 - depends on: vpcCore, dbSubnet1
-        enableAurora: boolean | default=true          # 5.6 - depends on: vpcCore, dbSubnet1, enableDbSubnet2
+        enableElastiCache: boolean | default=false    # 5.4 - depends on: vpcCore, dbSubnet1, dbSubnet2
+        enableOpenSearch: boolean | default=false     # 5.5 - depends on: vpcCore, dbSubnet1, dbSubnet2
+        enableAurora: boolean | default=true          # 5.6 - depends on: vpcCore, dbSubnet1, dbSubnet2
 
       # Layer 1: KMS Configuration
       kms:
@@ -59,6 +58,10 @@ spec:
         privateSubnet3Cidr: string | default="10.0.13.0/24"
         dbSubnet1Cidr: string | default="10.0.21.0/24"
         dbSubnet2Cidr: string | default="10.0.22.0/24"
+        # VPC Flow Logs
+        enableFlowLogs: boolean | default=false
+        flowLogsTrafficType: string | default="ALL"
+        flowLogsRetentionInDays: integer | default=1827
 
       # Layer 3: CloudWatch Logs Configuration
       cloudwatchLogs:
@@ -76,10 +79,12 @@ spec:
         dataBucket:
           versioning: boolean | default=true
           encryption: boolean | default=true
+          enableAccessLogging: boolean | default=false
         # Upload bucket
         uploadBucket:
           versioning: boolean | default=true
           encryption: boolean | default=true
+          enableAccessLogging: boolean | default=false
 
       # Layer 3: CloudTrail Configuration
       cloudtrail:
@@ -94,6 +99,9 @@ spec:
         nodeGroupDesiredSize: integer | default=3
         nodeGroupMinSize: integer | default=2
         nodeGroupMaxSize: integer | default=6
+        # EKS Control Plane Logging
+        enableControlPlaneLogs: boolean | default=false
+        controlPlaneLogTypes: "[]string | default=[\"api\", \"audit\", \"authenticator\"]"
 
       # Layer 5: EFS Configuration
       efs:
@@ -107,6 +115,9 @@ spec:
         engineVersion: string | default="7.0"
         nodeType: string | default="cache.t3.micro"
         numCacheNodes: integer | default=1
+        # ElastiCache Slow Log
+        enableSlowLog: boolean | default=false
+        slowLogRetentionInDays: integer | default=1827
 
       # Layer 5: OpenSearch Configuration
       opensearch:
@@ -114,6 +125,12 @@ spec:
         instanceType: string | default="t3.small.search"
         instanceCount: integer | default=1
         volumeSize: integer | default=10
+        # OpenSearch Logging
+        enableAuditLogs: boolean | default=false
+        enableErrorLogs: boolean | default=false
+        enableIndexSlowLogs: boolean | default=false
+        enableSearchSlowLogs: boolean | default=false
+        logRetentionInDays: integer | default=1827
 
       # Layer 5: Aurora PostgreSQL Configuration
       aurora:
@@ -124,6 +141,9 @@ spec:
         databaseName: string | default="gen3"
         masterUsername: string | default="admin"
         backupRetentionPeriod: integer | default=7
+        # Aurora Enhanced Monitoring
+        enableEnhancedMonitoring: boolean | default=false
+        monitoringInterval: integer | default=60
 
     status:
       # Layer 1: Foundation
@@ -214,6 +234,11 @@ spec:
           vpcCidr: ${schema.spec.vpc.vpcCidr}
           publicSubnetCidr: ${schema.spec.vpc.publicSubnet1Cidr}
           privateSubnetCidr: ${schema.spec.vpc.privateSubnet1Cidr}
+        flowLogs:
+          enabled: ${schema.spec.vpc.enableFlowLogs}
+          trafficType: ${schema.spec.vpc.flowLogsTrafficType}
+          logGroupName: ""
+          retentionInDays: ${schema.spec.vpc.flowLogsRetentionInDays}
 
   # LAYER 2: Network Extensions
 
@@ -341,7 +366,6 @@ spec:
   # Contains: Database subnet in AZ-b
   - id: dbSubnet2
     includeWhen:
-      - ${schema.spec.features.enableDbSubnet2}
       - ${ schema.spec.features.enableAurora || schema.spec.features.enableElastiCache || schema.spec.features.enableOpenSearch }
       - ${schema.spec.features.enableVPC}
     readyWhen:
@@ -383,7 +407,7 @@ spec:
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
-        logGroupName: /aws/${schema.spec.name}
+        logGroupName: /aws/cloudwatch/${schema.spec.name}
         retentionInDays: ${schema.spec.cloudwatchLogs.retentionInDays}
         kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
 
@@ -443,6 +467,7 @@ spec:
 
   # 4.1 EKS cluster (depends on: 1.2 - VPC core, 2.3 - Private subnet 2, 2.4 - Private subnet 3)
   # Contains: EKS cluster, node group, security group, IAM roles
+  # Note: subnet2 and subnet3 are conditionally included via subnetIDs expression
   - id: eks
     includeWhen:
       - ${schema.spec.features.enableEKS}
@@ -467,6 +492,9 @@ spec:
         nodeGroupDesiredSize: ${schema.spec.eks.nodeGroupDesiredSize}
         nodeGroupMinSize: ${schema.spec.eks.nodeGroupMinSize}
         nodeGroupMaxSize: ${schema.spec.eks.nodeGroupMaxSize}
+        logging:
+          enableControlPlaneLogs: ${schema.spec.eks.enableControlPlaneLogs}
+          logTypes: ${schema.spec.eks.controlPlaneLogTypes}
 
   # LAYER 5: Data Services
 
@@ -492,6 +520,10 @@ spec:
         versioning: ${schema.spec.buckets.dataBucket.versioning}
         encryption: ${schema.spec.buckets.dataBucket.encryption}
         kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
+        logging:
+          enabled: ${schema.spec.buckets.dataBucket.enableAccessLogging}
+          targetBucket: "${ schema.spec.buckets.dataBucket.enableAccessLogging ? loggingBucket.status.s3Name : \"\" }"
+          targetPrefix: "data-bucket/"
 
   # 5.2 Upload S3 bucket
   # Contains: S3 bucket for uploads
@@ -515,9 +547,14 @@ spec:
         versioning: ${schema.spec.buckets.uploadBucket.versioning}
         encryption: ${schema.spec.buckets.uploadBucket.encryption}
         kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
+        logging:
+          enabled: ${schema.spec.buckets.uploadBucket.enableAccessLogging}
+          targetBucket: "${ schema.spec.buckets.uploadBucket.enableAccessLogging ? loggingBucket.status.s3Name : \"\" }"
+          targetPrefix: "upload-bucket/"
 
   # 5.3 EFS file system (depends on: 1.1 - KMS encryption key, 1.2 - VPC core, 2.3 - Private subnet 2, 2.4 - Private subnet 3)
   # Contains: EFS file system, mount targets, security group
+  # Note: subnet2 and subnet3 are conditionally included via subnetIDs and subnet CIDR parameters
   - id: efs
     includeWhen:
       - ${schema.spec.features.enableEFS}
@@ -538,7 +575,9 @@ spec:
         environment: ${schema.spec.environment}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs: "${ [vpcCore.status.privateSubnetID] + (schema.spec.features.enableSubnet2 ? [privateSubnet2.status.subnetID] : []) + (schema.spec.features.enableSubnet3 ? [privateSubnet3.status.subnetID] : []) }"
-        ingressIPRanges: "${ [schema.spec.vpc.privateSubnet1Cidr] + (schema.spec.features.enableSubnet2 ? [schema.spec.vpc.privateSubnet2Cidr] : []) + (schema.spec.features.enableSubnet3 ? [schema.spec.vpc.privateSubnet3Cidr] : []) }"
+        privateSubnet1Cidr: ${schema.spec.vpc.privateSubnet1Cidr}
+        privateSubnet2Cidr: "${ schema.spec.features.enableSubnet2 ? schema.spec.vpc.privateSubnet2Cidr : \"\" }"
+        privateSubnet3Cidr: "${ schema.spec.features.enableSubnet3 ? schema.spec.vpc.privateSubnet3Cidr : \"\" }"
         performanceMode: ${schema.spec.efs.performanceMode}
         throughputMode: ${schema.spec.efs.throughputMode}
         encrypted: ${schema.spec.efs.encrypted}
@@ -551,7 +590,6 @@ spec:
     includeWhen:
       - ${schema.spec.features.enableElastiCache}
       - ${schema.spec.features.enableVPC}
-      - ${schema.spec.features.enableDbSubnet2}
     readyWhen:
       - ${elasticache.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
@@ -566,12 +604,18 @@ spec:
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         vpcID: ${vpcCore.status.vpcID}
-        subnetIDs: "${ [dbSubnet1.status.subnetID] + (schema.spec.features.enableDbSubnet2 ? [dbSubnet2.status.subnetID] : []) }"
-        ingressIPRanges: "${ [schema.spec.vpc.privateSubnet1Cidr] + (schema.spec.features.enableSubnet2 ? [schema.spec.vpc.privateSubnet2Cidr] : []) + (schema.spec.features.enableSubnet3 ? [schema.spec.vpc.privateSubnet3Cidr] : []) }"
+        subnetIDs: "${ [dbSubnet1.status.subnetID] + [dbSubnet2.status.subnetID] }"
+        privateSubnet1Cidr: ${schema.spec.vpc.privateSubnet1Cidr}
+        privateSubnet2Cidr: "${ schema.spec.features.enableSubnet2 ? schema.spec.vpc.privateSubnet2Cidr : \"\" }"
+        privateSubnet3Cidr: "${ schema.spec.features.enableSubnet3 ? schema.spec.vpc.privateSubnet3Cidr : \"\" }"
         engine: ${schema.spec.elasticache.engine}
         engineVersion: ${schema.spec.elasticache.engineVersion}
         nodeType: ${schema.spec.elasticache.nodeType}
         numCacheNodes: ${schema.spec.elasticache.numCacheNodes}
+        logging:
+          enableSlowLog: ${schema.spec.elasticache.enableSlowLog}
+          logGroupName: ""
+          retentionInDays: ${schema.spec.elasticache.slowLogRetentionInDays}
 
   # 5.5 OpenSearch domain (depends on: 1.2 - VPC core, 2.5 - Database subnet 1)
   # Contains: OpenSearch domain, security group
@@ -594,11 +638,19 @@ spec:
         environment: ${schema.spec.environment}
         vpcID: ${vpcCore.status.vpcID}
         subnetIDs: "${ [dbSubnet1.status.subnetID] }"
-        ingressIPRanges: "${ [schema.spec.vpc.privateSubnet1Cidr] + (schema.spec.features.enableSubnet2 ? [schema.spec.vpc.privateSubnet2Cidr] : []) + (schema.spec.features.enableSubnet3 ? [schema.spec.vpc.privateSubnet3Cidr] : []) }"
+        privateSubnet1Cidr: ${schema.spec.vpc.privateSubnet1Cidr}
+        privateSubnet2Cidr: "${ schema.spec.features.enableSubnet2 ? schema.spec.vpc.privateSubnet2Cidr : \"\" }"
+        privateSubnet3Cidr: "${ schema.spec.features.enableSubnet3 ? schema.spec.vpc.privateSubnet3Cidr : \"\" }"
         engineVersion: ${schema.spec.opensearch.engineVersion}
         instanceType: ${schema.spec.opensearch.instanceType}
         instanceCount: ${schema.spec.opensearch.instanceCount}
         volumeSize: ${schema.spec.opensearch.volumeSize}
+        logging:
+          enableAuditLogs: ${schema.spec.opensearch.enableAuditLogs}
+          enableErrorLogs: ${schema.spec.opensearch.enableErrorLogs}
+          enableIndexSlowLogs: ${schema.spec.opensearch.enableIndexSlowLogs}
+          enableSearchSlowLogs: ${schema.spec.opensearch.enableSearchSlowLogs}
+          retentionInDays: ${schema.spec.opensearch.logRetentionInDays}
 
   # 5.6 Aurora PostgreSQL (depends on: 1.2 - VPC core, 2.5 - Database subnet 1, 2.6 - Database subnet 2)
   # Contains: Aurora cluster, instances, subnet group, security group
@@ -608,7 +660,6 @@ spec:
       - ${schema.spec.features.enableAurora}
       - ${schema.spec.features.enableKMS}
       - ${schema.spec.features.enableVPC}
-      - ${schema.spec.features.enableDbSubnet2}
     readyWhen:
       - ${aurora.status.conditions.exists(c, c.type == "Ready" && c.status == "True")}
     template:
@@ -623,8 +674,9 @@ spec:
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
         vpcID: ${vpcCore.status.vpcID}
-        subnetIDs: "${ [dbSubnet1.status.subnetID] + (schema.spec.features.enableDbSubnet2 ? [dbSubnet2.status.subnetID] : []) }"
-        ingressIPRanges: "${ [schema.spec.vpc.privateSubnet1Cidr] + (schema.spec.features.enableSubnet2 ? [schema.spec.vpc.privateSubnet2Cidr] : []) + (schema.spec.features.enableSubnet3 ? [schema.spec.vpc.privateSubnet3Cidr] : []) }"
+        subnetIDs: "${ [dbSubnet1.status.subnetID] + [dbSubnet2.status.subnetID] }"
+        dbSubnet1Cidr: ${schema.spec.vpc.dbSubnet1Cidr}
+        dbSubnet2Cidr: ${schema.spec.vpc.dbSubnet2Cidr}
         engine: ${schema.spec.aurora.engine}
         engineVersion: ${schema.spec.aurora.engineVersion}
         instanceClass: ${schema.spec.aurora.instanceClass}
@@ -633,3 +685,6 @@ spec:
         masterUsername: ${schema.spec.aurora.masterUsername}
         backupRetentionPeriod: ${schema.spec.aurora.backupRetentionPeriod}
         kmsKeyARN: "${ schema.spec.features.enableKMS ? kms.status.keyARN : \"\" }"
+        monitoring:
+          enableEnhancedMonitoring: ${schema.spec.aurora.enableEnhancedMonitoring}
+          monitoringInterval: ${schema.spec.aurora.monitoringInterval}
