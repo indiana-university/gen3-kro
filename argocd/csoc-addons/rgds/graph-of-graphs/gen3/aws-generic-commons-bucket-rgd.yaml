@@ -233,7 +233,6 @@ spec:
         flowLogs:
           enabled: ${schema.spec.vpc.enableFlowLogs}
           trafficType: ${schema.spec.vpc.flowLogsTrafficType}
-          logGroupName: ""
           retentionInDays: ${schema.spec.vpc.flowLogsRetentionInDays}
 
   # LAYER 2: Network - Subnets
@@ -616,7 +615,6 @@ spec:
         numCacheNodes: ${schema.spec.elasticache.numCacheNodes}
         logging:
           enableSlowLog: ${schema.spec.elasticache.logging.enableSlowLog}
-          logGroupName: ""
           retentionInDays: ${schema.spec.elasticache.logging.retentionInDays}
 
   - id: opensearch
