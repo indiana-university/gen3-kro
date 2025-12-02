@@ -31,10 +31,10 @@ spec:
       domainARN: ${domain.status.ackResourceMetadata.arn}
       domainName: ${domain.spec.name}
       endpoint: ${domain.status.endpoints.vpc}
-      auditLogGroupARN: ${auditLogGroup.?status.?logGroupARN}
-      errorLogGroupARN: ${errorLogGroup.?status.?logGroupARN}
-      indexSlowLogGroupARN: ${indexSlowLogGroup.?status.?logGroupARN}
-      searchSlowLogGroupARN: ${searchSlowLogGroup.?status.?logGroupARN}
+      auditLogGroupARN: ${auditLogGroup.?status.?ackResourceMetadata.?arn}
+      errorLogGroupARN: ${errorLogGroup.?status.?ackResourceMetadata.?arn}
+      indexSlowLogGroupARN: ${indexSlowLogGroup.?status.?ackResourceMetadata.?arn}
+      searchSlowLogGroupARN: ${searchSlowLogGroup.?status.?ackResourceMetadata.?arn}
 
   resources:
   - id: securityGroupSubnet1
