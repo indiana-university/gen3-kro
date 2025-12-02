@@ -29,7 +29,7 @@ spec:
       kind: LogGroup
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-loggroup
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"

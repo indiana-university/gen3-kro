@@ -35,12 +35,12 @@ spec:
       kind: SecurityGroup
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-efs-sg-subnet1
+        name: ${schema.spec.name}-sg-subnet1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-efs-sg-subnet1
+        name: ${schema.spec.name}-sg-subnet1
         description: "EFS security group for private subnet 1"
         vpcID: ${schema.spec.vpcID}
         ingressRules:
@@ -51,7 +51,7 @@ spec:
               - cidrIP: ${schema.spec.privateSubnet1Cidr}
         tags:
         - key: Name
-          value: ${schema.spec.name}-efs-sg-subnet1
+          value: ${schema.spec.name}-sg-subnet1
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -69,12 +69,12 @@ spec:
       kind: SecurityGroup
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-efs-sg-subnet2
+        name: ${schema.spec.name}-sg-subnet2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-efs-sg-subnet2
+        name: ${schema.spec.name}-sg-subnet2
         description: "EFS security group for private subnet 2"
         vpcID: ${schema.spec.vpcID}
         ingressRules:
@@ -85,7 +85,7 @@ spec:
               - cidrIP: ${schema.spec.privateSubnet2Cidr}
         tags:
         - key: Name
-          value: ${schema.spec.name}-efs-sg-subnet2
+          value: ${schema.spec.name}-sg-subnet2
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -103,12 +103,12 @@ spec:
       kind: SecurityGroup
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-efs-sg-subnet3
+        name: ${schema.spec.name}-sg-subnet3
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-efs-sg-subnet3
+        name: ${schema.spec.name}-sg-subnet3
         description: "EFS security group for private subnet 3"
         vpcID: ${schema.spec.vpcID}
         ingressRules:
@@ -119,7 +119,7 @@ spec:
               - cidrIP: ${schema.spec.privateSubnet3Cidr}
         tags:
         - key: Name
-          value: ${schema.spec.name}-efs-sg-subnet3
+          value: ${schema.spec.name}-sg-subnet3
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -136,7 +136,7 @@ spec:
       kind: FileSystem
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-filesystem
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
@@ -147,7 +147,7 @@ spec:
         kmsKeyID: ${schema.spec.kmsKeyARN}
         tags:
         - key: Name
-          value: ${schema.spec.name}
+          value: ${schema.spec.name}-filesystem
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy

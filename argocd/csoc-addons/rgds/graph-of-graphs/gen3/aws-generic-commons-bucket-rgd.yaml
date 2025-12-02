@@ -204,7 +204,7 @@ spec:
         name: ${schema.spec.name}-kms
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-kms
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         accountId: ${schema.spec.accountId}
@@ -428,7 +428,7 @@ spec:
         name: ${schema.spec.name}-cloudwatch
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-cloudwatch
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -471,7 +471,7 @@ spec:
         name: ${schema.spec.name}-cloudtrail
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-cloudtrail
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -499,7 +499,7 @@ spec:
         name: ${schema.spec.name}-eks
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-eks
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -530,7 +530,7 @@ spec:
         name: ${schema.spec.name}-data-bucket
         namespace: ${schema.spec.namespace}
       spec:
-        name: "${schema.spec.name}-data-bucket"
+        name: ${schema.spec.name}-data
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -550,7 +550,7 @@ spec:
         name: ${schema.spec.name}-upload-bucket
         namespace: ${schema.spec.namespace}
       spec:
-        name: "${schema.spec.name}-upload-bucket"
+        name: ${schema.spec.name}-upload
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -573,7 +573,7 @@ spec:
         name: ${schema.spec.name}-efs
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-efs
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -600,7 +600,7 @@ spec:
         name: ${schema.spec.name}-elasticache
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-elasticache
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -630,7 +630,7 @@ spec:
         name: ${schema.spec.name}-opensearch
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-opensearch
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}
@@ -666,7 +666,7 @@ spec:
         name: ${schema.spec.name}-aurora
         namespace: ${schema.spec.namespace}
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-aurora
         namespace: ${schema.spec.namespace}
         region: ${schema.spec.region}
         environment: ${schema.spec.environment}

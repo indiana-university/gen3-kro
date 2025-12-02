@@ -35,12 +35,12 @@ spec:
       kind: Queue
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-queue
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        queueName: ${schema.spec.name}
+        queueName: ${schema.spec.name}-queue
         visibilityTimeout: ${string(schema.spec.visibilityTimeout)}
         messageRetentionPeriod: ${string(schema.spec.messageRetentionPeriod)}
         maximumMessageSize: ${string(schema.spec.maxMessageSize)}
