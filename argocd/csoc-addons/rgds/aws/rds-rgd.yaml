@@ -28,10 +28,10 @@ spec:
         enableEnhancedMonitoring: boolean | default=false
         monitoringInterval: integer | default=60
     status:
-      dbInstanceARN: ${dbInstance.status.ackResourceMetadata.arn}
-      dbInstanceID: ${dbInstance.spec.dbInstanceIdentifier}
-      endpoint: ${dbInstance.status.endpoint.address}
-      port: ${dbInstance.status.endpoint.port}
+      dbInstanceARN: "${ has(dbInstanceWithMonitoring.status.ackResourceMetadata.arn) ? dbInstanceWithMonitoring.status.ackResourceMetadata.arn : dbInstanceWithoutMonitoring.status.ackResourceMetadata.arn }"
+      dbInstanceID: "${ has(dbInstanceWithMonitoring.spec.dbInstanceIdentifier) ? dbInstanceWithMonitoring.spec.dbInstanceIdentifier : dbInstanceWithoutMonitoring.spec.dbInstanceIdentifier }"
+      endpoint: "${ has(dbInstanceWithMonitoring.status.endpoint.address) ? dbInstanceWithMonitoring.status.endpoint.address : dbInstanceWithoutMonitoring.status.endpoint.address }"
+      port: "${ has(dbInstanceWithMonitoring.status.endpoint.port) ? dbInstanceWithMonitoring.status.endpoint.port : dbInstanceWithoutMonitoring.status.endpoint.port }"
       subnetGroupName: ${dbSubnetGroup.spec.name}
       monitoringRoleARN: ${monitoringRole.?status.?ackResourceMetadata.?arn}
 
@@ -176,7 +176,7 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   # PostgreSQL RDS instance with enhanced monitoring
-  - id: dbInstance-with-monitoring
+  - id: dbInstanceWithMonitoring
     includeWhen:
       - ${schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:

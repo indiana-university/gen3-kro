@@ -21,8 +21,8 @@ spec:
         targetBucket: string | default=""
         targetPrefix: string | default=""
     status:
-      s3ARN: ${s3bucket.status.ackResourceMetadata.arn}
-      s3Name: ${s3bucket.spec.name}
+      s3ARN: "${ has(s3bucketWithLogging.status.ackResourceMetadata.arn) ? s3bucketWithLogging.status.ackResourceMetadata.arn : s3bucketWithoutLogging.status.ackResourceMetadata.arn }"
+      s3Name: "${ has(s3bucketWithLogging.spec.name) ? s3bucketWithLogging.spec.name : s3bucketWithoutLogging.spec.name }"
       s3PolicyARN: ${s3Policy.status.ackResourceMetadata.arn}
 
   resources:
@@ -54,7 +54,7 @@ spec:
             value: ${schema.spec.name}
           - key: Environment
             value: ${schema.spec.environment}
-  - id: s3bucket-with-logging
+  - id: s3bucketWithLogging
     includeWhen:
      - ${schema.spec.logging.enabled}
     readyWhen:
