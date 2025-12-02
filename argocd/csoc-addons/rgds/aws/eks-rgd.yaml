@@ -134,7 +134,7 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   # EKS Cluster without control plane logging
-  - id: cluster-without-logging
+  - id: clusterWithoutLogging
     includeWhen:
       - ${!schema.spec.logging.enableControlPlaneLogs}
     readyWhen:
@@ -168,7 +168,7 @@ spec:
           ManagedBy: Kro
           Project: ${schema.spec.project}
   # EKS Cluster with control plane logging
-  - id: cluster-with-logging
+  - id: clusterWithLogging
     includeWhen:
       - ${schema.spec.logging.enableControlPlaneLogs}
     readyWhen:

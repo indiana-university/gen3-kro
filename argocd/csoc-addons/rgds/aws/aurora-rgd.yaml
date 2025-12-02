@@ -183,7 +183,7 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   # Aurora instance 1 without enhanced monitoring
-  - id: instance1-without-monitoring
+  - id: instance1WithoutMonitoring
     includeWhen:
       - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
@@ -215,7 +215,7 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   # Aurora instance 1 with enhanced monitoring
-  - id: instance1-with-monitoring
+  - id: instance1WithMonitoring
     includeWhen:
       - ${schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
@@ -248,7 +248,7 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   # Aurora instance 2 without enhanced monitoring
-  - id: instance2-without-monitoring
+  - id: instance2WithoutMonitoring
     includeWhen:
       - ${schema.spec.instanceCount >= 2}
       - ${!schema.spec.monitoring.enableEnhancedMonitoring}
@@ -281,7 +281,7 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   # Aurora instance 2 with enhanced monitoring
-  - id: instance2-with-monitoring
+  - id: instance2WithMonitoring
     includeWhen:
       - ${schema.spec.instanceCount >= 2}
       - ${schema.spec.monitoring.enableEnhancedMonitoring}

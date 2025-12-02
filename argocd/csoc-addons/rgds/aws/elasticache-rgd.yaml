@@ -178,7 +178,7 @@ spec:
         name: "${ schema.spec.logging.logGroupName != \"\" ? schema.spec.logging.logGroupName : \"/aws/elasticache/\" + schema.spec.name + \"/slow-log\" }"
         retentionDays: ${schema.spec.logging.retentionInDays}
   # Cache Cluster without logging
-  - id: cacheCluster-without-logging
+  - id: cacheClusterWithoutLogging
     includeWhen:
       - ${!schema.spec.logging.enableSlowLog}
     readyWhen:
@@ -212,7 +212,7 @@ spec:
         - key: Project
           value: ${schema.spec.project}
   # Cache Cluster with slow log enabled
-  - id: cacheCluster-with-logging
+  - id: cacheClusterWithLogging
     includeWhen:
       - ${schema.spec.logging.enableSlowLog}
     readyWhen:

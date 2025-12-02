@@ -26,7 +26,7 @@ spec:
       s3PolicyARN: ${s3Policy.status.ackResourceMetadata.arn}
 
   resources:
-  - id: s3bucket-without-logging
+  - id: s3bucketWithoutLogging
     includeWhen:
      - ${!schema.spec.logging.enabled}
     readyWhen:
