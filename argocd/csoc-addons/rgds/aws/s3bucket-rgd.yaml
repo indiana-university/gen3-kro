@@ -26,7 +26,37 @@ spec:
       s3PolicyARN: ${s3Policy.status.ackResourceMetadata.arn}
 
   resources:
-  - id: s3bucket
+  - id: s3bucket-without-logging
+    includeWhen:
+     - ${!schema.spec.logging.enabled}
+    readyWhen:
+      - ${s3bucket.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+    template:
+      apiVersion: s3.services.k8s.aws/v1alpha1
+      kind: Bucket
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        name: ${schema.spec.name}
+        encryption:
+          rules:
+          - applyServerSideEncryptionByDefault:
+              sseAlgorithm: "${ schema.spec.kmsKeyARN != \"\" ? \"aws:kms\" : \"AES256\" }"
+              kmsMasterKeyID: ${schema.spec.kmsKeyARN}
+            bucketKeyEnabled: true
+        tagging:
+          tagSet:
+          - key: Name
+            value: ${schema.spec.name}
+          - key: Environment
+            value: ${schema.spec.environment}
+  - id: s3bucket-with-logging
+    includeWhen:
+     - ${schema.spec.logging.enabled}
     readyWhen:
       - ${s3bucket.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
     template:
@@ -47,9 +77,8 @@ spec:
               kmsMasterKeyID: ${schema.spec.kmsKeyARN}
             bucketKeyEnabled: true
         logging:
-          loggingEnabled:
-            targetBucket: "${ schema.spec.logging.enabled ? schema.spec.logging.targetBucket : \"\" }"
-            targetPrefix: "${ schema.spec.logging.enabled ? (schema.spec.logging.targetPrefix != \"\" ? schema.spec.logging.targetPrefix : schema.spec.name + \"/\") : \"\" }"
+          targetBucket: ${schema.spec.logging.targetBucket}
+          targetPrefix: ${schema.spec.logging.targetPrefix}
         tagging:
           tagSet:
           - key: Name

@@ -14,21 +14,13 @@ spec:
       project: string | default="kro-managed"
       cidr:
         vpcCidr: string | default="10.0.0.0/16"
-        publicSubnetCidr: string | default="10.0.1.0/24"
-        privateSubnetCidr: string | default="10.0.11.0/24"
       flowLogs:
         enabled: boolean | default=false
         trafficType: string | default="ALL"
-        logGroupName: string | default=""
         retentionInDays: integer | default=1827
     status:
       vpcID: ${vpc.status.vpcID}
-      publicSubnetID: ${publicSubnet.status.subnetID}
-      privateSubnetID: ${privateSubnet.status.subnetID}
       internetGatewayID: ${internetGateway.status.internetGatewayID}
-      natGatewayID: ${natGateway.status.natGatewayID}
-      publicRouteTableID: ${publicRoutetable.status.routeTableID}
-      privateRouteTableID: ${privateRoutetable.status.routeTableID}
       flowLogID: ${flowLog.?status.?flowLogID}
       flowLogGroupARN: ${flowLogGroup.?status.?ackResourceMetadata.?arn}
   resources:
@@ -85,178 +77,6 @@ spec:
         - key: Project
           value: ${schema.spec.project}
 
-  - id: eip
-    readyWhen:
-      - ${eip.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${eip.status.allocationID != ""}
-    template:
-      apiVersion: ec2.services.k8s.aws/v1alpha1
-      kind: ElasticIPAddress
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-1-eip
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        tags:
-        - key: Name
-          value: ${schema.spec.name}-1-eip
-        - key: Environment
-          value: ${schema.spec.environment}
-        - key: ManagedBy
-          value: Kro
-        - key: Project
-          value: ${schema.spec.project}
-
-  - id: natGateway
-    readyWhen:
-      - ${natGateway.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${natGateway.status.state == "available"}
-      - ${natGateway.status.natGatewayID != ""}
-    template:
-      apiVersion: ec2.services.k8s.aws/v1alpha1
-      kind: NATGateway
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-1-nat-gateway
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        subnetID: ${publicSubnet.status.subnetID}
-        allocationID: ${eip.status.allocationID}
-        tags:
-        - key: Name
-          value: ${schema.spec.name}-1-nat-gateway
-        - key: Environment
-          value: ${schema.spec.environment}
-        - key: ManagedBy
-          value: Kro
-        - key: Project
-          value: ${schema.spec.project}
-
-  - id: publicRoutetable
-    readyWhen:
-      - ${publicRoutetable.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${publicRoutetable.status.routeTableID != ""}
-    template:
-      apiVersion: ec2.services.k8s.aws/v1alpha1
-      kind: RouteTable
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-1-public-routetable
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        vpcID: ${vpc.status.vpcID}
-        routes:
-        - destinationCIDRBlock: 0.0.0.0/0
-          gatewayID: ${internetGateway.status.internetGatewayID}
-        tags:
-        - key: Name
-          value: ${schema.spec.name}-1-public-routetable
-        - key: Environment
-          value: ${schema.spec.environment}
-        - key: ManagedBy
-          value: Kro
-        - key: Project
-          value: ${schema.spec.project}
-
-  - id: privateRoutetable
-    readyWhen:
-      - ${privateRoutetable.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${privateRoutetable.status.routeTableID != ""}
-    template:
-      apiVersion: ec2.services.k8s.aws/v1alpha1
-      kind: RouteTable
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-1-private-routetable
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        vpcID: ${vpc.status.vpcID}
-        routes:
-        - destinationCIDRBlock: 0.0.0.0/0
-          natGatewayID: ${natGateway.status.natGatewayID}
-        tags:
-        - key: Name
-          value: ${schema.spec.name}-1-private-routetable
-        - key: Environment
-          value: ${schema.spec.environment}
-        - key: ManagedBy
-          value: Kro
-        - key: Project
-          value: ${schema.spec.project}
-
-  - id: publicSubnet
-    readyWhen:
-      - ${publicSubnet.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${publicSubnet.status.state == "available"}
-      - ${publicSubnet.status.subnetID != ""}
-    template:
-      apiVersion: ec2.services.k8s.aws/v1alpha1
-      kind: Subnet
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-1-public-subnet
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        availabilityZone: ${schema.spec.region}a
-        cidrBlock: ${schema.spec.cidr.publicSubnetCidr}
-        mapPublicIPOnLaunch: true
-        vpcID: ${vpc.status.vpcID}
-        routeTables:
-        - ${publicRoutetable.status.routeTableID}
-        tags:
-        - key: Name
-          value: ${schema.spec.name}-1-public-subnet
-        - key: Environment
-          value: ${schema.spec.environment}
-        - key: ManagedBy
-          value: Kro
-        - key: Project
-          value: ${schema.spec.project}
-        - key: kubernetes.io/role/elb
-          value: "1"
-
-  - id: privateSubnet
-    readyWhen:
-      - ${privateSubnet.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${privateSubnet.status.state == "available"}
-      - ${privateSubnet.status.subnetID != ""}
-    template:
-      apiVersion: ec2.services.k8s.aws/v1alpha1
-      kind: Subnet
-      metadata:
-        namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-1-private-subnet
-        annotations:
-          services.k8s.aws/region: ${schema.spec.region}
-          services.k8s.aws/adoption-policy: "adopt-or-create"
-      spec:
-        availabilityZone: ${schema.spec.region}a
-        cidrBlock: ${schema.spec.cidr.privateSubnetCidr}
-        vpcID: ${vpc.status.vpcID}
-        routeTables:
-        - ${privateRoutetable.status.routeTableID}
-        tags:
-        - key: Name
-          value: ${schema.spec.name}-1-private-subnet
-        - key: Environment
-          value: ${schema.spec.environment}
-        - key: ManagedBy
-          value: Kro
-        - key: Project
-          value: ${schema.spec.project}
-        - key: kubernetes.io/role/internal-elb
-          value: "1"
-
   # VPC Flow Logs
   - id: flowLogGroup
     includeWhen:
@@ -274,7 +94,7 @@ spec:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: "${ schema.spec.flowLogs.logGroupName != \"\" ? schema.spec.flowLogs.logGroupName : \"/aws/vpc/\" + schema.spec.name + \"/flow-logs\" }"
+        name: /aws/vpc/${schema.spec.name}/flow-logs
         retentionDays: ${schema.spec.flowLogs.retentionInDays}
 
   - id: flowLogRole

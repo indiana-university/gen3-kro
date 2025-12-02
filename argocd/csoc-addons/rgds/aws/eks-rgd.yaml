@@ -15,6 +15,8 @@ spec:
       vpcID: string
       subnetIDs: "[]string"
       version: string | default="1.33"
+      endpointPublicAccess: boolean | default=true
+      endpointPrivateAccess: boolean | default=true
       nodeGroupInstanceTypes: "[]string | default=[\"t3.medium\"]"
       nodeGroupDesiredSize: integer | default=2
       nodeGroupMinSize: integer | default=1
@@ -131,7 +133,10 @@ spec:
           value: Kro
         - key: Project
           value: ${schema.spec.project}
-  - id: cluster
+  # EKS Cluster without control plane logging
+  - id: cluster-without-logging
+    includeWhen:
+      - ${!schema.spec.logging.enableControlPlaneLogs}
     readyWhen:
       - ${cluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${cluster.status.status == "ACTIVE"}
@@ -155,9 +160,46 @@ spec:
           subnetIDs: ${schema.spec.subnetIDs}
           securityGroupIDs:
             - ${securityGroup.status.id}
-          endpointPublicAccess: true
-          endpointPrivateAccess: true
-        logging: "${ schema.spec.logging.enableControlPlaneLogs ? {\"clusterLogging\": [{\"enabled\": true, \"types\": schema.spec.logging.logTypes}]} : {} }"
+          endpointPublicAccess: ${schema.spec.endpointPublicAccess}
+          endpointPrivateAccess: ${schema.spec.endpointPrivateAccess}
+        tags:
+          Name: ${schema.spec.name}-eks
+          Environment: ${schema.spec.environment}
+          ManagedBy: Kro
+          Project: ${schema.spec.project}
+  # EKS Cluster with control plane logging
+  - id: cluster-with-logging
+    includeWhen:
+      - ${schema.spec.logging.enableControlPlaneLogs}
+    readyWhen:
+      - ${cluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${cluster.status.status == "ACTIVE"}
+      - ${cluster.status.endpoint != ""}
+      - ${cluster.status.certificateAuthority.data != ""}
+      - ${cluster.status.identity.oidc.issuer != ""}
+    template:
+      apiVersion: eks.services.k8s.aws/v1alpha1
+      kind: Cluster
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        name: ${schema.spec.name}-eks
+        version: ${schema.spec.version}
+        roleARN: ${clusterRole.status.ackResourceMetadata.arn}
+        resourcesVPCConfig:
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs:
+            - ${securityGroup.status.id}
+          endpointPublicAccess: ${schema.spec.endpointPublicAccess}
+          endpointPrivateAccess: ${schema.spec.endpointPrivateAccess}
+        logging:
+          clusterLogging:
+            - enabled: true
+              types: ${schema.spec.logging.logTypes}
         tags:
           Name: ${schema.spec.name}-eks
           Environment: ${schema.spec.environment}

@@ -182,7 +182,10 @@ spec:
           value: Kro
         - key: Project
           value: ${schema.spec.project}
-  - id: instance1
+  # Aurora instance 1 without enhanced monitoring
+  - id: instance1-without-monitoring
+    includeWhen:
+      - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
       - ${instance1.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${instance1.status.dbInstanceStatus == "available"}
@@ -201,8 +204,7 @@ spec:
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
         publiclyAccessible: false
-        monitoringInterval: "${ schema.spec.monitoring.enableEnhancedMonitoring ? schema.spec.monitoring.monitoringInterval : 0 }"
-        monitoringRoleARN: "${ schema.spec.monitoring.enableEnhancedMonitoring ? monitoringRole.status.ackResourceMetadata.arn : \"\" }"
+        monitoringInterval: 0
         tags:
         - key: Name
           value: ${schema.spec.name}-aurora-instance-1
@@ -212,9 +214,44 @@ spec:
           value: Kro
         - key: Project
           value: ${schema.spec.project}
-  - id: instance2
+  # Aurora instance 1 with enhanced monitoring
+  - id: instance1-with-monitoring
+    includeWhen:
+      - ${schema.spec.monitoring.enableEnhancedMonitoring}
+    readyWhen:
+      - ${instance1.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance1.status.dbInstanceStatus == "available"}
+    template:
+      apiVersion: rds.services.k8s.aws/v1alpha1
+      kind: DBInstance
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-aurora-instance-1
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        dbInstanceIdentifier: ${schema.spec.name}-aurora-instance-1
+        dbInstanceClass: ${schema.spec.instanceClass}
+        engine: ${schema.spec.engine}
+        dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
+        publiclyAccessible: false
+        monitoringInterval: ${schema.spec.monitoring.monitoringInterval}
+        monitoringRoleARN: ${monitoringRole.status.ackResourceMetadata.arn}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-aurora-instance-1
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
+  # Aurora instance 2 without enhanced monitoring
+  - id: instance2-without-monitoring
     includeWhen:
       - ${schema.spec.instanceCount >= 2}
+      - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
       - ${instance2.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${instance2.status.dbInstanceStatus == "available"}
@@ -233,8 +270,41 @@ spec:
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
         publiclyAccessible: false
-        monitoringInterval: "${ schema.spec.monitoring.enableEnhancedMonitoring ? schema.spec.monitoring.monitoringInterval : 0 }"
-        monitoringRoleARN: "${ schema.spec.monitoring.enableEnhancedMonitoring ? monitoringRole.status.ackResourceMetadata.arn : \"\" }"
+        monitoringInterval: 0
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-aurora-instance-2
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
+  # Aurora instance 2 with enhanced monitoring
+  - id: instance2-with-monitoring
+    includeWhen:
+      - ${schema.spec.instanceCount >= 2}
+      - ${schema.spec.monitoring.enableEnhancedMonitoring}
+    readyWhen:
+      - ${instance2.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance2.status.dbInstanceStatus == "available"}
+    template:
+      apiVersion: rds.services.k8s.aws/v1alpha1
+      kind: DBInstance
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-aurora-instance-2
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        dbInstanceIdentifier: ${schema.spec.name}-aurora-instance-2
+        dbInstanceClass: ${schema.spec.instanceClass}
+        engine: ${schema.spec.engine}
+        dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
+        publiclyAccessible: false
+        monitoringInterval: ${schema.spec.monitoring.monitoringInterval}
+        monitoringRoleARN: ${monitoringRole.status.ackResourceMetadata.arn}
         tags:
         - key: Name
           value: ${schema.spec.name}-aurora-instance-2

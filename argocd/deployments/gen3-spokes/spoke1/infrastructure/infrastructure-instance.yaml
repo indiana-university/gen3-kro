@@ -11,130 +11,133 @@ spec:
   project:     Gen3  # For tagging resources
   accountId:   ""    # accountId is annotated via Kyverno policy and does not need to be specified here
 
-  # Feature Toggles - control which resources are deployed
-  # Dependencies are listed in order: resource depends on listed features
-  features:
-    # Layer 1: Foundation (no dependencies)
-    enableVPC:            true  # standalone
-    enableKMS:            true  # standalone
-
-    # Layer 2: Network Extensions (depends on: 1.2 - VPC core)
-    enableSubnet2:        true  # depends on: vpcCore
-    enableSubnet3:        false  # depends on: vpcCore
-
-    # Layer 3: Audit & Compliance (depends on: enableKMS, enableLoggingBucket, enableCloudWatchLogs)
-    enableLoggingBucket:  true  # standalone
-    enableCloudWatchLogs: true  # depends on: enableKMS
-    enableCloudTrail:     true  # depends on: enableLoggingBucket, enableCloudWatchLogs, enableKMS
-
-    # Layer 4: Compute (depends on: vpcCore, enableSubnet2/3)
-    enableEKS:            true  # depends on: vpcCore, enableSubnet2/3
-
-    # Layer 5: Storage - File & Object (depends on: vpcCore, enableKMS)
-    enableDataBucket:     true  # standalone
-    enableUploadBucket:   true  # standalone
-    enableOpenSearch:     true  # depends on: vpcCore, dbSubnet1
-    enableEFS:            true  # depends on: vpcCore, enableSubnet2/3, enableKMS
-    # Layer 5: Storage - Databases (depends on: vpcCore, enableDbSubnet2)
-    enableAurora:         true  # depends on: vpcCore, dbSubnet1, enableDbSubnet2
-    enableElastiCache:    true  # depends on: vpcCore, dbSubnet1, enableDbSubnet2
-
   # VPC Configuration
   vpc:
-    vpcCidr:            "10.1.0.0/16"
-    publicSubnet1Cidr:  "10.1.1.0/24"
-    publicSubnet2Cidr:  "10.1.2.0/24"
-    publicSubnet3Cidr:  "10.1.3.0/24"
-    privateSubnet1Cidr: "10.1.11.0/24"
-    privateSubnet2Cidr: "10.1.12.0/24"
-    privateSubnet3Cidr: "10.1.13.0/24"
-    dbSubnet1Cidr:      "10.1.21.0/24"
-    dbSubnet2Cidr:      "10.1.22.0/24"
-    enableFlowLogs: false # VPC Flow Logs (disabled by default for cost control)
-    flowLogsTrafficType: "ALL"
-    flowLogsRetentionInDays: 1827
-
-  # EKS Configuration
-  eks:
-    version: "1.33"
-    nodeGroupInstanceTypes:
-      - "t3.large"
-    nodeGroupDesiredSize: 3
-    nodeGroupMinSize: 2
-    nodeGroupMaxSize: 6
-    enableControlPlaneLogs: false # EKS Control Plane Logging (disabled by default for cost control)
-    controlPlaneLogTypes:
-      - "api"
-      - "audit"
-      - "authenticator"
-
-  # Aurora PostgreSQL Configuration
-  aurora:
-    engine: "aurora-postgresql"
-    engineVersion: "15.13"
-    instanceClass: "db.r5.large"
-    instanceCount: 2
-    databaseName: "gen3"
-    masterUsername: "gen3admin"
-    backupRetentionPeriod: 7
-    enableEnhancedMonitoring: false # Aurora Enhanced Monitoring (disabled by default for cost control)
-    monitoringInterval: 60
-
-  # ElastiCache Configuration
-  elasticache:
-    engine: "redis"
-    engineVersion: "7.0"
-    nodeType: "cache.t3.micro"
-    numCacheNodes: 1
-    enableSlowLog: false # ElastiCache Slow Log (disabled by default for cost control)
-    slowLogRetentionInDays: 1827
-
-  # EFS Configuration
-  efs:
-    performanceMode: "generalPurpose"  # default from child RGD
-    throughputMode: "bursting"         # default from child RGD
-    encrypted: true
-
-  # S3 Buckets Configuration
-  buckets:
-    # Logging bucket for audit logs
-    loggingBucket:
-      versioning: false
-      encryption: true
-    # Data bucket for storing Gen3 data
-    dataBucket:
-      versioning: true
-      encryption: true
-      enableAccessLogging: false # S3 Access Logging (disabled by default for cost control)
-    # Upload bucket for user uploads
-    uploadBucket:
-      versioning: true
-      encryption: true
-      enableAccessLogging: false # S3 Access Logging (disabled by default for cost control)
+    enabled: true  # Controls VPC resource creation - Dependencies: EKS, Aurora, ElastiCache, EFS, OpenSearch all depend on VPC
+    vpcCidr: "10.1.0.0/16"  # WARNING: Changing this WILL RECREATE VPC and ALL dependent resources (subnets, EKS, Aurora, ElastiCache, EFS, OpenSearch)
+    enableFlowLogs: false # VPC Flow Logs (disabled by default for cost control) - Can be changed without recreating VPC
+    flowLogsTrafficType: "ALL"  # Can be changed without recreating VPC
+    flowLogsRetentionInDays: 1827  # Can be changed without recreating VPC
+    subnets:
+      subnet1:
+        enabled: true  # Controls subnet1 resources - Dependencies: EKS, Aurora, ElastiCache, EFS, OpenSearch
+        availabilityZone: ""  # Defaults to ${region}a - WARNING: Changing this WILL RECREATE subnet1 and dependent resources
+        publicCidr: "10.1.1.0/24"  # WARNING: Changing this WILL RECREATE public subnet1 and dependent resources
+        privateCidr: "10.1.11.0/24"  # WARNING: Changing this WILL RECREATE private subnet1 and dependent resources
+      subnet2:
+        enabled: true  # Controls subnet2 resources - Dependencies: EKS, Aurora, ElastiCache, EFS, OpenSearch
+        availabilityZone: ""  # Defaults to ${region}b - WARNING: Changing this WILL RECREATE subnet2 and dependent resources
+        publicCidr: "10.1.2.0/24"  # WARNING: Changing this WILL RECREATE public subnet2 and dependent resources
+        privateCidr: "10.1.12.0/24"  # WARNING: Changing this WILL RECREATE private subnet2 and dependent resources
+      subnet3:
+        enabled: false  # Controls subnet3 resources - Dependencies: Can support EKS, Aurora, ElastiCache, EFS, OpenSearch if enabled
+        availabilityZone: ""  # Defaults to ${region}c - WARNING: Changing this WILL RECREATE subnet3 and dependent resources
+        publicCidr: "10.1.3.0/24"  # WARNING: Changing this WILL RECREATE public subnet3 and dependent resources
+        privateCidr: "10.1.13.0/24"  # WARNING: Changing this WILL RECREATE private subnet3 and dependent resources
+      database:
+        subnet1AvailabilityZone: ""  # Defaults to ${region}a - WARNING: Changing this WILL RECREATE DB subnet1 and Aurora cluster
+        subnet2AvailabilityZone: ""  # Defaults to ${region}b - WARNING: Changing this WILL RECREATE DB subnet2 and Aurora cluster
+        dbSubnet1Cidr: "10.1.21.0/24"  # WARNING: Changing this WILL RECREATE DB subnet1 and Aurora cluster
+        dbSubnet2Cidr: "10.1.22.0/24"  # WARNING: Changing this WILL RECREATE DB subnet2 and Aurora cluster
 
   # KMS Configuration
   kms:
-    description: "Gen3 commons encryption key"
-    enableKeyRotation: true
+    enabled: true  # Controls KMS resource creation - Dependencies: S3 buckets, EFS, Aurora (if encrypted), OpenSearch depend on KMS
+    description: "Gen3 commons encryption key"  # Can be changed without recreating KMS key
+    enableKeyRotation: true  # Can be changed without recreating KMS key
+
+  # Audit & Compliance
+  cloudwatch:
+    enabled: true  # Controls CloudWatch Logs - Dependencies: CloudTrail, VPC Flow Logs, EKS logs depend on CloudWatch
+    retentionInDays: 1827  # Can be changed without recreating CloudWatch log group
+
+  s3Logging:
+    enabled: true  # Controls logging bucket creation - Dependencies: CloudTrail, S3 access logs depend on this bucket
+    versioning: false  # Can be enabled without recreating bucket
+    encryption: true  # WARNING: Changing encryption WILL RECREATE logging bucket and may affect CloudTrail
+
+  cloudtrail:
+    enabled: true  # Controls CloudTrail - Depends on: s3Logging.enabled, cloudwatch.enabled
+    enableLogFileValidation: true  # Can be changed without recreating CloudTrail
+    includeGlobalServiceEvents: true  # Can be changed without recreating CloudTrail
+    isMultiRegionTrail: true  # WARNING: Changing this may RECREATE CloudTrail
+
+  # EKS Configuration
+  eks:
+    enabled: true  # Controls EKS cluster creation - Depends on: vpc.enabled, subnet1.enabled, subnet2.enabled
+    version: "1.33"  # WARNING: Changing version requires careful upgrade planning, may cause downtime
+    endpointPublicAccess: true  # Allow public API access (set false for private-only clusters) - Can be changed without recreating cluster
+    endpointPrivateAccess: true  # Allow private VPC API access - Can be changed without recreating cluster
+    nodeGroup:
+      instanceTypes:
+        - "t3.large"  # WARNING: Changing instance types WILL RECREATE node group (rolling update)
+      desiredSize: 3  # Can be changed without recreating node group
+      minSize: 2  # Can be changed without recreating node group
+      maxSize: 6  # Can be changed without recreating node group
+    logging:
+      enableControlPlaneLogs: false # EKS Control Plane Logging (disabled by default for cost control) - Depends on: cloudwatch.enabled - Can be changed without recreating cluster
+      logTypes:
+        - "api"
+        - "audit"
+        - "authenticator"  # Can be changed without recreating cluster
+
+  # Aurora PostgreSQL Configuration
+  aurora:
+    enabled: true  # Controls Aurora cluster creation - Depends on: vpc.enabled, database subnet configuration, kms.enabled (if encrypted)
+    engine: "aurora-postgresql"  # WARNING: Changing engine WILL RECREATE Aurora cluster (data loss risk)
+    engineVersion: "15.13"  # Can be upgraded without recreating cluster (in-place upgrade)
+    instanceClass: "db.r5.large"  # WARNING: Changing instance class WILL RECREATE instances (rolling update, brief downtime)
+    instanceCount: 2  # Can be changed without recreating cluster (adds/removes instances)
+    databaseName: "gen3"  # WARNING: Changing this WILL RECREATE Aurora cluster (data loss risk)
+    masterUsername: "admin"  # WARNING: Changing this WILL RECREATE Aurora cluster (data loss risk)
+    backupRetentionPeriod: 7  # Can be changed without recreating cluster
+    monitoring:
+      enableEnhancedMonitoring: false # Aurora Enhanced Monitoring (disabled by default for cost control) - Can be changed without recreating cluster
+      monitoringInterval: 60  # Can be changed without recreating cluster
+
+  # ElastiCache Configuration
+  elasticache:
+    enabled: true  # Controls ElastiCache creation - Depends on: vpc.enabled, subnet1.enabled, subnet2.enabled
+    engine: "redis"  # WARNING: Changing engine WILL RECREATE ElastiCache cluster (data loss risk)
+    engineVersion: "7.0"  # Can be upgraded without recreating cluster (in-place upgrade for compatible versions)
+    nodeType: "cache.t3.micro"  # WARNING: Changing node type WILL RECREATE ElastiCache cluster
+    numCacheNodes: 1  # WARNING: Changing number of nodes WILL RECREATE ElastiCache cluster for non-cluster mode
+    logging:
+      enableSlowLog: false # ElastiCache Slow Log (disabled by default for cost control) - Can be changed without recreating cluster
+      retentionInDays: 1827  # Can be changed without recreating cluster
+
+  # EFS Configuration
+  efs:
+    enabled: true  # Controls EFS creation - Depends on: vpc.enabled, kms.enabled (if encrypted), subnet1.enabled, subnet2.enabled
+    performanceMode: "generalPurpose"  # WARNING: Changing performance mode WILL RECREATE EFS (data migration required)
+    throughputMode: "bursting"  # Can be changed without recreating EFS (provisioned throughput can be adjusted)
+    encrypted: true  # WARNING: Changing encryption WILL RECREATE EFS (data migration required)
+
+  # S3 Buckets Configuration
+  dataBucket:
+    enabled: true  # Controls data bucket creation - Depends on: kms.enabled (if encrypted), s3Logging.enabled (if access logging enabled)
+    versioning: true  # Can be enabled without recreating bucket, but CANNOT be fully disabled once enabled
+    encryption: true  # Can be changed without recreating bucket (encryption settings can be updated)
+    enableAccessLogging: false # S3 Access Logging (disabled by default for cost control) - Can be changed without recreating bucket
+
+  uploadBucket:
+    enabled: true  # Controls upload bucket creation - Depends on: kms.enabled (if encrypted), s3Logging.enabled (if access logging enabled)
+    versioning: true  # Can be enabled without recreating bucket, but CANNOT be fully disabled once enabled
+    encryption: true  # Can be changed without recreating bucket (encryption settings can be updated)
+    enableAccessLogging: false # S3 Access Logging (disabled by default for cost control) - Can be changed without recreating bucket
 
   # OpenSearch Configuration
   opensearch:
-    engineVersion: "OpenSearch_2.11"
-    instanceType: "t3.small.search"
-    instanceCount: 1
-    volumeSize: 10
-    enableAuditLogs: false # OpenSearch Logging (disabled by default for cost control)
-    enableErrorLogs: false
-    enableIndexSlowLogs: false
-    enableSearchSlowLogs: false
-    logRetentionInDays: 1827
-
-  # CloudWatch Logs Configuration
-  cloudwatchLogs:
-    retentionInDays: 1827
-
-  # CloudTrail Configuration
-  cloudtrail:
-    enableLogFileValidation: true
-    includeGlobalServiceEvents: true
-    isMultiRegionTrail: true
+    enabled: true  # Controls OpenSearch creation - Depends on: vpc.enabled, subnet1.enabled, subnet2.enabled, kms.enabled (if encrypted)
+    engineVersion: "OpenSearch_2.11"  # Can be upgraded without recreating domain (in-place upgrade for compatible versions)
+    instanceType: "t3.small.search"  # WARNING: Changing instance type triggers blue/green deployment (temporary 2x instances)
+    instanceCount: 1  # Can be changed without recreating domain (adds/removes instances, blue/green deployment)
+    volumeSize: 10  # Can be increased without recreating domain, but CANNOT be decreased
+    dedicatedMasterEnabled: false  # Set true for HA production deployments (requires 3+ master nodes) - WARNING: Enabling/disabling WILL trigger blue/green deployment
+    zoneAwarenessEnabled: false    # Set true for multi-AZ HA (requires 2+ data nodes) - WARNING: Enabling/disabling WILL trigger blue/green deployment
+    logging: # OpenSearch Logging (disabled by default for cost control) - Depends on: cloudwatch.enabled
+      enableAuditLogs: false  # Can be changed without recreating domain
+      enableErrorLogs: false  # Can be changed without recreating domain
+      enableIndexSlowLogs: false  # Can be changed without recreating domain
+      enableSearchSlowLogs: false  # Can be changed without recreating domain
+      retentionInDays: 1827  # Can be changed without recreating domain
