@@ -44,11 +44,11 @@ spec:
       kind: Role
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-eks-cluster-role
+        name: ${schema.spec.name}-cluster-role
         annotations:
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-eks-cluster-role
+        name: ${schema.spec.name}-cluster-role
         description: "EKS cluster IAM role"
         assumeRolePolicyDocument: |
           {
@@ -67,7 +67,7 @@ spec:
           - "arn:aws:iam::aws:policy/AmazonEKSClusterPolicy"
         tags:
           - key: "Name"
-            value: "${schema.spec.name}-eks-cluster-role"
+            value: "${schema.spec.name}-cluster-role"
           - key: "Environment"
             value: "${schema.spec.environment}"
   - id: nodeRole
@@ -79,11 +79,11 @@ spec:
       kind: Role
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-eks-node-role
+        name: ${schema.spec.name}-node-role
         annotations:
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-eks-node-role
+        name: ${schema.spec.name}-node-role
         description: "EKS node IAM role"
         assumeRolePolicyDocument: |
           {
@@ -104,7 +104,7 @@ spec:
           - "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly"
         tags:
           - key: "Name"
-            value: "${schema.spec.name}-eks-node-role"
+            value: "${schema.spec.name}-node-role"
           - key: "Environment"
             value: "${schema.spec.environment}"
   - id: securityGroup
@@ -116,17 +116,17 @@ spec:
       kind: SecurityGroup
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-eks-sg
+        name: ${schema.spec.name}-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-eks-sg
+        name: ${schema.spec.name}-sg
         description: "EKS cluster security group"
         vpcID: ${schema.spec.vpcID}
         tags:
         - key: Name
-          value: ${schema.spec.name}-eks-sg
+          value: ${schema.spec.name}-sg
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -148,12 +148,12 @@ spec:
       kind: Cluster
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-cluster
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-eks
+        name: ${schema.spec.name}-cluster
         version: ${schema.spec.version}
         roleARN: ${clusterRole.status.ackResourceMetadata.arn}
         resourcesVPCConfig:
@@ -163,7 +163,7 @@ spec:
           endpointPublicAccess: ${schema.spec.endpointPublicAccess}
           endpointPrivateAccess: ${schema.spec.endpointPrivateAccess}
         tags:
-          Name: ${schema.spec.name}-eks
+          Name: ${schema.spec.name}-cluster
           Environment: ${schema.spec.environment}
           ManagedBy: Kro
           Project: ${schema.spec.project}
@@ -182,12 +182,12 @@ spec:
       kind: Cluster
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-cluster
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-eks
+        name: ${schema.spec.name}-cluster
         version: ${schema.spec.version}
         roleARN: ${clusterRole.status.ackResourceMetadata.arn}
         resourcesVPCConfig:
@@ -201,7 +201,7 @@ spec:
             - enabled: true
               types: ${schema.spec.logging.logTypes}
         tags:
-          Name: ${schema.spec.name}-eks
+          Name: ${schema.spec.name}-cluster
           Environment: ${schema.spec.environment}
           ManagedBy: Kro
           Project: ${schema.spec.project}
@@ -220,7 +220,7 @@ spec:
         annotations:
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        url: ${cluster.status.identity.oidc.issuer}
+        url: "${ has(clusterWithLogging.status.identity.oidc.issuer) ? clusterWithLogging.status.identity.oidc.issuer : clusterWithoutLogging.status.identity.oidc.issuer }"
         clientIDs:
           - sts.amazonaws.com
         thumbprints:
@@ -233,7 +233,7 @@ spec:
           - key: "ManagedBy"
             value: "Kro"
           - key: "Cluster"
-            value: "${schema.spec.name}-eks"
+            value: "${schema.spec.name}-cluster"
 
   - id: nodeGroup
     readyWhen:
@@ -249,8 +249,8 @@ spec:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-eks-nodegroup
-        clusterName: ${cluster.spec.name}
+        name: ${schema.spec.name}-nodegroup
+        clusterName: "${ has(clusterWithLogging.spec.name) ? clusterWithLogging.spec.name : clusterWithoutLogging.spec.name }"
         nodeRole: ${nodeRole.status.ackResourceMetadata.arn}
         subnets: ${schema.spec.subnetIDs}
         scalingConfig:
@@ -259,7 +259,7 @@ spec:
           maxSize: ${schema.spec.nodeGroupMaxSize}
         instanceTypes: ${schema.spec.nodeGroupInstanceTypes}
         tags:
-          Name: ${schema.spec.name}-eks-nodegroup
+          Name: ${schema.spec.name}-nodegroup
           Environment: ${schema.spec.environment}
           ManagedBy: Kro
           Project: ${schema.spec.project}

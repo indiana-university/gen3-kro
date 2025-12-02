@@ -42,6 +42,7 @@ spec:
       monitoringRoleARN: ${monitoringRole.?status.?ackResourceMetadata.?arn}
       instance1Status: "${ has(instance1WithMonitoring.status.dbInstanceStatus) ? instance1WithMonitoring.status.dbInstanceStatus : (has(instance1WithoutMonitoring.status.dbInstanceStatus) ? instance1WithoutMonitoring.status.dbInstanceStatus : '') }"
       instance2Status: "${ has(instance2WithMonitoring.status.dbInstanceStatus) ? instance2WithMonitoring.status.dbInstanceStatus : (has(instance2WithoutMonitoring.status.dbInstanceStatus) ? instance2WithoutMonitoring.status.dbInstanceStatus : '') }"
+      instance3Status: "${ has(instance3WithMonitoring.status.dbInstanceStatus) ? instance3WithMonitoring.status.dbInstanceStatus : (has(instance3WithoutMonitoring.status.dbInstanceStatus) ? instance3WithoutMonitoring.status.dbInstanceStatus : '') }"
 
   resources:
   - id: dbSubnetGroup
@@ -52,17 +53,17 @@ spec:
       kind: DBSubnetGroup
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora-subnet-group
+        name: ${schema.spec.name}-subnet-group
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-aurora-subnet-group
+        name: ${schema.spec.name}-subnet-group
         description: "Aurora cluster subnet group"
         subnetIDs: ${schema.spec.subnetIDs}
         tags:
         - key: Name
-          value: ${schema.spec.name}-aurora-subnet-group
+          value: ${schema.spec.name}-subnet-group
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -78,12 +79,12 @@ spec:
       kind: SecurityGroup
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora-sg
+        name: ${schema.spec.name}-sg
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-aurora-sg
+        name: ${schema.spec.name}-sg
         description: "Aurora cluster security group"
         vpcID: ${schema.spec.vpcID}
         ingressRules:
@@ -95,7 +96,7 @@ spec:
               - cidrIP: ${schema.spec.dbSubnet2Cidr}
         tags:
         - key: Name
-          value: ${schema.spec.name}-aurora-sg
+          value: ${schema.spec.name}-sg
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -113,11 +114,11 @@ spec:
       kind: Role
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora-monitoring-role
+        name: ${schema.spec.name}-monitoring-role
         annotations:
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-aurora-monitoring-role
+        name: ${schema.spec.name}-monitoring-role
         description: "Aurora enhanced monitoring IAM role"
         assumeRolePolicyDocument: |
           {
@@ -136,7 +137,7 @@ spec:
           - "arn:aws:iam::aws:policy/service-role/AmazonRDSEnhancedMonitoringRole"
         tags:
           - key: "Name"
-            value: "${schema.spec.name}-aurora-monitoring-role"
+            value: "${schema.spec.name}-monitoring-role"
           - key: "Environment"
             value: "${schema.spec.environment}"
           - key: "ManagedBy"
@@ -153,12 +154,12 @@ spec:
       kind: DBCluster
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora
+        name: ${schema.spec.name}-cluster
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        dbClusterIdentifier: ${schema.spec.name}
+        dbClusterIdentifier: ${schema.spec.name}-cluster
         engine: ${schema.spec.engine}
         engineVersion: ${schema.spec.engineVersion}
         databaseName: ${schema.spec.databaseName}
@@ -177,7 +178,7 @@ spec:
           - postgresql
         tags:
         - key: Name
-          value: ${schema.spec.name}-aurora
+          value: ${schema.spec.name}-cluster
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -196,12 +197,12 @@ spec:
       kind: DBInstance
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora-instance-1
+        name: ${schema.spec.name}-instance-1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        dbInstanceIdentifier: ${schema.spec.name}-aurora-instance-1
+        dbInstanceIdentifier: ${schema.spec.name}-instance-1
         dbInstanceClass: ${schema.spec.instanceClass}
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
@@ -209,7 +210,7 @@ spec:
         monitoringInterval: 0
         tags:
         - key: Name
-          value: ${schema.spec.name}-aurora-instance-1
+          value: ${schema.spec.name}-instance-1
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -228,12 +229,12 @@ spec:
       kind: DBInstance
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora-instance-1
+        name: ${schema.spec.name}-instance-1
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        dbInstanceIdentifier: ${schema.spec.name}-aurora-instance-1
+        dbInstanceIdentifier: ${schema.spec.name}-instance-1
         dbInstanceClass: ${schema.spec.instanceClass}
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
@@ -242,7 +243,7 @@ spec:
         monitoringRoleARN: ${monitoringRole.status.ackResourceMetadata.arn}
         tags:
         - key: Name
-          value: ${schema.spec.name}-aurora-instance-1
+          value: ${schema.spec.name}-instance-1
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -252,7 +253,7 @@ spec:
   # Aurora instance 2 without enhanced monitoring
   - id: instance2WithoutMonitoring
     includeWhen:
-      - ${schema.spec.instanceCount > 1}
+      - ${schema.spec.instanceCount >= 2}
       - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
       - ${instance2WithoutMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -262,12 +263,12 @@ spec:
       kind: DBInstance
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora-instance-2
+        name: ${schema.spec.name}-instance-2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        dbInstanceIdentifier: ${schema.spec.name}-aurora-instance-2
+        dbInstanceIdentifier: ${schema.spec.name}-instance-2
         dbInstanceClass: ${schema.spec.instanceClass}
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
@@ -275,7 +276,7 @@ spec:
         monitoringInterval: 0
         tags:
         - key: Name
-          value: ${schema.spec.name}-aurora-instance-2
+          value: ${schema.spec.name}-instance-2
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -285,7 +286,7 @@ spec:
   # Aurora instance 2 with enhanced monitoring
   - id: instance2WithMonitoring
     includeWhen:
-      - ${schema.spec.instanceCount > 1}
+      - ${schema.spec.instanceCount >= 2}
       - ${schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
       - ${instance2WithMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -295,12 +296,12 @@ spec:
       kind: DBInstance
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-aurora-instance-2
+        name: ${schema.spec.name}-instance-2
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        dbInstanceIdentifier: ${schema.spec.name}-aurora-instance-2
+        dbInstanceIdentifier: ${schema.spec.name}-instance-2
         dbInstanceClass: ${schema.spec.instanceClass}
         engine: ${schema.spec.engine}
         dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
@@ -309,7 +310,40 @@ spec:
         monitoringRoleARN: ${monitoringRole.status.ackResourceMetadata.arn}
         tags:
         - key: Name
-          value: ${schema.spec.name}-aurora-instance-2
+          value: ${schema.spec.name}-instance-2
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
+  - id: instance3WithMonitoring
+    includeWhen:
+      - ${schema.spec.instanceCount >= 3}
+      - ${schema.spec.monitoring.enableEnhancedMonitoring}
+    readyWhen:
+      - ${instance3WithMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${instance3WithMonitoring.status.dbInstanceStatus == "available"}
+    template:
+      apiVersion: rds.services.k8s.aws/v1alpha1
+      kind: DBInstance
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-instance-3
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        dbInstanceIdentifier: ${schema.spec.name}-instance-3
+        dbInstanceClass: ${schema.spec.instanceClass}
+        engine: ${schema.spec.engine}
+        dbClusterIdentifier: ${cluster.spec.dbClusterIdentifier}
+        publiclyAccessible: false
+        monitoringInterval: ${schema.spec.monitoring.monitoringInterval}
+        monitoringRoleARN: ${monitoringRole.status.ackResourceMetadata.arn}
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-instance-3
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy

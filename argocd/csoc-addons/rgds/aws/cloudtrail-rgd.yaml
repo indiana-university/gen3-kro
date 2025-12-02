@@ -78,11 +78,11 @@ spec:
       kind: Role
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-cloudtrail-cw-role
+        name: ${schema.spec.name}-role
         annotations:
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-cloudtrail-cloudwatch-role
+        name: ${schema.spec.name}-role
         assumeRolePolicyDocument: |
           {
             "Version": "2012-10-17",
@@ -100,7 +100,7 @@ spec:
         - ${cloudwatchPolicy.status.ackResourceMetadata.arn}
         tags:
         - key: Name
-          value: ${schema.spec.name}-cloudtrail-cloudwatch-role
+          value: ${schema.spec.name}-role
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -117,11 +117,10 @@ spec:
       kind: Policy
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}-cloudtrail-cw-policy
         annotations:
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}-cloudtrail-cloudwatch-policy
+        name: ${schema.spec.name}-policy
         policyDocument: |
           {
             "Version": "2012-10-17",
@@ -138,7 +137,7 @@ spec:
           }
         tags:
         - key: Name
-          value: ${schema.spec.name}-cloudtrail-cloudwatch-policy
+          value: ${schema.spec.name}-policy
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy
@@ -153,12 +152,12 @@ spec:
       kind: Trail
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-trail
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-trail
         s3BucketName: ${schema.spec.s3BucketName}
         includeGlobalServiceEvents: ${schema.spec.includeGlobalServiceEvents}
         isMultiRegionTrail: ${schema.spec.isMultiRegionTrail}
@@ -168,7 +167,7 @@ spec:
         kmsKeyID: ${schema.spec.kmsKeyARN}
         tags:
         - key: Name
-          value: ${schema.spec.name}
+          value: ${schema.spec.name}-trail
         - key: Environment
           value: ${schema.spec.environment}
         - key: ManagedBy

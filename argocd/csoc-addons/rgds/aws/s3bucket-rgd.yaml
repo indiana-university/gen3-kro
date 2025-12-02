@@ -18,8 +18,6 @@ spec:
       kmsKeyARN: string | default=""
       logging:
         enabled: boolean | default=false
-        targetBucket: string | default=""
-        targetPrefix: string | default=""
     status:
       s3ARN: "${ has(s3bucketWithLogging.status.ackResourceMetadata.arn) ? s3bucketWithLogging.status.ackResourceMetadata.arn : s3bucketWithoutLogging.status.ackResourceMetadata.arn }"
       s3Name: "${ has(s3bucketWithLogging.spec.name) ? s3bucketWithLogging.spec.name : s3bucketWithoutLogging.spec.name }"
@@ -36,12 +34,12 @@ spec:
       kind: Bucket
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-bucket
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-bucket
         encryption:
           rules:
           - applyServerSideEncryptionByDefault:
@@ -51,7 +49,7 @@ spec:
         tagging:
           tagSet:
           - key: Name
-            value: ${schema.spec.name}
+            value: ${schema.spec.name}-bucket
           - key: Environment
             value: ${schema.spec.environment}
   - id: s3bucketWithLogging
@@ -64,12 +62,12 @@ spec:
       kind: Bucket
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-bucket
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-bucket
         encryption:
           rules:
           - applyServerSideEncryptionByDefault:
@@ -78,11 +76,10 @@ spec:
             bucketKeyEnabled: true
         logging:
           targetBucket: ${schema.spec.logging.targetBucket}
-          targetPrefix: ${schema.spec.logging.targetPrefix}
         tagging:
           tagSet:
           - key: Name
-            value: ${schema.spec.name}
+            value: ${schema.spec.name}-bucket
           - key: Environment
             value: ${schema.spec.environment}
   - id: s3Policy

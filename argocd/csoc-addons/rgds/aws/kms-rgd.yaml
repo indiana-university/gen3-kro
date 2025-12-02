@@ -34,7 +34,7 @@ spec:
       kind: Key
       metadata:
         namespace: ${schema.spec.namespace}
-        name: ${schema.spec.name}
+        name: ${schema.spec.name}-key
         annotations:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
@@ -149,7 +149,7 @@ spec:
           }
         tags:
         - tagKey: Name
-          tagValue: ${schema.spec.name}
+          tagValue: ${schema.spec.name}-key
         - tagKey: Environment
           tagValue: ${schema.spec.environment}
         - tagKey: ManagedBy
@@ -169,5 +169,5 @@ spec:
           services.k8s.aws/region: ${schema.spec.region}
           services.k8s.aws/adoption-policy: "adopt-or-create"
       spec:
-        name: alias/${schema.spec.name}
+        name: alias/${schema.spec.name}-alias
         targetKeyID: ${key.status.keyID}
