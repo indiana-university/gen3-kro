@@ -133,7 +133,10 @@ spec:
             value: "${schema.spec.environment}"
           - key: "ManagedBy"
             value: "Kro"
-  - id: dbInstance
+  # PostgreSQL RDS instance without enhanced monitoring
+  - id: dbInstance-without-monitoring
+    includeWhen:
+      - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
       - ${dbInstance.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${dbInstance.status.dbInstanceStatus == "available"}
@@ -162,8 +165,50 @@ spec:
         publiclyAccessible: false
         storageEncrypted: true
         enableCloudwatchLogsExports: "${ schema.spec.logging.enableCloudWatchLogs ? schema.spec.logging.logTypes : [] }"
-        monitoringInterval: "${ schema.spec.monitoring.enableEnhancedMonitoring ? schema.spec.monitoring.monitoringInterval : 0 }"
-        monitoringRoleARN: "${ schema.spec.monitoring.enableEnhancedMonitoring ? monitoringRole.status.ackResourceMetadata.arn : \"\" }"
+        monitoringInterval: 0
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-db
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
+  # PostgreSQL RDS instance with enhanced monitoring
+  - id: dbInstance-with-monitoring
+    includeWhen:
+      - ${schema.spec.monitoring.enableEnhancedMonitoring}
+    readyWhen:
+      - ${dbInstance.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${dbInstance.status.dbInstanceStatus == "available"}
+      - ${dbInstance.status.endpoint.address != ""}
+    template:
+      apiVersion: rds.services.k8s.aws/v1alpha1
+      kind: DBInstance
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        dbInstanceIdentifier: ${schema.spec.name}-db
+        dbInstanceClass: ${schema.spec.instanceClass}
+        engine: ${schema.spec.engine}
+        engineVersion: ${schema.spec.engineVersion}
+        allocatedStorage: ${schema.spec.allocatedStorage}
+        dbName: ${schema.spec.databaseName}
+        masterUsername: "admin"
+        manageMasterUserPassword: true
+        dbSubnetGroupName: ${dbSubnetGroup.spec.name}
+        vpcSecurityGroupIDs:
+          - ${securityGroup.status.id}
+        publiclyAccessible: false
+        storageEncrypted: true
+        enableCloudwatchLogsExports: "${ schema.spec.logging.enableCloudWatchLogs ? schema.spec.logging.logTypes : [] }"
+        monitoringInterval: ${schema.spec.monitoring.monitoringInterval}
+        monitoringRoleARN: ${monitoringRole.status.ackResourceMetadata.arn}
         tags:
         - key: Name
           value: ${schema.spec.name}-db

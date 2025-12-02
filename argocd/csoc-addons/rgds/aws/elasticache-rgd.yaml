@@ -177,7 +177,10 @@ spec:
       spec:
         name: "${ schema.spec.logging.logGroupName != \"\" ? schema.spec.logging.logGroupName : \"/aws/elasticache/\" + schema.spec.name + \"/slow-log\" }"
         retentionDays: ${schema.spec.logging.retentionInDays}
-  - id: cacheCluster
+  # Cache Cluster without logging
+  - id: cacheCluster-without-logging
+    includeWhen:
+      - ${!schema.spec.logging.enableSlowLog}
     readyWhen:
       - ${cacheCluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${cacheCluster.status.cacheClusterStatus == "available"}
@@ -199,7 +202,53 @@ spec:
         numCacheNodes: ${schema.spec.numCacheNodes}
         cacheSubnetGroupName: ${cacheSubnetGroup.spec.cacheSubnetGroupName}
         securityGroupIDs: "${ [securityGroupSubnet1.status.id] + (schema.spec.privateSubnet2Cidr != \"\" ? [securityGroupSubnet2.status.id] : []) + (schema.spec.privateSubnet3Cidr != \"\" ? [securityGroupSubnet3.status.id] : []) }"
-        logDeliveryConfigurations: "${ schema.spec.logging.enableSlowLog ? [{\"destinationType\": \"cloudwatch-logs\", \"logFormat\": \"json\", \"logType\": \"slow-log\", \"destinationDetails\": {\"cloudWatchLogsDetails\": {\"logGroup\": slowLogGroup.spec.name}}}, {\"destinationType\": \"cloudwatch-logs\", \"logFormat\": \"json\", \"logType\": \"engine-log\", \"destinationDetails\": {\"cloudWatchLogsDetails\": {\"logGroup\": slowLogGroup.spec.name}}}] : [] }"
+        tags:
+        - key: Name
+          value: ${schema.spec.name}-cache
+        - key: Environment
+          value: ${schema.spec.environment}
+        - key: ManagedBy
+          value: Kro
+        - key: Project
+          value: ${schema.spec.project}
+  # Cache Cluster with slow log enabled
+  - id: cacheCluster-with-logging
+    includeWhen:
+      - ${schema.spec.logging.enableSlowLog}
+    readyWhen:
+      - ${cacheCluster.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${cacheCluster.status.cacheClusterStatus == "available"}
+      - ${cacheCluster.status.cacheNodes[0].endpoint.address != ""}
+    template:
+      apiVersion: elasticache.services.k8s.aws/v1alpha1
+      kind: CacheCluster
+      metadata:
+        namespace: ${schema.spec.namespace}
+        name: ${schema.spec.name}-cache
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: "adopt-or-create"
+      spec:
+        cacheClusterID: ${schema.spec.name}-cache
+        cacheNodeType: ${schema.spec.nodeType}
+        engine: ${schema.spec.engine}
+        engineVersion: ${schema.spec.engineVersion}
+        numCacheNodes: ${schema.spec.numCacheNodes}
+        cacheSubnetGroupName: ${cacheSubnetGroup.spec.cacheSubnetGroupName}
+        securityGroupIDs: "${ [securityGroupSubnet1.status.id] + (schema.spec.privateSubnet2Cidr != \"\" ? [securityGroupSubnet2.status.id] : []) + (schema.spec.privateSubnet3Cidr != \"\" ? [securityGroupSubnet3.status.id] : []) }"
+        logDeliveryConfigurations:
+          - destinationType: cloudwatch-logs
+            logFormat: json
+            logType: slow-log
+            destinationDetails:
+              cloudWatchLogsDetails:
+                logGroup: ${slowLogGroup.spec.name}
+          - destinationType: cloudwatch-logs
+            logFormat: json
+            logType: engine-log
+            destinationDetails:
+              cloudWatchLogsDetails:
+                logGroup: ${slowLogGroup.spec.name}
         tags:
         - key: Name
           value: ${schema.spec.name}-cache
