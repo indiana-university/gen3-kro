@@ -13,8 +13,10 @@ metadata:
       Otherwise, leaves spec values unchanged (uses existing or empty).
       Expected annotations: services.k8s.aws/owner-account-id.
 spec:
+  background: true
   rules:
   - name: inject-account-id
+    skipBackgroundRequests: false
     match:
       any:
       - resources:
