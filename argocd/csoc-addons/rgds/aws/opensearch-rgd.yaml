@@ -31,7 +31,7 @@ spec:
         retentionInDays: integer | default=1827
     status:
       domainARN: ${domain.status.ackResourceMetadata.arn}
-      domainName: ${domain.spec.domainName}
+      domainName: ${domain.spec.name}
       endpoint: ${domain.status.endpoints.vpc}
       auditLogGroupARN: ${auditLogGroup.?status.?ackResourceMetadata.?arn}
       errorLogGroupARN: ${errorLogGroup.?status.?ackResourceMetadata.?arn}

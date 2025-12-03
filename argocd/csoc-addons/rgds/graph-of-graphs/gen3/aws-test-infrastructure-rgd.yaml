@@ -261,7 +261,6 @@ spec:
         subnetIDs:
           - ${vpcCore.status.privateSubnetID}
           - ${privateSubnet2.status.subnetID}
-        ingressIPRanges: ${schema.spec.rds.ingressIPRanges}
         engine: ${schema.spec.rds.engine}
         engineVersion: ${schema.spec.rds.engineVersion}
         instanceClass: ${schema.spec.rds.instanceClass}
