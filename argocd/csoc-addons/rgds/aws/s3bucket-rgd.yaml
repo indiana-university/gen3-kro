@@ -18,6 +18,7 @@ spec:
       kmsKeyARN: string | default=""
       logging:
         enabled: boolean | default=false
+        targetBucket: string | default=""
     status:
       s3ARN: "${ has(s3bucketWithLogging.status.ackResourceMetadata.arn) ? s3bucketWithLogging.status.ackResourceMetadata.arn : s3bucketWithoutLogging.status.ackResourceMetadata.arn }"
       s3Name: "${ has(s3bucketWithLogging.spec.name) ? s3bucketWithLogging.spec.name : s3bucketWithoutLogging.spec.name }"

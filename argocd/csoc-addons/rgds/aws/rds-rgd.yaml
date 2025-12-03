@@ -133,13 +133,13 @@ spec:
             value: "${schema.spec.environment}"
           - key: "ManagedBy"
             value: "Kro"
-  # PostgreSQL RDS instance without enhanced monitoring
+  # RDS Instance without enhanced monitoring
   - id: dbInstanceWithoutMonitoring
     includeWhen:
       - ${!schema.spec.monitoring.enableEnhancedMonitoring}
     readyWhen:
-      - ${dbInstance.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      - ${dbInstance.status.dbInstanceStatus == "available"}
+      - ${dbInstanceWithoutMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${dbInstanceWithoutMonitoring.status.dbInstanceStatus == "available"}
       - ${dbInstance.status.endpoint.address != ""}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
