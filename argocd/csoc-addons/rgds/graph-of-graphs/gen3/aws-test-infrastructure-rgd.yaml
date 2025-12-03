@@ -162,8 +162,6 @@ spec:
         project: ${schema.spec.project}
         cidr:
           vpcCidr: ${schema.spec.vpc.cidr.vpcCidr}
-          publicSubnetCidr: ${schema.spec.vpc.cidr.publicSubnetCidr}
-          privateSubnetCidr: ${schema.spec.vpc.cidr.privateSubnetCidr}
 
   # Layer 2: Additional Public Subnet 2
   - id: publicSubnet2
