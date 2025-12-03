@@ -140,7 +140,7 @@ spec:
     readyWhen:
       - ${dbInstanceWithoutMonitoring.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       - ${dbInstanceWithoutMonitoring.status.dbInstanceStatus == "available"}
-      - ${dbInstance.status.endpoint.address != ""}
+      - ${dbInstanceWithoutMonitoring.status.endpoint.address != ""}
     template:
       apiVersion: rds.services.k8s.aws/v1alpha1
       kind: DBInstance
