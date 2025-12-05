@@ -6,3 +6,9 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+config:
+  dynamicControllerDefaultResyncPeriod: 60
+  dynamicControllerDefaultQueueMaxRetries: 5
+  resourceGraphDefinitionConcurrentReconciles: 2
+  clientQps: 200
+  clientBurst: 300
