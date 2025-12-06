@@ -6,9 +6,14 @@ resources:
   requests:
     cpu: 100m
     memory: 128Mi
+
 config:
-  dynamicControllerDefaultResyncPeriod: 60
-  dynamicControllerDefaultQueueMaxRetries: 5
-  resourceGraphDefinitionConcurrentReconciles: 2
-  clientQps: 200
-  clientBurst: 300
+  clientQps: 100 # Handle frequent status checks. increase when managing multiple instances. 100 is good for up to ~50 instances.
+  clientBurst: 150 # Burst capacity for polling. increase when managing muliple instances. 150 is good for up to ~50 instances.
+  allowCRDDeletion: true
+  gracefulShutdownTimeout: 60s # Allow in-flight reconciliations to complete before shutdown.
+  dynamicControllerDefaultResyncPeriod: 300 # Reconcile every 60s to pick up drift. Increase to reduce API server load if you have many resources.
+  dynamicControllerDefaultQueueMaxRetries: 600 # 300 × 3s = 30 minutes buffer. increased to enable longer-running operations. like creating a database. Prevent premature timeouts.
+  dynamicControllerConcurrentReconciles: 3 # Increase if you have many independent long-reconciling resources for concurrency.
+  resourceGraphDefinitionConcurrentReconciles: 1 # < 50 rgds. Increase if you have many rgds.
+
