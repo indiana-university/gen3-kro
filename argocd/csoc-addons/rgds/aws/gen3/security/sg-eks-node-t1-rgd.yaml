@@ -1,0 +1,120 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awssgeksnodet1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsSgEksNodeT1
+    spec:
+      name: string
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+      vpcID: string
+      clusterSecurityGroupID: string
+      albSecurityGroupID: string
+
+      # Port range for control plane to nodes communication
+      # Default: 30000-32767 (Kubernetes NodePort range) for better security
+      # Use 1025-65535 for compatibility with all services
+      nodePortRangeMin: integer | default=30000
+      nodePortRangeMax: integer | default=32767
+
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+    status:
+      securityGroupID: "${eksNodeSG.status.?id.orValue('')}"
+      emptySecurityGroupID: "${eksNodeEmptySG.status.?id.orValue('')}"
+      conditions: "${eksNodeSG.status.?conditions.orValue([])}"
+      ready: "${eksNodeSG.status.?id.orValue('') != '' && eksNodeEmptySG.status.?id.orValue('') != ''}"
+  resources:
+  - id: eksNodeEmptySG
+    readyWhen:
+      - ${eksNodeEmptySG.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${eksNodeEmptySG.status.id != ""}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: SecurityGroup
+      metadata:
+        name: ${schema.spec.name}-eks-node-empty-sg
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        name: ${schema.spec.name}-eks-node-empty-sg
+        description: Empty security group for EKS worker nodes (no rules)
+        vpcID: ${schema.spec.vpcID}
+        tags:
+          - key: Name
+            value: ${schema.spec.name}-eks-node-empty-sg
+          - key: Environment
+            value: ${schema.spec.environment}
+          - key: ManagedBy
+            value: Kro
+          - key: Project
+            value: ${schema.spec.project}
+          - key: Purpose
+            value: EKS-Nodes-Empty
+  - id: eksNodeSG
+    readyWhen:
+      - ${eksNodeSG.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${eksNodeSG.status.id != ""}
+    template:
+      apiVersion: ec2.services.k8s.aws/v1alpha1
+      kind: SecurityGroup
+      metadata:
+        name: ${schema.spec.name}-eks-node-sg
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        name: ${schema.spec.name}-eks-node-sg
+        description: Security group for EKS worker nodes
+        vpcID: ${schema.spec.vpcID}
+        ingressRules:
+          - ipProtocol: tcp
+            fromPort: ${schema.spec.nodePortRangeMin}
+            toPort: ${schema.spec.nodePortRangeMax}
+            userIDGroupPairs:
+              - groupID: ${schema.spec.clusterSecurityGroupID}
+                description: Allow return traffic from control plane
+          - ipProtocol: tcp
+            fromPort: 443
+            toPort: 443
+            userIDGroupPairs:
+              - groupID: ${schema.spec.clusterSecurityGroupID}
+                description: Allow control plane to communicate to nodes
+          - ipProtocol: tcp
+            fromPort: 80
+            toPort: 80
+            userIDGroupPairs:
+              - groupID: ${schema.spec.albSecurityGroupID}
+                description: Allow HTTP from ALB to pods
+          - ipProtocol: tcp
+            fromPort: 443
+            toPort: 443
+            userIDGroupPairs:
+              - groupID: ${schema.spec.albSecurityGroupID}
+                description: Allow HTTPS from ALB to pods
+        egressRules:
+          - ipProtocol: "-1"
+            ipRanges:
+              - cidrIP: 0.0.0.0/0
+                description: Allow all outbound
+        tags:
+          - key: Name
+            value: ${schema.spec.name}-eks-node-sg
+          - key: Environment
+            value: ${schema.spec.environment}
+          - key: ManagedBy
+            value: Kro
+          - key: Project
+            value: ${schema.spec.project}
+          - key: Purpose
+            value: EKS-Nodes

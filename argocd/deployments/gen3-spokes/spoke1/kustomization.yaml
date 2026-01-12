@@ -3,8 +3,8 @@ kind: Kustomization
 
 resources:
   - infrastructure # Infrastructure instance
-  - cluster-addons # Cluster addons
-  - sample.gen3.url.org # App instance 1 (more can be added)
+  # - cluster-addons # Cluster addons
+  # - sample.gen3.url.org # App instance 1 (more can be added)
 
 
 patches:

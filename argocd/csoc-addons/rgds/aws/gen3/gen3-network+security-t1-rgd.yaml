@@ -1,0 +1,338 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3networkandsecurityt1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3NetworkAndSecurityT1
+
+    types:
+      Route:
+        destinationCIDRBlock: string
+        gatewayID: string
+        natGatewayID: string
+
+    spec:
+      # Basic metadata
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # VPC Configuration
+      vpcCidr: string | required=true
+      enableDnsHostnames: boolean | default=true
+      enableDnsSupport: boolean | default=true
+
+      # Subnet configurations (arrays of names, CIDRs, AZs)
+      publicSubnetNames: "[]string"
+      publicSubnetCidrs: "[]string"
+      publicSubnetAZs: "[]string"
+
+      privateSubnetNames: "[]string"
+      privateSubnetCidrs: "[]string"
+      privateSubnetAZs: "[]string"
+
+      dbSubnetNames: "[]string"
+      dbSubnetCidrs: "[]string"
+      dbSubnetAZs: "[]string"
+
+      # NAT Gateway Configuration
+      enablePrivateNATs: "[]boolean"  # Enable per private subnet
+      enableSharedNAT: boolean | default=false  # Use single NAT for all private subnets
+      enableSeparateNATs: boolean | default=false  # Use separate NAT per private subnet
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      # VPC identifiers
+      vpcID: ${vpcCore.status.?vpcID.orValue('')}
+      internetGatewayID: ${vpcCore.status.?internetGatewayID.orValue('')}
+
+      # Subnet IDs (arrays)
+      publicSubnetIDs: ${publicSubnets.status.?subnetIDs.orValue([])}
+      privateSubnetIDs: ${privateSubnets.status.?subnetIDs.orValue([])}
+      dbSubnetIDs: ${dbSubnets.status.?subnetIDs.orValue([])}
+
+      # Route Table IDs
+      publicRouteTableID: ${publicRouteTable.status.?PublicRouteTableID.orValue('')}
+      privateRouteTableIDs: ${privateRouteTables.status.?routeTableIDs.orValue([])}
+      dbRouteTableID: ${dbRouteTable.status.?routeTableID.orValue('')}
+
+      # NAT Gateway IDs
+      privateNATGatewayIDs: ${natGateways.status.?natGatewayIDs.orValue([])}
+
+      # Security Group IDs
+      securityGroupIDs: ${SecurityGroups.status.?securityGroupIDs.orValue([])}
+
+      # Endpoint IDs
+      vpcEndpointIDs: ${vpcEndpoints.status.?vpcEndpointIDs.orValue([])}
+
+      # DB Subnet Isolation Status
+      dbSubnetsIsolated: ${dbRouteTable.status.?isolated.orValue(false)}
+
+      # Ready status
+      ready: |
+        ${
+          vpcCore.status.?ready.orValue(false) &&
+          (has(publicSubnets.metadata.name) ? publicSubnets.status.?ready.orValue(false) : true) &&
+          (has(privateSubnets.metadata.name) ? privateSubnets.status.?ready.orValue(false) : true) &&
+          (has(dbSubnets.metadata.name) ? dbSubnets.status.?ready.orValue(false) : true) &&
+          (has(dbRouteTable.metadata.name) ? dbRouteTable.status.?ready.orValue(false) : true) &&
+          (has(publicRouteTable.metadata.name) ? publicRouteTable.status.?ready.orValue(false) : true) &&
+          (has(privateRouteTables.metadata.name) ? privateRouteTables.status.?ready.orValue(false) : true) &&
+          vpcEndpoints.status.?ready.orValue(false) &&
+          networkLayerSecurityGroups.status.?ready.orValue(false)
+        }
+
+  resources:
+    # ==================== VPC Core Subgraph ====================
+    - id: vpcCore
+      readyWhen:
+        - ${vpcCore.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcCoreT1
+        metadata:
+          name: ${schema.spec.name}-vpccore
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcCidr: ${schema.spec.vpcCidr}
+          enableDnsHostnames: ${schema.spec.enableDnsHostnames}
+          enableDnsSupport: ${schema.spec.enableDnsSupport}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Public Subnets Subgraph ====================
+    - id: publicSubnets
+      includeWhen:
+        - ${schema.spec.publicSubnetNames.size() > 0}
+      readyWhen:
+        - ${publicSubnets.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcSubnetsPublicT1
+        metadata:
+          name: ${schema.spec.name}-public-subnets
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.publicSubnetNames}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          cidrBlocks: ${schema.spec.publicSubnetCidrs}
+          availabilityZones: ${schema.spec.publicSubnetAZs}
+          mapPublicIPOnLaunch: true
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Private Subnets Subgraph ====================
+    - id: privateSubnets
+      includeWhen:
+        - ${schema.spec.privateSubnetNames.size() > 0}
+      readyWhen:
+        - ${privateSubnets.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcSubnetsPrivateT1
+        metadata:
+          name: ${schema.spec.name}-private-subnets
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.privateSubnetNames}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          cidrBlocks: ${schema.spec.privateSubnetCidrs}
+          availabilityZones: ${schema.spec.privateSubnetAZs}
+          mapPublicIPOnLaunch: false
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== DB Subnets Subgraph ====================
+    - id: dbSubnets
+      includeWhen:
+        - ${schema.spec.dbSubnetNames.size() > 0}
+      readyWhen:
+        - ${dbSubnets.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcSubnetsDbT1
+        metadata:
+          name: ${schema.spec.name}-db-subnets
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.dbSubnetNames}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          cidrBlocks: ${schema.spec.dbSubnetCidrs}
+          availabilityZones: ${schema.spec.dbSubnetAZs}
+          mapPublicIPOnLaunch: false
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== DB Route Table (Isolated) ====================
+    - id: dbRouteTable
+      includeWhen:
+        - ${schema.spec.dbSubnetNames.size() > 0}
+      readyWhen:
+        - ${dbRouteTable.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcDbRouteTableT1
+        metadata:
+          name: ${schema.spec.name}-db-routetable
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          routes: []
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== NAT Gateways Subgraph ====================
+    - id: natGateways
+      includeWhen:
+        - ${schema.spec.privateSubnetNames.size() > 0}
+        - ${schema.spec.enablePrivateNATs.size() > 0}
+      readyWhen:
+        - ${natGateways.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcNatGatewaysT1
+        metadata:
+          name: ${schema.spec.name}-natgateways
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.privateSubnetNames}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          subnetIDs: ${publicSubnets.status.subnetIDs}
+          enable: ${schema.spec.enablePrivateNATs}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Public Route Table ====================
+    - id: publicRouteTable
+      includeWhen:
+        - ${schema.spec.publicSubnetNames.size() > 0}
+      readyWhen:
+        - ${publicRouteTable.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcPublicRouteTableT1
+        metadata:
+          name: ${schema.spec.name}-public-rt
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          routes: |-
+            ${[
+              {"destinationCIDRBlock": "0.0.0.0/0", "gatewayID": vpcCore.status.internetGatewayID}
+            ]}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Private Route Tables Subgraph ====================
+    - id: privateRouteTables
+      includeWhen:
+        - ${schema.spec.privateSubnetNames.size() > 0}
+      readyWhen:
+        - ${privateRouteTables.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsPrivateRouteTablesT1
+        metadata:
+          name: ${schema.spec.name}-private-rt
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.privateSubnetNames}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          natGatewayIDs: |-
+            ${
+              {
+                "0": natGateways.status.?natGatewayIDs.orValue([]).size() > 0 ? natGateways.status.natGatewayIDs[0] : '',
+                "1": natGateways.status.?natGatewayIDs.orValue([]).size() > 1 ? natGateways.status.natGatewayIDs[1] : '',
+                "2": natGateways.status.?natGatewayIDs.orValue([]).size() > 2 ? natGateways.status.natGatewayIDs[2] : ''
+              }
+            }
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== VPC Endpoints Subgraph ====================
+    - id: vpcEndpoints
+      readyWhen:
+        - ${vpcEndpoints.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcEndpointT1
+        metadata:
+          name: ${schema.spec.name}-endpoints
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          subnetIDs: ${privateSubnets.status.subnetIDs}
+          routeTableIDs: ${routeTables.status.routeTableIDs}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+   # ==================== Network Layer Security Groups ====================
+    - id: networkLayerSecurityGroups
+      readyWhen:
+        - ${networkLayerSecurityGroups.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsGen3SgsT1
+        metadata:
+          name: ${schema.spec.name}-network-sg
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          vpcCIDR: ${schema.spec.vpcCidr}
+          privateSubnetIDs: ${privateSubnets.status.subnetIDs}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # Note: Data Layer Security Groups are now included in AwsGen3NetworkSgsT1
+    # Previously separate AwsGen3DataSgsT1 has been merged into the network SGs RGD

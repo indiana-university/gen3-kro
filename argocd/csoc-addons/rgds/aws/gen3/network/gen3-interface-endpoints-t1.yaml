@@ -1,0 +1,307 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3endpoints
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Endpoints
+
+    spec:
+      # Basic metadata
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # VPC Configuration
+      vpcID: string | required=true
+
+      # Route Table IDs for gateway endpoints
+      publicRouteTableIDs: "[]string"
+      privateRouteTableIDs: "[]string"
+
+      # Subnet IDs for interface endpoints
+      privateSubnetIDs: "[]string"
+
+      # Security Group IDs for interface endpoints
+      vpcEndpointSecurityGroupIDs: "[]string"
+
+      # Enable/Disable specific endpoints
+      enableS3Gateway: boolean | default=true
+      enableECRApi: boolean | default=true
+      enableECRDocker: boolean | default=true
+      enableSTS: boolean | default=true
+      enableLogs: boolean | default=true
+      enableEC2: boolean | default=true
+      enableECRPublic: boolean | default=true
+      enableKMS: boolean | default=true
+      enableSecretsManager: boolean | default=true
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      # Gateway Endpoint IDs
+      s3GatewayEndpointID: ${s3GatewayEndpoint.status.?vpcEndpointID.orValue('')}
+
+      # Interface Endpoint IDs
+      ecrApiEndpointID: ${ecrApiEndpoint.status.?vpcEndpointID.orValue('')}
+      ecrDockerEndpointID: ${ecrDockerEndpoint.status.?vpcEndpointID.orValue('')}
+      stsEndpointID: ${stsEndpoint.status.?vpcEndpointID.orValue('')}
+      logsEndpointID: ${logsEndpoint.status.?vpcEndpointID.orValue('')}
+      ec2EndpointID: ${ec2Endpoint.status.?vpcEndpointID.orValue('')}
+      ecrPublicEndpointID: ${ecrPublicEndpoint.status.?vpcEndpointID.orValue('')}
+      kmsEndpointID: ${kmsEndpoint.status.?vpcEndpointID.orValue('')}
+      secretsManagerEndpointID: ${secretsManagerEndpoint.status.?vpcEndpointID.orValue('')}
+
+      ready: |
+        ${
+          (has(s3GatewayEndpoint.spec.name) ? s3GatewayEndpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(ecrApiEndpoint.spec.name) ? ecrApiEndpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(ecrDockerEndpoint.spec.name) ? ecrDockerEndpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(stsEndpoint.spec.name) ? stsEndpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(logsEndpoint.spec.name) ? logsEndpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(ec2Endpoint.spec.name) ? ec2Endpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(ecrPublicEndpoint.spec.name) ? ecrPublicEndpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(kmsEndpoint.spec.name) ? kmsEndpoint.status.?vpcEndpointID.orValue('') != '' : true) &&
+          (has(secretsManagerEndpoint.spec.name) ? secretsManagerEndpoint.status.?vpcEndpointID.orValue('') != '' : true)
+        }
+
+  resources:
+    # ==================== S3 Gateway Endpoint ====================
+    - id: s3GatewayEndpoint
+      includeWhen:
+        - ${schema.spec.enableS3Gateway}
+      readyWhen:
+        - ${s3GatewayEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-s3-gateway
+        spec:
+          name: ${schema.spec.name}-s3-gateway
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.s3
+        vpcEndpointType: Gateway
+        routeTableIDs: |
+          ${
+            schema.spec.publicRouteTableIDs + schema.spec.privateRouteTableIDs
+          }
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== ECR API Interface Endpoint ====================
+    - id: ecrApiEndpoint
+      includeWhen:
+        - ${schema.spec.enableECRApi}
+      readyWhen:
+        - ${ecrApiEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-ecr-api
+        spec:
+          name: ${schema.spec.name}-ecr-api
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.ecr.api
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== ECR Docker Interface Endpoint ====================
+    - id: ecrDockerEndpoint
+      includeWhen:
+        - ${schema.spec.enableECRDocker}
+      readyWhen:
+        - ${ecrDockerEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-ecr-docker
+        spec:
+          name: ${schema.spec.name}-ecr-docker
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.ecr.dkr
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== STS Interface Endpoint ====================
+    - id: stsEndpoint
+      includeWhen:
+        - ${schema.spec.enableSTS}
+      readyWhen:
+        - ${stsEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-sts
+        spec:
+          name: ${schema.spec.name}-sts
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.sts
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== CloudWatch Logs Interface Endpoint ====================
+    - id: logsEndpoint
+      includeWhen:
+        - ${schema.spec.enableLogs}
+      readyWhen:
+        - ${logsEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-logs
+        spec:
+          name: ${schema.spec.name}-logs
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.logs
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== EC2 Interface Endpoint ====================
+    - id: ec2Endpoint
+      includeWhen:
+        - ${schema.spec.enableEC2}
+      readyWhen:
+        - ${ec2Endpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-ec2
+        spec:
+          name: ${schema.spec.name}-ec2
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.ec2
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== ECR Public Interface Endpoint ====================
+    - id: ecrPublicEndpoint
+      includeWhen:
+        - ${schema.spec.enableECRPublic}
+      readyWhen:
+        - ${ecrPublicEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-ecr-public
+        spec:
+          name: ${schema.spec.name}-ecr-public
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.ecr.public
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== KMS Interface Endpoint ====================
+    - id: kmsEndpoint
+      includeWhen:
+        - ${schema.spec.enableKMS}
+      readyWhen:
+        - ${kmsEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-kms
+        spec:
+          name: ${schema.spec.name}-kms
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.kms
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Secrets Manager Interface Endpoint ====================
+    - id: secretsManagerEndpoint
+      includeWhen:
+        - ${schema.spec.enableSecretsManager}
+      readyWhen:
+        - ${secretsManagerEndpoint.status.?vpcEndpointID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVPCEndpoint
+        metadata:
+          name: ${schema.spec.name}-secretsmanager
+        spec:
+          name: ${schema.spec.name}-secretsmanager
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${schema.spec.vpcID}
+        serviceName: com.amazonaws.${schema.spec.region}.secretsmanager
+        vpcEndpointType: Interface
+        subnetIDs: ${schema.spec.privateSubnetIDs}
+        securityGroupIDs: ${schema.spec.vpcEndpointSecurityGroupIDs}
+        privateDNSEnabled: true
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}

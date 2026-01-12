@@ -1,0 +1,132 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awselasticachet1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsElasticacheT1
+    spec:
+      # Basic metadata
+      name: string
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # ElastiCache Configuration
+      engine: string | default="redis"
+      engineVersion: string | default="7.0"
+
+      # Network Configuration
+      vpcID: string
+      subnetIDs: "[]string"
+      securityGroupIDs: "[]string"
+
+      # Capacity Configuration
+      cacheNodeType: string | default="cache.r6g.large"
+      numCacheNodes: integer | default=2
+
+      # Encryption Configuration
+      atRestEncryptionEnabled: boolean | default=true
+      transitEncryptionEnabled: boolean | default=true
+      authToken: string | default=""
+
+      # Backup Configuration
+      snapshotRetentionLimit: integer | default=7
+      snapshotWindow: string | default="03:00-05:00"
+
+      # Parameter Group
+      cacheParameterGroupName: string | default=""
+
+      # Notifications
+      notificationTopicARN: string | default=""
+
+      # Auto Upgrades
+      autoMinorVersionUpgrade: boolean | default=true
+
+      # Multi-AZ
+      automaticFailoverEnabled: boolean | default=true
+      multiAZEnabled: boolean | default=true
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="retain"
+
+    status:
+      replicationGroupARN: "${replicationGroup.status.ackResourceMetadata.arn}"
+      primaryEndpoint: "${replicationGroup.status.configurationEndpoint.address}"
+      port: "${replicationGroup.status.configurationEndpoint.port}"
+      status: "${replicationGroup.status.status}"
+      conditions: "${replicationGroup.status.conditions}"
+
+  resources:
+  - id: cacheSubnetGroup
+    readyWhen:
+      - ${cacheSubnetGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${cacheSubnetGroup.status.ackResourceMetadata.arn != ""}
+    template:
+      apiVersion: elasticache.services.k8s.aws/v1alpha1
+      kind: CacheSubnetGroup
+      metadata:
+        name: ${schema.spec.name}-subnet-group
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        cacheSubnetGroupName: ${schema.spec.name}-subnet-group
+        cacheSubnetGroupDescription: Subnet group for ${schema.spec.name} ElastiCache
+        subnetIDs: ${schema.spec.subnetIDs}
+        tags:
+          - key: Name
+            value: ${schema.spec.name}-subnet-group
+          - key: Environment
+            value: ${schema.spec.environment}
+          - key: ManagedBy
+            value: Kro
+          - key: Project
+            value: ${schema.spec.project}
+
+  - id: replicationGroup
+    readyWhen:
+      - ${replicationGroup.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${replicationGroup.status.ackResourceMetadata.arn != ""}
+      - ${replicationGroup.status.status == "available"}
+    template:
+      apiVersion: elasticache.services.k8s.aws/v1alpha1
+      kind: ReplicationGroup
+      metadata:
+        name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        replicationGroupID: ${schema.spec.name}
+        description: ${schema.spec.name} ElastiCache cluster
+        engine: ${schema.spec.engine}
+        engineVersion: ${schema.spec.engineVersion}
+        cacheNodeType: ${schema.spec.cacheNodeType}
+        numNodeGroups: 1
+        replicasPerNodeGroup: ${ schema.spec.numCacheNodes - 1 }
+        cacheSubnetGroupName: ${schema.spec.name}-subnet-group
+        securityGroupIDs: ${schema.spec.securityGroupIDs}
+        atRestEncryptionEnabled: ${schema.spec.atRestEncryptionEnabled}
+        transitEncryptionEnabled: ${schema.spec.transitEncryptionEnabled}
+        authToken: ${schema.spec.authToken}
+        snapshotRetentionLimit: ${schema.spec.snapshotRetentionLimit}
+        snapshotWindow: ${schema.spec.snapshotWindow}
+        automaticFailoverEnabled: true
+        multiAZEnabled: true
+        tags:
+          - key: Name
+            value: ${schema.spec.name}
+          - key: Environment
+            value: ${schema.spec.environment}
+          - key: ManagedBy
+            value: Kro
+          - key: Project
+            value: ${schema.spec.project}

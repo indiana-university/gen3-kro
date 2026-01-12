@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: gen3-application.kro.run
+  name: awsgen3applicationt1
 spec:
   # REQUIREMENTS:
   # - The referenced AwsGenericCommonsAndBucket infrastructure instance MUST have:
@@ -12,7 +12,7 @@ spec:
   #   - features.enableOpenSearch: true (optional - for aws-es-proxy)
   schema:
     apiVersion: v1alpha1
-    kind: Gen3Application
+    kind: AwsGen3ApplicationT1
     spec:
       # Basic application configuration
       name: string
@@ -308,13 +308,13 @@ spec:
 
               aws-es-proxy:
                 enabled: ${schema.spec.services.awsEsProxy}
-                esEndpoint: ${infrastructureInstance.?status.?opensearchDomainEndpoint}
+                esEndpoint: "${ has(infrastructureInstance.status) && has(infrastructureInstance.status.opensearchDomainEndpoint) ? infrastructureInstance.status.opensearchDomainEndpoint : '' }"
 
               fence:
                 enabled: ${schema.spec.services.fence}
                 serviceAccount:
                   annotations:
-                    eks.amazonaws.com/role-arn: ${fenceRole.?status.?ackResourceMetadata.?arn}
+                    eks.amazonaws.com/role-arn: "${ has(fenceRole.status) && has(fenceRole.status.ackResourceMetadata) && has(fenceRole.status.ackResourceMetadata.arn) ? fenceRole.status.ackResourceMetadata.arn : '' }"
 
               guppy:
                 enabled: ${schema.spec.services.guppy}
