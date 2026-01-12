@@ -1,0 +1,430 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3commonst1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3CommonsT1
+
+    spec:
+      # Basic metadata
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="gen3-commons"
+
+      # Network Configuration
+      vpcCidr: string | default="10.0.0.0/16"
+      publicSubnets: "[]object"   # [{name, cidrBlock, availabilityZone}]
+      privateSubnets: "[]object"  # [{name, cidrBlock, availabilityZone}]
+      dbSubnets: "[]object"       # [{name, cidrBlock, availabilityZone}]
+      natStrategy: string | default="shared"
+
+      # KMS Configuration
+      enableKmsKeyRotation: boolean | default=true
+
+      # IAM Configuration - EKS
+      createEKSClusterRole: boolean | default=true
+      createEKSNodeRole: boolean | default=true
+
+      # Security Group Rules Enable Flags
+      enableSecurityGroupRules: boolean | default=true
+
+      # S3 Bucket Names
+      loggingBucketName: string | required=true
+      dataBucketName: string | required=true
+      uploadBucketName: string | required=true
+
+      # VPC Endpoints Enable Flags
+      enableVPCEndpoints: boolean | default=true
+
+      # EKS Configuration
+      enableEKS: boolean | default=true
+      eksClusterVersion: string | default="1.28"
+      eksNodeGroupInstanceTypes: "[]string | default=[\"m5.xlarge\"]"
+      eksNodeGroupDesiredSize: integer | default=3
+      eksNodeGroupMinSize: integer | default=1
+      eksNodeGroupMaxSize: integer | default=10
+
+      # Aurora Configuration
+      enableAurora: boolean | default=true
+      auroraEngine: string | default="aurora-postgresql"
+      auroraEngineVersion: string | default="15.4"
+      auroraMasterUsername: string | default="postgres"
+      auroraMasterPasswordSecretRef: string
+      auroraDatabaseName: string | default="gen3"
+      auroraInstanceClass: string | default="db.r6g.large"
+      auroraInstanceCount: integer | default=2
+
+      # ElastiCache Configuration
+      enableElastiCache: boolean | default=true
+      elastiCacheNodeType: string | default="cache.r6g.large"
+      elastiCacheNumCacheNodes: integer | default=2
+      elastiCacheEngine: string | default="redis"
+      elastiCacheEngineVersion: string | default="7.0"
+
+      # OpenSearch Configuration
+      enableOpenSearch: boolean | default=true
+      openSearchEngineVersion: string | default="OpenSearch_2.11"
+      openSearchInstanceType: string | default="r6g.large.search"
+      openSearchInstanceCount: integer | default=3
+      openSearchVolumeSize: integer | default=100
+      openSearchMasterUsername: string | default="admin"
+      openSearchMasterPasswordSecretRef: string
+
+      # EFS Configuration
+      enableEFS: boolean | default=true
+      efsPerformanceMode: string | default="generalPurpose"
+      efsThroughputMode: string | default="bursting"
+
+      # Audit and Compliance Configuration
+      enableCloudWatchLogs: boolean | default=true
+      enableVPCFlowLogs: boolean | default=true
+      enableCloudTrail: boolean | default=true
+      enableSNSAlerts: boolean | default=false
+      cloudTrailS3BucketName: string
+      snsSubscriptionEmail: string
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      # KMS Keys (4 separate keys for different purposes)
+      loggingKeyARN: ${kms.status.?loggingKeyARN.orValue('')}
+      databaseKeyARN: ${kms.status.?databaseKeyARN.orValue('')}
+      searchKeyARN: ${kms.status.?searchKeyARN.orValue('')}
+      platformKeyARN: ${kms.status.?platformKeyARN.orValue('')}
+
+      # Legacy compatibility (platform key)
+      kmsKeyARN: ${kms.status.?platformKeyARN.orValue('')}
+
+      # IAM Roles
+      eksClusterRoleARN: ${eksClusterRole.status.?roleARN.orValue('')}
+      eksNodeRoleARN: ${eksNodeRole.status.?roleARN.orValue('')}
+
+      # Network
+      vpcID: ${network.status.?vpcID.orValue('')}
+      publicSubnetIDs: ${network.status.?publicSubnetIDs.orValue([])}
+      privateSubnetIDs: ${network.status.?privateSubnetIDs.orValue([])}
+      dbSubnetIDs: ${network.status.?dbSubnetIDs.orValue([])}
+
+      # Security Groups
+      albSecurityGroupID: ${security.status.?albSecurityGroupID.orValue('')}
+      eksClusterSecurityGroupID: ${security.status.?eksClusterSecurityGroupID.orValue('')}
+      eksNodeSecurityGroupID: ${security.status.?eksNodeSecurityGroupID.orValue('')}
+      auroraSecurityGroupID: ${security.status.?auroraSecurityGroupID.orValue('')}
+      elastiCacheSecurityGroupID: ${security.status.?elastiCacheSecurityGroupID.orValue('')}
+      openSearchSecurityGroupID: ${security.status.?openSearchSecurityGroupID.orValue('')}
+      efsSecurityGroupID: ${security.status.?efsSecurityGroupID.orValue('')}
+
+      # Storage
+      loggingBucketARN: ${storage.status.?loggingBucketARN.orValue('')}
+      dataBucketARN: ${storage.status.?dataBucketARN.orValue('')}
+      uploadBucketARN: ${storage.status.?uploadBucketARN.orValue('')}
+
+      # EKS
+      eksClusterARN: ${eksCluster.status.?ackResourceMetadata.?arn.orValue('')}
+      eksClusterEndpoint: ${eksCluster.status.?endpoint.orValue('')}
+
+      # Aurora
+      auroraClusterARN: ${aurora.status.?clusterARN.orValue('')}
+      auroraClusterEndpoint: ${aurora.status.?readerEndpoint.orValue('')}
+
+      # ElastiCache
+      elastiCacheClusterARN: ${elastiCache.status.?ackResourceMetadata.?arn.orValue('')}
+      elastiCachePrimaryEndpoint: ${elastiCache.status.?configurationEndpoint.?address.orValue('')}
+
+      # OpenSearch
+      openSearchDomainARN: ${openSearch.status.?ackResourceMetadata.?arn.orValue('')}
+      openSearchDomainEndpoint: ${openSearch.status.?endpoint.orValue('')}
+
+      # EFS
+      efsFileSystemID: ${efs.status.?fileSystemID.orValue('')}
+
+      ready: |
+        ${
+          vpcID != '' &&
+          albSecurityGroupID != '' &&
+          (schema.spec.enableEKS == false || eksClusterARN != '')
+        }
+
+  resources:
+    # ==================== KMS (4 Keys) ====================
+    - id: kms
+      readyWhen:
+        - ${kms.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsKmsT1
+        metadata:
+          name: ${schema.spec.name}-kms
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          enableKeyRotation: ${schema.spec.enableKmsKeyRotation}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+
+    # ==================== Network ====================
+    - id: network
+      readyWhen:
+        - ${network.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsGen3Network
+        metadata:
+          name: ${schema.spec.name}-network
+        spec:
+          name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcCidr: ${schema.spec.vpcCidr}
+        publicSubnets: ${schema.spec.publicSubnets}
+        privateSubnets: ${schema.spec.privateSubnets}
+        dbSubnets: ${schema.spec.dbSubnets}
+        natStrategy: ${schema.spec.natStrategy}
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Security ====================
+    - id: security
+      readyWhen:
+        - ${security.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsGen3Security
+        metadata:
+          name: ${schema.spec.name}-security
+        spec:
+          name: ${schema.spec.name}
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        vpcID: ${network.status.vpcID}
+        vpcCIDR: ${schema.spec.vpcCidr}
+        enableALBRules: ${schema.spec.enableSecurityGroupRules}
+        enableEKSClusterRules: ${schema.spec.enableSecurityGroupRules}
+        enableEKSNodeRules: ${schema.spec.enableSecurityGroupRules}
+        enableAuroraRules: ${schema.spec.enableSecurityGroupRules}
+        enableElastiCacheRules: ${schema.spec.enableSecurityGroupRules}
+        enableOpenSearchRules: ${schema.spec.enableSecurityGroupRules}
+        enableEFSRules: ${schema.spec.enableSecurityGroupRules}
+        enableVPCEndpointsRules: ${schema.spec.enableSecurityGroupRules}
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Endpoints ====================
+    - id: endpoints
+      includeWhen:
+        - ${schema.spec.enableVPCEndpoints}
+      readyWhen:
+        - ${endpoints.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsGen3Endpoints
+        metadata:
+          name: ${schema.spec.name}-endpoints
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${network.status.vpcID}
+          publicRouteTableIDs:
+            - ${network.status.publicRouteTableID}
+          privateRouteTableIDs:
+            - ${network.status.privateRouteTableID}
+          privateSubnetIDs: ${network.status.privateSubnetIDs}
+          vpcEndpointSecurityGroupIDs:
+            - ${security.status.vpcEndpointsSecurityGroupID}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Storage ====================
+    - id: storage
+      readyWhen:
+        - ${storage.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsGen3Storage
+        metadata:
+          name: ${schema.spec.name}-storage
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          kmsKeyARN: ${kms.status.platformKeyARN}
+          loggingBucketName: ${schema.spec.loggingBucketName}
+          dataBucketName: ${schema.spec.dataBucketName}
+          uploadBucketName: ${schema.spec.uploadBucketName}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== EKS Cluster (Direct Deployment) ====================
+    - id: eksCluster
+      includeWhen:
+        - ${schema.spec.enableEKS}
+      readyWhen:
+        - ${eksCluster.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsEKS
+        metadata:
+          name: ${schema.spec.name}-eks
+        spec:
+          name: ${schema.spec.name}-eks
+        namespace: ${schema.spec.namespace}
+        region: ${schema.spec.region}
+        environment: ${schema.spec.environment}
+        project: ${schema.spec.project}
+        clusterVersion: ${schema.spec.eksClusterVersion}
+        clusterRoleARN: ${eksClusterRole.status.roleARN}
+        nodeRoleARN: ${eksNodeRole.status.roleARN}
+        vpcID: ${network.status.vpcID}
+        subnetIDs: |
+          ${
+            network.status.privateSubnetIDs + network.status.publicSubnetIDs
+          }
+        clusterSecurityGroupIDs: "$[ {security.status.eksClusterSecurityGroupID}]"
+        nodeSecurityGroupIDs:
+          - ${security.status.eksNodeSecurityGroupID}
+        nodeGroupInstanceTypes: ${schema.spec.eksNodeGroupInstanceTypes}
+        nodeGroupDesiredSize: ${schema.spec.eksNodeGroupDesiredSize}
+        nodeGroupMinSize: ${schema.spec.eksNodeGroupMinSize}
+        nodeGroupMaxSize: ${schema.spec.eksNodeGroupMaxSize}
+        kmsKeyARN: ${kms.status.platformKeyARN}
+        adoptionPolicy: ${schema.spec.adoptionPolicy}
+        deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Aurora (Direct Deployment) ====================
+    - id: aurora
+      includeWhen:
+        - ${schema.spec.enableAurora}
+      readyWhen:
+        - ${aurora.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsAurora
+        metadata:
+          name: ${schema.spec.name}-aurora
+        spec:
+          name: ${schema.spec.name}-aurora
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          engine: ${schema.spec.auroraEngine}
+          engineVersion: ${schema.spec.auroraEngineVersion}
+          masterUsername: ${schema.spec.auroraMasterUsername}
+          masterUserPasswordSecretRef: ${schema.spec.auroraMasterPasswordSecretRef}
+          databaseName: ${schema.spec.auroraDatabaseName}
+          vpcID: ${network.status.vpcID}
+          subnetIDs: ${network.status.dbSubnetIDs}
+          securityGroupIDs:
+            - ${security.status.auroraSecurityGroupID}
+          instanceClass: ${schema.spec.auroraInstanceClass}
+          instanceCount: ${schema.spec.auroraInstanceCount}
+          kmsKeyARN: ${kms.status.databaseKeyARN}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== ElastiCache (Direct Deployment) ====================
+    - id: elastiCache
+      includeWhen:
+        - ${schema.spec.enableElastiCache}
+      readyWhen:
+        - ${elastiCache.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsElastiCache
+        metadata:
+          name: ${schema.spec.name}-redis
+        spec:
+          name: ${schema.spec.name}-redis
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          engine: ${schema.spec.elastiCacheEngine}
+          engineVersion: ${schema.spec.elastiCacheEngineVersion}
+          nodeType: ${schema.spec.elastiCacheNodeType}
+          numCacheNodes: ${schema.spec.elastiCacheNumCacheNodes}
+          vpcID: ${network.status.vpcID}
+          subnetIDs: ${network.status.privateSubnetIDs}
+          securityGroupIDs:
+            - ${security.status.elastiCacheSecurityGroupID}
+          kmsKeyARN: ${kms.status.searchKeyARN}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== OpenSearch (Direct Deployment) ====================
+    - id: openSearch
+      includeWhen:
+        - ${schema.spec.enableOpenSearch}
+      readyWhen:
+        - ${openSearch.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsOpenSearch
+        metadata:
+          name: ${schema.spec.name}-opensearch
+        spec:
+          name: ${schema.spec.name}-opensearch
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          engineVersion: ${schema.spec.openSearchEngineVersion}
+          vpcID: ${network.status.vpcID}
+          subnetIDs: ${network.status.privateSubnetIDs}
+          securityGroupIDs:
+            - ${security.status.openSearchSecurityGroupID}
+          instanceType: ${schema.spec.openSearchInstanceType}
+          instanceCount: ${schema.spec.openSearchInstanceCount}
+          volumeSize: ${schema.spec.openSearchVolumeSize}
+          kmsKeyARN: ${kms.status.searchKeyARN}
+          masterUserName: ${schema.spec.openSearchMasterUsername}
+          masterUserPasswordSecretRef: ${schema.spec.openSearchMasterPasswordSecretRef}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== EFS (Direct Deployment) ====================
+    - id: efs
+      includeWhen:
+        - ${schema.spec.enableEFS}
+      readyWhen:
+        - ${efs.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsEFS
+        metadata:
+          name: ${schema.spec.name}-efs
+        spec:
+          name: ${schema.spec.name}-efs
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          kmsKeyID: ${kms.status.platformKeyARN}
+          subnetIDs: ${network.status.privateSubnetIDs}
+          securityGroupIDs:
+            - ${security.status.efsSecurityGroupID}
+          performanceMode: ${schema.spec.efsPerformanceMode}
+          throughputMode: ${schema.spec.efsThroughputMode}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}

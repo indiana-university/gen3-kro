@@ -1,0 +1,198 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awskmst1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsKmsT1
+    spec:
+      # Basic metadata
+      name: string
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # KMS Configuration - All keys always enabled
+      enableKeyRotation: boolean | default=true
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="retain"
+
+    status:
+      # Logging/Audit Key - for CloudTrail, VPC Flow Logs, security logs
+      loggingKeyID: "${loggingKey.status.keyID}"
+      loggingKeyARN: "${loggingKey.status.ackResourceMetadata.arn}"
+      loggingKeyState: "${loggingKey.status.keyState}"
+
+      # Database Key - for Aurora, RDS
+      databaseKeyID: "${databaseKey.status.keyID}"
+      databaseKeyARN: "${databaseKey.status.ackResourceMetadata.arn}"
+      databaseKeyState: "${databaseKey.status.keyState}"
+
+      # Search/Index Key - for OpenSearch, ElastiCache
+      searchKeyID: "${searchKey.status.keyID}"
+      searchKeyARN: "${searchKey.status.ackResourceMetadata.arn}"
+      searchKeyState: "${searchKey.status.keyState}"
+
+      # Platform/Cluster Key - for EKS secrets, S3 app buckets, EFS
+      platformKeyID: "${platformKey.status.keyID}"
+      platformKeyARN: "${platformKey.status.ackResourceMetadata.arn}"
+      platformKeyState: "${platformKey.status.keyState}"
+
+      # Legacy compatibility (points to platform key)
+      keyID: "${platformKey.status.keyID}"
+      keyARN: "${platformKey.status.ackResourceMetadata.arn}"
+      # Computed Status
+      ready: |
+        ${
+          loggingKey.status.ackResourceMetadata.arn != '' &&
+          databaseKey.status.ackResourceMetadata.arn != '' &&
+          searchKey.status.ackResourceMetadata.arn != '' &&
+          platformKey.status.ackResourceMetadata.arn != ''
+        }
+
+      message: |
+        ${
+          loggingKey.status.ackResourceMetadata.arn != '' &&
+          databaseKey.status.ackResourceMetadata.arn != '' &&
+          searchKey.status.ackResourceMetadata.arn != '' &&
+          platformKey.status.ackResourceMetadata.arn != ''
+            ? "All 4 KMS keys ready"
+            : "Creating KMS keys..."
+        }
+
+  resources:
+  # ==================== Logging/Audit Key ====================
+  - id: loggingKey
+    readyWhen:
+      - ${loggingKey.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${loggingKey.status.keyID != ""}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Key
+      metadata:
+        name: ${schema.spec.name}-logging-key
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        description: "KMS key for logging and audit data (CloudTrail, VPC Flow Logs, security logs)"
+        keyUsage: "ENCRYPT_DECRYPT"
+        enableKeyRotation: ${schema.spec.enableKeyRotation}
+        tags:
+          - tagKey: Name
+            tagValue: ${schema.spec.name}-logging-key
+          - tagKey: Environment
+            tagValue: ${schema.spec.environment}
+          - tagKey: ManagedBy
+            tagValue: Kro
+          - tagKey: Project
+            tagValue: ${schema.spec.project}
+          - tagKey: KeyPurpose
+            tagValue: logging-audit
+          - tagKey: DataClassification
+            tagValue: security-logs
+
+  # ==================== Database Key ====================
+  - id: databaseKey
+    readyWhen:
+      - ${databaseKey.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${databaseKey.status.keyID != ""}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Key
+      metadata:
+        name: ${schema.spec.name}-database-key
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        description: "KMS key for database encryption (Aurora, RDS)"
+        keyUsage: "ENCRYPT_DECRYPT"
+        enableKeyRotation: ${schema.spec.enableKeyRotation}
+        tags:
+          - tagKey: Name
+            tagValue: ${schema.spec.name}-database-key
+          - tagKey: Environment
+            tagValue: ${schema.spec.environment}
+          - tagKey: ManagedBy
+            tagValue: Kro
+          - tagKey: Project
+            tagValue: ${schema.spec.project}
+          - tagKey: KeyPurpose
+            tagValue: database
+          - tagKey: DataClassification
+            tagValue: application-data
+
+  # ==================== Search/Index Key ====================
+  - id: searchKey
+    readyWhen:
+      - ${searchKey.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${searchKey.status.keyID != ""}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Key
+      metadata:
+        name: ${schema.spec.name}-search-key
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        description: "KMS key for search and indexing services (OpenSearch, ElastiCache)"
+        keyUsage: "ENCRYPT_DECRYPT"
+        enableKeyRotation: ${schema.spec.enableKeyRotation}
+        tags:
+          - tagKey: Name
+            tagValue: ${schema.spec.name}-search-key
+          - tagKey: Environment
+            tagValue: ${schema.spec.environment}
+          - tagKey: ManagedBy
+            tagValue: Kro
+          - tagKey: Project
+            tagValue: ${schema.spec.project}
+          - tagKey: KeyPurpose
+            tagValue: search-index
+          - tagKey: DataClassification
+            tagValue: application-data
+
+  # ==================== Platform/Cluster Key ====================
+  - id: platformKey
+    readyWhen:
+      - ${platformKey.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      - ${platformKey.status.keyID != ""}
+    template:
+      apiVersion: kms.services.k8s.aws/v1alpha1
+      kind: Key
+      metadata:
+        name: ${schema.spec.name}-platform-key
+        namespace: ${schema.spec.namespace}
+        annotations:
+          services.k8s.aws/region: ${schema.spec.region}
+          services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+          services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+      spec:
+        description: "KMS key for platform services (EKS secrets, S3 app buckets, EFS)"
+        keyUsage: "ENCRYPT_DECRYPT"
+        enableKeyRotation: ${schema.spec.enableKeyRotation}
+        tags:
+          - tagKey: Name
+            tagValue: ${schema.spec.name}-platform-key
+          - tagKey: Environment
+            tagValue: ${schema.spec.environment}
+          - tagKey: ManagedBy
+            tagValue: Kro
+          - tagKey: Project
+            tagValue: ${schema.spec.project}
+          - tagKey: KeyPurpose
+            tagValue: platform-cluster
+          - tagKey: DataClassification
+            tagValue: platform-infrastructure

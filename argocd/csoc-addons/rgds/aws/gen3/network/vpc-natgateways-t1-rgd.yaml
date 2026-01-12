@@ -1,0 +1,229 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsvpcnatgatewayst1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsVpcNatGatewaysT1
+
+    spec:
+      # Basic metadata
+      name: "[]string"
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # NAT Gateway Configuration
+      subnetIDs: "[]string"  # Public subnet IDs for NAT placement
+      enable: "[]boolean"     # Enable/disable per NAT gateway
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      # List outputs for reusability
+      natGatewayIDs: |
+        ${
+          [
+            natGateway1.status.?natGatewayID.orValue(''),
+            natGateway2.status.?natGatewayID.orValue(''),
+            natGateway3.status.?natGatewayID.orValue('')
+          ].filter(id, id != '')
+        }
+
+      elasticIPAllocationIDs: |
+        ${
+          [
+            natEIP1.status.?allocationID.orValue(''),
+            natEIP2.status.?allocationID.orValue(''),
+            natEIP3.status.?allocationID.orValue('')
+          ].filter(id, id != '')
+        }
+
+      ready: |
+        ${
+          (has(natGateway1.metadata.name) ? natGateway1.status.?natGatewayID.orValue('') != '' : false) &&
+          (has(natGateway2.metadata.name) ? natGateway2.status.?natGatewayID.orValue('') != '' : false) &&
+          (has(natGateway3.metadata.name) ? natGateway3.status.?natGatewayID.orValue('') != '' : false)
+        }
+
+  resources:
+    # ==================== NAT Gateway 1 ====================
+    - id: natEIP1
+      includeWhen:
+        - ${schema.spec.name.size() > 0}
+        - ${schema.spec.enable.size() > 0 && schema.spec.enable[0]}
+      readyWhen:
+        - ${natEIP1.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${natEIP1.status.?allocationID.orValue('') != ""}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: ElasticIPAddress
+        metadata:
+          name: ${schema.spec.name[0]}-eip
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          tags:
+            - key: Name
+              value: ${schema.spec.name[0]}-eip
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    - id: natGateway1
+      includeWhen:
+        - ${schema.spec.name.size() > 0}
+        - ${schema.spec.enable.size() > 0 && schema.spec.enable[0]}
+      readyWhen:
+        - ${natGateway1.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${natGateway1.status.?natGatewayID.orValue('') != ""}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: NATGateway
+        metadata:
+          name: ${schema.spec.name[0]}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          allocationID: ${natEIP1.status.allocationID}
+          subnetID: ${schema.spec.subnetIDs[0]}
+          tags:
+            - key: Name
+              value: ${schema.spec.name[0]}
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ==================== NAT Gateway 2 ====================
+    - id: natEIP2
+      includeWhen:
+        - ${schema.spec.name.size() > 1}
+        - ${schema.spec.enable.size() > 1 && schema.spec.enable[1]}
+      readyWhen:
+        - ${natEIP2.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${natEIP2.status.?allocationID.orValue('') != ""}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: ElasticIPAddress
+        metadata:
+          name: ${schema.spec.name[1]}-eip
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          tags:
+            - key: Name
+              value: ${schema.spec.name[1]}-eip
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    - id: natGateway2
+      includeWhen:
+        - ${schema.spec.name.size() > 1}
+        - ${schema.spec.enable.size() > 1 && schema.spec.enable[1]}
+      readyWhen:
+        - ${natGateway2.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${natGateway2.status.?natGatewayID.orValue('') != ""}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: NATGateway
+        metadata:
+          name: ${schema.spec.name[1]}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          allocationID: ${natEIP2.status.allocationID}
+          subnetID: ${schema.spec.subnetIDs[1]}
+          tags:
+            - key: Name
+              value: ${schema.spec.name[1]}
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ==================== NAT Gateway 3 ====================
+    - id: natEIP3
+      includeWhen:
+        - ${schema.spec.name.size() > 2}
+        - ${schema.spec.enable.size() > 2 && schema.spec.enable[2]}
+      readyWhen:
+        - ${natEIP3.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${natEIP3.status.?allocationID.orValue('') != ""}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: ElasticIPAddress
+        metadata:
+          name: ${schema.spec.name[2]}-eip
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          tags:
+            - key: Name
+              value: ${schema.spec.name[2]}-eip
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    - id: natGateway3
+      includeWhen:
+        - ${schema.spec.name.size() > 2}
+        - ${schema.spec.enable.size() > 2 && schema.spec.enable[2]}
+      readyWhen:
+        - ${natGateway3.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${natGateway3.status.?natGatewayID.orValue('') != ""}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: NATGateway
+        metadata:
+          name: ${schema.spec.name[2]}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          allocationID: ${natEIP3.status.allocationID}
+          subnetID: ${schema.spec.subnetIDs[2]}
+          tags:
+            - key: Name
+              value: ${schema.spec.name[2]}
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
