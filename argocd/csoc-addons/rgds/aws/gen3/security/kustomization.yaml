@@ -6,6 +6,7 @@ resources:
   - kms-t1-rgd.yaml
   - sg-alb-t1-rgd.yaml
   - sg-aurora-t1-rgd.yaml
+  - sg-basic-conditional-t1-rgd.yaml
   - sg-efs-t1-rgd.yaml
   - sg-eks-cluster-t1-rgd.yaml
   - sg-eks-node-t1-rgd.yaml
