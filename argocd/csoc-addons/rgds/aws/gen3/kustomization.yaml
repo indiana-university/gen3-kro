@@ -6,5 +6,6 @@ resources:
   - gen3-data-storage-t1-rgd.yaml
   - gen3-application-t1-rgd.yaml
   - gen3-audit+compliance-t1-rgd.yaml
-  - data+security
-  - network+security
+  - data
+  - network
+  - security
