@@ -136,9 +136,9 @@ spec:
                   "key": "Project",
                   "value": schema.spec.project
                 }
-              ].concat(
-                schema.spec.additionalTags.size() > 0 ? 
-                schema.spec.additionalTags.map(k, {"key": k, "value": schema.spec.additionalTags[k]}) : 
+              ] + (
+                schema.spec.additionalTags.size() > 0 ?
+                schema.spec.additionalTags.map(k, {"key": k, "value": schema.spec.additionalTags[k]}) :
                 []
               )
             }
