@@ -1,0 +1,2 @@
+clusters:
+  workload-cluster1: "012345678910" # AWS account for workload cluster 1

@@ -1,0 +1,114 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awssecurityt1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsSecurityT1
+    spec:
+      # Basic metadata
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # KMS Configuration
+      kmsKeyDescription: string | default="Gen3 encryption key"
+      kmsKeyAlias: string | default="gen3-key"
+
+      # # Security Group Configuration (commented out for future use)
+      # vpcID: string
+      # securityGroupName: string
+      # securityGroupDescription: string
+      # ingressRules: "[]object"
+      # egressRules: "[]object"
+
+      # # WAF Configuration (commented out for future use)
+      # albARN: string
+      # enableWafRateLimit: boolean | default=true
+      # wafRateLimitRequests: integer | default=2000
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      kmsKeyID: "${kmsKey.status.?kmsKeyID.orValue('')}"
+      kmsKeyARN: "${kmsKey.status.?kmsKeyARN.orValue('')}"
+      # securityGroupID: "${securityGroup.status.?securityGroupID.orValue('')}"
+      # webACLARN: "${wafALB.status.?webACLARN.orValue('')}"
+      ready: |-
+        ${
+          kmsKey.status.?ready.orValue(false)
+          # && securityGroup.status.?ready.orValue(false)
+          # && wafALB.status.?ready.orValue(false)
+        }
+
+  resources:
+    # ==================== KMS Key ====================
+    - id: kmsKey
+      readyWhen:
+        - ${kmsKey.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsKmsT1
+        metadata:
+          name: ${schema.spec.name}-kms
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-kms
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          keyDescription: ${schema.spec.kmsKeyDescription}
+          keyAlias: ${schema.spec.kmsKeyAlias}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Security Group (Commented Out) ====================
+    # - id: securityGroup
+    #   readyWhen:
+    #     - ${securityGroup.status.?ready.orValue(false)}
+    #   template:
+    #     apiVersion: kro.run/v1alpha1
+    #     kind: AwsSgFlexibleT1
+    #     metadata:
+    #       name: ${schema.spec.name}-sg
+    #       namespace: ${schema.spec.namespace}
+    #     spec:
+    #       name: ${schema.spec.securityGroupName}
+    #       description: ${schema.spec.securityGroupDescription}
+    #       namespace: ${schema.spec.namespace}
+    #       region: ${schema.spec.region}
+    #       environment: ${schema.spec.environment}
+    #       project: ${schema.spec.project}
+    #       vpcID: ${schema.spec.vpcID}
+    #       ingressRules: ${schema.spec.ingressRules}
+    #       egressRules: ${schema.spec.egressRules}
+    #       adoptionPolicy: ${schema.spec.adoptionPolicy}
+    #       deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== WAF for ALB (Commented Out) ====================
+    # - id: wafALB
+    #   readyWhen:
+    #     - ${wafALB.status.?ready.orValue(false)}
+    #   template:
+    #     apiVersion: kro.run/v1alpha1
+    #     kind: AwsWafAlbT1
+    #     metadata:
+    #       name: ${schema.spec.name}-waf
+    #       namespace: ${schema.spec.namespace}
+    #     spec:
+    #       name: ${schema.spec.name}-waf
+    #       namespace: ${schema.spec.namespace}
+    #       region: ${schema.spec.region}
+    #       environment: ${schema.spec.environment}
+    #       project: ${schema.spec.project}
+    #       albARN: ${schema.spec.albARN}
+    #       enableRateLimit: ${schema.spec.enableWafRateLimit}
+    #       rateLimitRequests: ${schema.spec.wafRateLimitRequests}
+    #       adoptionPolicy: ${schema.spec.adoptionPolicy}
+    #       deletionPolicy: ${schema.spec.deletionPolicy}

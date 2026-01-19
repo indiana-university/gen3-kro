@@ -16,4 +16,3 @@ config:
   dynamicControllerDefaultQueueMaxRetries: 600 # 300 × 3s = 30 minutes buffer. increased to enable longer-running operations. like creating a database. Prevent premature timeouts.
   dynamicControllerConcurrentReconciles: 3 # Increase if you have many independent long-reconciling resources for concurrency.
   resourceGraphDefinitionConcurrentReconciles: 2 # < 50 rgds. Increase if you have many rgds.
-
