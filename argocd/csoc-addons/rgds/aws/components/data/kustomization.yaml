@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - aurora-t1-rgd.yaml
+  - efs-t1-rgd.yaml
+  - eks-t1-rgd.yaml
+  - elasticache-t1-rgd.yaml
+  - opensearch-t1-rgd.yaml
+  - s3-storage-t1-rgd.yaml

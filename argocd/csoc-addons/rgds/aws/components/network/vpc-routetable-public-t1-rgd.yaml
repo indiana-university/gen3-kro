@@ -1,0 +1,77 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsvpcpublicroutetablet1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsVpcPublicRouteTableT1
+
+    types:
+      Route:
+        destinationCIDRBlock: string
+        gatewayID: string
+        natGatewayID: string
+
+    spec:
+      # Basic metadata
+      name: string
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # VPC Configuration
+      vpcID: string | required=true
+      internetGatewayID: string | required=true
+      routes: "[]Route"
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      PublicRouteTableID: "${publicRouteTable.status.?routeTableID.orValue('')}"
+
+      ready: |
+        ${
+          publicRouteTable.status.?routeTableID.orValue('') != '' &&
+          publicRouteTable.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")
+        }
+
+  resources:
+    # ==================== DB Route Table (Isolated) ====================
+    - id: publicRouteTable
+      readyWhen:
+        - ${publicRouteTable.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${publicRouteTable.status.routeTableID != ""}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: RouteTable
+        metadata:
+          name: ${schema.spec.name}-public-rt
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcID: ${schema.spec.vpcID}
+          routes: |-
+            ${
+              [
+                {
+                  "destinationCIDRBlock": "0.0.0.0/0",
+                  "gatewayID": schema.spec.internetGatewayID
+                }
+              ].concat(schema.spec.routes)
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-public-rt
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}

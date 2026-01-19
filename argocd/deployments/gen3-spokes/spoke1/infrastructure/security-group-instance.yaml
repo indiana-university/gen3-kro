@@ -1,0 +1,23 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsSgFlexibleT1
+metadata:
+  name: spoke1-network-default-sg
+  namespace: spoke1
+spec:
+  name: spoke1-network-default-sg
+  description: Default security group for spoke1 network
+  namespace: spoke1
+  region: us-east-1
+  environment: dev
+  project: Gen3-KRO
+  vpcID: vpc-0b73bb9f1efef438f
+  ingressRules: []
+  egressRules:
+    - ipProtocol: "-1"
+      fromPort: 0
+      toPort: 0
+      cidrIP: "0.0.0.0/0"
+      description: "Allow all outbound"
+  additionalTags: {}
+  adoptionPolicy: "adopt-or-create"
+  deletionPolicy: "delete"

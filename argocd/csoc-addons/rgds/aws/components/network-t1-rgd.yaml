@@ -1,0 +1,294 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsnetworkt1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsNetworkT1
+    spec:
+      # Basic metadata
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # VPC Configuration
+      vpcCIDR: string | required=true
+
+      # Subnet CIDRs
+      publicSubnetCIDRs: "[]string | required=true"
+      privateSubnetCIDRs: "[]string | required=true"
+      dbSubnetCIDRs: "[]string | required=true"
+
+      # Availability Zones
+      availabilityZones: "[]string | required=true"
+
+      # NAT Gateway configuration
+      natGatewayCount: integer | default=3 minimum=1 maximum=3
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+      # Tags
+      additionalTags: "map[string]string"
+
+    status:
+      vpcID: "${vpcCore.status.?vpcID.orValue('')}"
+      publicSubnetIDs: "${publicSubnets.status.?subnetIDs.orValue([])}"
+      privateSubnetIDs: "${privateSubnets.status.?subnetIDs.orValue([])}"
+      dbSubnetIDs: "${dbSubnets.status.?subnetIDs.orValue([])}"
+      publicRouteTableID: "${publicRouteTable.status.?PublicRouteTableID.orValue('')}"
+      privateRouteTableIDs: "${privateRouteTables.status.?routeTableIDs.orValue([])}"
+      dbRouteTableID: "${dbRouteTable.status.?routeTableID.orValue('')}"
+      natGatewayIDs: "${natGateways.status.?natGatewayIDs.orValue([])}"
+      elasticIPAllocationIDs: "${natGateways.status.?elasticIPAllocationIDs.orValue([])}"
+      ready: |-
+        ${
+          vpcCore.status.?vpcID.orValue('false') &&
+          publicSubnets.status.?ready.orValue(false) &&
+          privateSubnets.status.?ready.orValue(false) &&
+          dbSubnets.status.?ready.orValue(false) &&
+          publicRouteTable.status.?ready.orValue(false) &&
+          natGateways.status.?ready.orValue(false) &&
+          privateRouteTables.status.?ready.orValue(false) &&
+          dbRouteTable.status.?ready.orValue(false)
+        }
+
+  resources:
+    # ==================== VPC Core ====================
+    - id: vpcCore
+      readyWhen:
+        - ${vpcCore.status.?vpcID.orValue('') != ''}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcCoreT1
+        metadata:
+          name: ${schema.spec.name}-vpc
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcCidr: ${schema.spec.vpcCIDR}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Public Subnets ====================
+    - id: publicSubnets
+      readyWhen:
+        - ${publicSubnets.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcSubnetsPublicT1
+        metadata:
+          name: ${schema.spec.name}-public-subnets
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: |-
+            ${
+              schema.spec.publicSubnetCIDRs.size() == 3 ?
+                [schema.spec.name + "-public-1", schema.spec.name + "-public-2", schema.spec.name + "-public-3"] :
+              schema.spec.publicSubnetCIDRs.size() == 2 ?
+                [schema.spec.name + "-public-1", schema.spec.name + "-public-2"] :
+                [schema.spec.name + "-public-1"]
+            }
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          cidrBlocks: ${schema.spec.publicSubnetCIDRs}
+          availabilityZones: ${schema.spec.availabilityZones}
+          routeTableIDs: |-
+            ${
+              {
+                "0": publicRouteTable.status.?PublicRouteTableID.orValue('')
+              }
+            }
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Private Subnets ====================
+    - id: privateSubnets
+      readyWhen:
+        - ${privateSubnets.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcSubnetsPrivateT1
+        metadata:
+          name: ${schema.spec.name}-private-subnets
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: |-
+            ${
+              schema.spec.privateSubnetCIDRs.size() == 3 ?
+                [schema.spec.name + "-private-1", schema.spec.name + "-private-2", schema.spec.name + "-private-3"] :
+              schema.spec.privateSubnetCIDRs.size() == 2 ?
+                [schema.spec.name + "-private-1", schema.spec.name + "-private-2"] :
+                [schema.spec.name + "-private-1"]
+            }
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          cidrBlocks: ${schema.spec.privateSubnetCIDRs}
+          availabilityZones: ${schema.spec.availabilityZones}
+          routeTableIDs: |-
+            ${
+              {
+                "0": privateRouteTables.status.?routeTableIDs.orValue([]).size() > 0 ? privateRouteTables.status.?routeTableIDs.orValue([])[0] : "",
+                "1": privateRouteTables.status.?routeTableIDs.orValue([]).size() > 1 ? privateRouteTables.status.?routeTableIDs.orValue([])[1] : (privateRouteTables.status.?routeTableIDs.orValue([]).size() > 0 ? privateRouteTables.status.?routeTableIDs.orValue([])[0] : ""),
+                "2": privateRouteTables.status.?routeTableIDs.orValue([]).size() > 2 ? privateRouteTables.status.?routeTableIDs.orValue([])[2] : (privateRouteTables.status.?routeTableIDs.orValue([]).size() > 0 ? privateRouteTables.status.?routeTableIDs.orValue([])[0] : "")
+              }
+            }
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== DB Subnets ====================
+    - id: dbSubnets
+      readyWhen:
+        - ${dbSubnets.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcSubnetsDbT1
+        metadata:
+          name: ${schema.spec.name}-db-subnets
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: |-
+            ${
+              schema.spec.dbSubnetCIDRs.size() == 3 ?
+                [schema.spec.name + "-db-1", schema.spec.name + "-db-2", schema.spec.name + "-db-3"] :
+              schema.spec.dbSubnetCIDRs.size() == 2 ?
+                [schema.spec.name + "-db-1", schema.spec.name + "-db-2"] :
+                [schema.spec.name + "-db-1"]
+            }
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          cidrBlocks: ${schema.spec.dbSubnetCIDRs}
+          availabilityZones: ${schema.spec.availabilityZones}
+          routeTableIDs: |-
+            ${
+              {
+                "0": dbRouteTable.status.?routeTableID.orValue('')
+              }
+            }
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Public Route Table ====================
+    - id: publicRouteTable
+      readyWhen:
+        - ${publicRouteTable.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcPublicRouteTableT1
+        metadata:
+          name: ${schema.spec.name}-public-rt
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-public-rt
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          internetGatewayID: ${vpcCore.status.internetGatewayID}
+          routes: []
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== NAT Gateways ====================
+    - id: natGateways
+      readyWhen:
+        - ${natGateways.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcNatGatewaysT1
+        metadata:
+          name: ${schema.spec.name}-nat-gws
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: |-
+            ${
+              schema.spec.natGatewayCount == 3 ?
+                [schema.spec.name + "-nat-gw-1", schema.spec.name + "-nat-gw-2", schema.spec.name + "-nat-gw-3"] :
+              schema.spec.natGatewayCount == 2 ?
+                [schema.spec.name + "-nat-gw-1", schema.spec.name + "-nat-gw-2"] :
+                [schema.spec.name + "-nat-gw-1"]
+            }
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          publicSubnetIDs: ${publicSubnets.status.subnetIDs}
+          natGatewayCount: ${schema.spec.natGatewayCount}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Private Route Tables ====================
+    - id: privateRouteTables
+      readyWhen:
+        - ${privateRouteTables.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsPrivateRouteTablesT1
+        metadata:
+          name: ${schema.spec.name}-private-rts
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: |-
+            ${
+              schema.spec.privateSubnetCIDRs.size() == 3 ?
+                [schema.spec.name + "-private-rt-1", schema.spec.name + "-private-rt-2", schema.spec.name + "-private-rt-3"] :
+              schema.spec.privateSubnetCIDRs.size() == 2 ?
+                [schema.spec.name + "-private-rt-1", schema.spec.name + "-private-rt-2"] :
+                [schema.spec.name + "-private-rt-1"]
+            }
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          natGatewayIDs: |-
+            ${
+              {
+                "0": natGateways.status.?natGatewayIDs.orValue([]).size() > 0 ? natGateways.status.?natGatewayIDs.orValue([])[0] : "",
+                "1": natGateways.status.?natGatewayIDs.orValue([]).size() > 1 ? natGateways.status.?natGatewayIDs.orValue([])[1] : (natGateways.status.?natGatewayIDs.orValue([]).size() > 0 ? natGateways.status.?natGatewayIDs.orValue([])[0] : ""),
+                "2": natGateways.status.?natGatewayIDs.orValue([]).size() > 2 ? natGateways.status.?natGatewayIDs.orValue([])[2] : (natGateways.status.?natGatewayIDs.orValue([]).size() > 0 ? natGateways.status.?natGatewayIDs.orValue([])[0] : "")
+              }
+            }
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== DB Route Table ====================
+    - id: dbRouteTable
+      readyWhen:
+        - ${dbRouteTable.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsVpcDbRouteTableT1
+        metadata:
+          name: ${schema.spec.name}-db-rt
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-db-rt
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${vpcCore.status.vpcID}
+          routes: []
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+

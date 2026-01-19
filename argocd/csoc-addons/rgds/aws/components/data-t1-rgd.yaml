@@ -1,0 +1,256 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsdatat1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsDataT1
+    spec:
+      # Basic metadata
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # Network Configuration (shared across data resources)
+      vpcID: string
+      subnetIDs: "[]string"
+      dbSubnetIDs: "[]string"
+      securityGroupIDs: "[]string"
+
+      # KMS Encryption
+      kmsKeyARN: string | default=""
+
+      # Aurora Configuration
+      enableAurora: boolean | default=false
+      auroraEngine: string | default="aurora-postgresql"
+      auroraEngineVersion: string | default="15.4"
+      auroraMasterUsername: string | default="postgres"
+      auroraMasterUserPasswordSecretRef: string
+      auroraDatabaseName: string | default="app"
+      auroraInstanceClass: string | default="db.r6g.large"
+      auroraInstanceCount: integer | default=2
+
+      # EKS Configuration
+      enableEKS: boolean | default=false
+      eksVersion: string | default="1.28"
+      eksNodeInstanceTypes: "[]string | default=[\"t3.large\"]"
+      eksNodeDesiredSize: integer | default=3
+      eksNodeMinSize: integer | default=2
+      eksNodeMaxSize: integer | default=6
+
+      # ElastiCache Configuration
+      enableElastiCache: boolean | default=false
+      elastiCacheEngine: string | default="redis"
+      elastiCacheEngineVersion: string | default="7.0"
+      elastiCacheNodeType: string | default="cache.t3.micro"
+      elastiCacheNumCacheNodes: integer | default=2
+
+      # OpenSearch Configuration
+      enableOpenSearch: boolean | default=false
+      openSearchVersion: string | default="2.11"
+      openSearchInstanceType: string | default="t3.small.search"
+      openSearchInstanceCount: integer | default=3
+
+      # EFS Configuration
+      enableEFS: boolean | default=false
+      efsPerformanceMode: string | default="generalPurpose"
+      efsThroughputMode: string | default="bursting"
+
+      # S3 Configuration
+      enableS3: boolean | default=false
+      s3BucketNames: "[]string | default=[]"
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      auroraClusterARN: "${aurora.status.?clusterARN.orValue('')}"
+      auroraEndpoint: "${aurora.status.?endpoint.orValue('')}"
+      eksClusterARN: "${eks.status.?clusterARN.orValue('')}"
+      eksEndpoint: "${eks.status.?endpoint.orValue('')}"
+      elastiCacheClusterARN: "${elastiCache.status.?clusterARN.orValue('')}"
+      openSearchDomainARN: "${openSearch.status.?domainARN.orValue('')}"
+      efsFileSystemID: "${efs.status.?fileSystemID.orValue('')}"
+      s3BucketARNs: "${s3Storage.status.?bucketARNs.orValue([])}"
+      ready: |-
+        ${
+          (!schema.spec.enableAurora || aurora.status.?ready.orValue(false)) &&
+          (!schema.spec.enableEKS || eks.status.?ready.orValue(false)) &&
+          (!schema.spec.enableElastiCache || elastiCache.status.?ready.orValue(false)) &&
+          (!schema.spec.enableOpenSearch || openSearch.status.?ready.orValue(false)) &&
+          (!schema.spec.enableEFS || efs.status.?ready.orValue(false)) &&
+          (!schema.spec.enableS3 || s3Storage.status.?ready.orValue(false))
+        }
+
+  resources:
+    # ==================== Aurora ====================
+    - id: aurora
+      includeWhen:
+        - ${schema.spec.enableAurora}
+      readyWhen:
+        - ${aurora.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsAuroraT1
+        metadata:
+          name: ${schema.spec.name}-aurora
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-aurora
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          engine: ${schema.spec.auroraEngine}
+          engineVersion: ${schema.spec.auroraEngineVersion}
+          masterUsername: ${schema.spec.auroraMasterUsername}
+          masterUserPasswordSecretRef: ${schema.spec.auroraMasterUserPasswordSecretRef}
+          databaseName: ${schema.spec.auroraDatabaseName}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.dbSubnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          instanceClass: ${schema.spec.auroraInstanceClass}
+          instanceCount: ${schema.spec.auroraInstanceCount}
+          kmsKeyARN: ${schema.spec.kmsKeyARN}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== EKS ====================
+    - id: eks
+      includeWhen:
+        - ${schema.spec.enableEKS}
+      readyWhen:
+        - ${eks.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsEksT1
+        metadata:
+          name: ${schema.spec.name}-eks
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-eks
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          version: ${schema.spec.eksVersion}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          kmsKeyARN: ${schema.spec.kmsKeyARN}
+          nodeInstanceTypes: ${schema.spec.eksNodeInstanceTypes}
+          nodeDesiredSize: ${schema.spec.eksNodeDesiredSize}
+          nodeMinSize: ${schema.spec.eksNodeMinSize}
+          nodeMaxSize: ${schema.spec.eksNodeMaxSize}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== ElastiCache ====================
+    - id: elastiCache
+      includeWhen:
+        - ${schema.spec.enableElastiCache}
+      readyWhen:
+        - ${elastiCache.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsElastiCacheT1
+        metadata:
+          name: ${schema.spec.name}-elasticache
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-elasticache
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          engine: ${schema.spec.elastiCacheEngine}
+          engineVersion: ${schema.spec.elastiCacheEngineVersion}
+          nodeType: ${schema.spec.elastiCacheNodeType}
+          numCacheNodes: ${schema.spec.elastiCacheNumCacheNodes}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== OpenSearch ====================
+    - id: openSearch
+      includeWhen:
+        - ${schema.spec.enableOpenSearch}
+      readyWhen:
+        - ${openSearch.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsOpenSearchT1
+        metadata:
+          name: ${schema.spec.name}-opensearch
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-opensearch
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          version: ${schema.spec.openSearchVersion}
+          instanceType: ${schema.spec.openSearchInstanceType}
+          instanceCount: ${schema.spec.openSearchInstanceCount}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          kmsKeyARN: ${schema.spec.kmsKeyARN}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== EFS ====================
+    - id: efs
+      includeWhen:
+        - ${schema.spec.enableEFS}
+      readyWhen:
+        - ${efs.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsEfsT1
+        metadata:
+          name: ${schema.spec.name}-efs
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-efs
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          performanceMode: ${schema.spec.efsPerformanceMode}
+          throughputMode: ${schema.spec.efsThroughputMode}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          kmsKeyARN: ${schema.spec.kmsKeyARN}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== S3 Storage ====================
+    - id: s3Storage
+      includeWhen:
+        - ${schema.spec.enableS3}
+      readyWhen:
+        - ${s3Storage.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsS3StorageT1
+        metadata:
+          name: ${schema.spec.name}-s3
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-s3
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          bucketNames: ${schema.spec.s3BucketNames}
+          kmsKeyARN: ${schema.spec.kmsKeyARN}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
