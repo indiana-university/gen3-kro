@@ -1,0 +1,29 @@
+apiVersion: ec2.services.k8s.aws/v1alpha1
+kind: SecurityGroup
+metadata:
+  name: test-gen3-elasticache-sg
+  namespace: spoke1
+  annotations:
+    services.k8s.aws/region: us-east-1
+    services.k8s.aws/adoption-policy: adopt-or-create
+    services.k8s.aws/deletion-policy: delete
+spec:
+  name: test-gen3-elasticache-sg
+  description: Security group for ElastiCache Redis cluster
+  vpcID: vpc-099f7f9618636c63e
+  ingressRules:
+    - ipProtocol: tcp
+      fromPort: 6379
+      toPort: 6379
+      ipRanges:
+        - cidrIP: 10.100.0.0/16
+          description: Allow Redis access from VPC
+  tags:
+    - key: Name
+      value: test-gen3-elasticache-sg
+    - key: Environment
+      value: dev
+    - key: ManagedBy
+      value: ACK
+    - key: Project
+      value: kro-test

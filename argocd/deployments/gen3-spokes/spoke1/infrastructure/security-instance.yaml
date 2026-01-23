@@ -1,0 +1,20 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsSecurityT1
+metadata:
+  name: spoke1-security
+  namespace: spoke1
+spec:
+  # Basic metadata
+  name: spoke1-security
+  namespace: spoke1
+  region: us-east-1
+  environment: dev
+  project: Gen3-KRO
+
+  # KMS Configuration
+  kmsKeyDescription: "Gen3 spoke1 encryption key"
+  kmsKeyAlias: "gen3-spoke1-key"
+
+  # Resource management policies
+  adoptionPolicy: "adopt-or-create"
+  deletionPolicy: "delete"

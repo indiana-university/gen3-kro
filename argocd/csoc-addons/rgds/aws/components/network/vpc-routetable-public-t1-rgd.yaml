@@ -24,7 +24,7 @@ spec:
       # VPC Configuration
       vpcID: string | required=true
       internetGatewayID: string | required=true
-      routes: "[]Route"
+      routes: "[]Route | default=[]"
 
       # Resource management
       adoptionPolicy: string | default="adopt-or-create"
@@ -57,15 +57,9 @@ spec:
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
           vpcID: ${schema.spec.vpcID}
-          routes: |-
-            ${
-              [
-                {
-                  "destinationCIDRBlock": "0.0.0.0/0",
-                  "gatewayID": schema.spec.internetGatewayID
-                }
-              ].concat(schema.spec.routes)
-            }
+          routes:
+            - destinationCIDRBlock: "0.0.0.0/0"
+              gatewayID: ${schema.spec.internetGatewayID}
           tags:
             - key: Name
               value: ${schema.spec.name}-public-rt

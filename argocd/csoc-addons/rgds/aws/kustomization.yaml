@@ -4,3 +4,4 @@ kind: Kustomization
 resources:
   - components
   - gen3-t1-rgd.yaml
+  - gen3-t2-rgd.yaml

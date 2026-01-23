@@ -36,7 +36,6 @@ spec:
 
       # ==================== Data Configuration ====================
       # Aurora Configuration
-      enableAurora: boolean | default=false
       auroraEngine: string | default="aurora-postgresql"
       auroraEngineVersion: string | default="15.4"
       auroraMasterUsername: string | default="postgres"
@@ -46,7 +45,6 @@ spec:
       auroraInstanceCount: integer | default=2
 
       # EKS Configuration
-      enableEKS: boolean | default=false
       eksVersion: string | default="1.28"
       eksNodeInstanceTypes: "[]string | default=[\"t3.large\"]"
       eksNodeDesiredSize: integer | default=3
@@ -54,26 +52,24 @@ spec:
       eksNodeMaxSize: integer | default=6
 
       # ElastiCache Configuration
-      enableElastiCache: boolean | default=false
       elastiCacheEngine: string | default="redis"
       elastiCacheEngineVersion: string | default="7.0"
       elastiCacheNodeType: string | default="cache.t3.micro"
       elastiCacheNumCacheNodes: integer | default=2
 
       # OpenSearch Configuration
-      enableOpenSearch: boolean | default=false
       openSearchVersion: string | default="2.11"
       openSearchInstanceType: string | default="t3.small.search"
       openSearchInstanceCount: integer | default=3
 
       # EFS Configuration
-      enableEFS: boolean | default=false
       efsPerformanceMode: string | default="generalPurpose"
       efsThroughputMode: string | default="bursting"
 
       # S3 Configuration
-      enableS3: boolean | default=false
-      s3BucketNames: "[]string | default=[]"
+      loggingBucketName: string
+      dataBucketName: string
+      uploadBucketName: string
 
       # ==================== Resource Management ====================
       adoptionPolicy: string | default="adopt-or-create"
@@ -101,19 +97,24 @@ spec:
       # Data Status
       auroraClusterARN: "${data.status.?auroraClusterARN.orValue('')}"
       auroraEndpoint: "${data.status.?auroraEndpoint.orValue('')}"
-      eksClusterARN: "${data.status.?eksClusterARN.orValue('')}"
-      eksEndpoint: "${data.status.?eksEndpoint.orValue('')}"
-      elastiCacheClusterARN: "${data.status.?elastiCacheClusterARN.orValue('')}"
-      openSearchDomainARN: "${data.status.?openSearchDomainARN.orValue('')}"
       efsFileSystemID: "${data.status.?efsFileSystemID.orValue('')}"
-      s3BucketARNs: "${data.status.?s3BucketARNs.orValue([])}"
+      loggingBucketARN: "${data.status.?loggingBucketARN.orValue('')}"
+      dataBucketARN: "${data.status.?dataBucketARN.orValue('')}"
+      uploadBucketARN: "${data.status.?uploadBucketARN.orValue('')}"
+
+      # Compute Status
+      eksClusterARN: "${compute.status.?eksClusterARN.orValue('')}"
+      eksEndpoint: "${compute.status.?eksEndpoint.orValue('')}"
+      elastiCacheClusterARN: "${compute.status.?elastiCacheClusterARN.orValue('')}"
+      openSearchDomainARN: "${compute.status.?openSearchDomainARN.orValue('')}"
 
       # Overall Ready Status
       ready: |-
         ${
           network.status.?ready.orValue(false) &&
           security.status.?ready.orValue(false) &&
-          data.status.?ready.orValue(false)
+          data.status.?ready.orValue(false) &&
+          compute.status.?ready.orValue(false)
         }
 
   resources:
@@ -184,7 +185,6 @@ spec:
           dbSubnetIDs: ${network.status.dbSubnetIDs}
           securityGroupIDs: []
           kmsKeyARN: ${security.status.kmsKeyARN}
-          enableAurora: ${schema.spec.enableAurora}
           auroraEngine: ${schema.spec.auroraEngine}
           auroraEngineVersion: ${schema.spec.auroraEngineVersion}
           auroraMasterUsername: ${schema.spec.auroraMasterUsername}
@@ -192,25 +192,45 @@ spec:
           auroraDatabaseName: ${schema.spec.auroraDatabaseName}
           auroraInstanceClass: ${schema.spec.auroraInstanceClass}
           auroraInstanceCount: ${schema.spec.auroraInstanceCount}
-          enableEKS: ${schema.spec.enableEKS}
+          efsPerformanceMode: ${schema.spec.efsPerformanceMode}
+          efsThroughputMode: ${schema.spec.efsThroughputMode}
+          loggingBucketName: ${schema.spec.loggingBucketName}
+          dataBucketName: ${schema.spec.dataBucketName}
+          uploadBucketName: ${schema.spec.uploadBucketName}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== Compute Infrastructure ====================
+    - id: compute
+      readyWhen:
+        - ${compute.status.?ready.orValue(false)}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsComputeT1
+        metadata:
+          name: ${schema.spec.name}-compute
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          vpcID: ${network.status.vpcID}
+          subnetIDs: ${network.status.privateSubnetIDs}
+          securityGroupIDs: []
+          kmsKeyARN: ${security.status.kmsKeyARN}
           eksVersion: ${schema.spec.eksVersion}
           eksNodeInstanceTypes: ${schema.spec.eksNodeInstanceTypes}
           eksNodeDesiredSize: ${schema.spec.eksNodeDesiredSize}
           eksNodeMinSize: ${schema.spec.eksNodeMinSize}
           eksNodeMaxSize: ${schema.spec.eksNodeMaxSize}
-          enableElastiCache: ${schema.spec.enableElastiCache}
           elastiCacheEngine: ${schema.spec.elastiCacheEngine}
           elastiCacheEngineVersion: ${schema.spec.elastiCacheEngineVersion}
           elastiCacheNodeType: ${schema.spec.elastiCacheNodeType}
           elastiCacheNumCacheNodes: ${schema.spec.elastiCacheNumCacheNodes}
-          enableOpenSearch: ${schema.spec.enableOpenSearch}
           openSearchVersion: ${schema.spec.openSearchVersion}
           openSearchInstanceType: ${schema.spec.openSearchInstanceType}
           openSearchInstanceCount: ${schema.spec.openSearchInstanceCount}
-          enableEFS: ${schema.spec.enableEFS}
-          efsPerformanceMode: ${schema.spec.efsPerformanceMode}
-          efsThroughputMode: ${schema.spec.efsThroughputMode}
-          enableS3: ${schema.spec.enableS3}
-          s3BucketNames: ${schema.spec.s3BucketNames}
           adoptionPolicy: ${schema.spec.adoptionPolicy}
           deletionPolicy: ${schema.spec.deletionPolicy}

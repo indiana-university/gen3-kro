@@ -1,0 +1,40 @@
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBCluster
+metadata:
+  name: test-gen3-aurora
+  namespace: spoke1
+  annotations:
+    services.k8s.aws/region: us-east-1
+    services.k8s.aws/adoption-policy: adopt-or-create
+    services.k8s.aws/deletion-policy: delete
+spec:
+  dbClusterIdentifier: test-gen3-aurora
+  engine: aurora-postgresql
+  engineMode: provisioned
+  engineVersion: "14.19"
+  masterUsername: postgres
+  masterUserPassword:
+    namespace: spoke1
+    name: test-gen3-aurora-password
+    key: password
+  databaseName: app
+  dbSubnetGroupName: test-gen3-aurora-subnet-group
+  vpcSecurityGroupIDs:
+    - sg-0de6d999af17d140b
+  storageEncrypted: true
+  kmsKeyID: arn:aws:kms:us-east-1:859011005590:key/b294f7a9-f82c-4424-bb4f-14c4427094ae
+  backupRetentionPeriod: 7
+  preferredBackupWindow: "03:00-04:00"
+  preferredMaintenanceWindow: "sun:04:00-sun:05:00"
+  enableCloudwatchLogsExports:
+    - postgresql
+  deletionProtection: false
+  tags:
+    - key: Name
+      value: test-gen3-aurora
+    - key: Environment
+      value: dev
+    - key: ManagedBy
+      value: ACK
+    - key: Project
+      value: kro-test

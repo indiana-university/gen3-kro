@@ -1,0 +1,43 @@
+apiVersion: kro.run/v1alpha1
+kind: AwsComputeT1
+metadata:
+  name: spoke1-compute
+  namespace: spoke1
+spec:
+  # Basic metadata
+  name: spoke1-compute
+  namespace: spoke1
+  region: us-east-1
+  environment: dev
+  project: Gen3-KRO
+
+  # Network Configuration (from network instance)
+  vpcID: ""  # Will be populated from network instance status
+  subnetIDs: []  # Will be populated from network instance status
+  securityGroupIDs: []
+
+  # KMS Encryption (from security instance)
+  kmsKeyARN: ""  # Will be populated from security instance status
+
+  # EKS Configuration
+  eksVersion: "1.28"
+  eksNodeInstanceTypes:
+    - "t3.large"
+  eksNodeDesiredSize: 3
+  eksNodeMinSize: 2
+  eksNodeMaxSize: 6
+
+  # ElastiCache Configuration
+  elastiCacheEngine: "redis"
+  elastiCacheEngineVersion: "7.0"
+  elastiCacheNodeType: "cache.t3.micro"
+  elastiCacheNumCacheNodes: 2
+
+  # OpenSearch Configuration
+  openSearchVersion: "2.11"
+  openSearchInstanceType: "t3.small.search"
+  openSearchInstanceCount: 3
+
+  # Resource management policies
+  adoptionPolicy: "adopt-or-create"
+  deletionPolicy: "delete"

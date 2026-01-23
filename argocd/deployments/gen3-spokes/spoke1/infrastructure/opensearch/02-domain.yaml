@@ -1,0 +1,55 @@
+apiVersion: opensearchservice.services.k8s.aws/v1alpha1
+kind: Domain
+metadata:
+  name: test-gen3-opensearch
+  namespace: spoke1
+  annotations:
+    services.k8s.aws/region: us-east-1
+    services.k8s.aws/adoption-policy: adopt-or-create
+    services.k8s.aws/deletion-policy: delete
+spec:
+  name: test-gen3-opensearch
+  engineVersion: "OpenSearch_2.11"
+  clusterConfig:
+    instanceType: t3.small.search
+    instanceCount: 3
+    dedicatedMasterEnabled: false
+    zoneAwarenessEnabled: true
+    zoneAwarenessConfig:
+      availabilityZoneCount: 2
+  ebsOptions:
+    ebsEnabled: true
+    volumeSize: 100
+    volumeType: gp3
+  vpcOptions:
+    subnetIDs:
+      - subnet-08c996f8541d5cf07
+      - subnet-0f5760ff2efbff1b7
+    securityGroupIDs:
+      - sg-PLACEHOLDER
+  encryptionAtRestOptions:
+    enabled: true
+    kmsKeyID: arn:aws:kms:us-east-1:859011005590:key/69d29d2d-b8b6-4010-9290-08fcd662f261
+  nodeToNodeEncryptionOptions:
+    enabled: true
+  advancedSecurityOptions:
+    enabled: true
+    internalUserDatabaseEnabled: true
+    masterUserOptions:
+      masterUserName: admin
+      masterUserPassword:
+        namespace: spoke1
+        name: test-gen3-opensearch-password
+        key: password
+  domainEndpointOptions:
+    enforceHTTPS: true
+    tlsSecurityPolicy: "Policy-Min-TLS-1-2-2019-07"
+  tags:
+    - key: Name
+      value: test-gen3-opensearch
+    - key: Environment
+      value: dev
+    - key: ManagedBy
+      value: ACK
+    - key: Project
+      value: kro-test

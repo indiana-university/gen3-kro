@@ -9,7 +9,7 @@ spec:
 
     spec:
       # Basic metadata
-      n ame: string | required=true
+      name: string | required=true
       namespace: string | default="default"
       region: string | default="us-east-1"
       environment: string | default="dev"
@@ -29,9 +29,9 @@ spec:
 
     status:
       # S3 Bucket ARNs
-      loggingBucketARN: ${loggingBucket.status.ackResourceMetadata.arn.orValue('')}
-      dataBucketARN: ${dataBucket.status.ackResourceMetadata.arn.orValue('')}
-      uploadBucketARN: ${uploadBucket.status.ackResourceMetadata.arn.orValue('')}
+      loggingBucketARN: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue('')}
+      dataBucketARN: ${dataBucket.status.?ackResourceMetadata.?arn.orValue('')}
+      uploadBucketARN: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue('')}
 
       ready: |
         ${
@@ -43,8 +43,6 @@ spec:
   resources:
     # ==================== Logging S3 Bucket ====================
     - id: loggingBucket
-      includeWhen:
-        - ${schema.spec.enableLoggingBucket}
       readyWhen:
         - ${loggingBucket.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
         - ${loggingBucket.status.ackResourceMetadata.arn != ""}
@@ -88,8 +86,6 @@ spec:
 
     # ==================== Data S3 Bucket ====================
     - id: dataBucket
-      includeWhen:
-        - ${schema.spec.enableDataBucket}
       readyWhen:
         - ${dataBucket.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
         - ${dataBucket.status.ackResourceMetadata.arn != ""}
@@ -133,8 +129,6 @@ spec:
 
     # ==================== Upload S3 Bucket ====================
     - id: uploadBucket
-      includeWhen:
-        - ${schema.spec.enableUploadBucket}
       readyWhen:
         - ${uploadBucket.status.conditions.exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
         - ${uploadBucket.status.ackResourceMetadata.arn != ""}

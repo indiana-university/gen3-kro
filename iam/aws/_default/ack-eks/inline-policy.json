@@ -2,6 +2,92 @@
   "Version": "2012-10-17",
   "Statement": [
     {
+      "Sid": "EKSClusterManagement",
+      "Effect": "Allow",
+      "Action": [
+        "eks:CreateCluster",
+        "eks:DeleteCluster",
+        "eks:DescribeCluster",
+        "eks:ListClusters",
+        "eks:UpdateClusterConfig",
+        "eks:UpdateClusterVersion",
+        "eks:AssociateEncryptionConfig",
+        "eks:DisassociateIdentityProviderConfig",
+        "eks:AssociateIdentityProviderConfig",
+        "eks:DescribeIdentityProviderConfig",
+        "eks:ListIdentityProviderConfigs",
+        "eks:CreateAccessEntry",
+        "eks:DeleteAccessEntry",
+        "eks:DescribeAccessEntry",
+        "eks:ListAccessEntries",
+        "eks:AssociateAccessPolicy",
+        "eks:DisassociateAccessPolicy",
+        "eks:TagResource",
+        "eks:UntagResource",
+        "eks:ListTagsForResource"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EKSNodeGroupManagement",
+      "Effect": "Allow",
+      "Action": [
+        "eks:CreateNodegroup",
+        "eks:DeleteNodegroup",
+        "eks:DescribeNodegroup",
+        "eks:ListNodegroups",
+        "eks:UpdateNodegroupConfig",
+        "eks:UpdateNodegroupVersion"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EKSAddonManagement",
+      "Effect": "Allow",
+      "Action": [
+        "eks:CreateAddon",
+        "eks:DeleteAddon",
+        "eks:DescribeAddon",
+        "eks:DescribeAddonVersions",
+        "eks:DescribeAddonConfiguration",
+        "eks:ListAddons",
+        "eks:UpdateAddon"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EKSFargateManagement",
+      "Effect": "Allow",
+      "Action": [
+        "eks:CreateFargateProfile",
+        "eks:DeleteFargateProfile",
+        "eks:DescribeFargateProfile",
+        "eks:ListFargateProfiles"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "IAMPassRole",
+      "Effect": "Allow",
+      "Action": [
+        "iam:PassRole",
+        "iam:CreateServiceLinkedRole",
+        "iam:GetRole",
+        "iam:ListAttachedRolePolicies"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "EC2NetworkingRead",
+      "Effect": "Allow",
+      "Action": [
+        "ec2:DescribeSubnets",
+        "ec2:DescribeSecurityGroups",
+        "ec2:DescribeVpcs"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "AmazonEKSClusterPolicy",
       "Effect": "Allow",
       "Action": [
