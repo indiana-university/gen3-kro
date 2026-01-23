@@ -43,7 +43,7 @@ spec:
       auroraInstanceCount: integer | default=2
 
       # EKS Configuration
-      eksVersion: string | default="1.28"
+      eksVersion: string | default="1.32"
       eksNodeInstanceTypes: '[]string | default=["t3.large"]'
       eksNodeDesiredSize: integer | default=3
       eksNodeMinSize: integer | default=2
@@ -62,7 +62,7 @@ spec:
       # OpenSearch Configuration
       openSearchVersion: string | default="2.11"
       openSearchInstanceType: string | default="t3.small.search"
-      openSearchInstanceCount: integer | default=2 | minimum=2
+      openSearchInstanceCount: integer | default=2
       openSearchMasterUsername: string | default="admin"
       openSearchMasterPasswordSecretRef: string | required=true
       openSearchVolumeSize: integer | default=100
@@ -148,6 +148,7 @@ spec:
       readyWhen:
         - ${loggingKey.status.?keyID.orValue('null') != 'null'}
         - ${loggingKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${loggingKey.status.?enabled.orValue(false) == true}
       template:
         apiVersion: kms.services.k8s.aws/v1alpha1
         kind: Key
@@ -179,6 +180,7 @@ spec:
       readyWhen:
         - ${databaseKey.status.?keyID.orValue('null') != 'null'}
         - ${databaseKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${databaseKey.status.?enabled.orValue(false) == true}
       template:
         apiVersion: kms.services.k8s.aws/v1alpha1
         kind: Key
@@ -235,6 +237,7 @@ spec:
       readyWhen:
         - ${searchKey.status.?keyID.orValue('null') != 'null'}
         - ${searchKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${searchKey.status.?enabled.orValue(false) == true}
       template:
         apiVersion: kms.services.k8s.aws/v1alpha1
         kind: Key
@@ -303,6 +306,7 @@ spec:
       readyWhen:
         - ${platformKey.status.?keyID.orValue('null') != 'null'}
         - ${platformKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${platformKey.status.?enabled.orValue(false) == true}
       template:
         apiVersion: kms.services.k8s.aws/v1alpha1
         kind: Key
@@ -1490,6 +1494,44 @@ spec:
               value: Kro
             - key: Project
               value: ${schema.spec.project}
+   # ==================== EKS Node Group ====================
+    - id: eksNodeGroup
+      readyWhen:
+        - ${eksNodeGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksNodeGroup.status.?status.orValue('null') == 'ACTIVE'}
+        - ${eksNodeGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Nodegroup
+        metadata:
+          name: ${schema.spec.name}-nodegroup
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-nodegroup
+          clusterName: ${schema.spec.name}
+          nodeRole: ${nodeRole.status.ackResourceMetadata.arn}
+          subnets:
+            - ${privatesubnet1.status.subnetID}
+            - ${privatesubnet2.status.subnetID}
+          scalingConfig:
+            desiredSize: ${schema.spec.eksNodeDesiredSize}
+            minSize: ${schema.spec.eksNodeMinSize}
+            maxSize: ${schema.spec.eksNodeMaxSize}
+          instanceTypes: ${schema.spec.eksNodeInstanceTypes}
+          diskSize: ${schema.spec.eksNodeDiskSize}
+          amiType: AL2_x86_64
+          capacityType: ON_DEMAND
+          updateConfig:
+            maxUnavailable: 1
+          tags:
+            Name: ${schema.spec.name}-nodegroup
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
 
     # ==================== EKS Cluster ====================
     - id: eksCluster
@@ -1552,45 +1594,6 @@ spec:
                 enabled: true
           tags:
             Name: ${schema.spec.name}
-            Environment: ${schema.spec.environment}
-            ManagedBy: Kro
-            Project: ${schema.spec.project}
-
-    # ==================== EKS Node Group ====================
-    - id: eksNodeGroup
-      readyWhen:
-        - ${eksNodeGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${eksNodeGroup.status.?status.orValue('null') == 'ACTIVE'}
-        - ${eksNodeGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: eks.services.k8s.aws/v1alpha1
-        kind: Nodegroup
-        metadata:
-          name: ${schema.spec.name}-nodegroup
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${schema.spec.region}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          name: ${schema.spec.name}-nodegroup
-          clusterName: ${schema.spec.name}
-          nodeRole: ${nodeRole.status.ackResourceMetadata.arn}
-          subnets:
-            - ${privatesubnet1.status.subnetID}
-            - ${privatesubnet2.status.subnetID}
-          scalingConfig:
-            desiredSize: ${schema.spec.eksNodeDesiredSize}
-            minSize: ${schema.spec.eksNodeMinSize}
-            maxSize: ${schema.spec.eksNodeMaxSize}
-          instanceTypes: ${schema.spec.eksNodeInstanceTypes}
-          diskSize: ${schema.spec.eksNodeDiskSize}
-          amiType: AL2_x86_64
-          capacityType: ON_DEMAND
-          updateConfig:
-            maxUnavailable: 1
-          tags:
-            Name: ${schema.spec.name}-nodegroup
             Environment: ${schema.spec.environment}
             ManagedBy: Kro
             Project: ${schema.spec.project}
