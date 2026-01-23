@@ -62,24 +62,7 @@
         }
       }
     },
-    {
-      "Action": [
-        "devops-guru:SearchInsights",
-        "devops-guru:ListAnomaliesForInsight"
-      ],
-      "Effect": "Allow",
-      "Resource": "*",
-      "Condition": {
-        "ForAllValues:StringEquals": {
-          "devops-guru:ServiceNames": [
-            "RDS"
-          ]
-        },
-        "Null": {
-          "devops-guru:ServiceNames": "false"
-        }
-      }
-    },
+
     {
       "Effect": "Allow",
       "Action": [

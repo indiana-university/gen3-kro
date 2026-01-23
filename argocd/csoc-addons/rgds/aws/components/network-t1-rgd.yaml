@@ -25,9 +25,6 @@ spec:
       # Availability Zones
       availabilityZones: "[]string | required=true"
 
-      # NAT Gateway configuration
-      natGatewayCount: integer | default=3 minimum=1 maximum=3
-
       # Resource management
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
@@ -43,16 +40,15 @@ spec:
       publicRouteTableID: "${publicRouteTable.status.?PublicRouteTableID.orValue('')}"
       privateRouteTableIDs: "${privateRouteTables.status.?routeTableIDs.orValue([])}"
       dbRouteTableID: "${dbRouteTable.status.?routeTableID.orValue('')}"
-      natGatewayIDs: "${natGateways.status.?natGatewayIDs.orValue([])}"
-      elasticIPAllocationIDs: "${natGateways.status.?elasticIPAllocationIDs.orValue([])}"
+      natGatewayIDs: "${natGateways.status.natGatewayIDs}"
+      elasticIPAllocationIDs: "${natGateways.status.elasticIPAllocationIDs}"
       ready: |-
         ${
-          vpcCore.status.?vpcID.orValue('false') &&
+          vpcCore.status.?vpcID.orValue('') != '' &&
           publicSubnets.status.?ready.orValue(false) &&
           privateSubnets.status.?ready.orValue(false) &&
           dbSubnets.status.?ready.orValue(false) &&
           publicRouteTable.status.?ready.orValue(false) &&
-          natGateways.status.?ready.orValue(false) &&
           privateRouteTables.status.?ready.orValue(false) &&
           dbRouteTable.status.?ready.orValue(false)
         }
@@ -218,20 +214,13 @@ spec:
           name: ${schema.spec.name}-nat-gws
           namespace: ${schema.spec.namespace}
         spec:
-          name: |-
-            ${
-              schema.spec.natGatewayCount == 3 ?
-                [schema.spec.name + "-nat-gw-1", schema.spec.name + "-nat-gw-2", schema.spec.name + "-nat-gw-3"] :
-              schema.spec.natGatewayCount == 2 ?
-                [schema.spec.name + "-nat-gw-1", schema.spec.name + "-nat-gw-2"] :
-                [schema.spec.name + "-nat-gw-1"]
-            }
+          name:
+            - ${schema.spec.name}-nat-gw-1
           namespace: ${schema.spec.namespace}
           region: ${schema.spec.region}
           environment: ${schema.spec.environment}
           project: ${schema.spec.project}
           publicSubnetIDs: ${publicSubnets.status.subnetIDs}
-          natGatewayCount: ${schema.spec.natGatewayCount}
           adoptionPolicy: ${schema.spec.adoptionPolicy}
           deletionPolicy: ${schema.spec.deletionPolicy}
 
@@ -259,14 +248,7 @@ spec:
           environment: ${schema.spec.environment}
           project: ${schema.spec.project}
           vpcID: ${vpcCore.status.vpcID}
-          natGatewayIDs: |-
-            ${
-              {
-                "0": natGateways.status.?natGatewayIDs.orValue([]).size() > 0 ? natGateways.status.?natGatewayIDs.orValue([])[0] : "",
-                "1": natGateways.status.?natGatewayIDs.orValue([]).size() > 1 ? natGateways.status.?natGatewayIDs.orValue([])[1] : (natGateways.status.?natGatewayIDs.orValue([]).size() > 0 ? natGateways.status.?natGatewayIDs.orValue([])[0] : ""),
-                "2": natGateways.status.?natGatewayIDs.orValue([]).size() > 2 ? natGateways.status.?natGatewayIDs.orValue([])[2] : (natGateways.status.?natGatewayIDs.orValue([]).size() > 0 ? natGateways.status.?natGatewayIDs.orValue([])[0] : "")
-              }
-            }
+          natGatewayIDs: ${natGateways.status.natGatewayIDs}
           adoptionPolicy: ${schema.spec.adoptionPolicy}
           deletionPolicy: ${schema.spec.deletionPolicy}
 

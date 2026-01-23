@@ -1,0 +1,24 @@
+apiVersion: rds.services.k8s.aws/v1alpha1
+kind: DBInstance
+metadata:
+  name: test-gen3-aurora-instance-1
+  namespace: spoke1
+  annotations:
+    services.k8s.aws/region: us-east-1
+    services.k8s.aws/adoption-policy: adopt-or-create
+    services.k8s.aws/deletion-policy: delete
+spec:
+  dbInstanceIdentifier: test-gen3-aurora-instance-1
+  dbInstanceClass: db.r6g.large
+  engine: aurora-postgresql
+  dbClusterIdentifier: test-gen3-aurora
+  publiclyAccessible: false
+  tags:
+    - key: Name
+      value: test-gen3-aurora-instance-1
+    - key: Environment
+      value: dev
+    - key: ManagedBy
+      value: ACK
+    - key: Project
+      value: kro-test

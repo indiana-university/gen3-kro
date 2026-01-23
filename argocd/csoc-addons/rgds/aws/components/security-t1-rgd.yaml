@@ -35,16 +35,16 @@ spec:
       deletionPolicy: string | default="delete"
 
     status:
-      kmsKeyID: "${kmsKey.status.?kmsKeyID.orValue('')}"
-      kmsKeyARN: "${kmsKey.status.?kmsKeyARN.orValue('')}"
+      kmsKeyID: "${kmsKey.status.?keyID.orValue('')}"
+      kmsKeyARN: "${kmsKey.status.?keyARN.orValue('')}"
       # securityGroupID: "${securityGroup.status.?securityGroupID.orValue('')}"
       # webACLARN: "${wafALB.status.?webACLARN.orValue('')}"
       ready: |-
         ${
           kmsKey.status.?ready.orValue(false)
-          # && securityGroup.status.?ready.orValue(false)
-          # && wafALB.status.?ready.orValue(false)
         }
+      # && securityGroup.status.?ready.orValue(false)
+      # && wafALB.status.?ready.orValue(false)
 
   resources:
     # ==================== KMS Key ====================
@@ -63,8 +63,6 @@ spec:
           region: ${schema.spec.region}
           environment: ${schema.spec.environment}
           project: ${schema.spec.project}
-          keyDescription: ${schema.spec.kmsKeyDescription}
-          keyAlias: ${schema.spec.kmsKeyAlias}
           adoptionPolicy: ${schema.spec.adoptionPolicy}
           deletionPolicy: ${schema.spec.deletionPolicy}
 

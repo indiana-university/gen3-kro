@@ -1,0 +1,139 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awscomputet1
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsComputeT1
+    spec:
+      # Basic metadata
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="kro-managed"
+
+      # Network Configuration (provided by parent graph or external resources)
+      vpcID: string | required=true
+      subnetIDs: "[]string | required=true"
+      securityGroupIDs: "[]string"
+
+      # KMS Encryption (provided by parent graph or external resources)
+      kmsKeyARN: string
+
+      # EKS Configuration
+      eksVersion: string | default="1.28"
+      eksNodeInstanceTypes: "[]string | default=[\"t3.large\"]"
+      eksNodeDesiredSize: integer | default=3
+      eksNodeMinSize: integer | default=2
+      eksNodeMaxSize: integer | default=6
+
+      # ElastiCache Configuration
+      elastiCacheEngine: string | default="redis"
+      elastiCacheEngineVersion: string | default="7.0"
+      elastiCacheNodeType: string | default="cache.t3.micro"
+      elastiCacheNumCacheNodes: integer | default=2
+
+      # OpenSearch Configuration
+      openSearchVersion: string | default="2.11"
+      openSearchInstanceType: string | default="t3.small.search"
+      openSearchInstanceCount: integer | default=3
+
+      # Resource management
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+    status:
+      eksClusterARN: "${eks.status.?clusterARN.orValue('')}"
+      eksEndpoint: "${eks.status.?endpoint.orValue('')}"
+      elastiCacheClusterARN: "${elastiCache.status.?replicationGroupARN.orValue('')}"
+      openSearchDomainARN: "${openSearch.status.?domainARN.orValue('')}"
+      ready: |-
+        ${
+          eks.status.?clusterARN.orValue('') != '' &&
+          elastiCache.status.?replicationGroupARN.orValue('') != '' &&
+          openSearch.status.?domainARN.orValue('') != ''
+        }
+
+  resources:
+    # ==================== EKS ====================
+    - id: eks
+      readyWhen:
+        - ${eks.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsEksT1
+        metadata:
+          name: ${schema.spec.name}-eks
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-eks
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          version: ${schema.spec.eksVersion}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          kmsKeyARN: ${schema.spec.kmsKeyARN}
+          nodeInstanceTypes: ${schema.spec.eksNodeInstanceTypes}
+          nodeDesiredSize: ${schema.spec.eksNodeDesiredSize}
+          nodeMinSize: ${schema.spec.eksNodeMinSize}
+          nodeMaxSize: ${schema.spec.eksNodeMaxSize}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== ElastiCache ====================
+    - id: elastiCache
+      readyWhen:
+        - ${elastiCache.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsElasticacheT1
+        metadata:
+          name: ${schema.spec.name}-elasticache
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-elasticache
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          engine: ${schema.spec.elastiCacheEngine}
+          engineVersion: ${schema.spec.elastiCacheEngineVersion}
+          cacheNodeType: ${schema.spec.elastiCacheNodeType}
+          numCacheNodes: ${schema.spec.elastiCacheNumCacheNodes}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+
+    # ==================== OpenSearch ====================
+    - id: openSearch
+      readyWhen:
+        - ${openSearch.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: kro.run/v1alpha1
+        kind: AwsOpensearchT1
+        metadata:
+          name: ${schema.spec.name}-opensearch
+          namespace: ${schema.spec.namespace}
+        spec:
+          name: ${schema.spec.name}-opensearch
+          namespace: ${schema.spec.namespace}
+          region: ${schema.spec.region}
+          environment: ${schema.spec.environment}
+          project: ${schema.spec.project}
+          engineVersion: ${schema.spec.openSearchVersion}
+          instanceType: ${schema.spec.openSearchInstanceType}
+          instanceCount: ${schema.spec.openSearchInstanceCount}
+          vpcID: ${schema.spec.vpcID}
+          subnetIDs: ${schema.spec.subnetIDs}
+          securityGroupIDs: ${schema.spec.securityGroupIDs}
+          kmsKeyARN: ${schema.spec.kmsKeyARN}
+          adoptionPolicy: ${schema.spec.adoptionPolicy}
+          deletionPolicy: ${schema.spec.deletionPolicy}
+

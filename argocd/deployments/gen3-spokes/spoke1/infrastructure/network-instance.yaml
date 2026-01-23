@@ -1,5 +1,5 @@
 apiVersion: kro.run/v1alpha1
-kind: AwsGen3NetworkT1
+kind: AwsNetworkT1
 metadata:
   name: spoke1-network
   namespace: spoke1
@@ -35,10 +35,6 @@ spec:
     - us-east-1a
     - us-east-1b
     - us-east-1c
-
-  # NAT Gateway configuration - one per AZ for high availability
-  # Note: Reduced to 2 due to AWS account EIP limit (default: 5 per region)
-  natGatewayCount: 2
 
   # Resource management policies
   adoptionPolicy: "adopt-or-create"
