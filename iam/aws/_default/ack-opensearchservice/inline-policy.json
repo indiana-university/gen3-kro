@@ -7,6 +7,15 @@
         "es:*"
       ],
       "Resource": "*"
+    },
+    {
+      "Effect": "Allow",
+      "Action": [
+        "kms:DescribeKey",
+        "kms:CreateGrant",
+        "kms:RetireGrant"
+      ],
+      "Resource": "*"
     }
   ]
 }
