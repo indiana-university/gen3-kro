@@ -151,7 +151,9 @@
         "elasticloadbalancing:RegisterTargets",
         "elasticloadbalancing:SetLoadBalancerPoliciesForBackendServer",
         "elasticloadbalancing:SetLoadBalancerPoliciesOfListener",
-        "kms:DescribeKey"
+        "kms:DescribeKey",
+        "kms:CreateGrant",
+        "kms:RetireGrant"
       ],
       "Resource": "*"
     },
