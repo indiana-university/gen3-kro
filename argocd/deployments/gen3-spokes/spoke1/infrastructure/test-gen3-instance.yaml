@@ -1,7 +1,7 @@
 apiVersion: kro.run/v1alpha1
-kind: AwsGen3T3
+kind: AwsGen3Infra1Flat
 metadata:
-  name: test-gen3-t3
+  name: test-gen3-infra1flat
   namespace: spoke1
 spec:
   # Basic metadata
@@ -31,9 +31,6 @@ spec:
   availabilityZones:
     - us-east-1a
     - us-east-1b
-
-  # Aurora Configuration
-  auroraMasterUserPasswordSecretRef: test-gen3-aurora-password
 
   # OpenSearch Configuration
   openSearchMasterPasswordSecretRef: test-gen3-opensearch-password
