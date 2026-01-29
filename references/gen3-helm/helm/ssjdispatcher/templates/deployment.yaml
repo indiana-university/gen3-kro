@@ -1,0 +1,95 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ssjdispatcher
+  labels:
+    {{- include "ssjdispatcher.labels" . | nindent 4 }}
+spec:
+  selector:
+      matchLabels:
+        {{- include "ssjdispatcher.selectorLabels" . | nindent 8 }}
+  revisionHistoryLimit: 2
+  strategy:
+    {{- toYaml .Values.strategy | nindent 8 }}  
+  template:
+    metadata:
+      labels:
+        netnolimit: "yes"
+        public: "yes"
+        {{- include "ssjdispatcher.selectorLabels" . | nindent 8 }}
+        {{- include "common.extraLabels" . | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/ssjdispatcher-secret.yaml") . | sha256sum }}
+        checksum/config: {{ include (print $.Template.BasePath "/manifest-ssjdispatcher.yaml") . | sha256sum }}
+        {{- $metricsEnabled := .Values.metricsEnabled }}
+      {{- if eq $metricsEnabled nil }}
+        {{- $metricsEnabled = .Values.global.metricsEnabled }}
+      {{- end }}
+      {{- if eq $metricsEnabled nil }}
+        {{- $metricsEnabled = true }}
+      {{- end }}
+
+      {{- if $metricsEnabled }}
+        {{- include "common.grafanaAnnotations" . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if .Values.global.topologySpread.enabled }}
+      {{- include "common.TopologySpread" . | nindent 6 }}
+      {{- end }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      automountServiceAccountToken: {{ .Values.automountServiceAccountToken}}
+      serviceAccountName: {{ include "ssjdispatcher.serviceAccountName" . }}
+      volumes:
+        {{- toYaml .Values.volumes | nindent 8 }}
+      containers:
+        - name: ssjdispatcher
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          volumeMounts:
+            {{- toYaml .Values.volumeMounts | nindent 12 }}
+          env:
+            {{- with .Values.awsRegion  }}
+            - name: AWS_REGION
+              value: {{ . }}
+            {{- end }}
+            {{- with .Values.awsStsRegionalEndpoints  }}
+            - name: AWS_STS_REGIONAL_ENDPOINTS
+              value: {{ . }}
+            {{- end }}
+            - name: GEN3_NAMESPACE
+              value: {{ .Values.gen3Namespace | default .Release.Namespace }}
+            - name: JOB_IMAGES
+              valueFrom:
+                configMapKeyRef:
+                  name: manifest-ssjdispatcher
+                  key: job_images
+          ports:
+            - name: http
+              containerPort: 8000
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /_status
+              port: 8000
+            initialDelaySeconds: 5
+            periodSeconds: 60
+            timeoutSeconds: 30
+          readinessProbe:
+            httpGet:
+              path: /_status
+              port: 8000
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
