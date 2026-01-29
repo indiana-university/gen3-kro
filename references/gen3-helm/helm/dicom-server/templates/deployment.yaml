@@ -1,0 +1,101 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dicom-server-deployment
+  annotations:
+  {{- with .Values.podAnnotations }}
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  labels:
+    {{- include "dicom-server.labels" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "dicom-server.selectorLabels" . | nindent 6 }}
+      release: "production"
+      public: "yes"
+  template:
+    metadata:
+      labels:
+        {{- include "dicom-server.selectorLabels" . | nindent 8 }}
+        {{- include "common.extraLabels" . | nindent 8 }}
+        public: "yes"
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config-volume-g3auto.yaml") . | sha256sum }}
+        {{- $metricsEnabled := .Values.metricsEnabled }}
+      {{- if eq $metricsEnabled nil }}
+        {{- $metricsEnabled = .Values.global.metricsEnabled }}
+      {{- end }}
+      {{- if eq $metricsEnabled nil }}
+        {{- $metricsEnabled = true }}
+      {{- end }}
+
+      {{- if $metricsEnabled }}
+        {{- include "common.grafanaAnnotations" . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- if .Values.global.topologySpread.enabled }}
+      {{- include "common.TopologySpread" . | nindent 6 }}
+      {{- end }}
+      {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: "dicom-server"
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          readinessProbe: 
+            httpGet:
+              path: /system
+              port: 8042
+            initialDelaySeconds: 5
+            periodSeconds: 20
+            timeoutSeconds: 30
+          livenessProbe: 
+            httpGet:
+              path: /system
+              port: 8042
+            initialDelaySeconds: 5
+            periodSeconds: 60
+            timeoutSeconds: 30
+          ports:
+            - containerPort: 8042
+          env:
+            - name: PGHOST
+              valueFrom:
+                secretKeyRef:
+                  name: dicom-server-dbcreds
+                  key: host
+                  optional: true
+            - name: PGUSER
+              valueFrom:
+                secretKeyRef:
+                  name: dicom-server-dbcreds
+                  key: username
+                  optional: true 
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dicom-server-dbcreds
+                  key: password
+                  optional: true
+            - name: PGDB
+              valueFrom:
+                secretKeyRef:
+                  name: dicom-server-dbcreds
+                  key: database
+                  optional: true
+            - name: DBREADY
+              valueFrom:
+                secretKeyRef:
+                  name: dicom-server-dbcreds
+                  key: dbcreated
+                  optional: true
+          {{- with .Values.volumeMounts }}
+          volumeMounts:
+            {{- toYaml . | nindent 10 }}
+          {{- end }}

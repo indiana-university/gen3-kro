@@ -1,0 +1,278 @@
+# Default values for ssjdispatcher.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+# Global configuration
+global:
+  # -- (map) AWS configuration
+  aws:
+    # -- (bool) Set to true if deploying to AWS. Controls ingress annotations.
+    enabled: false
+    # -- (string) Credentials for AWS stuff.
+    awsAccessKeyId:
+    # -- (string) Credentials for AWS stuff.
+    awsSecretAccessKey:
+  # -- (bool) Whether the deployment is for development purposes.
+  dev: true
+
+  postgres:
+    # -- (bool) Whether the database should be created.
+    dbCreate: true
+    # -- (string) Name of external secret. Disabled if empty
+    externalSecret: ""
+    # -- (map) Master credentials to postgres. This is going to be the default postgres server being used for each service, unless each service specifies their own postgres
+    master:
+      # -- (string) hostname of postgres server
+      host:
+      # -- (string) username of superuser in postgres. This is used to create or restore databases
+      username: postgres
+      # -- (string) password for superuser in postgres. This is used to create or restore databases
+      password:
+      # -- (string) Port for Postgres.
+      port: "5432"
+  # -- (string) Environment name. This should be the same as vpcname if you're doing an AWS deployment. Currently this is being used to share ALB's if you have multiple namespaces. Might be used other places too.
+  environment: default
+  # -- (string) Hostname for the deployment.
+  hostname: localhost
+  # -- (string) ARN of the reverse proxy certificate.
+  revproxyArn: arn:aws:acm:us-east-1:123456:certificate
+  # -- (string) URL of the data dictionary.
+  dictionaryUrl: https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json
+  # -- (string) Portal application name.
+  portalApp: gitops
+  # -- (string) S3 bucket name for Kubernetes manifest files.
+  kubeBucket: kube-gen3
+  # -- (string) S3 bucket name for log files.
+  logsBucket: logs-gen3
+  # -- (bool) Whether public datasets are enabled.
+  publicDataSets: true
+  # -- (string) Access level for tiers. acceptable values for `tier_access_level` are: `libre`, `regular` and `private`. If omitted, by default common will be treated as `private`
+  tierAccessLevel: libre
+  # -- (map) Controls network policy settings
+  netPolicy:
+    enabled: false
+  # -- (int) Number of dispatcher jobs.
+  dispatcherJobNum: "10"
+  # -- (bool) If the service will be deployed with a Pod Disruption Budget. Note- you need to have more than 2 replicas for the pdb to be deployed.
+  pdb: false
+  # -- (int) The minimum amount of pods that are available at all times if the PDB is deployed.
+  minAvailable: 1
+  # -- (map) External Secrets settings.
+  externalSecrets:
+    # -- (bool) Will use ExternalSecret resources to pull secrets from Secrets Manager instead of creating them locally. Be cautious as this will override any indexd secrets you have deployed.
+    deploy: false
+    # -- (string) Will deploy a separate External Secret Store for this service.
+    separateSecretStore: false
+  #  -- (map) This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+  autoscaling:
+    enabled: false
+    minReplicas: 1
+    maxReplicas: 10
+    averageCPUValue: 500m
+    averageMemoryValue: 500Mi
+
+  crossplane:
+    # -- (bool) Set to true if deploying to AWS and want to use crossplane for AWS resources.
+    enabled: false
+    # -- (string) The name of the crossplane provider config.
+    providerConfigName: provider-aws
+    # -- (string) OIDC provider URL. This is used for authentication of roles/service accounts.
+    oidcProviderUrl: oidc.eks.us-east-1.amazonaws.com/id/12345678901234567890
+    # -- (string) The account ID of the AWS account.
+    accountId: "123456789012"
+    s3:
+      # -- (string) The kms key id for the s3 bucket.
+      kmsKeyId:
+      # -- (bool) Whether to use s3 bucket versioning.
+      versioningEnabled: false
+  # -- (map) Karpenter topology spread configuration.
+  topologySpread:
+    # -- (bool) Whether to enable topology spread constraints for all subcharts that support it.
+    enabled: false
+    # -- (string) The topology key to use for spreading. Defaults to "topology.kubernetes.io/zone".
+    topologyKey: "topology.kubernetes.io/zone"
+    # -- (int) The maxSkew to use for topology spread constraints. Defaults to 1.
+    maxSkew: 1
+
+#  -- (map) This section is for setting up autoscaling more information can be found here: https://kubernetes.io/docs/concepts/workloads/autoscaling/
+autoscaling: {}
+
+# -- (bool) Whether Metrics are enabled.
+metricsEnabled:
+
+# -- (int) Number of replicas for the deployment.
+replicaCount: 1
+
+# -- (map) Docker image information.
+image:
+  # -- (string) Docker repository.
+  repository: quay.io/cdis/ssjdispatcher
+  # -- (string) Docker pull policy.
+  pullPolicy: Always
+  # -- (string) Overrides the image tag whose default is the chart appVersion.
+  tag: "2022.08"
+
+# -- (list) Docker image pull secrets.
+imagePullSecrets: []
+
+# -- (string) Override the name of the chart.
+nameOverride: ""
+
+# -- (string) Override the full name of the deployment.
+fullnameOverride: ""
+
+# -- (map) Security context for the containers in the pod
+securityContext: {}
+  # capabilities:
+  #   drop:
+  #   - ALL
+  # readOnlyRootFilesystem: true
+  # runAsNonRoot: true
+  # runAsUser: 1000
+
+# -- (map) Kubernetes service information.
+service:
+  # -- (string) Type of service. Valid values are "ClusterIP", "NodePort", "LoadBalancer", "ExternalName".
+  type: ClusterIP
+  # -- (int) The port number that the service exposes.
+  port: 80
+
+# -- (map) Node Selector for the pods
+nodeSelector: {}
+
+# -- (list) Tolerations for the pods
+tolerations: []
+
+# -- (map) Security context to apply to the pod
+podSecurityContext:
+  # -- (int) User that all the processes will run under in the container.
+  runAsUser: 1000
+  # -- (int) Group that Kubernetes will change the permissions of all files in volumes to when volumes are mounted by a pod.
+  fsGroup: 1000
+
+# -- (map) Affinity to use for the deployment.
+affinity:
+  podAntiAffinity:
+    # -- (map) Option for scheduling to be required or preferred.
+    preferredDuringSchedulingIgnoredDuringExecution:
+      # -- (int) Weight value for preferred scheduling.
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchExpressions:
+              # -- (list) Label key for match expression.
+              - key: app
+                # -- (string) Operation type for the match expression.
+                operator: In
+                # -- (list) Value for the match expression key.
+                values:
+                  - ssjdispatcher
+          # -- (string) Value for topology key label.
+          topologyKey: "kubernetes.io/hostname"
+
+# -- (list) Volumes to attach to the container.
+volumes:
+  - name: ssjdispatcher-creds-volume
+    secret:
+      secretName: "ssjdispatcher-creds"
+# -- (list) Volumes to mount to the container.
+volumeMounts:
+  - name: "ssjdispatcher-creds-volume"
+    readOnly: true
+    mountPath: "/credentials.json"
+    subPath: credentials.json
+
+# -- (string) AWS region to be used.
+awsRegion: us-east-1
+# -- (string) AWS STS to issue temporary credentials to users and roles that make an AWS STS request. Values regional or global.
+awsStsRegionalEndpoints: regional
+# -- (string) Namespace to deploy the job. Defaults to .Release.Namespace
+gen3Namespace: ""
+# -- (string) Ssjdispater job number.
+dispatcherJobNum: "10"
+# -- (string) Image to use for the "indexing" job.
+indexing: 707767160287.dkr.ecr.us-east-1.amazonaws.com/gen3/indexs3client:2025.10
+
+# -- (map) Resource requests and limits for the containers in the pod
+resources:
+  # -- (map) The amount of resources that the container requests
+  requests:
+    # -- (string) The amount of memory requested
+    memory: 128Mi
+  # -- (map) The maximum amount of resources that the container is allowed to use
+  limits:
+    # -- (string) The maximum amount of memory the container can use
+    memory: 2400Mi
+
+# -- (map) Rolling update deployment strategy
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    # -- (int) Number of additional replicas to add during rollout.
+    maxSurge: 1
+    # -- (int) Maximum amount of pods that can be unavailable during the update.
+    maxUnavailable: 0
+
+# -- (bool) Automount the default service account token
+automountServiceAccountToken: true
+
+# -- (map) Values for ssjdispatcher secret.
+ssjcreds:
+  # -- (string) Sqs queue to monitor.
+  sqsUrl: "https://sqs.us-east-1.amazonaws.com/12345678901234/test-upload_data_upload"
+  # -- (string) Name of the ssj job.
+  jobName: "indexing"
+  # -- (string) URL upload pattern that will trigger an event in S3 to send a message to SQS.
+  jobPattern: "s3://test-12345678901234-upload/*"
+  # -- (string) Indexd service URL.
+  jobUrl: "http://indexd-service/index"
+  # -- (string) Name of the user the job will run with.
+  jobUser: "ssj"
+  # -- (string) Password for the job.
+  jobPassword: "replace_with_password"
+  # -- (string) The amount of CPU the job requests.
+  jobRequestCpu: "500m"
+  # -- (string) The amount of memory the job requests.
+  jobRequestMem: "0.5Gi"
+  # -- (string) URL to reach metadata service endpoint.
+  metadataserviceUrl: "http://revproxy-service/mds"
+  # -- (string) Username for the metadata service.
+  metadataserviceUsername: "gateway"
+  # -- (string) Password for the metadata service.
+  metadataservicePassword: "replace_with_password"
+
+# -- (map) Service account to use or create.
+serviceAccount:
+  # -- (bool) Specifies whether a service account should be created.
+  create: true
+  # -- (map) Annotations to add to the service account.
+  annotations: {}
+  # -- (string) The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: "ssjdispatcher-sa"
+
+# -- (map) Service account to use for ssj jobs.
+jobServiceAccount:
+  # -- (map) Annotations to add to the service account.
+  annotations: {}
+
+# Values to determine the labels that are used for the deployment, pod, etc.
+# -- (string) Valid options are "production" or "dev". If invalid option is set- the value will default to "dev".
+release: "production"
+# -- (string) Valid options are "true" or "false". If invalid option is set- the value will default to "false".
+criticalService: "true"
+# -- (string) Label to help organize pods and their use. Any value is valid, but use "_" or "-" to divide words.
+partOf: "Workspace-Tab"
+# -- (map) Will completely override the selectorLabels defined in the common chart's _label_setup.tpl
+selectorLabels:
+# -- (map) Will completely override the commonLabels defined in the common chart's _label_setup.tpl
+commonLabels:
+
+# -- (map) External secrets configuration
+externalSecrets:
+  # -- (string) Will create the Helm "fence-config" secret even if Secrets Manager is enabled. This is helpful if you are wanting to use External Secrets for some, but not all secrets.
+  createK8sSsjdispatcherSecret: false
+  # -- (string) Will create the Helm "fence-jwt-keys" secret even if Secrets Manager is enabled. This is helpful if you are wanting to use External Secrets for some, but not all secrets.
+  createK8sJwtKeysSecret: false
+  # -- (string) Will override the name of the aws secrets manager secret. Default is "credentials.json"
+  credsFile:
