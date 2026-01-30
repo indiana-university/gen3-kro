@@ -10,5 +10,5 @@ resources:
   - elasticache.services.k8s.aws_snapshots.yaml
   - elasticache.services.k8s.aws_usergroups.yaml
   - elasticache.services.k8s.aws_users.yaml
-  - services.k8s.aws_adoptedresources.yaml
   - services.k8s.aws_fieldexports.yaml
+  - services.k8s.aws_iamroleselectors.yaml

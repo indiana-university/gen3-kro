@@ -4,5 +4,5 @@ resources:
   - efs.services.k8s.aws_accesspoints.yaml
   - efs.services.k8s.aws_filesystems.yaml
   - efs.services.k8s.aws_mounttargets.yaml
-  - services.k8s.aws_adoptedresources.yaml
   - services.k8s.aws_fieldexports.yaml
+  - services.k8s.aws_iamroleselectors.yaml
