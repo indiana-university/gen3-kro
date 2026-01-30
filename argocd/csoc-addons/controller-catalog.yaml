@@ -4,6 +4,8 @@
   revision: 0.8.0
   chart: kro
   sync_wave: "-20"
+  github_repo: kubernetes-sigs/kro
+  github_crd_path: helm/crds
 
 - addon: ack-cloudtrail
   namespace: ack-cloudtrail-system
@@ -11,6 +13,8 @@
   revision: 1.1.1
   chart: cloudtrail-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/cloudtrail-controller
+  github_crd_path: helm/crds
 
 - addon: ack-cloudwatchlogs
   namespace: ack-cloudwatchlogs-system
@@ -18,6 +22,8 @@
   revision: 1.1.1
   chart: cloudwatchlogs-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/cloudwatchlogs-controller
+  github_crd_path: helm/crds
 
 - addon: ack-ec2
   namespace: ack-ec2-system
@@ -25,6 +31,8 @@
   revision: 1.9.2
   chart: ec2-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/ec2-controller
+  github_crd_path: helm/crds
 
 - addon: ack-efs
   namespace: ack-efs-system
@@ -32,6 +40,8 @@
   revision: 1.1.1
   chart: efs-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/efs-controller
+  github_crd_path: helm/crds
 
 - addon: ack-eks
   namespace: ack-eks-system
@@ -39,6 +49,8 @@
   revision: 1.9.3
   chart: eks-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/eks-controller
+  github_crd_path: helm/crds
 
 - addon: ack-elasticache
   namespace: ack-elasticache-system
@@ -46,6 +58,8 @@
   revision: 1.2.3
   chart: elasticache-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/elasticache-controller
+  github_crd_path: helm/crds
 
 - addon: ack-iam
   namespace: ack-iam-system
@@ -53,6 +67,8 @@
   revision: 1.5.2
   chart: iam-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/iam-controller
+  github_crd_path: helm/crds
 
 - addon: ack-kms
   namespace: ack-kms-system
@@ -60,6 +76,8 @@
   revision: 1.1.0
   chart: kms-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/kms-controller
+  github_crd_path: helm/crds
 
 - addon: ack-opensearchservice
   namespace: ack-opensearchservice-system
@@ -67,6 +85,8 @@
   revision: 1.1.1
   chart: opensearchservice-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/opensearchservice-controller
+  github_crd_path: helm/crds
 
 - addon: ack-rds
   namespace: ack-rds-system
@@ -74,6 +94,8 @@
   revision: 1.6.2
   chart: rds-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/rds-controller
+  github_crd_path: helm/crds
 
 - addon: ack-route53
   namespace: ack-route53-system
@@ -81,6 +103,8 @@
   revision: 1.1.1
   chart: route53-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/route53-controller
+  github_crd_path: helm/crds
 
 - addon: ack-s3
   namespace: ack-s3-system
@@ -88,6 +112,8 @@
   revision: 1.1.1
   chart: s3-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/s3-controller
+  github_crd_path: helm/crds
 
 - addon: ack-secretsmanager
   namespace: ack-secretsmanager-system
@@ -95,6 +121,8 @@
   revision: 1.1.1
   chart: secretsmanager-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/secretsmanager-controller
+  github_crd_path: helm/crds
 
 - addon: ack-sns
   namespace: ack-sns-system
@@ -102,6 +130,8 @@
   revision: 1.2.2
   chart: sns-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/sns-controller
+  github_crd_path: helm/crds
 
 - addon: ack-sqs
   namespace: ack-sqs-system
@@ -109,6 +139,8 @@
   revision: 1.2.1
   chart: sqs-chart
   sync_wave: "-20"
+  github_repo: aws-controllers-k8s/sqs-controller
+  github_crd_path: helm/crds
 
 - addon: ack-wafv2
   namespace: ack-wafv2-system
@@ -116,20 +148,24 @@
   revision: 1.1.1
   chart: wafv2-chart
   sync_wave: "-20"
-
-- addon: external-secrets
-  namespace: external-secrets
-  repoURL: https://charts.external-secrets.io
-  revision: 1.1.0
-  chart: external-secrets
-  sync_wave: "-20"
+  github_repo: aws-controllers-k8s/wafv2-controller
+  github_crd_path: helm/crds
 
 - addon: kyverno
   namespace: kyverno
   repoURL: https://kyverno.github.io/kyverno/
-  revision: 3.5.2
+  revision: 1.1.1
   chart: kyverno
   sync_wave: "-20"
+  github_repo: kyverno/kyverno
+  github_crd_path: config/crds
+
+# - addon: external-secrets
+#   namespace: external-secrets
+#   repoURL: https://charts.external-secrets.io
+#   revision: 1.1.0
+#   chart: external-secrets
+#   sync_wave: "-20"
 
 # - addon: kyverno-policieses
 #   namespace: kyverno

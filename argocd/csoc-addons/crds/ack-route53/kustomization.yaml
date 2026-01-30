@@ -1,9 +1,8 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 resources:
-  - adoptedresources.services.k8s.aws.yaml
-  - fieldexports.services.k8s.aws.yaml
-  - healthchecks.route53.services.k8s.aws.yaml
-  - hostedzones.route53.services.k8s.aws.yaml
-  - recordsets.route53.services.k8s.aws.yaml
+  - route53.services.k8s.aws_healthchecks.yaml
+  - route53.services.k8s.aws_hostedzones.yaml
+  - route53.services.k8s.aws_recordsets.yaml
+  - services.k8s.aws_adoptedresources.yaml
+  - services.k8s.aws_fieldexports.yaml

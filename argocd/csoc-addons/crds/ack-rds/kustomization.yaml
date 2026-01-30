@@ -1,16 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 resources:
-  - adoptedresources.services.k8s.aws.yaml
-  - dbclusterendpoints.rds.services.k8s.aws.yaml
-  - dbclusterparametergroups.rds.services.k8s.aws.yaml
-  - dbclustersnapshots.rds.services.k8s.aws.yaml
-  - dbclusters.rds.services.k8s.aws.yaml
-  - dbinstances.rds.services.k8s.aws.yaml
-  - dbparametergroups.rds.services.k8s.aws.yaml
-  - dbproxies.rds.services.k8s.aws.yaml
-  - dbsnapshots.rds.services.k8s.aws.yaml
-  - dbsubnetgroups.rds.services.k8s.aws.yaml
-  - fieldexports.services.k8s.aws.yaml
-  - globalclusters.rds.services.k8s.aws.yaml
+  - rds.services.k8s.aws_dbclusterendpoints.yaml
+  - rds.services.k8s.aws_dbclusterparametergroups.yaml
+  - rds.services.k8s.aws_dbclustersnapshots.yaml
+  - rds.services.k8s.aws_dbclusters.yaml
+  - rds.services.k8s.aws_dbinstances.yaml
+  - rds.services.k8s.aws_dbparametergroups.yaml
+  - rds.services.k8s.aws_dbproxies.yaml
+  - rds.services.k8s.aws_dbsnapshots.yaml
+  - rds.services.k8s.aws_dbsubnetgroups.yaml
+  - rds.services.k8s.aws_globalclusters.yaml
+  - services.k8s.aws_adoptedresources.yaml
+  - services.k8s.aws_fieldexports.yaml

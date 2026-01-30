@@ -1,13 +1,12 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-
 resources:
-  - adoptedresources.services.k8s.aws.yaml
-  - fieldexports.services.k8s.aws.yaml
-  - groups.iam.services.k8s.aws.yaml
-  - instanceprofiles.iam.services.k8s.aws.yaml
-  - openidconnectproviders.iam.services.k8s.aws.yaml
-  - policies.iam.services.k8s.aws.yaml
-  - roles.iam.services.k8s.aws.yaml
-  - servicelinkedroles.iam.services.k8s.aws.yaml
-  - users.iam.services.k8s.aws.yaml
+  - iam.services.k8s.aws_groups.yaml
+  - iam.services.k8s.aws_instanceprofiles.yaml
+  - iam.services.k8s.aws_openidconnectproviders.yaml
+  - iam.services.k8s.aws_policies.yaml
+  - iam.services.k8s.aws_roles.yaml
+  - iam.services.k8s.aws_servicelinkedroles.yaml
+  - iam.services.k8s.aws_users.yaml
+  - services.k8s.aws_adoptedresources.yaml
+  - services.k8s.aws_fieldexports.yaml
