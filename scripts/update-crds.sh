@@ -593,11 +593,6 @@ prompt_and_update_catalog() {
         return
     fi
 
-    # Create backup
-    local backup_file="${CATALOG_FILE}.backup.${TIMESTAMP}"
-    cp "$CATALOG_FILE" "$backup_file"
-    log_success "Created backup: $backup_file"
-
     # Update catalog
     echo ""
     log_info "Updating catalog..."
@@ -609,7 +604,7 @@ prompt_and_update_catalog() {
         echo "  $addon: $current → $latest"
 
         # Use yq for safe YAML updates (avoids sed injection risks)
-        if yq eval "(select(.addon == \"$addon\") | .revision) = \"$latest\"" -i "$CATALOG_FILE"; then
+        if yq eval "(.[] | select(.addon == \"$addon\") | .revision) = \"$latest\"" -i "$CATALOG_FILE"; then
             # Verify the update was successful
             local updated_version=$(yq eval ".[] | select(.addon == \"$addon\") | .revision" "$CATALOG_FILE")
             if [[ "$updated_version" == "$latest" ]]; then
@@ -626,36 +621,6 @@ prompt_and_update_catalog() {
 
     echo ""
     log_success "Catalog updated successfully!"
-}
-
-# ============================================================================
-# Rollback Function
-# ============================================================================
-
-rollback_catalog() {
-    echo ""
-    echo "=========================================="
-    echo "ROLLBACK"
-    echo "=========================================="
-    echo ""
-
-    # Find most recent backup
-    local latest_backup=$(ls -t "${CATALOG_FILE}".backup.* 2>/dev/null | head -1)
-
-    if [[ -z "$latest_backup" ]]; then
-        log_error "No backup file found"
-        return 1
-    fi
-
-    log_info "Found backup: $latest_backup"
-    read -p "Restore this backup? (y/n): " confirm
-
-    if [[ "$confirm" == "y" || "$confirm" == "Y" ]]; then
-        cp "$latest_backup" "$CATALOG_FILE"
-        log_success "Catalog restored from backup"
-    else
-        log_info "Rollback cancelled"
-    fi
 }
 
 # ============================================================================
