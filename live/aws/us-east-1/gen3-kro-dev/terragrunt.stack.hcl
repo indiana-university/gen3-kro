@@ -123,7 +123,8 @@ locals {
         # ArgoCD service accounts are created by Helm chart, others need manual creation
         service_account = addon == "argocd" ? "argocd-server" : "${addon}-sa"
         # Explicitly set enable_identity for all addons
-        enable_identity = addon == "argocd" ? false : lookup(addon_config, "enable_identity", false)
+        # ArgoCD uses enable_argocd flag to control identity creation
+        enable_identity = addon == "argocd" ? local.argocd_identity_flag : lookup(addon_config, "enable_identity", false)
       },
       addon_config
     )
