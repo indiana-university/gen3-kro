@@ -78,6 +78,18 @@ spec:
       efsPerformanceMode: string | default="generalPurpose"
       efsThroughputMode: string | default="bursting"
 
+      # ==================== Application Configuration ====================
+      # Indexd Configuration
+      indexdEnabled: boolean | default=true
+      indexdDefaultPrefix: string | default="dg.TEST/"
+      indexdHelmRepo: string | default="https://github.com/uc-cdis/gen3-helm"
+      indexdHelmPath: string | default="helm/indexd"
+      indexdHelmRevision: string | default="master"
+      indexdNamespace: string | default="default"
+
+      # ArgoCD Cluster Registration
+      argoCDNamespace: string | default="argocd"
+
     status:
       # Security Status (KMS)
       loggingKeyARN: ${loggingKey.status.?ackResourceMetadata.?arn.orValue("loading")}
@@ -120,6 +132,15 @@ spec:
       eksClusterARN: ${eksCluster.status.?ackResourceMetadata.?arn.orValue("loading")}
       eksEndpoint: ${eksCluster.status.?endpoint.orValue("loading")}
       eksCertificateAuthority: ${eksCluster.status.?certificateAuthority.?data.orValue("loading")}
+
+      # ArgoCD Cluster Registration Status
+      argoCDClusterSecretName: ${argoCDClusterSecret.metadata.?name.orValue("loading")}
+      awsAuthApplicationName: ${awsAuthApp.metadata.?name.orValue("loading")}
+
+      # Application Status (Indexd)
+      indexdApplicationName: ${indexdApp.metadata.?name.orValue("loading")}
+      indexdApplicationStatus: ${indexdApp.status.?health.?status.orValue("loading")}
+      indexdApplicationSyncStatus: ${indexdApp.status.?sync.?status.orValue("loading")}
 
     #   # Cache Status (ElastiCache)
     #   elastiCacheARN: ${replicationGroup.status.?ackResourceMetadata.?arn.orValue("loading")}
@@ -1090,8 +1111,9 @@ spec:
             - ipProtocol: tcp
               fromPort: 5432
               toPort: 5432
-              referencedSecurityGroups:
-                - ${eksSecurityGroup.status.id}
+              userIDGroupPairs:
+                - groupID: ${eksSecurityGroup.status.id}
+                  description: Allow EKS nodes access to Aurora PostgreSQL
           tags:
             - key: Name
               value: ${schema.spec.name}-aurora-sg
@@ -1154,10 +1176,8 @@ spec:
           engineMode: ${schema.spec.auroraEngineMode}
           engineVersion: ${schema.spec.auroraEngineVersion}
           masterUsername: ${schema.spec.auroraMasterUsername}
-          masterUserPassword:
-            namespace: ${schema.spec.namespace}
-            name: ${auroraMasterPasswordSecret.status.name}
-            key: password
+          manageMasterUserPassword: true
+          masterUserSecretKMSKeyID: ${databaseKey.status.ackResourceMetadata.arn}
           databaseName: ${schema.spec.auroraDatabaseName}
           dbSubnetGroupName: ${schema.spec.name}-subnet-group
           vpcSecurityGroupIDs:
@@ -1239,379 +1259,149 @@ spec:
               value: Kro
             - key: Project
               value: ${schema.spec.project}
-  # ==================== SECRETS: AWS Secrets Manager ====================
-    # # ==================== Aurora Master Password Secret ====================
-    # - id: auroraMasterPasswordSecret
-    #   readyWhen:
-    #     - ${auroraMasterPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${auroraMasterPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-aurora-master-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-aurora-master-password
-    #       description: Aurora PostgreSQL master password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-aurora-master-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    # # ==================== Gen3 Arborist DB Password Secret ====================
-    # - id: arboristDBPasswordSecret
-    #   readyWhen:
-    #     - ${arboristDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${arboristDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-arborist-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-arborist-db-password
-    #       description: Arborist database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-arborist-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: arborist
-    # # ==================== Gen3 Argo DB Password Secret ====================
-    # - id: argoDBPasswordSecret
-    #   readyWhen:
-    #     - ${argoDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${argoDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-argo-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-argo-db-password
-    #       description: Argo database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-argo-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: argo
-    # # ==================== Gen3 Audit DB Password Secret ====================
-    # - id: auditDBPasswordSecret
-    #   readyWhen:
-    #     - ${auditDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${auditDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-audit-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-audit-db-password
-    #       description: Audit database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-audit-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: audit
-    # # ==================== Gen3 Dicom viewer DB Password Secret ====================
-    # - id: dicomDBPasswordSecret
-    #   readyWhen:
-    #     - ${dicomDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${dicomDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-dicom-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-dicom-db-password
-    #       description: Dicom viewer database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-dicom-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: dicom
-    # # ==================== Gen3 Fence DB Password Secret ====================
-    # - id: fenceDBPasswordSecret
-    #   readyWhen:
-    #     - ${fenceDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${fenceDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-fence-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-fence-db-password
-    #       description: Fence database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-fence-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: fence
-    # # ==================== Gen3 Indexd DB Password Secret ====================
-    # - id: indexdDBPasswordSecret
-    #   readyWhen:
-    #     - ${indexdDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${indexdDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-indexd-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-indexd-db-password
-    #       description: Indexd database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-indexd-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: indexd
-    # # ==================== Gen3 Metadata DB Password Secret ====================
-    # - id: metadataDBPasswordSecret
-    #   readyWhen:
-    #     - ${metadataDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${metadataDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-metadata-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-metadata-db-password
-    #       description: Metadata database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-metadata-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: metadata
-    # # ==================== Gen3 Requestor DB Password Secret ====================
-    # - id: requestorDBPasswordSecret
-    #   readyWhen:
-    #     - ${requestorDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${requestorDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-requestor-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-requestor-db-password
-    #       description: Requestor database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-requestor-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: requestor
-    # # ==================== Gen3 Sheepdog DB Password Secret ====================
-    # - id: sheepdogDBPasswordSecret
-    #   readyWhen:
-    #     - ${sheepdogDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${sheepdogDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-sheepdog-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-sheepdog-db-password
-    #       description: Sheepdog database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-sheepdog-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: sheepdog
-    # # ==================== Gen3 WTS DB Password Secret ====================
-    # - id: wtsDBPasswordSecret
-    #   readyWhen:
-    #     - ${wtsDBPasswordSecret.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    #     - ${wtsDBPasswordSecret.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    #   template:
-    #     apiVersion: secretsmanager.services.k8s.aws/v1alpha1
-    #     kind: Secret
-    #     metadata:
-    #       name: ${schema.spec.name}-wts-db-password
-    #       namespace: ${schema.spec.namespace}
-    #       annotations:
-    #         services.k8s.aws/region: ${schema.spec.region}
-    #         services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    #         services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    #     spec:
-    #       name: ${schema.spec.name}-wts-db-password
-    #       description: WTS database user password
-    #       kmsKeyID: ${databaseKey.status.ackResourceMetadata.arn}
-    #       generateSecretString:
-    #         excludeCharacters: "\"'@/\\<>"
-    #         passwordLength: 32
-    #         requireEachIncludedType: true
-    #       tags:
-    #         - key: Name
-    #           value: ${schema.spec.name}-wts-db-password
-    #         - key: Environment
-    #           value: ${schema.spec.environment}
-    #         - key: ManagedBy
-    #           value: Kro
-    #         - key: Project
-    #           value: ${schema.spec.project}
-    #         - key: Service
-    #           value: wts
+
+  # ====================================================================
+  # SECTION 5: ARGOCD CLUSTER REGISTRATION
+  # ====================================================================
+    # ==================== Spoke Namespace Reference ====================
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: namespace
+        name: ${schema.spec.namespace}
+
+    # ==================== ArgoCD Cluster Secret ====================
+    - id: argoCDClusterSecret
+      template:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${schema.spec.namespace}-${schema.spec.name}-cluster
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            argocd.argoproj.io/secret-type: cluster
+        type: Opaque
+        stringData:
+          name: ${schema.spec.namespace}-${schema.spec.name}
+          server: ${eksCluster.status.endpoint}
+          config: |
+            {
+              "awsAuthConfig": {
+                "clusterName": "${schema.spec.name}",
+                "roleARN": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role"
+              },
+              "tlsClientConfig": {
+                "insecure": false,
+                "caData": "${eksCluster.status.certificateAuthority.data}"
+              }
+            }
+
+  # ====================================================================
+  # SECTION 6: KUBERNETES RBAC MAPPING (aws-auth)
+  # ====================================================================
+    # ==================== AWS Auth ConfigMap Bootstrap Application ====================
+    - id: awsAuthApp
+      readyWhen:
+        - ${awsAuthApp.status.?health.?status.orValue('null') == 'Healthy'}
+        - ${awsAuthApp.status.?sync.?status.orValue('null') == 'Synced'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.namespace}-${schema.spec.name}-aws-auth
+          namespace: ${schema.spec.argoCDNamespace}
+          annotations:
+            # Dependencies enforced by referencing these fields
+            kro.run/eks-status: ${eksCluster.status.status}
+            kro.run/cluster-secret: ${argoCDClusterSecret.metadata.name}
+        spec:
+          project: default
+          source:
+            repoURL: https://github.com/indiana-university/gen3-kro
+            targetRevision: test-kro-graphs
+            path: argocd/bootstrap-charts/aws-auth
+            helm:
+              releaseName: aws-auth
+              values: |
+                accountId: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                namespace: ${schema.spec.namespace}
+                clusterName: ${schema.spec.name}
+                nodeRoleArn: ${nodeRole.status.ackResourceMetadata.arn}
+                argoCDSpokeRoleArn: arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role
+          destination:
+            name: ${argoCDClusterSecret.stringData.name}
+            namespace: kube-system
+          syncPolicy:
+            syncOptions:
+              - Replace=true
+              - ServerSideApply=true
+            automated:
+              selfHeal: true
+              prune: false
+
+  # ====================================================================
+  # SECTION 7: APPLICATION DEPLOYMENT (Indexd)
+  # ====================================================================
+    # ==================== Indexd Application ====================
+    - id: indexdApp
+      readyWhen:
+        - ${indexdApp.status.?health.?status.orValue('null') == 'Healthy'}
+        - ${indexdApp.status.?sync.?status.orValue('null') == 'Synced'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.namespace}-${schema.spec.name}-indexd
+          namespace: ${schema.spec.argoCDNamespace}
+          annotations:
+            # Dependencies enforced by referencing these fields
+            kro.run/aws-auth-app: ${awsAuthApp.metadata.name}
+            kro.run/aurora-endpoint: ${auroraCluster.status.endpoint}
+        spec:
+          project: default
+          source:
+            repoURL: ${schema.spec.indexdHelmRepo}
+            targetRevision: ${schema.spec.indexdHelmRevision}
+            path: ${schema.spec.indexdHelmPath}
+            helm:
+              releaseName: indexd
+              values: |
+                global:
+                  aws:
+                    enabled: true
+                    region: ${schema.spec.region}
+                  dev: false
+                  externalSecrets:
+                    deploy: true
+                  postgres:
+                    dbCreate: true
+                    master:
+                      host: ${auroraCluster.status.endpoint}
+                      username: postgres
+                      port: "5432"
+                  environment: ${schema.spec.environment}
+                  hostname: ${schema.spec.name}.example.com
+
+                indexd:
+                  enabled: ${schema.spec.indexdEnabled ? 'true' : 'false'}
+                  defaultPrefix: ${schema.spec.indexdDefaultPrefix}
+                  postgres:
+                    dbCreate: true
+                    host: ${auroraCluster.status.endpoint}
+                  externalSecrets:
+                    pushSecret: true
+                    dbcreds: ${schema.spec.environment}-${schema.spec.name}-indexd-creds
+                    createK8sServiceCredsSecret: false
+          destination:
+            name: ${schema.spec.namespace}-${schema.spec.name}
+            namespace: ${schema.spec.indexdNamespace}
+          syncPolicy:
+            syncOptions:
+              - CreateNamespace=true
+              - Replace=true
+            automated:
+              selfHeal: true
+              prune: true
 
   # # # ==================== CACHE: ElastiCache ====================
     # #   # ==================== ElastiCache Security Group ====================

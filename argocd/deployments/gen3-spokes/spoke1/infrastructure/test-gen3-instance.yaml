@@ -43,6 +43,15 @@ spec:
   dataBucketName: test-gen3-data
   uploadBucketName: test-gen3-uploads
 
+  # ArgoCD Cluster Registration
+  # Account ID automatically extracted from namespace annotation
+  # Role ARN generated: arn:aws:iam::{accountId}:role/{namespace}-argocd-spoke-role
+
+  # Indexd Configuration
+  indexdEnabled: true
+  indexdDefaultPrefix: "dg.TEST/"
+  indexdNamespace: default
+
   # Resource Management
   adoptionPolicy: adopt-or-create
   deletionPolicy: delete

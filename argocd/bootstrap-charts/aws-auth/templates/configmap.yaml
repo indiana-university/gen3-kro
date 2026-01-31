@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: aws-auth
+  namespace: kube-system
+  labels:
+    app.kubernetes.io/name: aws-auth
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version }}
+data:
+  mapRoles: |
+    # ArgoCD spoke role - allows hub ArgoCD to manage cluster resources
+    - rolearn: {{ .Values.argoCDSpokeRoleArn }}
+      username: argocd-deployer
+      groups:
+      - system:masters
+    # EKS node role - allows worker nodes to join the cluster
+    - rolearn: {{ .Values.nodeRoleArn }}
+      username: system:node:{{"{{"}}EC2PrivateDNSName{{"}}"}}
+      groups:
+      - system:bootstrappers
+      - system:nodes
