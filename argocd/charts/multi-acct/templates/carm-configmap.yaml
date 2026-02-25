@@ -1,0 +1,33 @@
+{{- /*
+  Creates the ACK Cross-Account Role Management (CARM) ConfigMap in the ACK
+  controller namespace.  Each ACK controller reconciling resources in a spoke
+  namespace needs to resolve the spoke's AWS account ID to an IAM role ARN.
+
+  Without this ConfigMap (ack-role-account-map) the ec2/eks/rds/… controllers
+  cannot assume the spoke role, even when the spoke namespace carries the
+  services.k8s.aws/owner-account-role-arn annotation, because the default
+  feature-gate set shipped with the ACK charts has IAMRoleSelector=false.
+
+  Format expected by ACK:
+    data:
+      "<accountId>": "<roleArn>"
+
+  One ConfigMap is shared by all controllers in the same namespace.
+  The ACK controller namespace is hardcoded to "ack" — matching the namespace
+  where all self-managed ACK controller Helm releases are installed.
+*/}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ack-role-account-map
+  namespace: ack
+  annotations:
+    argocd.argoproj.io/sync-wave: "-5"
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: ack-multi-acct
+data:
+  {{- $clusters := .Values.clustersJson | fromJson }}
+  {{- range $alias, $accountId := $clusters }}
+  {{ $accountId | quote }}: {{ printf "arn:aws:iam::%s:role/%s" $accountId $.Values.ackRoleName | quote }}
+  {{- end }}
