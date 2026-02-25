@@ -82,7 +82,8 @@ Known constraints of the current platform state. These are expected and will be 
 ### L3: Workloads chart templates implemented
 
 - **Files**: `argocd/charts/workloads/` — `Chart.yaml`, `values.yaml`, `templates/workloads.yaml`
-- **Status**: The workloads chart template is implemented. It renders one ArgoCD Application per enabled workload entry. Infrastructure outputs are injected via the `fleet-workloads` ApplicationSet's `helm.parameters` (sourced from `argoCDClusterSecret` annotations). DB passwords use ExternalSecrets from AWS Secrets Manager on the spoke cluster.
+- **Status**: The workloads chart template is implemented. It renders one ArgoCD Application per enabled workload entry. Infrastructure outputs are injected via the `fleet-workloads` ApplicationSet's `helm.parameters` (sourced from `argoCDClusterSecret` `gen3.io/*` annotations). DB passwords use ExternalSecrets from AWS Secrets Manager on the spoke cluster.
+- **Architecture**: The `fleet-workloads` ApplicationSet (wave 40) uses a matrix generator combining the CSOC control-plane cluster (for repo annotations) with KRO-created spoke cluster secrets (for infra annotations). This naturally gates workloads on infrastructure readiness.
 
 ### L4: Diagram SVG exports not generated
 
@@ -106,7 +107,10 @@ Extend `argocd/charts/resource-groups/` with additional ResourceGroupDefinitions
 
 ### F3: Workload chart refinement
 
-The basic `argocd/charts/workloads/templates/workloads.yaml` template is implemented. Future work: add per-workload ExternalSecret templates for DB credential injection, add health checks, and refine the `infraOutputs` parameter passthrough to individual Gen3 service charts.
+The `argocd/charts/workloads/templates/workloads.yaml` template is implemented with `infraOutputs`
+injection via `fleet-workloads` ApplicationSet (wave 40). Future work: add per-workload ExternalSecret
+templates for DB credential injection on spoke clusters, add health checks, and refine the
+`infraOutputs` parameter passthrough to individual Gen3 service charts.
 
 ### F4: Per-environment addon differentiation
 
