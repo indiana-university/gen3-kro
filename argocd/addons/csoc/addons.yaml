@@ -1,0 +1,512 @@
+syncPolicy:
+  automated:
+    selfHeal: true
+    allowEmpty: true
+    prune: true
+  retry:
+    limit: -1
+    backoff:
+      duration: 5s
+      factor: 2
+      maxDuration: 10m
+  syncOptions:
+    - CreateNamespace=true
+    - ServerSideApply=true
+syncPolicyAppSet:
+  preserveResourcesOnDeletion: false
+useSelectors: true
+repoURLGit: '{{.metadata.annotations.addons_repo_url}}'
+repoURLGitRevision: '{{.metadata.annotations.addons_repo_revision}}'
+repoURLGitBasePath: '{{.metadata.annotations.addons_repo_basepath}}'
+valueFiles:
+  - addons/csoc/addons
+  - cluster-fleet/{{.name}}/addons
+
+########################################
+# CSOC Addons
+########################################
+
+self-managed-kro:
+  enabled: true
+  namespace: kro-system
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "-30"
+  chartName: kro
+  chartRepository: 'oci://registry.k8s.io/kro/charts/kro'
+  defaultVersion: "0.8.5"
+  selector:
+    matchExpressions:
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+
+kro-eks-rgs:
+  enabled: true
+  type: manifest
+  namespace: kro
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "10"
+  path: 'argocd/charts/resource-groups'
+  chartRepository: '{{.metadata.annotations.addons_repo_url}}'
+  targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+  selector:
+    matchExpressions:
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: enable_kro_eks_rgs
+        operator: In
+        values: ['true']
+
+external-secrets:
+  enabled: true
+  enableACK: false
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "15"
+  namespace: external-secrets
+  chartName: external-secrets
+  defaultVersion: "2.0.1"
+  chartRepository: "https://charts.external-secrets.io"
+  selector:
+    matchExpressions:
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: enable_external_secrets
+        operator: In
+        values: ['true']
+  valuesObject:
+    serviceAccount:
+      name: "external-secrets-sa"
+########################################
+# Self-Managed ACK Controllers
+# Activated by annotation: ack_management_mode=self_managed
+########################################
+
+ack-cloudtrail:
+  enabled: true
+  namespace: ack
+  chartName: cloudtrail-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/cloudtrail-chart"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-cloudtrail-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-cloudwatchlogs:
+  enabled: true
+  namespace: ack
+  chartName: cloudwatchlogs-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/cloudwatchlogs-chart"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-cloudwatchlogs-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-ec2:
+  enabled: true
+  namespace: ack
+  chartName: ec2-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/ec2-chart"
+  defaultVersion: "1.9.2"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-ec2-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-efs:
+  enabled: true
+  namespace: ack
+  chartName: efs-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/efs-chart"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-efs-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-eks:
+  enabled: true
+  namespace: ack
+  chartName: eks-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/eks-chart"
+  defaultVersion: "1.11.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-eks-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-elasticache:
+  enabled: true
+  namespace: ack
+  chartName: elasticache-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/elasticache-chart"
+  defaultVersion: "1.3.3"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-elasticache-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-iam:
+  enabled: true
+  namespace: ack
+  chartName: iam-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/iam-chart"
+  defaultVersion: "1.6.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-iam-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-kms:
+  enabled: true
+  namespace: ack
+  chartName: kms-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/kms-chart"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-kms-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-lambda:
+  enabled: true
+  namespace: ack
+  chartName: lambda-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/lambda-chart"
+  defaultVersion: "1.10.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-lambda-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-opensearchservice:
+  enabled: true
+  namespace: ack
+  chartName: opensearchservice-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/opensearchservice-chart"
+  defaultVersion: "1.2.2"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-opensearchservice-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-rds:
+  enabled: true
+  namespace: ack
+  chartName: rds-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/rds-chart"
+  defaultVersion: "1.7.6"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-rds-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-route53:
+  enabled: true
+  namespace: ack
+  chartName: route53-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/route53-chart"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-route53-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-s3:
+  enabled: true
+  namespace: ack
+  chartName: s3-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/s3-chart"
+  defaultVersion: "1.3.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-s3-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-secretsmanager:
+  enabled: true
+  namespace: ack
+  chartName: secretsmanager-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/secretsmanager-chart"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-secretsmanager-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-sns:
+  enabled: true
+  namespace: ack
+  chartName: sns-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/sns-chart"
+  defaultVersion: "1.3.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-sns-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-sqs:
+  enabled: true
+  namespace: ack
+  chartName: sqs-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/sqs-chart"
+  defaultVersion: "1.4.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-sqs-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+
+ack-wafv2:
+  enabled: true
+  namespace: ack
+  chartName: wafv2-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/wafv2-chart"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-wafv2-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'

@@ -1,8 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - services.k8s.aws_fieldexports.yaml
-  - services.k8s.aws_iamroleselectors.yaml
-  - wafv2.services.k8s.aws_ipsets.yaml
-  - wafv2.services.k8s.aws_rulegroups.yaml
-  - wafv2.services.k8s.aws_webacls.yaml

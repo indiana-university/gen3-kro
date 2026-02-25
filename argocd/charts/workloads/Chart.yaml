@@ -1,0 +1,34 @@
+# Workloads chart is scaffolded but currently contains no templates in templates/.
+# The templates directory will be populated as workload use cases are defined and
+# the Gen3 Helm chart integration is finalized.
+# See docs/platform-status.md L3 for details.
+apiVersion: v2
+name: gen3
+description: Gen3 Data Commons wrapper chart - references external Gen3 Helm chart
+type: application
+version: 1.0.0
+appVersion: "master"
+
+# Dependencies - external Gen3 chart from uc-cdis
+dependencies:
+  - name: gen3
+    version: "~0.1.0"  # Update to match the desired Gen3 chart version
+    repository: "https://helm.gen3.org"
+    # Alternative if using OCI registry:
+    # repository: "oci://helm.gen3.org/gen3"
+    condition: gen3.enabled
+
+maintainers:
+  - name: RDServices
+    email: rdservices@iu.edu
+
+keywords:
+  - gen3
+  - data-commons
+  - genomics
+  - kubernetes
+
+# Annotations for ArgoCD and Kro
+annotations:
+  argocd.argoproj.io/sync-wave: "10"
+  kro.run/managed: "true"

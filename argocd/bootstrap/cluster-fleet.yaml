@@ -1,0 +1,52 @@
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          fleet_member: control-plane
+  template:
+    metadata:
+      name: fleet
+      labels:
+        environment: '{{.metadata.labels.environment}}'
+    spec:
+      project: default
+      sources:
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        ref: values
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}charts/instances/'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        helm:
+          releaseName: 'kro-instances'
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/csoc/infrastructure.yaml'
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{ .name }}/infrastructure.yaml'
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{ .name }}/workload.yaml'
+      destination:
+        namespace: argocd
+        name: '{{.name}}'
+      syncPolicy:
+        automated:
+          selfHeal: false
+          allowEmpty: true
+          prune: true
+        retry:
+          limit: 100
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

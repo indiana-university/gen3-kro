@@ -1,0 +1,117 @@
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="fh-W_0VJnTDatY4DE7uX" name="Page-1">
+    <mxGraphModel dx="1028" dy="707" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="0" pageScale="1" pageWidth="1400" pageHeight="900" background="#ffffff" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;strokeColor=none;fillColor=none;fontSize=18;fontStyle=1;fontColor=#FFFFFF;" value="Two-Phase Deployment Model" vertex="1">
+          <mxGeometry height="40" width="500" x="300" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="p1_bg" parent="1" style="swimlane;startSize=30;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=13;fontStyle=1;fontColor=#000033;" value="Phase 1 — Host Machine (Terragrunt)" vertex="1">
+          <mxGeometry height="380" width="500" x="30" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="secrets1" parent="p1_bg" style="shape=mxgraph.aws4.traditional_server;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontColor=#000033;" value="secrets.yaml" vertex="1">
+          <mxGeometry height="80" width="80" x="20" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="mfa" parent="p1_bg" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontColor=#000033;" value="mfa-session.sh&#xa;(assumes CSOC role)" vertex="1">
+          <mxGeometry height="50" width="160" x="150" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="creds" parent="p1_bg" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontColor=#000033;" value="~/.aws/credentials&#xa;[csoc] profile" vertex="1">
+          <mxGeometry height="50" width="120" x="360" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="tg" parent="p1_bg" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontColor=#000033;" value="Terragrunt Stack&#xa;(terragrunt/live/aws/csoc-cluster)" vertex="1">
+          <mxGeometry height="60" width="200" x="150" y="190" as="geometry" />
+        </mxCell>
+        <mxCell id="spoke_roles" parent="p1_bg" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontColor=#000033;" value="Spoke ACK Workload Roles&#xa;(cross-account, account-root trust)&#xa;aws-spoke module" vertex="1">
+          <mxGeometry height="60" width="180" x="80" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p1_1" edge="1" parent="p1_bg" source="secrets1" style="endArrow=block;endFill=1;fontColor=#000033;" target="mfa" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p1_2" edge="1" parent="p1_bg" source="mfa" style="endArrow=block;endFill=1;fontColor=#000033;" target="creds" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p1_3" edge="1" parent="p1_bg" source="secrets1" style="endArrow=block;endFill=1;fontColor=#000033;" target="tg" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p1_4" edge="1" parent="p1_bg" source="tg" style="endArrow=block;endFill=1;fontColor=#000033;" target="spoke_roles" value="stack run apply">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p2_bg" parent="1" style="swimlane;startSize=30;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=13;fontStyle=1;fontColor=#000033;" value="Phase 2 — Container / WSL (Terraform)" vertex="1">
+          <mxGeometry height="380" width="560" x="570" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="install" parent="p2_bg" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=11;fontStyle=1;fontColor=#000033;" value="install.sh apply" vertex="1">
+          <mxGeometry height="50" width="130" x="20" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tfvars" parent="p2_bg" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;fontColor=#000033;" value="terraform.auto.tfvars.json&#xa;(secrets.yaml → yq → jq)" vertex="1">
+          <mxGeometry height="50" width="150" x="200" y="70" as="geometry" />
+        </mxCell>
+        <mxCell id="tf_aws_csoc" parent="p2_bg" style="rounded=1;whiteSpace=wrap;align=left;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;fontColor=#000033;" value="module.aws_csoc&#xa;• VPC + EKS cluster&#xa;• ACK source IAM role&#xa;• ArgoCD Helm install" vertex="1">
+          <mxGeometry height="80" width="190" x="50" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="tf_bootstrap" parent="p2_bg" style="rounded=1;whiteSpace=wrap;align=left;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontColor=#000033;" value="module.argocd_bootstrap&#xa;• ArgoCD cluster secret&#xa;• Git repo secret&#xa;• Bootstrap ApplicationSet" vertex="1">
+          <mxGeometry height="80" width="190" x="310" y="180" as="geometry" />
+        </mxCell>
+        <mxCell id="k8s_argocd" parent="p2_bg" style="ellipse;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontStyle=2;fontColor=#000033;" value="ArgoCD Reconciliation&#xa;starts automatically" vertex="1">
+          <mxGeometry height="60" width="180" x="180" y="310" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p2_1" edge="1" parent="p2_bg" source="install" style="endArrow=block;endFill=1;fontColor=#000033;" target="tfvars" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p2_2" edge="1" parent="p2_bg" source="install" style="endArrow=block;endFill=1;fontColor=#000033;" target="tf_aws_csoc" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p2_3" edge="1" parent="p2_bg" source="tf_aws_csoc" style="endArrow=block;endFill=1;fontSize=9;fontColor=#000033;" target="tf_bootstrap" value="cluster outputs">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_p2_4" edge="1" parent="p2_bg" source="tf_bootstrap" style="endArrow=block;endFill=1;fontSize=9;fontColor=#000033;" target="k8s_argocd" value="bootstrap AppSet created">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="p3_bg" parent="1" style="swimlane;startSize=30;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=13;fontStyle=1;fontColor=#000033;" value="Phase 3 — ArgoCD GitOps (Automatic)" vertex="1">
+          <mxGeometry height="200" width="1100" x="30" y="480" as="geometry" />
+        </mxCell>
+        <mxCell id="kro_w" parent="p3_bg" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontColor=#000033;" value="KRO&#xa;wave -30" vertex="1">
+          <mxGeometry height="90" width="120" x="30" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="ack_w" parent="p3_bg" style="rounded=1;whiteSpace=wrap;fillColor=#ffe6cc;strokeColor=#d79b00;fontSize=10;fontColor=#000033;" value="ACK Controllers&#xa;17x services&#xa;wave 1" vertex="1">
+          <mxGeometry height="90" width="120" x="200" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="rgd_w" parent="p3_bg" style="rounded=1;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;fontColor=#000033;" value="KRO RGDs&#xa;wave 10" vertex="1">
+          <mxGeometry height="90" width="120" x="370" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="eso_w" parent="p3_bg" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;fontColor=#000033;" value="External Secrets&#xa;wave 15" vertex="1">
+          <mxGeometry height="90" width="120" x="540" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="spoke_w" parent="p3_bg" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#000033;" value="Spoke Addons&#xa;wave 20" vertex="1">
+          <mxGeometry height="90" width="120" x="710" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="fleet_w" parent="p3_bg" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;fontColor=#000033;" value="Fleet Instances&#xa;+ Workloads&#xa;wave 30" vertex="1">
+          <mxGeometry height="90" width="130" x="880" y="80" as="geometry" />
+        </mxCell>
+        <mxCell id="e_w1" edge="1" parent="p3_bg" source="kro_w" style="endArrow=block;endFill=1;fontColor=#000033;" target="ack_w" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_w2" edge="1" parent="p3_bg" source="ack_w" style="endArrow=block;endFill=1;fontColor=#000033;" target="rgd_w" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_w3" edge="1" parent="p3_bg" source="rgd_w" style="endArrow=block;endFill=1;fontColor=#000033;" target="eso_w" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_w4" edge="1" parent="p3_bg" source="eso_w" style="endArrow=block;endFill=1;fontColor=#000033;" target="spoke_w" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_w5" edge="1" parent="p3_bg" source="spoke_w" style="endArrow=block;endFill=1;fontColor=#000033;" target="fleet_w" value="">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cross" edge="1" parent="1" source="k8s_argocd" style="endArrow=block;endFill=1;dashed=1;strokeColor=#00994D;fontSize=11;fontColor=#000033;" target="kro_w" value="hands off">
+          <mxGeometry relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="840" y="460" />
+              <mxPoint x="100" y="460" />
+            </Array>
+          </mxGeometry>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

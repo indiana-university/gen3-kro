@@ -1,0 +1,119 @@
+{
+  "_doc": "Single source of truth for all config. Terraform auto-loads this (symlinked into workdir). Terragrunt reads it via jsondecode(file(...)). See config/README.md for field descriptions.",
+
+  "backend_bucket": "my-terraform-state-bucket",
+  "backend_key": "csoc-cluster/terraform.tfstate",
+  "backend_region": "us-east-1",
+
+  "region": "us-east-1",
+  "aws_profile": "csoc",
+  "csoc_account_id": "111111111111",
+
+  "cluster_name": "gen3-csoc-dev",
+  "kubernetes_version": "1.35",
+  "environment": "control-plane",
+  "enable_automode": true,
+  "enable_efs": false,
+  "use_ack": true,
+  "cluster_compute_config": {
+    "enabled": true,
+    "node_pools": ["general-purpose"]
+  },
+  "cluster_endpoint_public_access": true,
+  "enable_cluster_creator_admin_permissions": true,
+
+  "vpc_name": "gen3-kro-vpc",
+  "vpc_cidr": "10.0.0.0/16",
+  "enable_nat_gateway": true,
+  "single_nat_gateway": true,
+  "availability_zones": ["us-east-1a", "us-east-1b"],
+  "private_subnet_cidrs": ["10.0.0.0/20", "10.0.16.0/20"],
+  "public_subnet_cidrs": ["10.0.240.0/24", "10.0.241.0/24"],
+
+  "git_org_name": "indiana-university",
+  "gitops_addons_repo_name": "gen3-kro",
+  "gitops_addons_repo_path": "argocd/bootstrap",
+  "gitops_addons_repo_base_path": "argocd/",
+  "gitops_addons_repo_revision": "main",
+  "gitops_addons_github_url": "github.com",
+  "gitops_addons_org_name": "indiana-university",
+
+  "gitops_fleet_repo_name": "gen3-kro",
+  "gitops_fleet_repo_path": "argocd/bootstrap",
+  "gitops_fleet_repo_base_path": "argocd/",
+  "gitops_fleet_repo_revision": "main",
+  "gitops_fleet_github_url": "github.com",
+  "gitops_fleet_org_name": "indiana-university",
+
+  "argocd_namespace": "argocd",
+  "argocd_chart_version": "7.0.0",
+  "argocd_chart_repository": "https://argoproj.github.io/argo-helm",
+  "argocd_values": {},
+
+  "external_secrets_namespace": "external-secrets",
+  "external_secrets_service_account": "external-secrets-sa",
+
+  "ack_management_type": "self_managed",
+  "kro_management_type": "self_managed",
+  "argocd_management_type": "self_managed",
+  "enable_ack_self_managed": true,
+  "enable_ack_capability": false,
+  "enable_argocd_self_managed": true,
+  "enable_argocd_capability": false,
+  "enable_kro_capability": false,
+  "ack_namespace": "ack",
+
+  "ssm_repo_secret_names": {
+    "git-credentials": "/gen3-kro-csoc/gen3-kro/git-credentials"
+  },
+
+  "argocd_bootstrap_enabled": true,
+
+  "addons": {
+    "enable_external_secrets": true,
+    "enable_kro_eks_rgs": true,
+    "enable_multi_acct": true
+  },
+
+  "tags": {
+    "Project": "gen3-kro",
+    "ManagedBy": "terraform",
+    "Environment": "control-plane"
+  },
+
+  "spokes": [
+    {
+      "alias": "spoke1",
+      "enabled": true,
+      "provider": {
+        "name": "aws",
+        "aws_profile": "spoke1-profile",
+        "region": "us-east-1",
+        "account_id": "111111111111"
+      }
+    },
+    {
+      "alias": "spoke2",
+      "enabled": true,
+      "provider": {
+        "name": "aws",
+        "aws_profile": "spoke2-profile",
+        "region": "us-east-1",
+        "account_id": "222222222222"
+      }
+    }
+  ],
+
+  "developer_identity": {
+    "iam_user_name": "Terraform.User",
+    "role_name": "eks-cluster-mgmt-devcontainer",
+    "mfa_device_name": "eks-cluster-mgmt-virtual-mfa",
+    "create_virtual_mfa": true,
+    "assume_requires_mfa": true,
+    "attach_user_policy": true,
+    "policy_filename": "gen3-test-developer.json",
+    "role_max_session_duration": 43200
+  },
+
+  "iam_base_path": "iam"
+}

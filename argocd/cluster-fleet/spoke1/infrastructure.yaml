@@ -1,0 +1,2 @@
+# Spoke1 infrastructure instance overlay. Consumed by CSOC fleet ApplicationSet.
+instances: {}
