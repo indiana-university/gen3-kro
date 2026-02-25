@@ -1,26 +1,47 @@
 {
-  "name": "gen3-kro-dev",
+  "name": "eks-cluster-mgmt",
   "build": {
     "dockerfile": "../Dockerfile",
     "context": ".."
   },
-  "workspaceFolder": "/workspaces",
+
+  // Use the standard devcontainers workspace path (repo is mounted under /workspaces/<repo>)
+  "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
+
+  // ── Credential mounts ────────────────────────────────────────────────
+  // Mount ~/.aws from host so Terraform/AWS CLI picks up the pre-assumed credentials
+  // written by scripts/mfa-session.sh (profile: csoc in ~/.aws/credentials).
+  // Removed:
+  //   • ~/.kube — not needed; connect-csoc.sh generates kubeconfig at runtime
   "mounts": [
-    // Kube and AWS credentials (Windows USERPROFILE if set)
-    "source=${localEnv:USERPROFILE}/.kube,target=/home/vscode/.kube,type=bind,consistency=cached",
-    "source=${localEnv:USERPROFILE}/.aws,target=/home/vscode/.aws,type=bind,consistency=cached",
-    "source=${localEnv:USERPROFILE}/.azure,target=/home/vscode/.azure,type=bind,consistency=cached",
-    "source=${localEnv:USERPROFILE}/.config/gcloud,target=/home/vscode/.config/gcloud,type=bind,consistency=cached"
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached"
   ],
+
   "remoteUser": "vscode",
+
+  // KUBECONFIG not set — uses default ~/.kube/config, written by connect-csoc.sh at runtime.
+  // AWS_PROFILE selects the profile from the mounted ~/.aws/credentials file.
+  // Run `bash scripts/mfa-session.sh <MFA_CODE>` on the host BEFORE starting the container.
+  // The script writes temporary credentials to ~/.aws/credentials under [csoc].
   "containerEnv": {
-    "KUBECONFIG": "/home/vscode/.kube/config"
+    "REPO_ROOT": "/workspaces/${localWorkspaceFolderBasename}",
+    "AWS_PROFILE": "csoc"
   },
-  "postCreateCommand": "bash -c 'sudo chown -R vscode:vscode /workspaces && git config --global --add safe.directory /workspaces && \n  # Create required output directories\n  mkdir -p /workspaces/outputs/logs && \n  mkdir -p /workspaces/outputs/argo && \n  echo \"Dev container setup complete!\" && \n  # Attempt to load kubeconfig and ArgoCD creds if AWS is configured and script exists\n  if [[ -f /workspaces/bootstrap/scripts/connect-cluster.sh ]]; then \n    if command -v aws >/dev/null 2>&1 && [[ -n \"${AWS_PROFILE:-}\" || -f /home/vscode/.aws/credentials ]]; then \n      echo \"Running connect-cluster.sh (will be skipped if prerequisites are missing)...\" && \n      bash /workspaces/bootstrap/scripts/connect-cluster.sh || true; \n    else \n      echo \"AWS CLI or credentials not found; skipping connect-cluster.sh.\"; \n    fi \n  fi'",
+
+  // Orchestration flags: setup | init | apply | connect (blank = no-op)
+  //   "setup"                      — env dirs, AWS cred validation, script copies
+  //   "setup init"                 — + terraform init (via install.sh)
+  //   "setup init apply"           — + terraform apply + connect (via install.sh)
+  //   "setup connect"              — env setup + connect to existing cluster (no TF)
+  //   "setup init apply connect"   — full pipeline + reconnect
+  "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup init apply connect",
+
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
+        // AI agents need unsandboxed terminal to run terraform/kubectl/helm/argocd
+        "chat.tools.terminal.sandbox.enabled": false,
         "editor.tabSize": 2,
         "editor.insertSpaces": true,
         "files.trimTrailingWhitespace": true,
@@ -36,18 +57,32 @@
         }
       },
       "extensions": [
-        "hashicorp.terraform",                // Terraform linting
-        "redhat.vscode-yaml",                 // YAML linting
-        "GitHub.copilot",                     // AI-assisted coding
-        "GitHub.copilot-chat",                // Interactive AI assistance
-        "openai.chatgpt",                     // AI-assisted coding
-        "4ops.terraform"                      // Terragrunt linting (partial)
+        "hashicorp.terraform",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "redhat.vscode-yaml",
+        "openai.chatgpt",
+        "4ops.terraform",
+        "github.copilot-chat"
       ]
     }
   },
+
+  // ── Security hardening ───────────────────────────────────────────────
+  // • No --privileged (removed docker-outside-of-docker feature)
+  // • No --network=host (use forwardPorts for ArgoCD UI instead — also
+  //   fixes Docker Desktop on Windows where host networking doesn't work)
+  // • --security-opt=no-new-privileges prevents SUID/SGID escalation
   "runArgs": [
-    "--network=host"
+    "--security-opt=no-new-privileges"
   ],
+
+  // Forward ArgoCD port-forward (8080) from container → host.
+  // Replaces --network=host with a scoped port mapping.
+  "forwardPorts": [8080],
+
+  // ── Features ─────────────────────────────────────────────────────────
+  // Removed: docker-outside-of-docker — no scripts/modules use Docker CLI,
+  //   and it was the source of the host Docker socket mount + --privileged.
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
@@ -56,10 +91,6 @@
     },
     "ghcr.io/devcontainers/features/git:1": {
       "version": "latest"
-    },
-    "ghcr.io/devcontainers/features/docker-outside-of-docker:1": {
-      "version": "latest",
-      "moby": false
     }
   }
 }

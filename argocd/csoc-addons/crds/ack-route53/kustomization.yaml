@@ -1,8 +1,0 @@
-apiVersion: kustomize.config.k8s.io/v1beta1
-kind: Kustomization
-resources:
-  - route53.services.k8s.aws_healthchecks.yaml
-  - route53.services.k8s.aws_hostedzones.yaml
-  - route53.services.k8s.aws_recordsets.yaml
-  - services.k8s.aws_fieldexports.yaml
-  - services.k8s.aws_iamroleselectors.yaml
