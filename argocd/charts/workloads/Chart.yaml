@@ -2,10 +2,10 @@
 # Each enabled workload becomes an ArgoCD Application pointing at the spoke cluster.
 # Values are sourced from cluster-fleet/<spoke>/workload.yaml via the fleet ApplicationSet.
 apiVersion: v2
-name: gen3-workloads
-description: Gen3 application workloads deployed to spoke clusters via ArgoCD Applications
+name: workloads
+description: Application workloads deployed to spoke clusters via ArgoCD Applications
 type: application
-version: 0.1.0
+version: 0.2.0
 appVersion: "1.0.0"
 
 maintainers:

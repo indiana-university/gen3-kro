@@ -1,10 +1,19 @@
-# Spoke1 workload definitions. Consumed by argocd/charts/gen3-workloads/ via fleet ApplicationSet.
-# Each entry becomes an ArgoCD Application targeting the spoke cluster.
-# The spoke cluster must be registered (argoCDClusterSecret ready) before workloads can sync.
+# Spoke1 workload definitions. Consumed by argocd/charts/workloads/ via
+# the fleet-workloads ApplicationSet.
 #
-# Database testing: Deploys the gen3 umbrella chart with only the database-dependent
-# services enabled, pointing at the external Aurora cluster provisioned by the RGD.
-# Aurora endpoint and credentials come from the infra-outputs secret created by the RGD.
+# Infrastructure connection values (Aurora endpoint, VPC ID, etc.) are NOT
+# hardcoded here. They are injected automatically by the fleet-workloads
+# ApplicationSet from the argoCDClusterSecret annotations (gen3.io/*) into
+# .Values.infraOutputs, then the workloads chart template adds them as
+# helm.parameters on the generated ArgoCD Application.
+#
+# DB passwords are NOT passed via annotations — they are managed by AWS
+# (manageMasterUserPassword: true) and stored in AWS Secrets Manager.
+# Use ExternalSecrets on the spoke cluster to pull them into K8s secrets.
+#
+# Database testing: Deploys the gen3 umbrella chart with only the
+# database-dependent services enabled, pointing at the external Aurora
+# cluster provisioned by the RGD.
 workloads:
   # ── Gen3 umbrella chart (database-focused subset) ──────────────────
   # Deploys indexd + fence + sheepdog + peregrine + their dependencies
@@ -13,14 +22,14 @@ workloads:
     enabled: true
     syncWave: "50"
     namespace: default
-    clusterName: spoke1-dev
-    infraSecretName: spoke1-dev-infra-outputs
+    # clusterName is optional — defaults to the top-level clusterName
+    # set by the fleet-workloads ApplicationSet (argoCDClusterSecret name).
+    # Override here to target a specific cluster within this spoke:
+    # clusterName: spoke1-spoke1-staging
     spec:
       helmRepo: "https://github.com/uc-cdis/gen3-helm"
       helmPath: "helm/gen3"
       helmRevision: master
-      environment: dev
-      hostname: spoke1-dev.example.com
       values: |
         global:
           # ── AWS / External Database Mode ──────────────────────────
@@ -29,16 +38,15 @@ workloads:
             enabled: true
             region: us-east-1
           # ── External Aurora PostgreSQL ─────────────────────────────
-          # The Aurora endpoint is provisioned by the RGD and stored
-          # in the spoke1-dev-infra-outputs secret. The gen3 db-create
-          # job uses these credentials to initialise per-service DBs.
+          # host and username are injected by the workloads chart from
+          # infraOutputs (via helm.parameters — overrides this block).
+          # Password comes from ExternalSecrets on the spoke cluster.
           postgres:
             dbCreate: true
             master:
-              host: ""      # PLACEHOLDER — populate from infra-outputs secret after RGD completes
-              username: postgres
-              password: ""  # PLACEHOLDER — populate from Secrets Manager / ExternalSecret
               port: "5432"
+              # password is managed by AWS Secrets Manager via
+              # manageMasterUserPassword — use ExternalSecrets to pull it.
           # ── ExternalSecrets for credentials ──────────────────────
           externalSecrets:
             deploy: true

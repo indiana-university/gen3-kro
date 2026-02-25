@@ -79,10 +79,10 @@ Known constraints of the current platform state. These are expected and will be 
 - **File**: `argocd/charts/resource-groups/awsgen3infra1flat-rg.yaml`
 - **Status**: Only the `AwsGen3Infra1Flat` ResourceGroupDefinition exists. The chart structure supports multiple RGD files — additional RGDs will be added as new infrastructure patterns are needed.
 
-### L3: Workloads chart is scaffolded with no templates
+### L3: Workloads chart templates implemented
 
-- **Files**: `argocd/charts/gen3-workloads/` — `Chart.yaml`, `values.yaml` exist; `templates/` contains only `.gitkeep`
-- **Status**: The chart defines a Gen3 Data Commons wrapper with external chart dependency. Templates directory is empty — actual workload templates will be populated as workload use cases are defined and the Gen3 Helm chart integration is finalized.
+- **Files**: `argocd/charts/workloads/` — `Chart.yaml`, `values.yaml`, `templates/workloads.yaml`
+- **Status**: The workloads chart template is implemented. It renders one ArgoCD Application per enabled workload entry. Infrastructure outputs are injected via the `fleet-workloads` ApplicationSet's `helm.parameters` (sourced from `argoCDClusterSecret` annotations). DB passwords use ExternalSecrets from AWS Secrets Manager on the spoke cluster.
 
 ### L4: Diagram SVG exports not generated
 
@@ -104,9 +104,9 @@ Replace the `argocd-initial-admin-secret` password-based auth with GitHub/Okta S
 
 Extend `argocd/charts/resource-groups/` with additional ResourceGroupDefinitions for different infrastructure patterns (e.g., HA Aurora, multi-AZ ElastiCache, GPU-enabled EKS node groups).
 
-### F3: Workload chart templates
+### F3: Workload chart refinement
 
-Populate `argocd/charts/gen3-workloads/templates/` with Gen3 workload deployment templates. Integrate with the external Gen3 Helm chart dependency already declared in `Chart.yaml`.
+The basic `argocd/charts/workloads/templates/workloads.yaml` template is implemented. Future work: add per-workload ExternalSecret templates for DB credential injection, add health checks, and refine the `infraOutputs` parameter passthrough to individual Gen3 service charts.
 
 ### F4: Per-environment addon differentiation
 

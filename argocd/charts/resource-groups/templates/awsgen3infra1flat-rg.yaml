@@ -1203,6 +1203,10 @@ spec:
             Project: ${schema.spec.project}
 
     # ArgoCD Cluster Secret
+    # Labels and annotations on this secret are exposed by the ArgoCD cluster
+    # generator as template parameters. The fleet-workloads ApplicationSet reads
+    # infra output annotations (gen3.io/*) to inject dynamic values (Aurora
+    # endpoint, VPC ID, etc.) into Helm parameters — no plugins required.
     - id: argoCDClusterSecret
       readyWhen:
         - ${argoCDClusterSecret.metadata.?name.orValue('null') != 'null'}
@@ -1214,10 +1218,28 @@ spec:
           namespace: ${schema.spec.argoCDNamespace}
           labels:
             argocd.argoproj.io/secret-type: cluster
+            # Selectors for the fleet-workloads ApplicationSet
+            fleet_member: spoke
+            environment: ${schema.spec.environment}
           annotations:
-            # Dependency: Wait for EKS cluster
+            # ── Dependency: Wait for EKS + Aurora (KRO sequencing) ──
             kro.run/eks-endpoint: ${eksCluster.status.?endpoint}
+            kro.run/aurora-endpoint: ${auroraCluster.status.?endpoint}
             services.k8s.aws/owner-account-id: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+            # ── Infra outputs exposed to fleet-workloads ApplicationSet ──
+            # Non-sensitive metadata only; passwords stay in infraOutputsSecret
+            # and are consumed on the spoke cluster via ExternalSecrets.
+            gen3.io/spoke-alias: ${schema.spec.namespace}
+            gen3.io/infra-name: ${schema.spec.name}
+            gen3.io/aurora-endpoint: ${auroraCluster.status.?endpoint}
+            gen3.io/aurora-reader-endpoint: ${auroraCluster.status.?readerEndpoint}
+            gen3.io/aurora-master-username: ${schema.spec.auroraMasterUsername}
+            gen3.io/aurora-database-name: ${schema.spec.auroraDatabaseName}
+            gen3.io/vpc-id: ${vpc.status.?vpcID}
+            gen3.io/eks-cluster-name: ${eksCluster.metadata.name}
+            gen3.io/environment: ${schema.spec.environment}
+            gen3.io/region: ${schema.spec.region}
+            gen3.io/infra-outputs-secret: ${schema.spec.name}-infra-outputs
         type: Opaque
         stringData:
           name: ${schema.spec.namespace}-${schema.spec.name}
