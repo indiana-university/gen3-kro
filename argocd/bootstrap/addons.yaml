@@ -83,18 +83,12 @@ spec:
         targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
         helm:
           releaseName: ack-multi-acct
-          # parameters are explicitly string key-value pairs substituted by
-          # ArgoCD's Go-template engine before Helm is invoked — no ambiguity:
-          #   fleet_spokes_json annotation  →  clustersJson Helm value (JSON string)
-          #   aws_cluster_name annotation   →  clusterName Helm value
-          parameters:
-            - name: clustersJson
-              value: '{{.metadata.annotations.fleet_spokes_json}}'
-              forceString: true
-            - name: clusterName
-              value: '{{.metadata.annotations.aws_cluster_name}}'
-            - name: ackRoleName
-              value: ack-workload-ack-controller
+          # Pass clustersJson as an inline YAML value so it stays as a string
+          # (helm --set / --set-string both mis-parse JSON curly braces).
+          values: |
+            clustersJson: '{{.metadata.annotations.fleet_spokes_json}}'
+            clusterName: '{{.metadata.annotations.aws_cluster_name}}'
+            ackRoleName: ack-workload-ack-controller
       destination:
         namespace: argocd
         name: '{{.name}}'
