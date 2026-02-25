@@ -29,5 +29,5 @@ metadata:
 data:
   {{- $clusters := .Values.clustersJson | fromJson }}
   {{- range $alias, $accountId := $clusters }}
-  {{ $accountId | quote }}: {{ printf "arn:aws:iam::%s:role/%s" $accountId $.Values.ackRoleName | quote }}
+  {{ $accountId | quote }}: {{ printf "arn:aws:iam::%s:role/%s-spoke-role" $accountId $alias | quote }}
   {{- end }}

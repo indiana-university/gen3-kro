@@ -4,12 +4,11 @@
 # Example: '{"spoke1":"1111111111111","spoke2":"2222222222222"}'
 clustersJson: "{}"
 
-# ackRoleName: name of the IAM role in each spoke account that ACK assumes.
-# Created by the aws-spoke Terraform module:
-#   aws_iam_role.ack_workload["ack-controller"] → "ack-workload-ack-controller"
-ackRoleName: "ack-workload-ack-controller"
+# Role naming convention:
+#   CSOC source role:  ${cluster_name}-csoc-role
+#   Spoke role:        ${spoke_alias}-spoke-role  (e.g., spoke1-spoke-role)
+# Role names are derived from the spoke alias — no ackRoleName needed.
 
-# clusterName: CSOC EKS cluster name — used as the sts:ExternalId when
-# ACK assumes the spoke role (must match the trust policy condition).
+# clusterName: CSOC EKS cluster name — used for informational annotations.
 # Injected by the ApplicationSet from the aws_cluster_name annotation.
 clusterName: ""

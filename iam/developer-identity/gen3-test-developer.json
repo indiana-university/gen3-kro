@@ -259,7 +259,7 @@
           "sts:AssumeRole",
           "sts:TagSession"
         ],
-        "Resource": "arn:aws:iam::*:role/ack-workload-*"
+        "Resource": "arn:aws:iam::*:role/*-spoke-role"
       },
 
       {
