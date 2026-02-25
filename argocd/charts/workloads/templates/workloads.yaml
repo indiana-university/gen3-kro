@@ -1,0 +1,81 @@
+{{/*
+workloads.yaml — renders one ArgoCD Application per enabled workload entry.
+
+Each Application targets a spoke cluster registered by the RGD's argoCDClusterSecret.
+Infrastructure outputs (Aurora endpoint, VPC ID, etc.) are passed from the
+fleet-workloads ApplicationSet as .Values.infraOutputs and injected as
+helm.parameters on the generated Application — parameters override values,
+so static config in workload.yaml is cleanly augmented with dynamic infra data.
+
+Cluster selection:
+  - Default: Uses top-level .Values.clusterName (set by the ApplicationSet from
+    the argoCDClusterSecret's data.name).
+  - Override: Each workload can set its own clusterName to target a different
+    EKS cluster within the same spoke (useful when multiple infrastructure
+    instances exist for one spoke).
+*/}}
+{{- range $name, $wl := .Values.workloads }}
+{{- if $wl.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Values.spokeNamespace | default $.Release.Namespace }}-{{ $name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $wl.syncWave | default "50" | quote }}
+  labels:
+    app.kubernetes.io/managed-by: workloads-chart
+    gen3.io/workload: {{ $name | quote }}
+    gen3.io/spoke: {{ $.Values.spokeNamespace | default $.Release.Namespace | quote }}
+spec:
+  project: default
+  source:
+    repoURL: {{ $wl.spec.helmRepo }}
+    targetRevision: {{ $wl.spec.helmRevision | default "master" }}
+    path: {{ $wl.spec.helmPath }}
+    helm:
+      releaseName: {{ $name }}
+      {{- if $wl.spec.values }}
+      values: |
+        {{- $wl.spec.values | nindent 8 }}
+      {{- end }}
+      {{- /*
+        Inject infrastructure outputs as Helm parameters.
+        Parameters override values (last-writer-wins), so the Aurora endpoint
+        from the RGD replaces any placeholder in the static values block.
+        Only non-sensitive metadata is passed here; DB passwords are handled
+        by ExternalSecrets on the spoke cluster.
+      */}}
+      {{- if and $.Values.infraOutputs $.Values.infraOutputs.auroraEndpoint }}
+      parameters:
+        - name: global.postgres.master.host
+          value: {{ $.Values.infraOutputs.auroraEndpoint | quote }}
+        - name: global.postgres.master.username
+          value: {{ $.Values.infraOutputs.auroraMasterUsername | default "postgres" | quote }}
+        {{- if $.Values.infraOutputs.auroraDatabaseName }}
+        - name: global.postgres.master.dbName
+          value: {{ $.Values.infraOutputs.auroraDatabaseName | quote }}
+        {{- end }}
+      {{- end }}
+  destination:
+    # Per-workload clusterName overrides the top-level clusterName.
+    # This enables deploying different workloads to different clusters
+    # within the same spoke.
+    name: {{ $wl.clusterName | default $.Values.clusterName | default (printf "%s-%s" ($.Values.spokeNamespace | default $.Release.Namespace) ($.Values.spokeNamespace | default $.Release.Namespace)) }}
+    namespace: {{ $wl.namespace | default "default" }}
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: true
+    retry:
+      limit: 5
+      backoff:
+        duration: "30s"
+        factor: 2
+        maxDuration: "5m"
+    syncOptions:
+      - CreateNamespace=true
+      - Replace=true
+{{- end }}
+{{- end }}
