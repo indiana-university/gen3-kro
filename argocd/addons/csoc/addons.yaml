@@ -110,6 +110,7 @@ ack-cloudtrail:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -137,6 +138,7 @@ ack-cloudwatchlogs:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -164,6 +166,7 @@ ack-ec2:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -191,6 +194,7 @@ ack-efs:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -218,6 +222,7 @@ ack-eks:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -245,6 +250,7 @@ ack-elasticache:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -272,6 +278,7 @@ ack-iam:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -299,6 +306,7 @@ ack-kms:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -326,6 +334,7 @@ ack-lambda:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -353,6 +362,7 @@ ack-opensearchservice:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -380,6 +390,7 @@ ack-rds:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -407,6 +418,7 @@ ack-route53:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -434,6 +446,7 @@ ack-s3:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -461,6 +474,7 @@ ack-secretsmanager:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -488,6 +502,7 @@ ack-sns:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -515,6 +530,7 @@ ack-sqs:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
 
@@ -542,5 +558,6 @@ ack-wafv2:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
