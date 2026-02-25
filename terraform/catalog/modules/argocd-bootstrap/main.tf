@@ -75,7 +75,11 @@ locals {
     var.ack_self_managed_role_arn != "" ? {
       ack_self_managed_role_arn = var.ack_self_managed_role_arn
     } : {},
-    local.spoke_account_annotations
+    local.spoke_account_annotations,
+    # JSON map of spoke alias → account ID, consumed by the ack-multi-acct addon chart
+    length(var.spoke_account_ids) > 0 ? {
+      fleet_spokes_json = jsonencode(var.spoke_account_ids)
+    } : {}
   )
 
   cluster_secret_labels = merge(
@@ -89,6 +93,66 @@ locals {
 
 }
 
+################################################################################
+# Spoke Fleet Cluster Secrets — one per spoke, used as generator rows
+# by the fleet ApplicationSet (cluster generator, fleet_member: fleet-spoke-infra).
+#
+# Each secret registers the spoke as an ArgoCD "cluster" pointing back to the
+# in-cluster API server (https://kubernetes.default.svc), so all KRO instance
+# objects are applied to the CSOC cluster. The generator iterates these secrets
+# to iterate spokes without hard-coding the list in the ApplicationSet YAML.
+#
+# ACK CARM (namespace annotations) is handled by the ack-multi-acct Helm chart
+# deployed via the csoc-addons ApplicationSet, NOT by Terraform.
+################################################################################
+resource "kubernetes_secret_v1" "spoke_fleet" {
+  for_each = var.enabled ? var.spoke_account_ids : {}
+
+  metadata {
+    name      = "${each.key}-fleet"
+    namespace = var.argocd_namespace
+
+    labels = merge(
+      {
+        "argocd.argoproj.io/secret-type" = "cluster"
+        "fleet_member"                   = "fleet-spoke-infra"
+      },
+      # propagate environment/region labels from the CSOC cluster secret
+      {
+        for k, v in local.string_labels :
+        k => v
+        if contains(["environment", "aws_region"], k)
+      }
+    )
+
+    annotations = merge(
+      # inherit all repo-URL/basepath annotations from the CSOC cluster secret
+      # so the fleet ApplicationSet can read them via {{.metadata.annotations.*}}
+      local.string_annotations,
+      {
+        # per-spoke metadata carried as annotations for ApplicationSet parametrisation
+        spoke_alias      = each.key
+        spoke_account_id = each.value
+      }
+    )
+  }
+
+  data = {
+    name   = each.key
+    server = "https://kubernetes.default.svc"
+    config = jsonencode({
+      tlsClientConfig = { insecure = false }
+    })
+  }
+
+  type = "Opaque"
+
+  depends_on = [kubernetes_secret_v1.argocd_cluster]
+}
+
+################################################################################
+# Git Repository Secrets — one ArgoCD repo secret per SSM entry
+################################################################################
 resource "kubernetes_secret_v1" "git_repository" {
   for_each = var.enabled ? var.ssm_repo_secret_names : {}
 
@@ -153,7 +217,7 @@ resource "helm_release" "bootstrap" {
   ]
 
   depends_on = [
-    kubernetes_secret_v1.git_repository,  # all repo secrets via for_each
+    kubernetes_secret_v1.git_repository, # all repo secrets via for_each
     kubernetes_secret_v1.argocd_cluster
   ]
 }

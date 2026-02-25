@@ -7,7 +7,7 @@
 helm template argocd/charts/application-sets/
 helm template argocd/charts/instances/
 helm template argocd/charts/resource-groups/
-helm template argocd/charts/workloads/
+helm template argocd/charts/gen3-workloads/
 
 # Template with custom values
 helm template argocd/charts/instances/ -f argocd/cluster-fleet/spoke1/infrastructure.yaml

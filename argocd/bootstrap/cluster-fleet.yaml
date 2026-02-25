@@ -12,31 +12,48 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
+  # One cluster secret per spoke is created by Terraform (argocd-bootstrap module).
+  # Each secret is labeled fleet_member: fleet-spoke-infra and carries the repo
+  # annotations copied from the CSOC cluster secret.
+  # {{.name}} resolves to the spoke alias (data.name in the secret).
   - clusters:
       selector:
         matchLabels:
-          fleet_member: control-plane
+          fleet_member: fleet-spoke-infra
   template:
     metadata:
-      name: fleet
+      name: 'fleet-{{.name}}'
       labels:
         environment: '{{.metadata.labels.environment}}'
+        fleet_spoke: '{{.name}}'
     spec:
       project: default
       sources:
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
         ref: values
+      # Source 1: KRO infrastructure instances
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         path: '{{.metadata.annotations.fleet_repo_basepath}}charts/instances/'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
         helm:
-          releaseName: 'kro-instances'
+          releaseName: 'kro-instances-{{.name}}'
           ignoreMissingValueFiles: true
           valueFiles:
             - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/csoc/infrastructure.yaml'
-            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{ .name }}/infrastructure.yaml'
-            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{ .name }}/workload.yaml'
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/infrastructure.yaml'
+      # Source 2: Application workloads
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}charts/gen3-workloads/'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        helm:
+          releaseName: 'gen3-workloads-{{.name}}'
+          ignoreMissingValueFiles: true
+          parameters:
+            - name: spokeNamespace
+              value: '{{.name}}'
+          valueFiles:
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/workload.yaml'
       destination:
         namespace: argocd
         name: '{{.name}}'

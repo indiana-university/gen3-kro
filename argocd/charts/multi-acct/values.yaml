@@ -1,0 +1,15 @@
+# clustersJson: JSON-encoded map of spoke-alias → AWS account ID
+# Injected by the ack-multi-acct ApplicationSet from the CSOC cluster secret
+# annotation fleet_spokes_json (set by Terraform argocd-bootstrap module).
+# Example: '{"spoke1":"1111111111111","spoke2":"2222222222222"}'
+clustersJson: "{}"
+
+# ackRoleName: name of the IAM role in each spoke account that ACK assumes.
+# Created by the aws-spoke Terraform module:
+#   aws_iam_role.ack_workload["ack-controller"] → "ack-workload-ack-controller"
+ackRoleName: "ack-workload-ack-controller"
+
+# clusterName: CSOC EKS cluster name — used as the sts:ExternalId when
+# ACK assumes the spoke role (must match the trust policy condition).
+# Injected by the ApplicationSet from the aws_cluster_name annotation.
+clusterName: ""

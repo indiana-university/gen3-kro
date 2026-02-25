@@ -1,0 +1,26 @@
+{{- /*
+  Creates one IAMRoleSelector per spoke for ACK Cross-Account Resource Management.
+
+  IAMRoleSelector (services.k8s.aws/v1alpha1) is an alternative/complement to
+  namespace annotations for CARM. It explicitly maps a role ARN to a set of
+  namespaces, which takes precedence over namespace annotations when present.
+
+  SkipDryRunOnMissingResource=true ensures this resource is skipped if the
+  services.k8s.aws CRD is not yet installed on the CSOC cluster.
+*/}}
+{{- $clusters := .Values.clustersJson | fromJson }}
+{{- range $alias, $accountId := $clusters }}
+---
+apiVersion: services.k8s.aws/v1alpha1
+kind: IAMRoleSelector
+metadata:
+  name: {{ $alias }}-ack-role
+  namespace: {{ $alias }}
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  roleARN: {{ printf "arn:aws:iam::%s:role/%s" $accountId $.Values.ackRoleName | quote }}
+  namespaceSelector:
+    matchNames:
+      - {{ $alias | quote }}
+{{- end }}

@@ -81,7 +81,7 @@ Known constraints of the current platform state. These are expected and will be 
 
 ### L3: Workloads chart is scaffolded with no templates
 
-- **Files**: `argocd/charts/workloads/` — `Chart.yaml`, `values.yaml` exist; `templates/` contains only `.gitkeep`
+- **Files**: `argocd/charts/gen3-workloads/` — `Chart.yaml`, `values.yaml` exist; `templates/` contains only `.gitkeep`
 - **Status**: The chart defines a Gen3 Data Commons wrapper with external chart dependency. Templates directory is empty — actual workload templates will be populated as workload use cases are defined and the Gen3 Helm chart integration is finalized.
 
 ### L4: Diagram SVG exports not generated
@@ -106,7 +106,7 @@ Extend `argocd/charts/resource-groups/` with additional ResourceGroupDefinitions
 
 ### F3: Workload chart templates
 
-Populate `argocd/charts/workloads/templates/` with Gen3 workload deployment templates. Integrate with the external Gen3 Helm chart dependency already declared in `Chart.yaml`.
+Populate `argocd/charts/gen3-workloads/templates/` with Gen3 workload deployment templates. Integrate with the external Gen3 Helm chart dependency already declared in `Chart.yaml`.
 
 ### F4: Per-environment addon differentiation
 

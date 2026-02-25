@@ -86,16 +86,7 @@ spec:
       # ArgoCD Cluster Registration
       argoCDNamespace: string | default="argocd"
 
-      # ==================== VPC Peering Configuration ====================
-      # CSOC VPC Peering
-      csocVpcId: string | required=true
-      csocVpcCidr: string | required=true
-      csocAccountId: string | required=true
-      csocRegion: string | default="us-east-1"
-
       # ==================== EKS Access Configuration ====================
-      # ArgoCD IAM Role for spoke access
-      argoCDRoleArn: string | required=true
 
     status:
       # Security Status (KMS)
@@ -158,14 +149,8 @@ spec:
       # ArgoCD Cluster Registration Status
       argoCDClusterSecretName: ${argoCDClusterSecret.metadata.?name.orValue("loading")}
 
-      # Application Status (Indexd)
-      indexdApplicationName: ${indexdApp.metadata.?name.orValue("loading")}
-      indexdApplicationStatus: ${indexdApp.status.?health.?status.orValue("loading")}
-      indexdApplicationSyncStatus: ${indexdApp.status.?sync.?status.orValue("loading")}
-
-      # VPC Peering Status
-      vpcPeeringConnectionID: ${vpcPeeringConnection.status.?vpcPeeringConnectionID.orValue("loading")}
-      vpcPeeringStatus: ${vpcPeeringConnection.status.?status.?code.orValue("loading")}
+      # Infrastructure Outputs Secret
+      infraOutputsSecretName: ${infraOutputsSecret.metadata.?name.orValue("loading")}
 
       # EKS Access Status
       eksAccessEntryARN: ${eksAccessEntry.status.?ackResourceMetadata.?arn.orValue("loading")}
@@ -246,41 +231,6 @@ spec:
               value: Kro
             - key: Project
               value: ${schema.spec.project}
-    # Layer 2: VPC Peering Connection to CSOC
-    - id: vpcPeeringConnection
-      readyWhen:
-        - ${vpcPeeringConnection.status.?vpcPeeringConnectionID.orValue('null') != 'null'}
-        - ${vpcPeeringConnection.status.?status.?code.orValue('null') == 'active'}
-        - ${vpcPeeringConnection.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: ec2.services.k8s.aws/v1alpha1
-        kind: VPCPeeringConnection
-        metadata:
-          name: ${schema.spec.name}-csoc-peering
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${schema.spec.region}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          vpcID: ${vpc.status.?vpcID}
-          peerVPCID: ${schema.spec.csocVpcId}
-          peerOwnerID: ${schema.spec.csocAccountId}
-          peerRegion: ${schema.spec.csocRegion}
-          acceptRequest: false
-          requesterPeeringConnectionOptions:
-            allowDNSResolutionFromRemoteVPC: true
-          tags:
-            - key: Name
-              value: ${schema.spec.name}-csoc-peering
-            - key: Environment
-              value: ${schema.spec.environment}
-            - key: ManagedBy
-              value: Kro
-            - key: Project
-              value: ${schema.spec.project}
-            - key: PeeringType
-              value: spoke-to-csoc
     # Layer 2: Internet Gateway
     - id: igw
       readyWhen:
@@ -457,8 +407,6 @@ spec:
           routes:
             - destinationCIDRBlock: "0.0.0.0/0"
               natGatewayID: ${natGateway1.status.?natGatewayID}
-            - destinationCIDRBlock: ${schema.spec.csocVpcCidr}
-              vpcPeeringConnectionID: ${vpcPeeringConnection.status.?vpcPeeringConnectionID}
           tags:
             - key: Name
               value: ${schema.spec.name}-private-rt
@@ -824,7 +772,7 @@ spec:
                 {
                   "Sid": "Enable IAM User Permissions",
                   "Effect": "Allow",
-                  "Principal": {"AWS": "arn:aws:iam::859011005590:root"},
+                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
                   "Action": "kms:*",
                   "Resource": "*"
                 },
@@ -880,7 +828,7 @@ spec:
                 {
                   "Sid": "Enable IAM User Permissions",
                   "Effect": "Allow",
-                  "Principal": {"AWS": "arn:aws:iam::859011005590:root"},
+                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
                   "Action": "kms:*",
                   "Resource": "*"
                 },
@@ -948,7 +896,7 @@ spec:
                 {
                   "Sid": "Enable IAM User Permissions",
                   "Effect": "Allow",
-                  "Principal": {"AWS": "arn:aws:iam::859011005590:root"},
+                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
                   "Action": "kms:*",
                   "Resource": "*"
                 },
@@ -1219,7 +1167,7 @@ spec:
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
           clusterName: ${schema.spec.name}
-          principalARN: ${schema.spec.argoCDRoleArn}
+          principalARN: arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role
           type: STANDARD
           kubernetesGroups:
             - system:masters
@@ -1247,7 +1195,7 @@ spec:
           clusterName: ${schema.spec.name}
           namespace: argocd
           serviceAccount: argocd-application-controller
-          roleARN: ${schema.spec.argoCDRoleArn}
+          roleARN: arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role
           tags:
             Name: ${schema.spec.name}-argocd-pod-identity
             Environment: ${schema.spec.environment}
@@ -1429,67 +1377,62 @@ spec:
   # ====================================================================
 
   # ====================================================================
-  # BOOTSTRAP: APPLICATION DEPLOYMENT (Test)
+  # INFRASTRUCTURE OUTPUTS SECRET
   # ====================================================================
-    # Indexd Application
-    - id: indexdApp
+  # Final node: emits a Secret containing all key infra outputs.
+  # This bridges the infrastructure graph to the workloads chart.
+  # Workloads reference this Secret via infraSecretName in workload.yaml.
+    - id: infraOutputsSecret
       readyWhen:
-        - ${indexdApp.metadata.?name.orValue('null') != 'null'}
+        - ${infraOutputsSecret.metadata.?name.orValue('null') != 'null'}
       template:
-        apiVersion: argoproj.io/v1alpha1
-        kind: Application
+        apiVersion: v1
+        kind: Secret
         metadata:
-          name: ${schema.spec.namespace}-${schema.spec.name}-indexd
-          namespace: ${schema.spec.argoCDNamespace}
+          name: ${schema.spec.name}-infra-outputs
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/infra-outputs: "true"
           annotations:
-            # Dependencies enforced by referencing these fields
             kro.run/aurora-endpoint: ${auroraCluster.status.?endpoint}
             kro.run/eks-cluster: ${eksCluster.status.?ackResourceMetadata.?arn}
-        spec:
-          project: default
-          source:
-            repoURL: ${schema.spec.indexdHelmRepo}
-            targetRevision: ${schema.spec.indexdHelmRevision}
-            path: ${schema.spec.indexdHelmPath}
-            helm:
-              releaseName: indexd
-              values: |
-                global:
-                  aws:
-                    enabled: true
-                    region: ${schema.spec.region}
-                  dev: false
-                  externalSecrets:
-                    deploy: true
-                  postgres:
-                    dbCreate: true
-                    master:
-                      host: ${auroraCluster.status.?endpoint}
-                      username: postgres
-                      port: "5432"
-                  environment: ${schema.spec.environment}
-                  hostname: ${schema.spec.name}.example.com
-
-                indexd:
-                  enabled: ${schema.spec.indexdEnabled ? 'true' : 'false'}
-                  defaultPrefix: ${schema.spec.indexdDefaultPrefix}
-                  postgres:
-                    dbCreate: true
-                    host: ${auroraCluster.status.?endpoint}
-                  externalSecrets:
-                    pushSecret: true
-                    dbcreds: ${schema.spec.environment}-${schema.spec.name}-indexd-creds
-                    createK8sServiceCredsSecret: false
-          destination:
-            name: ${schema.spec.namespace}-${schema.spec.name}
-            namespace: ${schema.spec.indexdNamespace}
-          syncPolicy:
-            syncOptions:
-              - CreateNamespace=true
-              - Replace=true
-            automated:
-              selfHeal: true
-              prune: true
+        type: Opaque
+        stringData:
+          # Aurora
+          aurora_endpoint: ${auroraCluster.status.?endpoint}
+          aurora_reader_endpoint: ${auroraCluster.status.?readerEndpoint}
+          aurora_cluster_arn: ${auroraCluster.status.?ackResourceMetadata.?arn}
+          aurora_master_username: ${schema.spec.auroraMasterUsername}
+          aurora_database_name: ${schema.spec.auroraDatabaseName}
+          # EKS
+          eks_cluster_name: ${eksCluster.metadata.name}
+          eks_endpoint: ${eksCluster.status.?endpoint}
+          eks_ca_data: ${eksCluster.status.?certificateAuthority.?data}
+          eks_cluster_arn: ${eksCluster.status.?ackResourceMetadata.?arn}
+          # Network
+          vpc_id: ${vpc.status.?vpcID}
+          private_subnet_ids: "${privatesubnet1.status.?subnetID},${privatesubnet2.status.?subnetID}"
+          db_subnet_ids: "${dbsubnet1.status.?subnetID},${dbsubnet2.status.?subnetID}"
+          public_subnet_ids: "${publicsubnet1.status.?subnetID},${publicsubnet2.status.?subnetID}"
+          # S3
+          logging_bucket_arn: ${loggingBucket.status.?ackResourceMetadata.?arn}
+          data_bucket_arn: ${dataBucket.status.?ackResourceMetadata.?arn}
+          upload_bucket_arn: ${uploadBucket.status.?ackResourceMetadata.?arn}
+          # KMS
+          logging_key_arn: ${loggingKey.status.?ackResourceMetadata.?arn}
+          database_key_arn: ${databaseKey.status.?ackResourceMetadata.?arn}
+          platform_key_arn: ${platformKey.status.?ackResourceMetadata.?arn}
+          # Security Groups
+          eks_security_group_id: ${eksSecurityGroup.status.?id}
+          aurora_security_group_id: ${auroraSecurityGroup.status.?id}
+          # IAM
+          cluster_role_arn: ${clusterRole.status.?ackResourceMetadata.?arn}
+          node_role_arn: ${nodeRole.status.?ackResourceMetadata.?arn}
+          # Metadata
+          environment: ${schema.spec.environment}
+          region: ${schema.spec.region}
+          name: ${schema.spec.name}
   # # # ==================== CACHE: ElastiCache ====================
     # #   # ==================== ElastiCache Security Group ====================
     # #   - id: elastiCacheSecurityGroup

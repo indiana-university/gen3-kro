@@ -1,0 +1,33 @@
+{{- /*
+  Creates one Kubernetes Namespace per spoke with ACK CARM annotations.
+
+  ACK uses three namespace annotations for Cross-Account Resource Management:
+    services.k8s.aws/owner-account-id          - target AWS account ID
+    services.k8s.aws/owner-account-role-arn    - IAM role ARN to assume in that account
+    services.k8s.aws/owner-account-role-external-id - sts:ExternalId matching spoke trust policy
+
+  The role ARN must match the role created by the aws-spoke Terraform module:
+    aws_iam_role.ack_workload["ack-controller"] → "<prefix>-ack-controller"
+    where prefix = "ack-workload" → full name "ack-workload-ack-controller"
+
+  The sts:ExternalId must match the trust policy condition on the spoke role:
+    StringEquals sts:ExternalId == cluster_name (= .Values.clusterName)
+*/}}
+{{- $clusters := .Values.clustersJson | fromJson }}
+{{- range $alias, $accountId := $clusters }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $alias }}
+  annotations:
+    # ACK CARM — the AWS account this namespace's resources will be created in
+    services.k8s.aws/owner-account-id: {{ $accountId | quote }}
+    # ACK CARM — the IAM role ACK assumes when reconciling resources in this namespace
+    services.k8s.aws/owner-account-role-arn: {{ printf "arn:aws:iam::%s:role/%s" $accountId $.Values.ackRoleName | quote }}
+    # ACK CARM — sts:ExternalId passed when assuming the role
+    services.k8s.aws/owner-account-role-external-id: {{ $.Values.clusterName | quote }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    gen3.io/spoke: {{ $alias | quote }}
+{{- end }}
