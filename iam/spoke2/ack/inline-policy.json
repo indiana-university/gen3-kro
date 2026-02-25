@@ -159,7 +159,7 @@
         "iam:DetachRolePolicy",
         "iam:PassRole"
       ],
-      "Resource": "arn:aws:iam::*:role/ack-workload-*"
+      "Resource": "arn:aws:iam::*:role/*-spoke-role"
     },
     {
       "Sid": "ManageServiceLinkedRolesForManagedServices",

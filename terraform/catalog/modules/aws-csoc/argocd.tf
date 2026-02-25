@@ -4,7 +4,7 @@
 
 resource "aws_iam_role" "argocd_self_managed" {
   count = local.argocd_self_managed && var.enable_argocd_self_managed ? 1 : 0
-  name  = "${local.name}-argocd"
+  name  = "${local.name}-argocd-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

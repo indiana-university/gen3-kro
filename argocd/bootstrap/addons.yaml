@@ -88,7 +88,6 @@ spec:
           values: |
             clustersJson: '{{.metadata.annotations.fleet_spokes_json}}'
             clusterName: '{{.metadata.annotations.aws_cluster_name}}'
-            ackRoleName: ack-workload-ack-controller
       destination:
         namespace: argocd
         name: '{{.name}}'

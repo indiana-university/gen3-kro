@@ -19,7 +19,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
 spec:
-  arn: {{ printf "arn:aws:iam::%s:role/%s" $accountId $.Values.ackRoleName | quote }}
+  arn: {{ printf "arn:aws:iam::%s:role/%s-spoke-role" $accountId $alias | quote }}
   namespaceSelector:
     names:
       - {{ $alias | quote }}

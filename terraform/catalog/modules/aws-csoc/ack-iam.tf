@@ -4,7 +4,7 @@
 
 resource "aws_iam_role" "ack_csoc_source" {
   count = local.ack_role_enabled ? 1 : 0
-  name  = "${local.name}-ack-shared-csoc-source"
+  name  = "${local.name}-csoc-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -37,7 +37,7 @@ resource "aws_iam_role" "ack_csoc_source" {
   })
 
   tags = merge(local.tags, {
-    RoleType = "ack-csoc-shared-source"
+    RoleType = "csoc-role"
   })
 }
 
@@ -82,4 +82,29 @@ resource "aws_eks_capability" "ack" {
     aws_iam_role.ack_csoc_source,
     aws_eks_access_policy_association.ack_csoc_source_admin
   ]
+}
+
+###############################################################################
+# Permission policy — allow CSOC source role to assume spoke roles
+###############################################################################
+
+resource "aws_iam_role_policy" "ack_csoc_assume_spoke" {
+  count = local.ack_role_enabled ? 1 : 0
+  name  = "${local.name}-csoc-assume-spoke"
+  role  = aws_iam_role.ack_csoc_source[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AssumeACKSpokeRoles"
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+        Resource = "arn:aws:iam::*:role/*-spoke-role"
+      }
+    ]
+  })
 }

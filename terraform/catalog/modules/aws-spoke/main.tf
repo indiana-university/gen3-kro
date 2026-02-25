@@ -1,12 +1,12 @@
 ################################################################################
-# ACK Workload Roles Module - Main Configuration (V2)
+# ACK Spoke Roles Module - Main Configuration (V2)
 # Single provider — spoke account only. No cross-account CSOC provider.
+# Creates one IAM role per spoke: ${spoke_alias}-spoke-role
 ################################################################################
 
 data "aws_caller_identity" "spoke" {}
 
 locals {
-  role_name_prefix = "ack-workload"
   spoke_account_id = data.aws_caller_identity.spoke.account_id
   role_inputs = {
     for name, cfg in var.roles :
@@ -28,6 +28,8 @@ locals {
 
 ################################################################################
 # Trust Policy — Account-Root + ArnLike Condition (V2)
+# ArnLike restricts callers to the CSOC source role (*-csoc-role).
+# No ExternalId — ACK does not pass it during sts:AssumeRole.
 ################################################################################
 
 data "aws_iam_policy_document" "assume_role" {
@@ -45,37 +47,32 @@ data "aws_iam_policy_document" "assume_role" {
     condition {
       test     = "ArnLike"
       variable = "aws:PrincipalArn"
-      values   = ["arn:aws:iam::${var.csoc_account_id}:role/*ack-shared-*-source"]
-    }
-
-    condition {
-      test     = "StringEquals"
-      variable = "sts:ExternalId"
-      values   = [var.cluster_name]
+      values   = ["arn:aws:iam::${var.csoc_account_id}:role/*-csoc-role"]
     }
   }
 }
 
 ################################################################################
-# IAM Roles for ACK Workload Operations
+# IAM Roles for ACK Spoke Operations
+# Role name: ${spoke_alias}-spoke-role (one per spoke)
 ################################################################################
 
 resource "aws_iam_role" "ack_workload" {
   for_each = local.active_roles
 
-  name        = "${local.role_name_prefix}-${each.key}"
-  description = "ACK workload role for ${each.key} in ${var.cluster_name}"
+  name        = "${var.spoke_alias}-spoke-role"
+  description = "ACK spoke role for ${var.spoke_alias} managed by ${var.cluster_name}"
 
   assume_role_policy = data.aws_iam_policy_document.assume_role[each.key].json
 
   tags = merge(
     var.tags,
     {
-      Name      = "${local.role_name_prefix}-${each.key}"
-      RoleKey   = each.key
+      Name      = "${var.spoke_alias}-spoke-role"
+      SpokeAlias = var.spoke_alias
       Cluster   = var.cluster_name
       ManagedBy = "terraform"
-      Module    = "ack-workload-roles"
+      Module    = "aws-spoke"
     }
   )
 }
@@ -112,7 +109,7 @@ resource "aws_iam_role_policy" "custom_policies" {
     if length(lookup(config, "custom_policies", [])) > 0
   }
 
-  name = "${local.role_name_prefix}-${each.key}-custom"
+  name = "${var.spoke_alias}-spoke-role-custom"
   role = aws_iam_role.ack_workload[each.key].id
 
   policy = jsonencode({
