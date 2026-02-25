@@ -90,6 +90,7 @@ spec:
           parameters:
             - name: clustersJson
               value: '{{.metadata.annotations.fleet_spokes_json}}'
+              forceString: true
             - name: clusterName
               value: '{{.metadata.annotations.aws_cluster_name}}'
             - name: ackRoleName
