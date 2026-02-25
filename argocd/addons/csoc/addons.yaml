@@ -110,6 +110,8 @@ ack-cloudtrail:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-cloudwatchlogs:
   enabled: true
@@ -135,6 +137,8 @@ ack-cloudwatchlogs:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-ec2:
   enabled: true
@@ -160,6 +164,8 @@ ack-ec2:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-efs:
   enabled: true
@@ -185,6 +191,8 @@ ack-efs:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-eks:
   enabled: true
@@ -210,6 +218,8 @@ ack-eks:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-elasticache:
   enabled: true
@@ -235,6 +245,8 @@ ack-elasticache:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-iam:
   enabled: true
@@ -260,6 +272,8 @@ ack-iam:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-kms:
   enabled: true
@@ -285,6 +299,8 @@ ack-kms:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-lambda:
   enabled: true
@@ -310,6 +326,8 @@ ack-lambda:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-opensearchservice:
   enabled: true
@@ -335,6 +353,8 @@ ack-opensearchservice:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-rds:
   enabled: true
@@ -360,6 +380,8 @@ ack-rds:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-route53:
   enabled: true
@@ -385,6 +407,8 @@ ack-route53:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-s3:
   enabled: true
@@ -410,6 +434,8 @@ ack-s3:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-secretsmanager:
   enabled: true
@@ -435,6 +461,8 @@ ack-secretsmanager:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-sns:
   enabled: true
@@ -460,6 +488,8 @@ ack-sns:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-sqs:
   enabled: true
@@ -485,6 +515,8 @@ ack-sqs:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
 
 ack-wafv2:
   enabled: true
@@ -510,3 +542,5 @@ ack-wafv2:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+    featureGates:
+      IAMRoleSelector: "true"
