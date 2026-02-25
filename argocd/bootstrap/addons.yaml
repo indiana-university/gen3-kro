@@ -49,6 +49,65 @@ spec:
           - CreateNamespace=true
           - ServerSideApply=true
 ---
+# Standalone ApplicationSet for ACK CARM namespaces and IAMRoleSelectors.
+# Deployed directly (not via the addon framework) so that annotation values
+# are injected via explicit Helm parameters — the unambiguous ArgoCD pattern.
+# Wave 5: after KRO (wave -30) and ACK controllers (wave 1), before RGDs (wave 10).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: ack-multi-acct
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "5"
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: false
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          fleet_member: control-plane
+          enable_multi_acct: "true"
+  template:
+    metadata:
+      name: ack-multi-acct
+    spec:
+      project: default
+      sources:
+      - repoURL: '{{.metadata.annotations.addons_repo_url}}'
+        path: '{{.metadata.annotations.addons_repo_basepath}}charts/multi-acct'
+        targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+        helm:
+          releaseName: ack-multi-acct
+          # parameters are explicitly string key-value pairs substituted by
+          # ArgoCD's Go-template engine before Helm is invoked — no ambiguity:
+          #   fleet_spokes_json annotation  →  clustersJson Helm value (JSON string)
+          #   aws_cluster_name annotation   →  clusterName Helm value
+          parameters:
+            - name: clustersJson
+              value: '{{.metadata.annotations.fleet_spokes_json}}'
+            - name: clusterName
+              value: '{{.metadata.annotations.aws_cluster_name}}'
+            - name: ackRoleName
+              value: ack-workload-ack-controller
+      destination:
+        namespace: argocd
+        name: '{{.name}}'
+      syncPolicy:
+        automated:
+          selfHeal: true
+          allowEmpty: true
+          prune: true
+        retry:
+          limit: 100
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+---
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:

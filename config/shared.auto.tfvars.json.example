@@ -1,13 +1,13 @@
 {
-  "_doc": "Single source of truth for all config. Terraform auto-loads this (symlinked into workdir). Terragrunt reads it via jsondecode(file(...)). See config/README.md for field descriptions.",
+  "_doc": "Example values for shared.auto.tfvars.json — copy to config/shared.auto.tfvars.json and fill in real values.",
 
   "backend_bucket": "my-terraform-state-bucket",
   "backend_key": "csoc-cluster/terraform.tfstate",
   "backend_region": "us-east-1",
 
   "region": "us-east-1",
-  "aws_profile": "csoc",
-  "csoc_account_id": "111111111111",
+  "aws_profile": "<AWS_PROFILE>",
+  "csoc_account_id": "<CSOC_ACCOUNT_ID>",
 
   "cluster_name": "gen3-csoc-dev",
   "kubernetes_version": "1.35",
@@ -32,21 +32,21 @@
 
   "git_org_name": "indiana-university",
   "gitops_addons_repo_name": "gen3-kro",
-  "gitops_addons_repo_path": "argocd/bootstrap",
+  "gitops_addons_repo_path": "bootstrap",
   "gitops_addons_repo_base_path": "argocd/",
   "gitops_addons_repo_revision": "main",
   "gitops_addons_github_url": "github.com",
   "gitops_addons_org_name": "indiana-university",
 
   "gitops_fleet_repo_name": "gen3-kro",
-  "gitops_fleet_repo_path": "argocd/bootstrap",
+  "gitops_fleet_repo_path": "bootstrap",
   "gitops_fleet_repo_base_path": "argocd/",
   "gitops_fleet_repo_revision": "main",
   "gitops_fleet_github_url": "github.com",
   "gitops_fleet_org_name": "indiana-university",
 
   "argocd_namespace": "argocd",
-  "argocd_chart_version": "7.0.0",
+  "argocd_chart_version": "<ARGOCD_CHART_VERSION>",
   "argocd_chart_repository": "https://argoproj.github.io/argo-helm",
   "argocd_values": {},
 
@@ -64,7 +64,7 @@
   "ack_namespace": "ack",
 
   "ssm_repo_secret_names": {
-    "git-credentials": "/gen3-kro-csoc/gen3-kro/git-credentials"
+    "git-credentials": "<SSM_PATH_FOR_GIT_CREDENTIALS>"
   },
 
   "argocd_bootstrap_enabled": true,
@@ -76,7 +76,7 @@
   },
 
   "tags": {
-    "Project": "gen3-kro",
+    "Project": "eks-cluster-mgmt",
     "ManagedBy": "terraform",
     "Environment": "control-plane"
   },
@@ -87,9 +87,9 @@
       "enabled": true,
       "provider": {
         "name": "aws",
-        "aws_profile": "spoke1-profile",
+        "aws_profile": "<SPOKE1_AWS_PROFILE>",
         "region": "us-east-1",
-        "account_id": "111111111111"
+        "account_id": "<SPOKE1_ACCOUNT_ID>"
       }
     },
     {
@@ -97,15 +97,15 @@
       "enabled": true,
       "provider": {
         "name": "aws",
-        "aws_profile": "spoke2-profile",
+        "aws_profile": "<SPOKE2_AWS_PROFILE>",
         "region": "us-east-1",
-        "account_id": "222222222222"
+        "account_id": "<SPOKE2_ACCOUNT_ID>"
       }
     }
   ],
 
   "developer_identity": {
-    "iam_user_name": "Terraform.User",
+    "iam_user_name": "<DEVELOPER_IAM_USER>",
     "role_name": "eks-cluster-mgmt-devcontainer",
     "mfa_device_name": "eks-cluster-mgmt-virtual-mfa",
     "create_virtual_mfa": true,

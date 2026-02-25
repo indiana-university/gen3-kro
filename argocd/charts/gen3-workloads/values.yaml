@@ -1,0 +1,28 @@
+# Default values for workloads chart.
+# Per-spoke overrides are in cluster-fleet/<spoke>/workload.yaml.
+#
+# Each workload entry renders an ArgoCD Application targeting the spoke cluster.
+# The spoke cluster must be registered via the RGD's argoCDClusterSecret before
+# these Applications can sync.
+
+# spokeNamespace is set by the fleet ApplicationSet (from the spoke directory name).
+# It is used as a prefix for ArgoCD Application names.
+spokeNamespace: ""
+
+workloads: {}
+  # Example:
+  # indexd:
+  #   enabled: true
+  #   syncWave: "50"
+  #   namespace: default
+  #   clusterName: spoke1-dev
+  #   infraSecretName: spoke1-dev-infra-outputs
+  #   spec:
+  #     helmRepo: "https://github.com/uc-cdis/gen3-helm"
+  #     helmPath: "helm/indexd"
+  #     helmRevision: master
+  #     environment: dev
+  #     hostname: spoke1-dev.example.com
+  #     values: |
+  #       indexd:
+  #         enabled: true

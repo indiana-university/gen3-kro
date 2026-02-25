@@ -1,2 +1,86 @@
-# Spoke1 workload values consumed by graph-driven bootstrap logic.
-workload: {}
+# Spoke1 workload definitions. Consumed by argocd/charts/gen3-workloads/ via fleet ApplicationSet.
+# Each entry becomes an ArgoCD Application targeting the spoke cluster.
+# The spoke cluster must be registered (argoCDClusterSecret ready) before workloads can sync.
+#
+# Database testing: Deploys the gen3 umbrella chart with only the database-dependent
+# services enabled, pointing at the external Aurora cluster provisioned by the RGD.
+# Aurora endpoint and credentials come from the infra-outputs secret created by the RGD.
+workloads:
+  # ── Gen3 umbrella chart (database-focused subset) ──────────────────
+  # Deploys indexd + fence + sheepdog + peregrine + their dependencies
+  # against the external Aurora PostgreSQL cluster.
+  gen3:
+    enabled: true
+    syncWave: "50"
+    namespace: default
+    clusterName: spoke1-dev
+    infraSecretName: spoke1-dev-infra-outputs
+    spec:
+      helmRepo: "https://github.com/uc-cdis/gen3-helm"
+      helmPath: "helm/gen3"
+      helmRevision: master
+      environment: dev
+      hostname: spoke1-dev.example.com
+      values: |
+        global:
+          # ── AWS / External Database Mode ──────────────────────────
+          dev: false
+          aws:
+            enabled: true
+            region: us-east-1
+          # ── External Aurora PostgreSQL ─────────────────────────────
+          # The Aurora endpoint is provisioned by the RGD and stored
+          # in the spoke1-dev-infra-outputs secret. The gen3 db-create
+          # job uses these credentials to initialise per-service DBs.
+          postgres:
+            dbCreate: true
+            master:
+              host: ""      # PLACEHOLDER — populate from infra-outputs secret after RGD completes
+              username: postgres
+              password: ""  # PLACEHOLDER — populate from Secrets Manager / ExternalSecret
+              port: "5432"
+          # ── ExternalSecrets for credentials ──────────────────────
+          externalSecrets:
+            deploy: true
+          # ── Common settings ──────────────────────────────────────
+          environment: dev
+          hostname: spoke1-dev.example.com
+          dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
+        # ── Database-dependent services (enabled for testing) ───────
+        indexd:
+          enabled: true
+          defaultPrefix: "dg.TEST/"
+        fence:
+          enabled: true
+        sheepdog:
+          enabled: true
+        peregrine:
+          enabled: true
+        arborist:
+          enabled: true
+        # ── Supporting services ─────────────────────────────────────
+        revproxy:
+          enabled: true
+        portal:
+          enabled: false
+        # ── Disabled services (not needed for DB testing) ───────────
+        ambassador:
+          enabled: false
+        audit:
+          enabled: false
+        etl:
+          enabled: false
+        guppy:
+          enabled: false
+        hatchery:
+          enabled: false
+        manifestservice:
+          enabled: false
+        metadata:
+          enabled: false
+        ssjdispatcher:
+          enabled: false
+        sower:
+          enabled: false
+        wts:
+          enabled: false
