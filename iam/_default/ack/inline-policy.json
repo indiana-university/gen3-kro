@@ -26,6 +26,14 @@
         "s3:GetEncryptionConfiguration",
         "s3:GetBucketPublicAccessBlock",
         "s3:GetBucketTagging",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetBucketAcl",
+        "s3:GetBucketLogging",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketRequestPayment",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetReplicationConfiguration",
         "s3:ListBucket",
         "kms:DescribeKey",
         "kms:GetKeyPolicy",
@@ -125,7 +133,7 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:RequestTag/ManagedBy": "ack"
+          "aws:RequestTag/ManagedBy": ["ack", "Kro"]
         }
       }
     },
@@ -143,7 +151,7 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:ResourceTag/ManagedBy": "ack"
+          "aws:ResourceTag/ManagedBy": ["ack", "Kro"]
         }
       }
     },
