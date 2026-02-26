@@ -3,7 +3,6 @@ locals {
   vpc_cidr         = var.vpc_cidr
   azs              = length(var.availability_zones) > 0 ? var.availability_zones : slice(data.aws_availability_zones.available.names, 0, 2)
   enable_automode  = var.enable_automode
-  use_ack          = var.use_ack
   enable_efs       = var.enable_efs
   name             = var.cluster_name
   environment      = var.environment
@@ -49,48 +48,36 @@ locals {
   oss_addons = {
   }
 
+  # Labels used by ApplicationSet selectors only — do not add keys not referenced
+  # in a selector matchLabels / matchExpressions block.
   addons = merge(
-    local.aws_addons,
+    local.aws_addons,   # enable_external_secrets, enable_kro_eks_rgs, enable_multi_acct
     local.oss_addons,
-    { fleet_member = local.fleet_member },
-    { environment = local.environment },
-    { ack_management_mode = var.ack_management_type },
-    { kro_management_mode = var.kro_management_type },
-    { argocd_management_mode = var.argocd_management_type },
-    { enable_automode = tostring(local.enable_automode) },
-    { enable_efs = tostring(local.enable_efs) },
-    { kubernetes_version = local.cluster_version },
-    { aws_cluster_name = local.cluster_info.cluster_name },
+    { fleet_member        = local.fleet_member },
+    { environment         = local.environment },
+    { ack_management_mode = var.ack_management_type }, # selector: self_managed / aws_managed
   )
 
+  # Annotations consumed by ArgoCD ApplicationSet templates via
+  # {{.metadata.annotations.<key>}}. Only add keys that are referenced
+  # in a template expression — unused annotations are noise.
   addons_metadata = merge(
     {
+      # Cluster identity — used by ack-multi-acct (clusterName) and ACK SA IRSA (aws_region)
       aws_cluster_name = local.cluster_info.cluster_name
       aws_region       = local.region
-      aws_account_id   = data.aws_caller_identity.current.account_id
-      aws_vpc_id       = module.vpc.vpc_id
-      use_ack          = local.use_ack
-      ack_management_mode    = var.ack_management_type
-      kro_management_mode    = var.kro_management_type
-      argocd_management_mode = var.argocd_management_type
-      enable_automode        = tostring(local.enable_automode)
-      enable_efs             = tostring(local.enable_efs)
     },
     {
+      # GitOps — addons ApplicationSet source
       addons_repo_url      = local.gitops_addons_repo_url
-      addons_repo_path     = var.gitops_addons_repo_path
       addons_repo_basepath = var.gitops_addons_repo_base_path
       addons_repo_revision = var.gitops_addons_repo_revision
     },
     {
+      # GitOps — fleet + workloads ApplicationSets
       fleet_repo_url      = local.gitops_fleet_repo_url
-      fleet_repo_path     = var.gitops_fleet_repo_path
       fleet_repo_basepath = var.gitops_fleet_repo_base_path
       fleet_repo_revision = var.gitops_fleet_repo_revision
-    },
-    {
-      external_secrets_namespace       = local.external_secrets.namespace
-      external_secrets_service_account = local.external_secrets.service_account
     }
   )
 

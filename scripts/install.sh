@@ -164,6 +164,7 @@ terraform_init() {
     log "  Backend: bucket=${backend_bucket} key=${backend_key} region=${backend_region}"
     log "  TF_DATA_DIR: ${TF_DATA_DIR:-<not set>}"
     terraform init \
+      -reconfigure \
       -backend-config="bucket=${backend_bucket}" \
       -backend-config="key=${backend_key}" \
       -backend-config="region=${backend_region}"
