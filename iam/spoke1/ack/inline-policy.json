@@ -20,6 +20,7 @@
         "ec2:DescribeNetworkInterfaces",
         "ec2:DescribeAvailabilityZones",
         "ec2:DescribeTags",
+        "s3:ListAllMyBuckets",
         "s3:GetBucketLocation",
         "s3:GetBucketVersioning",
         "s3:GetEncryptionConfiguration",
@@ -108,6 +109,7 @@
         "s3:DeleteBucketTagging"
       ],
       "Resource": [
+        "arn:aws:s3:::gen3-*",
         "arn:aws:s3:::ack-*",
         "arn:aws:s3:::kro-*",
         "arn:aws:s3:::eks-*"
@@ -159,7 +161,28 @@
         "iam:DetachRolePolicy",
         "iam:PassRole"
       ],
-      "Resource": "arn:aws:iam::*:role/*-spoke-role"
+      "Resource": [
+        "arn:aws:iam::*:role/*-spoke-role",
+        "arn:aws:iam::*:role/*-eks-cluster-role",
+        "arn:aws:iam::*:role/*-eks-node-role"
+      ]
+    },
+    {
+      "Sid": "ManageSecretsManagerForRDSMasterPassword",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:TagResource",
+        "secretsmanager:UntagResource",
+        "secretsmanager:ListSecretVersionIds",
+        "secretsmanager:RestoreSecret"
+      ],
+      "Resource": "arn:aws:secretsmanager:*:*:secret:rds!*"
     },
     {
       "Sid": "ManageServiceLinkedRolesForManagedServices",
