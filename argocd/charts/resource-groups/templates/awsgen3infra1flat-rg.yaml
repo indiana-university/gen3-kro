@@ -1169,8 +1169,10 @@ spec:
           clusterName: ${schema.spec.name}
           principalARN: arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role
           type: STANDARD
-          kubernetesGroups:
-            - system:masters
+          accessPolicies:
+            - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+              accessScope:
+                type: cluster
           tags:
             Name: ${schema.spec.name}-argocd-access
             Environment: ${schema.spec.environment}
