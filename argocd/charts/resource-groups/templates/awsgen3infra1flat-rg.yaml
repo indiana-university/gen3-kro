@@ -138,6 +138,7 @@ spec:
       # IAM Roles Status
       clusterRoleARN: ${clusterRole.status.?ackResourceMetadata.?arn.orValue("loading")}
       nodeRoleARN: ${nodeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      argoCDSpokeRoleARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
 
       # Database Infrastructure Status
       dbSubnetGroupARN: ${dbSubnetGroup.status.?ackResourceMetadata.?arn.orValue("loading")}
@@ -1083,6 +1084,72 @@ spec:
               value: Kro
             - key: Project
               value: ${schema.spec.project}
+    # Layer 1: ArgoCD Spoke IAM Role
+    # Grants ArgoCD application-controller on the spoke side the permissions
+    # it needs to sync workloads. Trust policy uses EKS Pod Identity so the
+    # PodIdentityAssociation below can bind this role to the service account.
+    - id: argoCDSpokeRole
+      readyWhen:
+        - ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDSpokeRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.namespace}-argocd-spoke-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.namespace}-argocd-spoke-role
+          description: IAM role for ArgoCD application-controller on spoke ${schema.spec.namespace}
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Service": "pods.eks.amazonaws.com"},
+                "Action": ["sts:AssumeRole", "sts:TagSession"]
+              }]
+            }
+          inlinePolicies:
+            ArgoCDSpokePolicy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Sid": "ArgoCDSecretsAccess",
+                    "Effect": "Allow",
+                    "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+                    "Resource": "*",
+                    "Condition": {"StringLike": {"secretsmanager:SecretId": ["argocd/*", "argo-cd/*"]}}
+                  },
+                  {
+                    "Sid": "ArgoCDParameterStoreAccess",
+                    "Effect": "Allow",
+                    "Action": ["ssm:GetParameter", "ssm:GetParameters", "ssm:GetParametersByPath"],
+                    "Resource": "*",
+                    "Condition": {"StringLike": {"ssm:path": ["/argocd/*", "/argo-cd/*"]}}
+                  },
+                  {
+                    "Sid": "EKSReadAccess",
+                    "Effect": "Allow",
+                    "Action": ["eks:DescribeCluster", "eks:ListClusters"],
+                    "Resource": "*"
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.namespace}-argocd-spoke-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
   # ====================================================================
   # COMPUTE: EKS
   # ====================================================================
@@ -1166,8 +1233,8 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          clusterName: ${schema.spec.name}
-          principalARN: arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role
+          clusterName: ${eksCluster.metadata.name}
+          principalARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn}
           type: STANDARD
           accessPolicies:
             - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
@@ -1194,10 +1261,10 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          clusterName: ${schema.spec.name}
+          clusterName: ${eksCluster.metadata.name}
           namespace: argocd
           serviceAccount: argocd-application-controller
-          roleARN: arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role
+          roleARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn}
           tags:
             Name: ${schema.spec.name}-argocd-pod-identity
             Environment: ${schema.spec.environment}
@@ -1250,7 +1317,7 @@ spec:
             {
               "awsAuthConfig": {
                 "clusterName": "${schema.spec.name}",
-                "roleARN": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:role/${schema.spec.namespace}-argocd-spoke-role"
+                "roleARN": "${argoCDSpokeRole.status.?ackResourceMetadata.?arn}"
               },
               "tlsClientConfig": {
                 "insecure": false,
@@ -1453,6 +1520,7 @@ spec:
           # IAM
           cluster_role_arn: ${clusterRole.status.?ackResourceMetadata.?arn}
           node_role_arn: ${nodeRole.status.?ackResourceMetadata.?arn}
+          argocd_spoke_role_arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn}
           # Metadata
           environment: ${schema.spec.environment}
           region: ${schema.spec.region}

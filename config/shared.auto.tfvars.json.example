@@ -9,7 +9,7 @@
   "aws_profile": "<AWS_PROFILE>",
   "csoc_account_id": "<CSOC_ACCOUNT_ID>",
 
-  "cluster_name": "gen3-csoc-dev",
+  "csoc_alias": "rds-gen3",
   "kubernetes_version": "1.35",
   "environment": "control-plane",
   "enable_automode": true,
@@ -22,7 +22,6 @@
   "cluster_endpoint_public_access": true,
   "enable_cluster_creator_admin_permissions": true,
 
-  "vpc_name": "gen3-kro-vpc",
   "vpc_cidr": "10.0.0.0/16",
   "enable_nat_gateway": true,
   "single_nat_gateway": true,
@@ -48,7 +47,14 @@
   "argocd_namespace": "argocd",
   "argocd_chart_version": "<ARGOCD_CHART_VERSION>",
   "argocd_chart_repository": "https://argoproj.github.io/argo-helm",
-  "argocd_values": {},
+  "argocd_values": {
+    "configs": {
+      "cm": {
+        "resource.customizations.health.kro.run_ResourceGraphDefinition": "hs = {}\nif obj.status ~= nil then\n  if obj.status.conditions ~= nil then\n    for _, condition in ipairs(obj.status.conditions) do\n      if condition.type == \"Ready\" then\n        if condition.status == \"True\" then\n          hs.status = \"Healthy\"\n          hs.message = condition.message or \"Ready\"\n        elseif condition.status == \"False\" then\n          hs.status = \"Degraded\"\n          hs.message = condition.message or \"Not ready\"\n        else\n          hs.status = \"Progressing\"\n          hs.message = condition.message or \"Unknown readiness\"\n        end\n        return hs\n      end\n    end\n  end\n  if obj.status.state ~= nil then\n    local stateMap = { ACTIVE = \"Healthy\", IN_PROGRESS = \"Progressing\", FAILED = \"Degraded\", ERROR = \"Degraded\", DELETING = \"Progressing\" }\n    hs.status = stateMap[obj.status.state] or \"Progressing\"\n    hs.message = obj.status.state\n    return hs\n  end\nend\nhs.status = \"Progressing\"\nhs.message = \"Waiting for status\"\nreturn hs\n",
+        "resource.customizations.health.kro.run_AwsGen3Infra1Flat": "hs = {}\nif obj.status ~= nil then\n  if obj.status.conditions ~= nil then\n    for _, condition in ipairs(obj.status.conditions) do\n      if condition.type == \"Ready\" then\n        if condition.status == \"True\" then\n          hs.status = \"Healthy\"\n          hs.message = condition.message or \"Ready\"\n        elseif condition.status == \"False\" then\n          hs.status = \"Degraded\"\n          hs.message = condition.message or \"Not ready\"\n        else\n          hs.status = \"Progressing\"\n          hs.message = condition.message or \"Unknown readiness\"\n        end\n        return hs\n      end\n    end\n  end\n  if obj.status.state ~= nil then\n    local stateMap = { ACTIVE = \"Healthy\", IN_PROGRESS = \"Progressing\", FAILED = \"Degraded\", ERROR = \"Degraded\", DELETING = \"Progressing\" }\n    hs.status = stateMap[obj.status.state] or \"Progressing\"\n    hs.message = obj.status.state\n    return hs\n  end\nend\nhs.status = \"Progressing\"\nhs.message = \"Waiting for status\"\nreturn hs\n"
+      }
+    }
+  },
 
   "external_secrets_namespace": "external-secrets",
   "external_secrets_service_account": "external-secrets-sa",
@@ -106,8 +112,6 @@
 
   "developer_identity": {
     "iam_user_name": "<DEVELOPER_IAM_USER>",
-    "role_name": "eks-cluster-mgmt-devcontainer",
-    "mfa_device_name": "eks-cluster-mgmt-virtual-mfa",
     "create_virtual_mfa": true,
     "assume_requires_mfa": true,
     "attach_user_policy": true,

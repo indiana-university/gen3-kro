@@ -31,9 +31,9 @@ locals {
   region          = lookup(local.config, "region", "us-east-1")
   profile         = lookup(local.config, "aws_profile", "")
   csoc_account_id = lookup(local.config, "csoc_account_id", "")
-  csoc_alias      = lookup(local.config, "cluster_name", "csoc")
+  csoc_alias      = lookup(local.config, "csoc_alias", "csoc")
 
-  cluster_name = lookup(local.config, "cluster_name", "")
+  cluster_name = "${local.csoc_alias}-csoc-cluster"
 
   ###############################################################################
   # Backend — S3 only, no DynamoDB lock
@@ -107,8 +107,8 @@ locals {
   # Developer identity configuration — sourced from developer_identity in shared.auto.tfvars.json
   ###############################################################################
   dev_iam_user_name         = lookup(local.dev_identity_config, "iam_user_name", "")
-  dev_role_name             = lookup(local.dev_identity_config, "role_name", "eks-cluster-mgmt-devcontainer")
-  dev_mfa_device_name       = lookup(local.dev_identity_config, "mfa_device_name", "eks-cluster-mgmt-virtual-mfa")
+  dev_role_name             = lookup(local.dev_identity_config, "role_name", "${local.csoc_alias}-csoc-user")
+  dev_mfa_device_name       = lookup(local.dev_identity_config, "mfa_device_name", "${local.csoc_alias}-csoc-user-mfa")
   dev_create_virtual_mfa    = lookup(local.dev_identity_config, "create_virtual_mfa", true)
   dev_assume_requires_mfa   = lookup(local.dev_identity_config, "assume_requires_mfa", true)
   dev_attach_user_policy    = lookup(local.dev_identity_config, "attach_user_policy", true)

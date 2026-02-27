@@ -4,7 +4,9 @@ locals {
   azs              = length(var.availability_zones) > 0 ? var.availability_zones : slice(data.aws_availability_zones.available.names, 0, 2)
   enable_automode  = var.enable_automode
   enable_efs       = var.enable_efs
-  name             = var.cluster_name
+  name             = var.csoc_alias
+  cluster_name     = "${local.name}-csoc-cluster"
+  vpc_name         = "${local.name}-csoc-vpc"
   environment      = var.environment
   fleet_member     = "control-plane"
   region           = data.aws_region.current.id

@@ -8,7 +8,7 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           CSOC Account                              │
 │  ┌───────────────────────────────────────────────────────────────┐  │
-│  │                    EKS Cluster (gen3-csoc-dev)                │  │
+│  │                    EKS Cluster ({csoc_alias}-csoc-cluster)       │  │
 │  │                                                               │  │
 │  │  ┌──────────┐  ┌──────────────┐  ┌────────────────────────┐  │  │
 │  │  │  ArgoCD  │  │ KRO          │  │ ACK Controllers (17x)  │  │  │

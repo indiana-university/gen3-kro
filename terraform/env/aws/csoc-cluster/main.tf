@@ -23,7 +23,6 @@ module "csoc_cluster" {
   }
 
   # VPC
-  vpc_name             = var.vpc_name
   vpc_cidr             = var.vpc_cidr
   availability_zones   = var.availability_zones
   private_subnet_cidrs = var.private_subnet_cidrs
@@ -34,7 +33,7 @@ module "csoc_cluster" {
   single_nat_gateway   = var.single_nat_gateway
 
   # EKS
-  cluster_name                             = var.cluster_name
+  csoc_alias                               = var.csoc_alias
   kubernetes_version                       = var.kubernetes_version
   environment                              = var.environment
   cluster_endpoint_public_access           = var.cluster_endpoint_public_access

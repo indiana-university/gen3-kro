@@ -85,8 +85,7 @@ Edit `config/shared.auto.tfvars.json`. Key fields to fill in:
   "aws_profile": "csoc",
   "csoc_account_id": "111111111111",
 
-  "cluster_name": "gen3-csoc-dev",
-  "vpc_name": "gen3-kro-vpc",
+  "csoc_alias": "rds-gen3",
 
   "backend_bucket": "my-tfstate-bucket",
   "backend_key": "csoc-cluster/terraform.tfstate",
@@ -129,7 +128,7 @@ terragrunt stack run apply
 
 This creates:
 - Virtual MFA device in AWS IAM
-- `eks-cluster-mgmt-devcontainer` IAM role with MFA-required trust policy
+- `{csoc_alias}-csoc-user` IAM role with MFA-required trust policy
 - Inline assume-role policy attached to your IAM user
 - `outputs/mfa-setup-instructions.txt` — MFA seed and activation command
 - `outputs/aws-config-snippet.ini` — AWS profile block to copy to `~/.aws/config`
@@ -154,7 +153,7 @@ Wait for **two consecutive tokens** from your authenticator, then run:
 # From outputs/mfa-setup-instructions.txt — exact command with your values:
 aws iam enable-mfa-device \
   --user-name <YOUR_IAM_USERNAME> \
-  --serial-number arn:aws:iam::<ACCOUNT_ID>:mfa/eks-cluster-mgmt-virtual-mfa \
+  --serial-number arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-csoc-user-mfa \
   --authentication-code-1 <FIRST_CODE> \
   --authentication-code-2 <SECOND_CODE> \
   --profile <YOUR_ADMIN_PROFILE>
@@ -179,9 +178,9 @@ cat outputs/aws-config-snippet.ini
 Snippet content for reference:
 ```ini
 [profile eks-devcontainer]
-role_arn = arn:aws:iam::<ACCOUNT_ID>:role/eks-cluster-mgmt-devcontainer
+role_arn = arn:aws:iam::<ACCOUNT_ID>:role/<CSOC_ALIAS>-csoc-user
 source_profile = <YOUR_ADMIN_PROFILE>
-mfa_serial = arn:aws:iam::<ACCOUNT_ID>:mfa/eks-cluster-mgmt-virtual-mfa
+mfa_serial = arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-csoc-user-mfa
 region = us-east-1
 output = yaml
 duration_seconds = 43200
@@ -195,7 +194,7 @@ under `[csoc]`. The devcontainer mounts **only** that directory (not all of `~/.
 
 **Option A — MFA (developer-identity role, recommended):**
 ```bash
-# Assumes eks-cluster-mgmt-devcontainer role using MFA → temporary credentials (12h)
+# Assumes {csoc_alias}-csoc-user role using MFA → temporary credentials (12h)
 bash scripts/mfa-session.sh <MFA_CODE>
 ```
 
@@ -220,7 +219,7 @@ devcontainer open .
 
 The `container-init.sh` runs automatically and validates credentials. A successful init shows:
 ```
-AWS identity: arn:aws:sts::<account>:assumed-role/eks-cluster-mgmt-devcontainer/...
+AWS identity: arn:aws:sts::<account>:assumed-role/<CSOC_ALIAS>-csoc-user/...
 Using temporary credentials (assumed-role) — good
 ```
 
@@ -244,7 +243,7 @@ terragrunt stack run apply
 ### What Phase 1 Creates
 
 In each spoke account:
-- IAM role `gen3-csoc-dev-ack-shared-<spoke-alias>-workload`
+- IAM role `<spoke-alias>-spoke-role`
 - Trust policy: `arn:aws:iam::<CSOC_ACCOUNT>:root` (account-root, always valid)
 - Inline policy from `iam/<spoke-alias>/ack/inline-policy.json` (or `iam/_default/` fallback)
 
@@ -253,11 +252,11 @@ In each spoke account:
 ```bash
 # Confirm roles exist in each spoke account
 aws iam get-role \
-  --role-name gen3-csoc-dev-ack-shared-spoke1-workload \
+  --role-name spoke1-spoke-role \
   --profile spoke1-admin
 
 aws iam get-role \
-  --role-name gen3-csoc-dev-ack-shared-spoke2-workload \
+  --role-name spoke2-spoke-role \
   --profile spoke2-admin
 ```
 
@@ -394,7 +393,7 @@ bash outputs/connect-csoc.sh
 ```
 
 This script:
-1. Refreshes kubeconfig for `gen3-csoc-dev`
+1. Refreshes kubeconfig for `{csoc_alias}-csoc-cluster`
 2. Port-forwards ArgoCD server to `localhost:8080`
 3. Opens the UI at `https://localhost:8080`
 
@@ -479,7 +478,7 @@ bash scripts/mfa-session.sh --no-mfa            # Option B: admin static creds
 
 ## Teardown
 
-> Warning: This destroys all AWS resources including the EKS cluster, VPC, and IAM roles. ACK-managed spoke resources must be deleted first.
+> **Warning:** This destroys all AWS resources including the EKS cluster, VPC, and IAM roles. ACK-managed spoke resources must be deleted first.
 
 ### Step 1: Delete KRO Instances
 
@@ -523,7 +522,7 @@ Error: error configuring Terraform AWS Provider: no valid credential sources fou
 ```bash
 # Refresh kubeconfig manually
 aws eks update-kubeconfig \
-  --name gen3-csoc-dev \
+  --name <CSOC_ALIAS>-csoc-cluster \
   --region us-east-1 \
   --profile csoc
 ```
@@ -541,7 +540,7 @@ Verify the git secret was created correctly:
 
 ```bash
 kubectl get secret -n argocd -l argocd.argoproj.io/secret-type=repository
-kubectl describe secret argocd-repo-gen3-csoc-dev -n argocd
+kubectl describe secret argocd-repo-<CSOC_ALIAS>-csoc-cluster -n argocd
 ```
 
 ### ACK Cross-Account Assume Fails
@@ -549,14 +548,14 @@ kubectl describe secret argocd-repo-gen3-csoc-dev -n argocd
 Check the ACK source role ARN in the cluster secret annotation:
 
 ```bash
-kubectl get secret gen3-csoc-dev -n argocd -o jsonpath='{.metadata.annotations}'
+kubectl get secret <CSOC_ALIAS>-csoc-cluster-secret -n argocd -o jsonpath='{.metadata.annotations}'
 ```
 
 Verify the spoke workload role trust policy allows the source role:
 
 ```bash
 aws iam get-role \
-  --role-name gen3-csoc-dev-ack-shared-spoke1-workload \
+  --role-name spoke1-spoke-role \
   --query 'Role.AssumeRolePolicyDocument' \
   --profile spoke1-admin
 ```

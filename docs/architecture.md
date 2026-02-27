@@ -24,7 +24,7 @@ The platform uses a CSOC (Cybersecurity Operations Center) EKS cluster as the ce
 
 ```
 CSOC Account
-└── EKS Cluster (gen3-csoc-dev)
+└── EKS Cluster ({csoc_alias}-csoc-cluster)
     ├── ArgoCD               — GitOps controller (git → cluster)
     ├── KRO                  — Composes ACK resources into single custom resources
     ├── ACK Controllers x17  — Provisions AWS resources via K8s CRDs
@@ -153,27 +153,36 @@ After Terraform creates the bootstrap ApplicationSet, ArgoCD takes over and reco
 helm_release.bootstrap
 └── Bootstrap ApplicationSet (reads argocd/bootstrap/)
     └── bootstrap Application
-        ├── addons.yaml
-        │   ├── csoc-addons ApplicationSet (fleet_member: control-plane)
-        │   │   ├── self-managed-kro Application        (wave -30)
-        │   │   ├── ack-ec2/eks/iam/rds/... x17         (wave 1)
-        │   │   ├── kro-eks-rgs Application             (wave 10)
-        │   │   └── external-secrets Application        (wave 15)
-        │   │
+        ├── csoc-addons.yaml
+        │   └── csoc-addons ApplicationSet (fleet_member: control-plane)
+        │       ├── self-managed-kro Application        (wave -30)
+        │       ├── ack-ec2/eks/iam/rds/... x17         (wave 1)
+        │       ├── kro-eks-rgs Application             (wave 10)
+        │       └── external-secrets Application        (wave 15)
+        │
+        ├── spoke-addons.yaml
         │   └── spoke-addons ApplicationSet (fleet_member: spoke)
         │       └── external-secrets-per-spoke           (wave 20)
         │
+        ├── cross-acct.yaml
+        │   └── ack-multi-acct ApplicationSet (wave 5)
+        │       └── ACK CARM namespaces + IAMRoleSelectors
+        │
         └── cluster-fleet.yaml
-            └── fleet ApplicationSet (fleet_member: control-plane)
-                └── KRO Instances (VPC, EKS, RDS...)    (wave 30)
+            ├── fleet ApplicationSet (fleet_member: fleet-spoke-infra)
+            │   └── KRO Instances (VPC, EKS, RDS...)    (wave 30)
+            └── fleet-workloads ApplicationSet (fleet_member: spoke)
+                └── Gen3 workloads on spoke clusters     (wave 40)
 ```
 
 ### Bootstrap Directory → ApplicationSet Mapping
 
 | File in `argocd/bootstrap/` | ApplicationSet(s) Created | Sync Wave |
 |------------------------------|--------------------------|-----------|
-| `addons.yaml` | `csoc-addons`, `spoke-addons` | -20, 20 |
-| `cluster-fleet.yaml` | `fleet` | 30 |
+| `csoc-addons.yaml` | `csoc-addons` | -20 |
+| `cross-acct.yaml` | `ack-multi-acct` | 5 |
+| `spoke-addons.yaml` | `spoke-addons` | 20 |
+| `cluster-fleet.yaml` | `fleet`, `fleet-workloads` | 30, 40 |
 
 ### Values Merge Priority (last wins, maps deep-merged)
 
@@ -193,13 +202,12 @@ helm_release.bootstrap
 CSOC Account
   EKS OIDC Provider
     ─① IRSA trust─→  ACK Source Role
-                      (gen3-csoc-dev-ack-shared-csoc-source)
+                      ({csoc_alias}-csoc-role)
                          ↑
   ACK Controller Pods ──② assume via OIDC
 
                       ─③ sts:AssumeRole──→  Spoke1 Workload Role
-                         ExternalId=cluster-name   → manages AWS resources
-                         ArnLike=*ack-shared-*-source
+                         ArnLike=*-csoc-role       → manages AWS resources
 
                       ─③ sts:AssumeRole──→  Spoke2 Workload Role
                                              → manages AWS resources
@@ -211,26 +219,24 @@ CSOC Account
 {
   "Principal": { "AWS": "arn:aws:iam::<CSOC_ACCOUNT>:root" },
   "Condition": {
-    "StringEquals": { "sts:ExternalId": "<CLUSTER_NAME>" },
-    "ArnLike": { "aws:PrincipalArn": "arn:aws:iam::<CSOC_ACCOUNT>:role/*ack-shared-*-source" }
+    "ArnLike": { "aws:PrincipalArn": "arn:aws:iam::<CSOC_ACCOUNT>:role/*-csoc-role" }
   }
 }
 ```
 
 - **Account-root principal** — always valid, even before the ACK source role ARN exists
-- **ArnLike condition** — restricts to roles matching the naming pattern (evaluated at assume-time)
-- **ExternalId** — cluster name as a second authentication gate against confused deputy attacks
+- **ArnLike condition** — restricts to roles matching the `*-csoc-role` naming pattern (evaluated at assume-time)
+- No ExternalId — ACK does not pass it during `sts:AssumeRole`
 
 ### IAM Policy Files
 
 ```
 iam/
 ├── _default/ack/inline-policy.json    # Fallback — used for any spoke without its own policy
-├── spoke1/ack/inline-policy.json      # Spoke1-specific permissions
 └── spoke2/ack/inline-policy.json      # Spoke2-specific permissions
 ```
 
-The `aws-spoke` module reads these files at plan time via `file()`. If a spoke-specific policy is absent, `_default` is used.
+The `aws-spoke` module reads these files at plan time via `file()`. Spokes without a custom `iam/<alias>/ack/` directory automatically fall back to `_default`.
 
 ---
 
@@ -246,7 +252,7 @@ config/shared.auto.tfvars.json (gitignored, single source of truth)
               └─► terraform/env/aws/csoc-cluster/ (root module)
                     ├── module.aws_csoc
                     │     ├── spoke_account_ids → ACK source role trust
-                    │     ├── cluster_name, region → EKS config
+                    │     ├── csoc_alias, region → EKS naming + config
                     │     └── outputs ──────────────────────────────┐
                     └── module.argocd_bootstrap ◄────────────────────┘
                           ├── kubernetes_secret (cluster)
@@ -279,10 +285,13 @@ Sync waves enforce a deterministic deployment order. Resources in lower waves mu
 | -30 | KRO controller | — | Must be present before any KRO CRDs are applied |
 | -20 | CSOC addons ApplicationSet | KRO running | AppSet itself is a CRD-backed resource |
 | 1 | ACK controllers (17 services) | KRO | CRD registration must precede ACK instance creation |
+| 5 | ACK multi-account (CARM) | ACK controllers | CARM namespaces and IAMRoleSelectors require ACK CRDs |
 | 10 | KRO ResourceGraphDefinitions | KRO, ACK | RGDs reference ACK CRDs; CRDs must exist |
 | 15 | External Secrets Operator | — | Independent; can start anytime after cluster exists |
 | 20 | Spoke addons ApplicationSet | ACK, RGDs | Spoke ESO needs the RGD-defined secret stores |
-| 30 | Fleet instances + workloads | ACK, RGDs, spoke addons | KRO instances expand into ACK resources using RGDs |
+| 30 | Fleet KRO instances | ACK, RGDs, spoke addons | KRO instances expand into ACK resources using RGDs |
+| 40 | Fleet workloads | KRO instances healthy | Workloads gate on KRO-created argoCDClusterSecret |
+| 50 | Individual Gen3 workloads | Fleet workloads | Per-service Applications on spoke clusters |
 
 ---
 
@@ -297,18 +306,21 @@ eks-cluster-mgmt/
 ├── argocd/
 │   ├── README.md                        #   ArgoCD layer documentation
 │   ├── bootstrap/
-│   │   ├── addons.yaml                  #   CSOC + spoke addon ApplicationSets
-│   │   └── cluster-fleet.yaml           #   Fleet infrastructure ApplicationSet
+│   │   ├── csoc-addons.yaml             #   CSOC addon ApplicationSet (wave -20)
+│   │   ├── spoke-addons.yaml            #   Spoke addon ApplicationSet (wave 20)
+│   │   ├── cross-acct.yaml              #   ACK CARM multi-account (wave 5)
+│   │   └── cluster-fleet.yaml           #   Fleet infra + workloads ApplicationSets (wave 30, 40)
 │   ├── addons/
 │   │   ├── csoc/addons.yaml             #   CSOC addon values (KRO, ACK, ESO)
 │   │   └── environments/{dev,prod}/     #   Environment-specific addon values
 │   ├── charts/
 │   │   ├── application-sets/            #   Meta-chart: generates child ApplicationSets
 │   │   ├── instances/                   #   KRO instance renderer chart
+│   │   ├── multi-acct/                  #   ACK CARM namespace + IAMRoleSelector chart
 │   │   ├── resource-groups/             #   KRO RGD manifests chart
 │   │   └── workloads/                   #   Gen3 workload Helm chart
 │   └── cluster-fleet/
-│       └── {spoke1,spoke2}/             #   Per-cluster addon + infra overrides
+│       └── {csoc,spoke1,spoke2}/        #   Per-cluster addon + infra overrides
 │           ├── addons.yaml
 │           ├── infrastructure.yaml
 │           └── workload.yaml
@@ -332,9 +344,9 @@ eks-cluster-mgmt/
 ├── terragrunt/live/aws/iam-setup/    # Spoke IAM Terragrunt stack
 │
 ├── iam/
-│   ├── _default/ack/inline-policy.json  # Default ACK permissions for spokes
-│   ├── spoke1/ack/inline-policy.json    # Spoke1-specific permissions
-│   └── spoke2/ack/inline-policy.json    # Spoke2-specific permissions
+│   ├── _default/ack/inline-policy.json  # Default ACK permissions (fallback for all spokes)
+│   ├── _default/argocd/inline-policy.json # ArgoCD spoke role permissions (reference)
+│   └── spoke2/ack/inline-policy.json    # Spoke2-specific permissions (override when needed)
 │
 ├── scripts/
 │   ├── install.sh                       #   Terraform orchestrator (init/plan/apply)

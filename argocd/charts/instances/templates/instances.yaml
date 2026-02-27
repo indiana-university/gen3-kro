@@ -6,12 +6,18 @@ metadata:
   name: {{ $name }}
   namespace: {{ $instance.namespace | default "default" }}
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: {{ $instance.syncWave | default "1" | quote }}
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+    {{- with $instance.links }}
+    {{- range $linkName, $linkUrl := . }}
+    link.argocd.argoproj.io/{{ $linkName }}: {{ $linkUrl | quote }}
+    {{- end }}
+    {{- end }}
     {{- with $instance.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
   labels:
+    app.kubernetes.io/managed-by: instances-chart
     environment: {{ $instance.environment | default "dev" | quote }}
     {{- with $instance.labels }}
     {{- toYaml . | nindent 4 }}

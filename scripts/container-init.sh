@@ -309,12 +309,19 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
   elif ! command -v jq &>/dev/null; then
     echo "  WARNING: jq not installed — skipping connect."
   else
-    CLUSTER_NAME="$(jq -r '.cluster_name // empty' "$CONFIG_FILE")"
+    # Derive cluster_name from csoc_alias (new convention) or fall back to legacy cluster_name
+    local CSOC_ALIAS
+    CSOC_ALIAS="$(jq -r '.csoc_alias // empty' "$CONFIG_FILE")"
+    if [[ -n "$CSOC_ALIAS" ]]; then
+      CLUSTER_NAME="${CSOC_ALIAS}-csoc-cluster"
+    else
+      CLUSTER_NAME="$(jq -r '.cluster_name // empty' "$CONFIG_FILE")"
+    fi
     CLUSTER_REGION="$(jq -r '.region // "us-east-1"' "$CONFIG_FILE")"
     CLUSTER_PROFILE="${AWS_PROFILE:-$(jq -r '.aws_profile // "csoc"' "$CONFIG_FILE")}"
 
     if [[ -z "$CLUSTER_NAME" ]]; then
-      echo "  WARNING: cluster_name not set in config — skipping connect."
+      echo "  WARNING: csoc_alias not set in config — skipping connect."
     else
       echo "  Cluster: ${CLUSTER_NAME}  Region: ${CLUSTER_REGION}  Profile: ${CLUSTER_PROFILE}"
 
