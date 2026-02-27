@@ -4,7 +4,7 @@
 # aws_profile             = "boadeyem_tf"
 # region                  = "us-east-1"
 # iam_user_name           = "Terraform.User"
-# role_name               = "eks-cluster-mgmt-devcontainer"
+# role_name               = "csoc-user"
 # role_max_session_duration = 43200   # 12 hours
 # mfa_device_name         = "Terraform.User-virtual-mfa"
 # terraform_state_bucket  = ""       # scope S3 perms if known

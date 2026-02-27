@@ -8,13 +8,16 @@ instances:
     namespace: spoke1
     syncWave: "30"
     environment: dev
+    links:
+      aws-console: "https://us-east-1.console.aws.amazon.com/vpc/home?region=us-east-1"
+      eks-console: "https://us-east-1.console.aws.amazon.com/eks/home?region=us-east-1#/clusters"
     spec:
       # ── Basic metadata ──────────────────────────────────────────────
       name: spoke1-dev
       namespace: spoke1
       region: us-east-1
       environment: dev
-      project: gen3-spoke1
+      project: spoke1
       adoptionPolicy: adopt-or-create
       deletionPolicy: delete
 
@@ -51,7 +54,7 @@ instances:
       eksVersion: "1.35"
 
       # ── KMS ─────────────────────────────────────────────────────────
-      kmsKeyDescription: Gen3 spoke1 encryption key
+      kmsKeyDescription: gen3-spoke1 encryption key
       kmsKeyAlias: gen3-spoke1-key
 
       # ── ArgoCD Cluster Registration ─────────────────────────────────

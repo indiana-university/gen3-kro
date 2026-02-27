@@ -51,7 +51,7 @@ locals {
     }
   )
 
-  cluster_secret_name = var.argocd_cluster_secret_name != "" ? var.argocd_cluster_secret_name : "${var.cluster_name}-cluster-secret"
+  cluster_secret_name = var.argocd_cluster_secret_name != "" ? var.argocd_cluster_secret_name : "${var.cluster_name}-secret"
 
   string_labels = {
     for k, v in var.argocd_cluster_labels :

@@ -20,11 +20,28 @@
         "ec2:DescribeNetworkInterfaces",
         "ec2:DescribeAvailabilityZones",
         "ec2:DescribeTags",
+        "s3:ListAllMyBuckets",
         "s3:GetBucketLocation",
         "s3:GetBucketVersioning",
         "s3:GetEncryptionConfiguration",
         "s3:GetBucketPublicAccessBlock",
         "s3:GetBucketTagging",
+        "s3:GetAccelerateConfiguration",
+        "s3:GetAnalyticsConfiguration",
+        "s3:GetBucketAcl",
+        "s3:GetBucketCors",
+        "s3:GetBucketLogging",
+        "s3:GetBucketNotification",
+        "s3:GetBucketObjectLockConfiguration",
+        "s3:GetBucketPolicy",
+        "s3:GetBucketRequestPayment",
+        "s3:GetBucketWebsite",
+        "s3:GetIntelligentTieringConfiguration",
+        "s3:GetInventoryConfiguration",
+        "s3:GetLifecycleConfiguration",
+        "s3:GetMetricsConfiguration",
+        "s3:GetReplicationConfiguration",
+        "s3:GetBucketOwnershipControls",
         "s3:ListBucket",
         "kms:DescribeKey",
         "kms:GetKeyPolicy",
@@ -105,9 +122,13 @@
         "s3:PutEncryptionConfiguration",
         "s3:PutBucketPublicAccessBlock",
         "s3:PutBucketTagging",
-        "s3:DeleteBucketTagging"
+        "s3:PutBucketOwnershipControls",
+        "s3:DeleteBucketTagging",
+        "s3:PutReplicationConfiguration",
+        "s3:DeleteBucketReplication"
       ],
       "Resource": [
+        "arn:aws:s3:::gen3-*",
         "arn:aws:s3:::ack-*",
         "arn:aws:s3:::kro-*",
         "arn:aws:s3:::eks-*"
@@ -123,7 +144,7 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:RequestTag/ManagedBy": "ack"
+          "aws:RequestTag/ManagedBy": ["ack", "Kro"]
         }
       }
     },
@@ -141,9 +162,22 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:ResourceTag/ManagedBy": "ack"
+          "aws:ResourceTag/ManagedBy": ["ack", "Kro"]
         }
       }
+    },
+    {
+      "Sid": "AllowKMSCryptoAndGrantsForManagedKeys",
+      "Effect": "Allow",
+      "Action": [
+        "kms:Encrypt",
+        "kms:Decrypt",
+        "kms:ReEncrypt*",
+        "kms:GenerateDataKey*",
+        "kms:CreateGrant",
+        "kms:ListGrants"
+      ],
+      "Resource": "arn:aws:kms:*:859011005590:key/*"
     },
     {
       "Sid": "ManageIAMRolesForEKSResources",
@@ -157,9 +191,32 @@
         "iam:UntagRole",
         "iam:AttachRolePolicy",
         "iam:DetachRolePolicy",
-        "iam:PassRole"
+        "iam:PassRole",
+        "iam:PutRolePolicy",
+        "iam:DeleteRolePolicy"
       ],
-      "Resource": "arn:aws:iam::*:role/*-spoke-role"
+      "Resource": [
+        "arn:aws:iam::*:role/*-spoke-role",
+        "arn:aws:iam::*:role/*-eks-cluster-role",
+        "arn:aws:iam::*:role/*-eks-node-role"
+      ]
+    },
+    {
+      "Sid": "ManageSecretsManagerForRDSMasterPassword",
+      "Effect": "Allow",
+      "Action": [
+        "secretsmanager:CreateSecret",
+        "secretsmanager:DescribeSecret",
+        "secretsmanager:GetSecretValue",
+        "secretsmanager:PutSecretValue",
+        "secretsmanager:UpdateSecret",
+        "secretsmanager:DeleteSecret",
+        "secretsmanager:TagResource",
+        "secretsmanager:UntagResource",
+        "secretsmanager:ListSecretVersionIds",
+        "secretsmanager:RestoreSecret"
+      ],
+      "Resource": "arn:aws:secretsmanager:*:*:secret:rds!*"
     },
     {
       "Sid": "ManageServiceLinkedRolesForManagedServices",
@@ -191,8 +248,12 @@
         "eks:CreateAccessEntry",
         "eks:UpdateAccessEntry",
         "eks:DeleteAccessEntry",
+        "eks:AssociateAccessPolicy",
+        "eks:DisassociateAccessPolicy",
+        "eks:ListAssociatedAccessPolicies",
         "eks:CreatePodIdentityAssociation",
-        "eks:DeletePodIdentityAssociation"
+        "eks:DeletePodIdentityAssociation",
+        "eks:ListNodegroups"
       ],
       "Resource": "*"
     },

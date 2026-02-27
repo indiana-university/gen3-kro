@@ -5,6 +5,13 @@
 # Tears down the entire CSOC environment provisioned by terraform/env/aws/csoc-cluster/
 # and cleans up local state (kubeconfig, output files, port-forwards).
 #
+# Steps:
+#   1. Kill ArgoCD port-forwards
+#   2. Terraform destroy (EKS, VPC, IAM)
+#   3. Clean kubeconfig
+#   4. Clean output files
+#   5. Clean local terraform artifacts
+#
 # Usage:
 #   bash destroy.sh
 #
@@ -69,9 +76,16 @@ resolve_cluster_name() {
     CLUSTER_NAME="$(cd "$WORK_DIR" && terraform output -raw cluster_name 2>/dev/null)" || CLUSTER_NAME=""
   fi
 
-  # Fallback: extract from config JSON with jq
+  # Fallback: derive from csoc_alias in config JSON (csoc_alias + "-csoc-cluster")
   if [[ -z "$CLUSTER_NAME" && -f "${CONFIG_FILE}" ]]; then
-    CLUSTER_NAME="$(jq -r '.cluster_name // empty' "${CONFIG_FILE}" 2>/dev/null)" || CLUSTER_NAME=""
+    local csoc_alias
+    csoc_alias="$(jq -r '.csoc_alias // empty' "${CONFIG_FILE}" 2>/dev/null)" || csoc_alias=""
+    if [[ -n "$csoc_alias" ]]; then
+      CLUSTER_NAME="${csoc_alias}-csoc-cluster"
+    else
+      # Legacy fallback: direct cluster_name field
+      CLUSTER_NAME="$(jq -r '.cluster_name // empty' "${CONFIG_FILE}" 2>/dev/null)" || CLUSTER_NAME=""
+    fi
   fi
 
   log "Cluster name: ${CLUSTER_NAME:-<not found>}"
@@ -96,7 +110,7 @@ kill_port_forwards() {
 }
 
 ###############################################################################
-# Step 3: Terraform destroy
+# Step 2: Terraform destroy
 ###############################################################################
 terraform_destroy() {
   log ""
@@ -145,7 +159,7 @@ terraform_destroy() {
 }
 
 ###############################################################################
-# Step 4: Clean kubeconfig
+# Step 3: Clean kubeconfig
 ###############################################################################
 clean_kubeconfig() {
   log ""
@@ -175,7 +189,7 @@ clean_kubeconfig() {
 }
 
 ###############################################################################
-# Step 5: Clean output files
+# Step 4: Clean output files
 ###############################################################################
 clean_outputs() {
   log ""
@@ -189,7 +203,7 @@ clean_outputs() {
 }
 
 ###############################################################################
-# Step 5b: Clean terraform local state artifacts (optional)
+# Step 5: Clean terraform local state artifacts
 ###############################################################################
 clean_terraform_local() {
   log ""

@@ -9,7 +9,7 @@
 #
 # Option A — MFA (production, scoped devcontainer role):
 #   bash scripts/mfa-session.sh <MFA_CODE>
-#   Assumes arn:aws:iam::<ACCOUNT_ID>:role/eks-cluster-mgmt-devcontainer with MFA.
+#   Assumes the devcontainer role (e.g., {csoc_alias}-csoc-user) with MFA.
 #   Temporary credentials expire after DURATION seconds (default 12h).
 #
 # Option B — No MFA (trusted dev environment, admin profile):

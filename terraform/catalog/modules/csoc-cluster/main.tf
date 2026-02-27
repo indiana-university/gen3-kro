@@ -14,8 +14,8 @@ module "aws_csoc" {
   aws_profile        = var.aws_profile
   spoke_account_ids  = var.spoke_account_ids
 
-  # VPC
-  vpc_name             = var.vpc_name
+  # Naming
+  csoc_alias = var.csoc_alias
   vpc_cidr             = var.vpc_cidr
   availability_zones   = var.availability_zones
   private_subnet_cidrs = var.private_subnet_cidrs
@@ -26,7 +26,6 @@ module "aws_csoc" {
   single_nat_gateway   = var.single_nat_gateway
 
   # EKS
-  cluster_name                             = var.cluster_name
   kubernetes_version                       = var.kubernetes_version
   environment                              = var.environment
   cluster_endpoint_public_access           = var.cluster_endpoint_public_access

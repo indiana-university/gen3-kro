@@ -4,7 +4,7 @@ module "eks" {
   source  = "terraform-aws-modules/eks/aws"
   version = "21.15.1"
 
-  name                   = local.name
+  name                   = local.cluster_name
   kubernetes_version     = local.cluster_version
   endpoint_public_access = var.cluster_endpoint_public_access
 
@@ -25,7 +25,7 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "6.6.0"
 
-  name = var.vpc_name != "" ? var.vpc_name : local.name
+  name = local.vpc_name
   cidr = local.vpc_cidr
 
   azs             = local.azs
@@ -46,7 +46,7 @@ module "vpc" {
     {
       "kubernetes.io/role/internal-elb" = 1
       # Tags subnets for Karpenter auto-discovery
-      "karpenter.sh/discovery" = local.name
+      "karpenter.sh/discovery" = local.cluster_name
     },
     var.private_subnet_tags
   )

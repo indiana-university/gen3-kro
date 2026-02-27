@@ -32,14 +32,14 @@ CSOC Account
 
 | Role | Trust | Purpose |
 |------|-------|---------|
-| `gen3-csoc-dev-ack-shared-csoc-source` | EKS OIDC Provider (IRSA) | ACK controllers assume this via pod identity. No long-lived keys. |
-| `gen3-csoc-dev-ack-shared-csoc-argocd` | EKS OIDC Provider (IRSA) | ArgoCD access to AWS resources (e.g., Secrets Manager for git creds) |
+| `{csoc_alias}-csoc-role` | EKS OIDC Provider (IRSA) | ACK controllers assume this via pod identity. No long-lived keys. |
+| `{csoc_alias}-argocd-role` | EKS OIDC Provider (IRSA) | ArgoCD access to AWS resources (e.g., Secrets Manager for git creds) |
 
 ### Spoke Roles
 
 | Role | Trust | Purpose |
 |------|-------|---------|
-| `gen3-csoc-dev-ack-shared-<alias>-workload` | CSOC account root + ArnLike + ExternalId | ACK cross-account resource management |
+| `<spoke-alias>-spoke-role` | CSOC account root + ArnLike | ACK cross-account resource management |
 
 No IAM users or long-lived access keys are used for cross-account operations. All credentials are short-lived session tokens obtained via `sts:AssumeRole`.
 
@@ -60,11 +60,8 @@ No IAM users or long-lived access keys are used for cross-account operations. Al
       },
       "Action": "sts:AssumeRole",
       "Condition": {
-        "StringEquals": {
-          "sts:ExternalId": "<CLUSTER_NAME>"
-        },
         "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*ack-shared-*-source"
+          "aws:PrincipalArn": "arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-csoc-role"
         }
       }
     }
@@ -80,18 +77,16 @@ The `arn:aws:iam::<CSOC>:root` principal is used instead of a direct role ARN be
 2. **Account-root always exists** — it's a valid principal regardless of what roles are in the account.
 3. **Security is not weakened** — the `ArnLike` condition restricts the actual caller to the specific role name pattern. Account-root is a convenience for principal resolution; conditions gatekeep who actually gets in.
 
-### ExternalId
-
-The `ExternalId` condition is set to the cluster name (`gen3-csoc-dev`). This protects against [confused deputy attacks](https://docs.aws.amazon.com/IAM/latest/UserGuide/confused-deputy.html) — a third-party service that happens to be trusted by the CSOC account cannot assume spoke roles without knowing the correct ExternalId.
-
 ### ArnLike Pattern
 
 ```
-arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*ack-shared-*-source
+arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-csoc-role
 ```
 
 - Wildcards are intentional — the role naming convention is enforced by Terraform, not by IAM.
-- This pattern would allow any role matching `*ack-shared-*-source` in the CSOC account. Ensure that naming convention is not used for unrelated roles.
+- This pattern would allow any role matching `*-csoc-role` in the CSOC account. Ensure that naming convention is not used for unrelated roles.
+
+> **Note:** `ExternalId` is not used. ACK does not pass an ExternalId during `sts:AssumeRole`. Caller restriction relies on the `ArnLike` condition alone.
 
 ---
 
@@ -100,8 +95,8 @@ arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*ack-shared-*-source
 ### ACK Controller Credential Chain
 
 ```
-1. ECK pod starts with ServiceAccount annotation:
-   eks.amazonaws.com/role-arn: arn:aws:iam::<CSOC>:role/gen3-csoc-dev-ack-shared-csoc-source
+1. ACK pod starts with ServiceAccount annotation:
+   eks.amazonaws.com/role-arn: arn:aws:iam::<CSOC>:role/{csoc_alias}-csoc-role
 
 2. EKS IRSA webhook injects env vars + projected volume (OIDC JWT token)
 
@@ -109,7 +104,7 @@ arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*ack-shared-*-source
    → Receives short-lived session credentials for ACK source role (1h TTL)
 
 4. To manage spoke resources, ACK calls sts:AssumeRole on the spoke workload role
-   → Passes ExternalId = cluster name
+   → arn:aws:iam::<SPOKE>:role/<spoke-alias>-spoke-role
    → Receives spoke session credentials (1h TTL)
 
 5. ACK uses spoke credentials to create/update/delete AWS resources
@@ -161,14 +156,13 @@ This section describes the complete trust chain that enables ACK controllers run
 │                                                                          │
 │ 4. sts:AssumeRole → Spoke Workload Role                                 │
 │    The ACK controller calls sts:AssumeRole on the spoke workload role:  │
-│    arn:aws:iam::<SPOKE_ACCOUNT>:role/...-workload                       │
-│    Passes ExternalId = cluster name (e.g., "gen3-csoc-dev").            │
+│    arn:aws:iam::<SPOKE_ACCOUNT>:role/<spoke-alias>-spoke-role           │
+│    No ExternalId — ACK does not pass it during sts:AssumeRole.          │
 │                                                                          │
 │ 5. Spoke Workload Role (Spoke Account)                                   │
-│    Trust policy validates three conditions:                              │
+│    Trust policy validates two conditions:                                │
 │    a. Principal: CSOC account root (arn:aws:iam::<CSOC>:root)          │
-│    b. ArnLike: aws:PrincipalArn matches *ack-shared-*-source           │
-│    c. StringEquals: sts:ExternalId matches the cluster name             │
+│    b. ArnLike: aws:PrincipalArn matches *-csoc-role                    │
 │    Permissions: Manages VPC, EKS, RDS, ElastiCache, KMS, S3, etc.     │
 │                                                                          │
 │ 6. Spoke Resource Management                                             │
@@ -182,8 +176,7 @@ This section describes the complete trust chain that enables ACK controllers run
 | Property | Mechanism |
 |----------|-----------|
 | No long-lived keys | OIDC → IRSA provides short-lived JWTs; all IAM credentials are session tokens |
-| Caller restriction | `ArnLike` condition on spoke trust policy limits callers to `*ack-shared-*-source` roles |
-| Confused deputy protection | `ExternalId` condition prevents third-party services from assuming spoke roles |
+| Caller restriction | `ArnLike` condition on spoke trust policy limits callers to `*-csoc-role` roles |
 | Blast radius containment | Each spoke role has its own inline policy — permissions can be scoped per account |
 | Credential timeout | Both the IRSA token (pod identity) and assumed-role sessions have 1h TTL |
 
@@ -192,8 +185,9 @@ This section describes the complete trust chain that enables ACK controllers run
 | File | Applied To | Purpose |
 |------|-----------|---------|
 | `iam/_default/ack/inline-policy.json` | Fallback for any spoke without a custom policy | Default ACK permissions for managed services |
-| `iam/spoke1/ack/inline-policy.json` | spoke1 ACK workload role | Custom permissions for spoke1 (currently identical to default) |
-| `iam/spoke2/ack/inline-policy.json` | spoke2 ACK workload role | Custom permissions for spoke2 (currently identical to default) |
+| `iam/spoke2/ack/inline-policy.json` | spoke2 ACK workload role | Custom permissions for spoke2 (currently uses `_default` content) |
+
+> Spokes without a custom `iam/<alias>/ack/` directory automatically fall back to `iam/_default/ack/inline-policy.json`.
 
 ### Tag-Based Access Control (KMS)
 
@@ -222,8 +216,8 @@ The `argocd-bootstrap` Terraform module retrieves this secret at apply time and 
 
 | Secret | Namespace | Contains | Source |
 |--------|-----------|----------|--------|
-| `gen3-csoc-dev` | `argocd` | Cluster endpoint, CA, metadata | Terraform `argocd-bootstrap` module |
-| `argocd-repo-gen3-csoc-dev` | `argocd` | GitHub App credentials | Terraform + AWS Secrets Manager |
+| `{csoc_alias}-csoc-cluster-secret` | `argocd` | Cluster endpoint, CA, metadata | Terraform `argocd-bootstrap` module |
+| `argocd-repo-{csoc_alias}` | `argocd` | GitHub App credentials | Terraform + AWS Secrets Manager |
 | `argocd-initial-admin-secret` | `argocd` | ArgoCD admin password | ArgoCD Helm install (auto-generated) |
 
 > Rotate `argocd-initial-admin-secret` after initial login. Use ArgoCD's account management to set a permanent password or configure SSO.
@@ -315,7 +309,7 @@ The EKS cluster `endpoint_private_access = true` is set. Public access may be en
 ```bash
 # Check current endpoint access configuration
 aws eks describe-cluster \
-  --name gen3-csoc-dev \
+  --name <CSOC_ALIAS>-csoc-cluster \
   --query 'cluster.resourcesVpcConfig.{public: endpointPublicAccess, private: endpointPrivateAccess}'
 ```
 

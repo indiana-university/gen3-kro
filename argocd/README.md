@@ -118,7 +118,7 @@ ApplicationSets use the **cluster generator** with label selectors. The ArgoCD c
 | `fleet_repo_url` | Same repo | Git repo for fleet configs |
 | `fleet_repo_revision` | `v2` | Branch/tag |
 | `aws_account_id` | `<CSOC_ACCOUNT_ID>` | CSOC account ID |
-| `aws_cluster_name` | `gen3-csoc-dev` | EKS cluster name |
+| `aws_cluster_name` | `{csoc_alias}-csoc-cluster` | EKS cluster name |
 | `aws_region` | `us-east-1` | AWS region |
 | `ack_self_managed_role_arn` | `arn:aws:iam::...` | ACK source role for IRSA |
 

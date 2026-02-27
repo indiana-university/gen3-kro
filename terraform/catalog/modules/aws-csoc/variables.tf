@@ -11,8 +11,8 @@ variable "spoke_account_ids" {
   default     = {}
 }
 
-variable "vpc_name" {
-  description = "VPC name to be used by pipelines for data"
+variable "csoc_alias" {
+  description = "Base alias for all CSOC resources. Derived names: cluster={csoc_alias}-csoc-cluster, vpc={csoc_alias}-csoc-vpc, roles={csoc_alias}-csoc-role, etc."
   type        = string
 }
 
@@ -312,12 +312,6 @@ variable "enable_automode" {
   description = "Enabling Automode Cluster"
   type        = bool
   default     = true
-}
-
-variable "cluster_name" {
-  description = "Name of the cluster"
-  type        = string
-  default     = "csoc-cluster"
 }
 
 variable "use_ack" {

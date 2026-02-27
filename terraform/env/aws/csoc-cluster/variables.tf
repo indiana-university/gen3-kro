@@ -24,10 +24,9 @@ variable "spoke_account_ids" {
   default     = {}
 }
 
-variable "cluster_name" {
-  description = "Name of the EKS cluster"
+variable "csoc_alias" {
+  description = "Base alias for all CSOC resources. All resource names are derived: cluster={csoc_alias}-csoc-cluster, vpc={csoc_alias}-csoc-vpc, roles={csoc_alias}-csoc-role, devcontainer={csoc_alias}-csoc-user"
   type        = string
-  default     = "csoc-cluster"
 }
 
 variable "kubernetes_version" {
@@ -40,12 +39,6 @@ variable "environment" {
   description = "Name of the environment for the CSOC cluster"
   type        = string
   default     = "control-plane"
-}
-
-# VPC
-variable "vpc_name" {
-  description = "VPC name"
-  type        = string
 }
 
 variable "vpc_cidr" {

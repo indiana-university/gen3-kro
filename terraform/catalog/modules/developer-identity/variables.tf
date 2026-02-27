@@ -21,9 +21,9 @@ variable "iam_user_name" {
 }
 
 variable "role_name" {
-  description = "Name of the devcontainer assume-role"
+  description = "Name of the devcontainer assume-role. Defaults to {csoc_alias}-csoc-user when called via Terragrunt."
   type        = string
-  default     = "eks-cluster-mgmt-devcontainer"
+  default     = "csoc-user"
 }
 
 variable "role_max_session_duration" {
@@ -33,9 +33,9 @@ variable "role_max_session_duration" {
 }
 
 variable "mfa_device_name" {
-  description = "Name for the virtual MFA device"
+  description = "Name for the virtual MFA device. Defaults to {csoc_alias}-csoc-user-mfa when called via Terragrunt."
   type        = string
-  default     = "Terraform.User-virtual-mfa"
+  default     = "csoc-user-mfa"
 }
 
 variable "tags" {
@@ -44,7 +44,6 @@ variable "tags" {
   default = {
     ManagedBy = "terraform"
     Module    = "developer-identity"
-    Project   = "eks-cluster-mgmt"
   }
 }
 
@@ -85,7 +84,7 @@ variable "policy_filename" {
 }
 
 variable "assume_principal_arns" {
-  description = "List of principal ARNs (AWS principals) allowed to assume the role. If empty and iam_user_name is set, that user will be used." 
+  description = "List of principal ARNs (AWS principals) allowed to assume the role. If empty and iam_user_name is set, that user will be used."
   type        = list(string)
   default     = []
 }
