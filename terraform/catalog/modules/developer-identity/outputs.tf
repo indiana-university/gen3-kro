@@ -37,7 +37,7 @@ output "enable_mfa_command" {
 output "aws_config_profile" {
   description = "AWS CLI profile block to add to ~/.aws/config"
   value       = <<-EOT
-    [profile eks-devcontainer]
+    [profile ${var.role_name}]
     role_arn = ${aws_iam_role.devcontainer.arn}
     source_profile = ${var.aws_profile}
     mfa_serial = ${try(aws_iam_virtual_mfa_device.user_mfa[0].arn, "<register-mfa-separately>")}

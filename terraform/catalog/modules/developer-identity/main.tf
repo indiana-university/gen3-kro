@@ -79,6 +79,10 @@ resource "aws_iam_virtual_mfa_device" "user_mfa" {
   count                   = var.create_virtual_mfa ? 1 : 0
   virtual_mfa_device_name = var.mfa_device_name
   tags                    = var.tags
+
+  lifecycle {
+    ignore_changes = [virtual_mfa_device_name]
+  }
 }
 
 ###############################################################################
@@ -204,7 +208,7 @@ resource "local_file" "mfa_setup_instructions" {
        region = ${var.region}
        output = yaml
 
-       [profile eks-devcontainer]
+       [profile ${var.role_name}]
        role_arn = ${aws_iam_role.devcontainer.arn}
        source_profile = ${var.aws_profile}
       mfa_serial = ${aws_iam_virtual_mfa_device.user_mfa[0].arn}
@@ -215,7 +219,7 @@ resource "local_file" "mfa_setup_instructions" {
     5. Test the setup:
 
        # This will prompt for your MFA code:
-       aws sts get-caller-identity --profile eks-devcontainer
+       aws sts get-caller-identity --profile ${var.role_name}
 
     ═══════════════════════════════════════════════════════════════════
     SECURITY NOTES
@@ -235,9 +239,9 @@ resource "local_file" "aws_config_snippet" {
 
   content = <<-EOT
     # Add these profiles to ~/.aws/config
-    # The eks-devcontainer profile assumes the scoped role with MFA
+    # The ${var.role_name} profile assumes the scoped role with MFA
 
-    [profile eks-devcontainer]
+    [profile ${var.role_name}]
     role_arn = ${aws_iam_role.devcontainer.arn}
     source_profile = ${var.aws_profile}
     mfa_serial = ${try(aws_iam_virtual_mfa_device.user_mfa[0].arn, "<register-mfa-separately>")}
