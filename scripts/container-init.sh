@@ -34,6 +34,319 @@ TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 LOG_FILE="${LOG_DIR}/container-init-${TIMESTAMP}.log"
 
 ###############################################################################
+# Credential tier tracking — set during setup, read by downstream stages
+###############################################################################
+# CRED_TIER values: tier1 | tier2 | tier3 | tier4
+# CRED_IDENTITY:    STS caller identity ARN (empty if unknown)
+# CRED_EXPIRY_UTC:  ISO-8601 expiry timestamp (empty if static or unknown)
+# CRED_REMAINING_S: Seconds remaining until expiry (-1 if static/unknown)
+CRED_TIER="tier4"
+CRED_IDENTITY=""
+CRED_EXPIRY_UTC=""
+CRED_REMAINING_S="-1"
+CRED_REPORT_FILE="${OUTPUTS_DIR}/credential-report.txt"
+
+###############################################################################
+# validate_credentials — Tiered credential security check
+#
+# Tries the most secure credential type first, then falls back:
+#   Tier 1 (BEST):   MFA assumed-role — temporary, scoped, time-limited
+#   Tier 2 (OK):     Static IAM user — long-lived, no role boundary
+#   Tier 3 (EXPIRED): Credentials present but invalid/expired
+#   Tier 4 (NONE):   No credentials file at all
+#
+# Sets global: CRED_TIER, CRED_IDENTITY, CRED_EXPIRY_UTC, CRED_REMAINING_S
+###############################################################################
+validate_credentials() {
+  local creds_file="/home/vscode/.aws/credentials"
+  local meta_file="/home/vscode/.aws/.session-meta"
+  local profile="${AWS_PROFILE:-csoc}"
+
+  echo "  ── Credential Security Check (most secure first) ──"
+  echo ""
+
+  # ── Tier 4: No credentials file at all ────────────────────────────────
+  if [[ ! -f "$creds_file" ]]; then
+    CRED_TIER="tier4"
+    echo "  ✗ TIER 4 — NO CREDENTIALS"
+    echo "    ~/.aws/credentials not found."
+    echo ""
+    if [[ ! -f "${REPO_DIR}/outputs/aws-config-snippet.ini" ]]; then
+      echo "    FIRST-TIME SETUP REQUIRED:"
+      echo "      1. Run: cd terraform/env/developer-identity && terraform apply"
+      echo "      2. Register MFA device (see outputs/mfa-setup-instructions.txt)"
+      echo ""
+    fi
+    echo "    Option A (recommended):  bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)"
+    echo "    Option B (less secure):  bash scripts/mfa-session.sh --no-mfa    (on HOST)"
+    echo ""
+    echo "    Downstream stages (init/apply) will be BLOCKED."
+    _write_credential_report
+    return 1
+  fi
+
+  echo "  ✓ Credentials file found: ${creds_file}"
+
+  # ── Read session metadata if available (written by mfa-session.sh) ────
+  local meta_type="" meta_expiry="" meta_duration=""
+  if [[ -f "$meta_file" ]]; then
+    meta_type="$(grep '^CREDENTIAL_TYPE=' "$meta_file" 2>/dev/null | cut -d= -f2 || true)"
+    meta_expiry="$(grep '^EXPIRY=' "$meta_file" 2>/dev/null | cut -d= -f2 || true)"
+    meta_duration="$(grep '^DURATION_SECONDS=' "$meta_file" 2>/dev/null | cut -d= -f2 || true)"
+    echo "  ✓ Session metadata found (type: ${meta_type:-unknown})"
+  else
+    echo "  ⚠ No session metadata (.session-meta) — will detect credential type via STS"
+  fi
+
+  # ── Check for session token in credentials file (fast pre-check) ──────
+  local has_session_token=false
+  if grep -A10 "^\[${profile}\]" "$creds_file" 2>/dev/null | grep -q "aws_session_token"; then
+    has_session_token=true
+  fi
+
+  # ── Validate credentials via STS ──────────────────────────────────────
+  echo "  Validating credentials (profile: ${profile})..."
+  if ! aws sts get-caller-identity --profile "$profile" &>/dev/null; then
+    CRED_TIER="tier3"
+    echo ""
+    echo "  ✗ TIER 3 — CREDENTIALS INVALID OR EXPIRED"
+    if [[ "$has_session_token" == true ]]; then
+      echo "    Session token present but STS validation failed."
+      echo "    Likely cause: temporary credentials have expired."
+    else
+      echo "    Static credentials present but STS validation failed."
+      echo "    Likely cause: access keys are invalid or deactivated."
+    fi
+    echo ""
+    echo "    Renew on HOST:"
+    echo "      Option A (recommended):  bash scripts/mfa-session.sh <MFA_CODE>"
+    echo "      Option B (less secure):  bash scripts/mfa-session.sh --no-mfa"
+    echo ""
+    echo "    Downstream stages (init/apply) will be BLOCKED."
+    _write_credential_report
+    return 1
+  fi
+
+  CRED_IDENTITY="$(aws sts get-caller-identity --profile "$profile" --output text --query 'Arn' 2>/dev/null || echo 'unknown')"
+  echo "  ✓ STS validation passed: ${CRED_IDENTITY}"
+
+  # ── Tier 1: MFA assumed-role (temporary, scoped) ──────────────────────
+  # Detection: session token present + STS identity contains "assumed-role"
+  # OR session metadata says "assumed-role"
+  if { [[ "$has_session_token" == true ]] && echo "$CRED_IDENTITY" | grep -q "assumed-role"; } \
+     || [[ "$meta_type" == "assumed-role" ]]; then
+    CRED_TIER="tier1"
+    echo ""
+    echo "  ✓ TIER 1 — MFA ASSUMED-ROLE (most secure)"
+    echo "    Temporary credentials via role assumption with MFA."
+
+    # ── Expiry check ────────────────────────────────────────────────────
+    _check_expiry "$meta_expiry" "$meta_duration"
+
+    if [[ "$CRED_REMAINING_S" -gt 0 && "$CRED_REMAINING_S" -lt 3600 ]]; then
+      echo ""
+      echo "  ⚠ WARNING: Credentials expire in less than 1 hour!"
+      echo "    Remaining: $(( CRED_REMAINING_S / 60 )) minutes"
+      echo "    Renew on HOST: bash scripts/mfa-session.sh <MFA_CODE>"
+    elif [[ "$CRED_REMAINING_S" -gt 0 ]]; then
+      echo "    Remaining: $(( CRED_REMAINING_S / 3600 ))h $(( (CRED_REMAINING_S % 3600) / 60 ))m"
+    fi
+
+    _write_credential_report
+    return 0
+  fi
+
+  # ── Tier 2: Static IAM user credentials (long-lived) ─────────────────
+  # Detection: no session token, STS identity shows user/... (not assumed-role)
+  if [[ "$has_session_token" == false ]] || [[ "$meta_type" == "static" ]]; then
+    CRED_TIER="tier2"
+    echo ""
+    echo "  ⚠ TIER 2 — STATIC IAM USER CREDENTIALS (less secure)"
+    echo "    Long-lived access keys with no role boundary or time limit."
+    echo "    These credentials do not expire but provide broader access"
+    echo "    than necessary and lack audit trail of role assumption."
+    echo ""
+    echo "    RECOMMENDATION: Upgrade to Tier 1 (MFA assumed-role) for:"
+    echo "      • Time-limited credentials (auto-expire after 12h)"
+    echo "      • Scoped to the devcontainer IAM role"
+    echo "      • MFA-gated access (proof of identity)"
+    echo "    Run on HOST: bash scripts/mfa-session.sh <MFA_CODE>"
+
+    _write_credential_report
+    return 0
+  fi
+
+  # ── Fallback: assumed-role without session token (unusual) ────────────
+  # This handles edge cases like instance profiles or SSO
+  if echo "$CRED_IDENTITY" | grep -q "assumed-role"; then
+    CRED_TIER="tier1"
+    echo ""
+    echo "  ✓ TIER 1 — ASSUMED-ROLE (detected via STS, no session metadata)"
+    _write_credential_report
+    return 0
+  fi
+
+  # Shouldn't reach here, but handle gracefully
+  CRED_TIER="tier2"
+  echo ""
+  echo "  ⚠ TIER 2 — UNCLASSIFIED CREDENTIALS"
+  echo "    Could not determine credential type. Treating as static/long-lived."
+  _write_credential_report
+  return 0
+}
+
+###############################################################################
+# _check_expiry — Calculate remaining credential lifetime
+#
+# Sets: CRED_EXPIRY_UTC, CRED_REMAINING_S
+###############################################################################
+_check_expiry() {
+  local meta_expiry="$1" meta_duration="$2"
+
+  # Try metadata first
+  if [[ -n "$meta_expiry" && "$meta_expiry" != "(static credentials"* ]]; then
+    CRED_EXPIRY_UTC="$meta_expiry"
+    local expiry_epoch now_epoch
+    expiry_epoch="$(date -d "$meta_expiry" +%s 2>/dev/null || echo 0)"
+    now_epoch="$(date +%s)"
+    if [[ "$expiry_epoch" -gt 0 ]]; then
+      CRED_REMAINING_S=$(( expiry_epoch - now_epoch ))
+      echo "    Expiry: ${CRED_EXPIRY_UTC}"
+      return 0
+    fi
+  fi
+
+  # Fallback: if we have a session-meta created_at + duration, compute expiry
+  local meta_file="/home/vscode/.aws/.session-meta"
+  if [[ -f "$meta_file" && -n "$meta_duration" ]]; then
+    local created_at
+    created_at="$(grep '^CREATED_AT=' "$meta_file" 2>/dev/null | cut -d= -f2 || true)"
+    if [[ -n "$created_at" ]]; then
+      local created_epoch now_epoch
+      created_epoch="$(date -d "$created_at" +%s 2>/dev/null || echo 0)"
+      now_epoch="$(date +%s)"
+      if [[ "$created_epoch" -gt 0 ]]; then
+        local expiry_epoch=$(( created_epoch + meta_duration ))
+        CRED_REMAINING_S=$(( expiry_epoch - now_epoch ))
+        CRED_EXPIRY_UTC="$(date -u -d "@${expiry_epoch}" +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || echo 'unknown')"
+        echo "    Expiry: ${CRED_EXPIRY_UTC} (computed from session metadata)"
+        return 0
+      fi
+    fi
+  fi
+
+  echo "    Expiry: unknown (session metadata unavailable or unparseable)"
+  CRED_REMAINING_S="-1"
+}
+
+###############################################################################
+# _write_credential_report — Persist credential status to outputs/
+###############################################################################
+_write_credential_report() {
+  local report_file="${CRED_REPORT_FILE}"
+  local tier_label=""
+  case "$CRED_TIER" in
+    tier1) tier_label="TIER 1 — MFA Assumed-Role (most secure)" ;;
+    tier2) tier_label="TIER 2 — Static IAM User (less secure)" ;;
+    tier3) tier_label="TIER 3 — Invalid or Expired" ;;
+    tier4) tier_label="TIER 4 — No Credentials" ;;
+    *)     tier_label="UNKNOWN" ;;
+  esac
+
+  cat > "$report_file" <<REPORT
+###############################################################################
+# Credential Security Report
+# Generated: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+###############################################################################
+
+TIER:           ${CRED_TIER}
+STATUS:         ${tier_label}
+IDENTITY:       ${CRED_IDENTITY:-none}
+EXPIRY:         ${CRED_EXPIRY_UTC:-N/A}
+REMAINING_SEC:  ${CRED_REMAINING_S}
+
+TIER DEFINITIONS:
+  Tier 1 (BEST):    MFA assumed-role — temporary, scoped, time-limited, MFA-gated
+  Tier 2 (OK):      Static IAM user — long-lived access keys, no role boundary
+  Tier 3 (EXPIRED): Credentials present but invalid or expired
+  Tier 4 (NONE):    No credentials file found
+
+UPGRADE INSTRUCTIONS:
+  From Tier 2/3/4 to Tier 1:
+    Run on HOST: bash scripts/mfa-session.sh <MFA_CODE>
+  From Tier 4 (first time):
+    1. cd terraform/env/developer-identity && terraform apply
+    2. Register MFA device (see outputs/mfa-setup-instructions.txt)
+    3. bash scripts/mfa-session.sh <MFA_CODE>
+
+###############################################################################
+REPORT
+
+  echo "  → Report written to: ${report_file}"
+}
+
+###############################################################################
+# _credential_warning — Print credential status banner (pre/post stage)
+#
+# Usage: _credential_warning "before" "apply"
+#        _credential_warning "after"  "apply"
+###############################################################################
+_credential_warning() {
+  local timing="$1" stage="$2"
+
+  case "$CRED_TIER" in
+    tier1)
+      if [[ "$CRED_REMAINING_S" -gt 0 && "$CRED_REMAINING_S" -lt 3600 ]]; then
+        echo ""
+        echo "  ┌──────────────────────────────────────────────────────────────┐"
+        echo "  │  ⚠ CREDENTIAL EXPIRY WARNING ($timing $stage)               │"
+        echo "  │  Remaining: $(printf '%3d' $(( CRED_REMAINING_S / 60 ))) minutes                                      │"
+        echo "  │  Credentials may expire during this operation.              │"
+        echo "  │  Renew on HOST: bash scripts/mfa-session.sh <MFA_CODE>     │"
+        echo "  └──────────────────────────────────────────────────────────────┘"
+        echo ""
+      fi
+      ;;
+    tier2)
+      if [[ "$timing" == "after" ]]; then
+        echo ""
+        echo "  ┌──────────────────────────────────────────────────────────────┐"
+        echo "  │  ⚠ SECURITY NOTICE (end of $stage)                          │"
+        echo "  │  You are using STATIC IAM USER credentials (Tier 2).        │"
+        echo "  │  These are long-lived and provide broader access than needed.│"
+        echo "  │  Upgrade to Tier 1 for better security:                     │"
+        echo "  │    bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)        │"
+        echo "  └──────────────────────────────────────────────────────────────┘"
+        echo ""
+      fi
+      ;;
+  esac
+}
+
+###############################################################################
+# _require_valid_credentials — Gate for stages that need working AWS creds
+#
+# Blocks on Tier 3 (expired) and Tier 4 (none). Returns 0 if creds are usable.
+###############################################################################
+_require_valid_credentials() {
+  local stage="$1"
+  if [[ "$CRED_TIER" == "tier3" || "$CRED_TIER" == "tier4" ]]; then
+    echo ""
+    echo "  ┌──────────────────────────────────────────────────────────────┐"
+    echo "  │  ✗ STAGE BLOCKED: ${stage}                                   │"
+    echo "  │  Credential tier: ${CRED_TIER} — credentials are unusable.   │"
+    echo "  │  Fix on HOST:                                               │"
+    echo "  │    bash scripts/mfa-session.sh <MFA_CODE>     (Tier 1, MFA) │"
+    echo "  │    bash scripts/mfa-session.sh --no-mfa       (Tier 2)      │"
+    echo "  └──────────────────────────────────────────────────────────────┘"
+    echo ""
+    echo "  Skipping ${stage} stage."
+    return 1
+  fi
+  return 0
+}
+
+###############################################################################
 # Parse flags into an associative array for O(1) lookups
 ###############################################################################
 declare -A STAGES=()
@@ -80,47 +393,17 @@ if [[ -n "${STAGES[setup]:-}" ]]; then
   # ── 2. Git safe directory ─────────────────────────────────────────────────
   git config --global --add safe.directory "${REPO_DIR}" || true
 
-  # ── 3. Validate AWS credentials (~/.aws from host bind-mount) ─────────────────────
-  # mfa-session.sh on the host writes credentials to ~/.aws/credentials.
-  # devcontainer.json bind-mounts ~/.aws → /home/vscode/.aws so they're available here.
-  # mfa-session.sh writes to ~/.aws/eks-devcontainer/credentials on the HOST.
-  # devcontainer.json bind-mounts ~/.aws/eks-devcontainer/ → /home/vscode/.aws/
-  # so only those scoped credentials (not all of ~/.aws) are visible in the container.
-  CREDS_FILE="/home/vscode/.aws/credentials"
-  if [[ -f "$CREDS_FILE" ]]; then
-    echo "  AWS credentials file found: ${CREDS_FILE}"
-  else
-    echo "  WARNING: ~/.aws/credentials not found."
-    if [[ ! -f "${REPO_DIR}/outputs/aws-config-snippet.ini" ]]; then
-      echo "  FIRST-TIME SETUP REQUIRED:"
-      echo "    1. Run: cd terraform/env/developer-identity && terraform apply"
-      echo "    2. Register MFA device (see outputs/mfa-setup-instructions.txt)"
-    fi
-    echo "  Option A (MFA):     bash scripts/mfa-session.sh <CODE>    (on HOST)"
-    echo "  Option B (no MFA):  bash scripts/mfa-session.sh --no-mfa  (on HOST)"
-    echo "  Some operations will fail without valid credentials."
-  fi
-
-  # Validate the csoc profile works
+  # ── 3. Validate AWS credentials — Tiered security check ───────────────────
+  # Tries most secure credential type first (Tier 1: MFA assumed-role),
+  # then falls back through less secure options.
+  # See validate_credentials() for full tier definitions.
+  #
+  # Credential mount path:
+  #   mfa-session.sh writes to ~/.aws/eks-devcontainer/ on the HOST.
+  #   devcontainer.json bind-mounts that dir → /home/vscode/.aws/
+  #   so only scoped credentials (not all of ~/.aws) are visible.
   CSOC_PROFILE="${AWS_PROFILE:-csoc}"
-  echo "  Validating AWS credentials (profile: ${CSOC_PROFILE})..."
-  if aws sts get-caller-identity --profile "$CSOC_PROFILE" &>/dev/null; then
-    CALLER_ID="$(aws sts get-caller-identity --profile "$CSOC_PROFILE" --output text --query 'Arn' 2>/dev/null || echo 'unknown')"
-    echo "  AWS identity: ${CALLER_ID}"
-
-    if echo "$CALLER_ID" | grep -q "assumed-role"; then
-      echo "  Using temporary credentials (assumed-role) — good"
-    else
-      echo "  WARNING: Using static IAM user credentials."
-      echo "    For better security, use assumed-role credentials."
-    fi
-  else
-    echo "  WARNING: AWS credentials not valid for profile '${CSOC_PROFILE}'"
-    echo "    Run on HOST: bash scripts/mfa-session.sh <CODE>     (option A: MFA)"
-    echo "             or: bash scripts/mfa-session.sh --no-mfa   (option B: admin static)"
-    echo "    Credentials must be in ~/.aws/eks-devcontainer/credentials before container starts."
-    echo "    Terraform operations will fail until credentials are configured."
-  fi
+  validate_credentials || true   # sets CRED_TIER, CRED_IDENTITY, etc.
 
   # ── 4. Resolve region for env file ────────────────────────────────────────
   # Read region from shared.auto.tfvars.json if present; otherwise fall back to
@@ -235,6 +518,14 @@ if [[ -n "${STAGES[init]:-}" ]]; then
   # Ensure env is loaded (in case setup was skipped but ran previously)
   [[ -f /home/vscode/.container-env ]] && source /home/vscode/.container-env
 
+  # ── Credential gate: block on Tier 3/4 ──────────────────────────────────────
+  if ! _require_valid_credentials "init"; then
+    # Fall through — skip init but don't abort the script
+    echo ">>> [init] SKIPPED (invalid credentials)."
+    echo ""
+  else
+  _credential_warning "before" "init"
+
   # ── Push SSM repo secrets before init ─────────────────────────────────────
   # Runs before terraform init so that SSM secrets exist when Terraform
   # validates data sources. Gracefully skips if scripts don't exist.
@@ -257,8 +548,10 @@ if [[ -n "${STAGES[init]:-}" ]]; then
   echo ">>> [init] Running install.sh init..."
   bash "${REPO_DIR}/scripts/install.sh" init
 
+  _credential_warning "after" "init"
   echo ">>> [init] Complete."
   echo ""
+  fi  # end credential gate
 fi
 
 ###############################################################################
@@ -270,24 +563,21 @@ if [[ -n "${STAGES[apply]:-}" ]]; then
   # Ensure env is loaded
   [[ -f /home/vscode/.container-env ]] && source /home/vscode/.container-env
 
-  # ── Guard: require CONTAINER_AUTO_APPLY=true for auto-approve ─────────────
-  # Prevents accidental terraform apply when the script is run manually outside
-  # a fresh devcontainer init. Set CONTAINER_AUTO_APPLY=true in .container-env
-  # or devcontainer.json containerEnv to enable auto-apply.
-  if [[ "${CONTAINER_AUTO_APPLY:-false}" != "true" ]]; then
-    echo "  CONTAINER_AUTO_APPLY is not set to 'true' — skipping auto-approve apply."
-    echo "  To enable: export CONTAINER_AUTO_APPLY=true (or set in devcontainer.json containerEnv)"
-    echo "  To apply manually: bash scripts/install.sh apply"
-    echo ">>> [apply] Skipped (guarded)."
+  # ── Credential gate: block on Tier 3/4 ──────────────────────────────────────
+  if ! _require_valid_credentials "apply"; then
+    echo ">>> [apply] SKIPPED (invalid credentials)."
     echo ""
   else
-    # ── Run terraform apply via install.sh ──────────────────────────────────
-    echo ">>> [apply] Running install.sh apply..."
-    bash "${REPO_DIR}/scripts/install.sh" apply
+  _credential_warning "before" "apply"
 
-    echo ">>> [apply] Complete."
-    echo ""
-  fi
+  # ── Run terraform apply via install.sh ────────────────────────────────────
+  echo ">>> [apply] Running install.sh apply..."
+  bash "${REPO_DIR}/scripts/install.sh" apply
+
+  _credential_warning "after" "apply"
+  echo ">>> [apply] Complete."
+  echo ""
+  fi  # end credential gate
 fi
 ###############################################################################
 # STAGE: connect — kubeconfig + ArgoCD port-forward (no TF dependency)
@@ -301,6 +591,13 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
 
   # Ensure env is loaded
   [[ -f /home/vscode/.container-env ]] && source /home/vscode/.container-env
+
+  # Credential gate: block on Tier 3/4
+  if ! _require_valid_credentials "connect"; then
+    echo ">>> [connect] SKIPPED (invalid credentials)."
+    echo ""
+  else
+  _credential_warning "before" "connect"
 
   CONFIG_FILE="${REPO_DIR}/config/shared.auto.tfvars.json"
 
@@ -392,12 +689,47 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
     fi
   fi
 
+  _credential_warning "after" "connect"
   echo ">>> [connect] Complete."
   echo ""
+  fi  # end credential gate
 fi
 ###############################################################################
-# Done
+# Done — Final credential status summary
 ###############################################################################
+echo ""
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "  CREDENTIAL STATUS SUMMARY"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+case "$CRED_TIER" in
+  tier1)
+    echo "  ✓ Tier 1 — MFA Assumed-Role (most secure)"
+    echo "    Identity: ${CRED_IDENTITY}"
+    if [[ "$CRED_REMAINING_S" -gt 0 && "$CRED_REMAINING_S" -lt 3600 ]]; then
+      echo "  ⚠ WARNING: Credentials expire in $(( CRED_REMAINING_S / 60 )) minutes!"
+      echo "    Renew: bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)"
+    elif [[ "$CRED_REMAINING_S" -gt 0 ]]; then
+      echo "    Expires in: $(( CRED_REMAINING_S / 3600 ))h $(( (CRED_REMAINING_S % 3600) / 60 ))m"
+    fi
+    ;;
+  tier2)
+    echo "  ⚠ Tier 2 — Static IAM User (less secure)"
+    echo "    Identity: ${CRED_IDENTITY}"
+    echo "    Long-lived credentials — no expiry, broader access than needed."
+    echo "    Upgrade: bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)"
+    ;;
+  tier3)
+    echo "  ✗ Tier 3 — Credentials Invalid or Expired"
+    echo "    Renew: bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)"
+    ;;
+  tier4)
+    echo "  ✗ Tier 4 — No Credentials Found"
+    echo "    Setup: bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)"
+    ;;
+esac
+echo "  Report: ${CRED_REPORT_FILE}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
 echo "=== Dev Container Init — All requested stages complete! ==="
 }
 

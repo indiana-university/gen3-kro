@@ -23,6 +23,11 @@
   // AWS_PROFILE selects the profile from the mounted ~/.aws/credentials file.
   // Run `bash scripts/mfa-session.sh <MFA_CODE>` on the host BEFORE starting the container.
   // The script writes temporary credentials to ~/.aws/credentials under [csoc].
+  //
+  // Credential tiers (validated by container-init.sh):
+  //   Tier 1 (BEST):  MFA assumed-role — temporary, scoped, MFA-gated
+  //   Tier 2 (OK):    Static IAM user — long-lived, broader access
+  //   Tier 3/4:       Invalid/expired or missing — downstream stages blocked
   "containerEnv": {
     "REPO_ROOT": "/workspaces/${localWorkspaceFolderBasename}",
     "AWS_PROFILE": "csoc"
