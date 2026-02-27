@@ -1,7 +1,7 @@
 # developer-identity bootstrap — override defaults as needed
 # Uncomment and edit any values below.
 
-# aws_profile             = "boadeyem_tf"
+# aws_profile             = "csoc"
 # region                  = "us-east-1"
 # iam_user_name           = "Terraform.User"
 # role_name               = "csoc-user"

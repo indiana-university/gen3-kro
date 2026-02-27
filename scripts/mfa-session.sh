@@ -171,9 +171,53 @@ if [[ "$NO_MFA" -eq 0 ]] && [[ -z "$MFA_SERIAL" ]]; then
   exit 1
 fi
 
-# ─── Set up isolated devcontainer credentials file ────────────────────────
-# Mount only this directory (not all of ~/.aws) into the container.
-CREDS_DIR="${HOME}/.aws/eks-devcontainer"
+# ─── Resolve credentials directory (WSL-aware) ────────────────────────────
+# devcontainer.json mounts:
+#   source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws/eks-devcontainer
+# On Windows that resolves to C:\Users\<user>\.aws\eks-devcontainer (USERPROFILE).
+# When this script runs inside WSL, $HOME is the Linux home (/home/<user>), which
+# is a DIFFERENT path — Docker Desktop cannot mount it. Detect WSL and prefer
+# the Windows home directory so the mounted path matches.
+_resolve_creds_home() {
+  # Git Bash / Windows native shell: USERPROFILE is already a Windows path
+  if [[ -n "${USERPROFILE:-}" ]] && command -v wslpath &>/dev/null 2>&1; then
+    wslpath "${USERPROFILE}" 2>/dev/null && return
+  fi
+
+  # WSL1 or WSL2: /proc/version contains "microsoft" or "Microsoft"
+  if [[ -f /proc/version ]] && grep -qiE 'microsoft|WSL' /proc/version 2>/dev/null; then
+    local _win_home=""
+
+    # Preferred: wslvar (ships with WSL utilities on most distros)
+    if command -v wslvar &>/dev/null; then
+      _win_home="$(wslvar USERPROFILE 2>/dev/null | tr -d '\r' || true)"
+    fi
+
+    # Fallback: query cmd.exe directly
+    if [[ -z "$_win_home" ]] && command -v cmd.exe &>/dev/null; then
+      _win_home="$(cmd.exe /c 'echo %USERPROFILE%' 2>/dev/null | tr -d '\r' || true)"
+    fi
+
+    if [[ -n "$_win_home" ]] && command -v wslpath &>/dev/null; then
+      local _linux_path
+      _linux_path="$(wslpath "${_win_home}" 2>/dev/null || true)"
+      if [[ -n "$_linux_path" ]]; then
+        echo "$_linux_path"
+        return
+      fi
+    fi
+
+    echo "  WARNING: Running in WSL but could not resolve Windows home." >&2
+    echo "    Credentials will be written to WSL home ($HOME)." >&2
+    echo "    If the devcontainer cannot see credentials, copy manually:" >&2
+    echo "      cp -r ~/.aws/eks-devcontainer /mnt/c/Users/<WindowsUser>/.aws/" >&2
+  fi
+
+  # Native Linux / macOS — HOME is correct for Docker Desktop
+  echo "${HOME}"
+}
+CREDS_HOME="$(_resolve_creds_home)"
+CREDS_DIR="${CREDS_HOME}/.aws/eks-devcontainer"
 mkdir -p "$CREDS_DIR"
 echo "  Credentials dir: ${CREDS_DIR}"
 
@@ -270,7 +314,8 @@ echo "  Credentials profile:   $SESSION_PROFILE"
 echo "  Credentials file:      $AWS_SHARED_CREDENTIALS_FILE"
 echo "  Log saved to:          $LOG_FILE"
 echo ""
-echo "  Devcontainer mounts:   ~/.aws/eks-devcontainer → /home/vscode/.aws"
+echo "  Devcontainer mounts:   ${CREDS_DIR} → /home/vscode/.aws"
+echo "  (Docker Desktop resolves this from the Windows-side path)"
 echo "  In the container:"
 echo "    export AWS_PROFILE=$SESSION_PROFILE"
 echo ""
