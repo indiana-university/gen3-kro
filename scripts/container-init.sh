@@ -362,6 +362,9 @@ if [[ ${#STAGES[@]} -eq 0 ]]; then
 fi
 
 main() {
+# ── Diagnostic trap: show exactly which command failed and where ──────────────
+trap 'echo "" >&2; echo "  ✗ [container-init] Command failed at line $LINENO" >&2; echo "    Failed: $BASH_COMMAND" >&2' ERR
+
 echo "=== Dev Container Init ==="
 echo "  REPO_DIR:  $REPO_DIR"
 echo "  ENV_DIR:   $ENV_DIR"
@@ -383,9 +386,9 @@ if [[ -n "${STAGES[setup]:-}" ]]; then
 
   # ── 1. Required directories ───────────────────────────────────────────────
   # ~/.kube is NOT mounted — created empty; connect-csoc.sh populates it later
-  mkdir -p /home/vscode/.kube /home/vscode/.aws
-  mkdir -p "${OUTPUTS_DIR}/logs" "${OUTPUTS_DIR}/argo" "${OUTPUTS_DIR}/ssm-repo-secrets"
-  mkdir -p "${REPO_DIR}/config/ssm-repo-secrets"
+  mkdir -p /home/vscode/.kube /home/vscode/.aws 2>/dev/null || true
+  mkdir -p "${OUTPUTS_DIR}/logs" "${OUTPUTS_DIR}/argo" "${OUTPUTS_DIR}/ssm-repo-secrets" 2>/dev/null || true
+  mkdir -p "${REPO_DIR}/config/ssm-repo-secrets" 2>/dev/null || true
 
   # Workdir ownership: on Windows bind-mounts, chown can fail; don't break setup
   sudo chown -R vscode:vscode /workspaces 2>/dev/null || true
@@ -453,8 +456,10 @@ EOF
   # Allows: cd terraform/env/aws/csoc-cluster && bash install.sh
   if [[ -d "$ENV_DIR" ]]; then
     echo "  Copying install.sh and destroy.sh to ${ENV_DIR}/"
-    cp -f "${REPO_DIR}/scripts/install.sh" "${ENV_DIR}/install.sh"
-    cp -f "${REPO_DIR}/scripts/destroy.sh" "${ENV_DIR}/destroy.sh"
+    cp -f "${REPO_DIR}/scripts/install.sh" "${ENV_DIR}/install.sh" 2>/dev/null \
+      || echo "  WARNING: Could not copy install.sh to ${ENV_DIR}/ (non-fatal)"
+    cp -f "${REPO_DIR}/scripts/destroy.sh" "${ENV_DIR}/destroy.sh" 2>/dev/null \
+      || echo "  WARNING: Could not copy destroy.sh to ${ENV_DIR}/ (non-fatal)"
     # chmod may fail on Windows bind-mounts — non-fatal
     chmod +x "${ENV_DIR}/install.sh" "${ENV_DIR}/destroy.sh" 2>/dev/null || true
   else
@@ -464,13 +469,15 @@ EOF
 
   # ── 8. MCP config ───────────────────────────────────────────────────────────
   # Copy from .mcp/ source-of-truth to .vscode/mcp.json for VS Code pickup.
+  # Write failures on Windows bind-mounts are non-fatal.
   if [[ -f "${REPO_DIR}/.mcp/mcp.json" ]]; then
-    mkdir -p "${REPO_DIR}/.vscode"
-    cp -f "${REPO_DIR}/.mcp/mcp.json" "${REPO_DIR}/.vscode/mcp.json"
-    echo "  Copied .mcp/mcp.json → .vscode/mcp.json"
+    mkdir -p "${REPO_DIR}/.vscode" 2>/dev/null || true
+    cp -f "${REPO_DIR}/.mcp/mcp.json" "${REPO_DIR}/.vscode/mcp.json" 2>/dev/null \
+      && echo "  Copied .mcp/mcp.json → .vscode/mcp.json" \
+      || echo "  WARNING: Could not copy .mcp/mcp.json (non-fatal)"
   elif [[ ! -f "${REPO_DIR}/.vscode/mcp.json" ]]; then
-    mkdir -p "${REPO_DIR}/.vscode"
-    cat > "${REPO_DIR}/.vscode/mcp.json" <<'JSON'
+    mkdir -p "${REPO_DIR}/.vscode" 2>/dev/null || true
+    cat > "${REPO_DIR}/.vscode/mcp.json" <<'JSON' 2>/dev/null || true
 {
   "servers": {
     "context7": {
@@ -490,16 +497,18 @@ EOF
   "inputs": []
 }
 JSON
-    echo "  Created fallback .vscode/mcp.json"
+    [[ -f "${REPO_DIR}/.vscode/mcp.json" ]] \
+      && echo "  Created fallback .vscode/mcp.json" \
+      || echo "  WARNING: Could not create .vscode/mcp.json (non-fatal)"
   fi
 
   # ── 9. Codex sandbox config (restricted container workaround) ────────────
-  mkdir -p /home/vscode/.codex
+  mkdir -p /home/vscode/.codex 2>/dev/null || true
   CODEX_CONFIG="/home/vscode/.codex/config.toml"
-  touch "${CODEX_CONFIG}"
-  grep -Eq "^[[:space:]]*sandbox_mode[[:space:]]*=" "${CODEX_CONFIG}" || echo 'sandbox_mode = "danger-full-access"' >> "${CODEX_CONFIG}"
-  grep -Eq "^[[:space:]]*approval_policy[[:space:]]*=" "${CODEX_CONFIG}" || echo 'approval_policy = "never"' >> "${CODEX_CONFIG}"
-  grep -Eq "^[[:space:]]*features\.use_linux_sandbox_bwrap[[:space:]]*=" "${CODEX_CONFIG}" || echo "features.use_linux_sandbox_bwrap = false" >> "${CODEX_CONFIG}"
+  touch "${CODEX_CONFIG}" 2>/dev/null || true
+  grep -Eq "^[[:space:]]*sandbox_mode[[:space:]]*=" "${CODEX_CONFIG}" 2>/dev/null || echo 'sandbox_mode = "danger-full-access"' >> "${CODEX_CONFIG}" 2>/dev/null || true
+  grep -Eq "^[[:space:]]*approval_policy[[:space:]]*=" "${CODEX_CONFIG}" 2>/dev/null || echo 'approval_policy = "never"' >> "${CODEX_CONFIG}" 2>/dev/null || true
+  grep -Eq "^[[:space:]]*features\.use_linux_sandbox_bwrap[[:space:]]*=" "${CODEX_CONFIG}" 2>/dev/null || echo "features.use_linux_sandbox_bwrap = false" >> "${CODEX_CONFIG}" 2>/dev/null || true
 
   if command -v unshare >/dev/null 2>&1 && ! unshare -Ur true >/dev/null 2>&1; then
     echo "  Unprivileged user namespaces blocked; Codex set to non-sandbox mode."
@@ -546,10 +555,19 @@ if [[ -n "${STAGES[init]:-}" ]]; then
 
   # ── Run terraform init via install.sh ─────────────────────────────────────
   echo ">>> [init] Running install.sh init..."
-  bash "${REPO_DIR}/scripts/install.sh" init
+  _init_rc=0
+  bash "${REPO_DIR}/scripts/install.sh" init || _init_rc=$?
+  if [[ $_init_rc -ne 0 ]]; then
+    echo ""
+    echo "  ✗ [init] install.sh init exited with code ${_init_rc}"
+    echo "    Common causes: missing backend config, expired credentials,"
+    echo "    or unconfigured config/shared.auto.tfvars.json."
+    echo "    Check: ${LOG_FILE}"
+    echo ""
+  fi
 
   _credential_warning "after" "init"
-  echo ">>> [init] Complete."
+  echo ">>> [init] Complete (exit code: ${_init_rc})."
   echo ""
   fi  # end credential gate
 fi
@@ -572,10 +590,18 @@ if [[ -n "${STAGES[apply]:-}" ]]; then
 
   # ── Run terraform apply via install.sh ────────────────────────────────────
   echo ">>> [apply] Running install.sh apply..."
-  bash "${REPO_DIR}/scripts/install.sh" apply
+  _apply_rc=0
+  bash "${REPO_DIR}/scripts/install.sh" apply || _apply_rc=$?
+  if [[ $_apply_rc -ne 0 ]]; then
+    echo ""
+    echo "  ✗ [apply] install.sh apply exited with code ${_apply_rc}"
+    echo "    Re-run manually: bash scripts/install.sh apply"
+    echo "    Check: ${LOG_FILE}"
+    echo ""
+  fi
 
   _credential_warning "after" "apply"
-  echo ">>> [apply] Complete."
+  echo ">>> [apply] Complete (exit code: ${_apply_rc})."
   echo ""
   fi  # end credential gate
 fi
