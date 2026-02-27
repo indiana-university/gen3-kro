@@ -189,6 +189,15 @@ if [[ "$NO_MFA" -eq 1 ]]; then
   sed -i "/^\[${SESSION_PROFILE}\]/,/^\[/{/^aws_session_token/d}" \
     "$AWS_SHARED_CREDENTIALS_FILE" 2>/dev/null || true
   EXPIRATION="(static credentials — no expiry)"
+
+  # ── Write session metadata for container-side tier detection ──────────
+  cat > "${CREDS_DIR}/.session-meta" <<META
+# Written by mfa-session.sh — $(date -u +%Y-%m-%dT%H:%M:%SZ)
+CREDENTIAL_TYPE=static
+CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+SOURCE_PROFILE=${SOURCE_PROFILE}
+SESSION_PROFILE=${SESSION_PROFILE}
+META
 else
   # Option B: assume role with MFA
   echo "Assuming role: $ROLE_ARN"
@@ -227,6 +236,18 @@ else
   aws configure set region \
     "$(aws configure get region --profile "$SOURCE_PROFILE" 2>/dev/null || echo 'us-east-1')" \
     --profile "$SESSION_PROFILE"
+
+  # ── Write session metadata for container-side tier detection ──────────
+  cat > "${CREDS_DIR}/.session-meta" <<META
+# Written by mfa-session.sh — $(date -u +%Y-%m-%dT%H:%M:%SZ)
+CREDENTIAL_TYPE=assumed-role
+CREATED_AT=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+EXPIRY=${EXPIRATION}
+DURATION_SECONDS=${DURATION}
+ROLE_ARN=${ROLE_ARN}
+SOURCE_PROFILE=${SOURCE_PROFILE}
+SESSION_PROFILE=${SESSION_PROFILE}
+META
 fi
 
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
