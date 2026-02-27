@@ -73,12 +73,14 @@ locals {
       # GitOps — addons ApplicationSet source
       addons_repo_url      = local.gitops_addons_repo_url
       addons_repo_basepath = var.gitops_addons_repo_base_path
+      addons_repo_path     = var.gitops_addons_repo_path
       addons_repo_revision = var.gitops_addons_repo_revision
     },
     {
       # GitOps — fleet + workloads ApplicationSets
       fleet_repo_url      = local.gitops_fleet_repo_url
       fleet_repo_basepath = var.gitops_fleet_repo_base_path
+      fleet_repo_path     = var.gitops_fleet_repo_path
       fleet_repo_revision = var.gitops_fleet_repo_revision
     }
   )

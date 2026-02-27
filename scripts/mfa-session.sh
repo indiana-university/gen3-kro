@@ -28,6 +28,20 @@
 # Prerequisites:
 #   1. terraform apply in terraform/env/developer-identity/ (generates snippet)
 #   2. Virtual MFA device registered (for Option A only)
+#
+# Next Steps (after running this script):
+#   1. Open (or rebuild) the devcontainer in VS Code
+#      — ~/.aws/eks-devcontainer is bind-mounted as /home/vscode/.aws
+#      — AWS_PROFILE=csoc is set automatically via containerEnv
+#   2. Inside the container, verify credentials:
+#        aws sts get-caller-identity
+#   3. Run the Terraform orchestrator:
+#        bash scripts/install.sh init    # backend init
+#        bash scripts/install.sh plan    # review changes
+#        bash scripts/install.sh apply   # provision EKS + ArgoCD bootstrap
+#   4. If spoke IAM roles need (re)provisioning, run on the HOST first:
+#        cd terragrunt/live/aws/<env> && terragrunt run-all apply
+#   5. To tear down: bash scripts/destroy.sh  (inside the container)
 ###############################################################################
 set -euo pipefail
 

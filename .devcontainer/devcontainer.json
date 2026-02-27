@@ -58,11 +58,11 @@
           "editor.defaultFormatter": "redhat.vscode-yaml"
         },
         "[terraform]": {
-          "editor.defaultFormatter": "hashicorp.terraform"
+          "editor.defaultFormatter": "hashicorp.hcl"
         }
       },
       "extensions": [
-        "hashicorp.terraform",
+        "hashicorp.hcl",
         "ms-kubernetes-tools.vscode-kubernetes-tools",
         "redhat.vscode-yaml",
         "openai.chatgpt",
