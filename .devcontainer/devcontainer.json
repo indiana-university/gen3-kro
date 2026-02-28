@@ -41,6 +41,11 @@
   //   "setup init apply connect"   — full pipeline + reconnect
   "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup init apply connect",
 
+  // Re-establish kubeconfig + ArgoCD port-forward on every container start.
+  // postCreateCommand only runs once at container creation; this ensures the
+  // port-forward survives container restarts and VS Code reconnects.
+  "postStartCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup connect",
+
   "customizations": {
     "vscode": {
       "settings": {

@@ -1,3 +1,13 @@
+# ======================================================================
+# spoke-addons — Deploy addons to KRO-provisioned spoke clusters
+# ======================================================================
+# Uses a matrix generator (same pattern as fleet-workloads):
+#   Child 1 (control-plane) — supplies repo annotations via `values` aliases
+#   Child 2 (spoke clusters) — supplies spoke identity (fleet_member: spoke)
+#
+# This naturally gates addon deployment on infrastructure readiness:
+# the spoke cluster secret only exists after the RGD's argoCDClusterSecret
+# node is ready (i.e. EKS is provisioned and registered with ArgoCD).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -12,29 +22,44 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-  - clusters:
-      selector:
-        matchLabels:
-          fleet_member: spoke
-      values:
-        addonChart: application-sets
+  - matrix:
+      generators:
+      # Child 1: CSOC control-plane cluster — provides git repo annotations.
+      # The `values` field aliases them so they survive the matrix merge
+      # (the spoke generator's metadata replaces control-plane metadata).
+      - clusters:
+          selector:
+            matchLabels:
+              fleet_member: control-plane
+          values:
+            addonsRepoUrl: '{{.metadata.annotations.addons_repo_url}}'
+            addonsRepoRevision: '{{.metadata.annotations.addons_repo_revision}}'
+            addonsRepoBasepath: '{{.metadata.annotations.addons_repo_basepath}}'
+            addonChart: application-sets
+      # Child 2: KRO-created spoke cluster secrets — provides spoke identity.
+      # These secrets are created by the RGD's argoCDClusterSecret node and
+      # carry the fleet_member: spoke label + gen3.io/* annotations.
+      - clusters:
+          selector:
+            matchLabels:
+              fleet_member: spoke
   template:
     metadata:
-      name: spoke-addons
+      name: spoke-addons-{{.name}}
     spec:
       project: default
       sources:
       - ref: values
-        repoURL: '{{.metadata.annotations.addons_repo_url}}'
-        targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
-      - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-        path: '{{.metadata.annotations.addons_repo_basepath}}charts/{{.values.addonChart}}'
-        targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+        repoURL: '{{.values.addonsRepoUrl}}'
+        targetRevision: '{{.values.addonsRepoRevision}}'
+      - repoURL: '{{.values.addonsRepoUrl}}'
+        path: '{{.values.addonsRepoBasepath}}charts/{{.values.addonChart}}'
+        targetRevision: '{{.values.addonsRepoRevision}}'
         helm:
           ignoreMissingValueFiles: true
           valueFiles:
-            - $values/{{.metadata.annotations.addons_repo_basepath}}addons/environments/{{ .metadata.labels.environment }}/addons.yaml
-            - $values/{{.metadata.annotations.addons_repo_basepath}}cluster-fleet/{{ .name }}/addons.yaml
+            - $values/{{.values.addonsRepoBasepath}}addons/environments/{{index .metadata.labels "environment"}}/addons.yaml
+            - $values/{{.values.addonsRepoBasepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/addons.yaml
       destination:
         namespace: argocd
         name: '{{.name}}'
