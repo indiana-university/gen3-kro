@@ -9,8 +9,10 @@ This directory contains the declarative GitOps configuration for a multi-cluster
 ```
 argocd/
 ├── bootstrap/                      # Entry-point ApplicationSets (Terraform-created bootstrap reads this)
-│   ├── addons.yaml                 #   csoc-addons (wave -20) + spoke-addons (wave 20) AppSets
-│   └── cluster-fleet.yaml          #   fleet AppSet (wave 30)
+│   ├── csoc-addons.yaml            #   CSOC addon ApplicationSet (wave -20)
+│   ├── cross-acct.yaml             #   ACK CARM multi-account ApplicationSet (wave 5)
+│   ├── spoke-addons.yaml           #   Spoke addon ApplicationSet (wave 20)
+│   └── cluster-fleet.yaml          #   fleet + fleet-workloads ApplicationSets (wave 30, 40)
 ├── addons/                         # Addon value files (merged via multi-source Helm)
 │   ├── csoc/
 │   │   └── addons.yaml             #   CSOC addons: KRO, 17x ACK controllers, ESO
@@ -23,6 +25,8 @@ argocd/
 │   ├── resource-groups/            #   KRO ResourceGraphDefinition manifests
 │   └── workloads/                  #   Gen3 application workload chart
 └── cluster-fleet/                  # Per-cluster override values (highest precedence)
+    ├── csoc/
+    │   └── infrastructure.yaml     #   CSOC base infrastructure (shared defaults)
     ├── spoke1/
     │   ├── addons.yaml             #   Addon overrides for spoke1
     │   ├── infrastructure.yaml     #   KRO instance definitions
@@ -41,18 +45,22 @@ ArgoCD reconciliation follows this chain, enforced by sync waves:
 Terraform creates:
   └── Bootstrap ApplicationSet (helm_release)
         └── Reads argocd/bootstrap/ directory
-              ├── addons.yaml → csoc-addons AppSet (wave -20)
-              │                  └── KRO (wave -30)
-              │                  └── ACK controllers (wave 1)
-              │                  └── KRO RGDs (wave 10)
-              │                  └── External Secrets (wave 15)
+              ├── csoc-addons.yaml → csoc-addons AppSet (wave -20)
+              │                      └── KRO (wave -30)
+              │                      └── ACK controllers (wave 1)
+              │                      └── KRO RGDs (wave 10)
+              │                      └── External Secrets (wave 15)
               │
-              ├── addons.yaml → spoke-addons AppSet (wave 20)
-              │                  └── Spoke-specific addons
+              ├── cross-acct.yaml → ack-multi-acct AppSet (wave 5)
+              │                     └── CARM namespaces + IAMRoleSelectors
+              │
+              ├── spoke-addons.yaml → spoke-addons AppSet (wave 20)
+              │                       └── Spoke-specific addons
               │
               └── cluster-fleet.yaml → fleet AppSet (wave 30)
                                        └── KRO instances
-                                       └── Workloads
+                                     → fleet-workloads AppSet (wave 40)
+                                       └── Gen3 workloads on spoke clusters
 ```
 
 ## Sync Wave Ordering

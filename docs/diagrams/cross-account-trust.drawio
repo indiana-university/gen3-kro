@@ -1,99 +1,73 @@
-<mxGraphModel dx="1422" dy="762" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="700" background="#FFFFFF" math="0" shadow="0">
-  <root>
-    <mxCell id="0" />
-    <mxCell id="1" parent="0" />
-
-    <!-- Title -->
-    <mxCell id="title" value="Cross-Account IAM Trust Model" style="text;html=1;align=center;verticalAlign=middle;resizable=0;strokeColor=none;fillColor=none;fontSize=18;fontStyle=1;" vertex="1" parent="1">
-      <mxGeometry x="200" y="10" width="700" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- ════════ CSOC Account ════════ -->
-    <mxCell id="csoc_acc" value="CSOC Account (&lt;CSOC_ACCOUNT_ID&gt;)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD2264;fillColor=#F4B9DA;verticalLabelPosition=top;align=center;verticalAlign=bottom;spacingTop=25;fontSize=13;fontStyle=1;labelBackgroundColor=none;" vertex="1" parent="1">
-      <mxGeometry x="20" y="60" width="700" height="500" as="geometry" />
-    </mxCell>
-
-    <!-- EKS + OIDC -->
-    <mxCell id="eks_box" value="EKS Cluster&#xa;gen3-csoc-dev" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" vertex="1" parent="csoc_acc">
-      <mxGeometry x="30" y="50" width="160" height="60" as="geometry" />
-    </mxCell>
-
-    <mxCell id="oidc" value="OIDC Provider&#xa;(oidc.eks.us-east-1.amazonaws.com)" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;" vertex="1" parent="csoc_acc">
-      <mxGeometry x="30" y="160" width="200" height="55" as="geometry" />
-    </mxCell>
-
-    <!-- ACK Pods -->
-    <mxCell id="ack_pods" value="ACK Controller Pods&#xa;(ServiceAccounts w/ IRSA annotations)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="csoc_acc">
-      <mxGeometry x="30" y="280" width="200" height="60" as="geometry" />
-    </mxCell>
-
-    <!-- ACK Source Role -->
-    <mxCell id="ack_src_role" value="ACK Source Role&#xa;gen3-csoc-dev-ack-shared-csoc-source&#xa;&#xa;Trust: OIDC provider&#xa;Permissions: sts:AssumeRole on spokes" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;" vertex="1" parent="csoc_acc">
-      <mxGeometry x="300" y="150" width="360" height="100" as="geometry" />
-    </mxCell>
-
-    <!-- Trust policy detail -->
-    <mxCell id="trust_policy" value="Trust Policy (spoke side):&#xa;Principal: arn:aws:iam::&lt;CSOC&gt;:root&#xa;Condition: StringEquals sts:ExternalId = &lt;cluster-name&gt;&#xa;Condition: ArnLike aws:PrincipalArn = *ack-shared-*-source&#xa;&#xa;• Account-root principal — always valid&#xa;• ArnLike evaluated at assume-time&#xa;• ExternalId = second security gate" style="rounded=0;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;" vertex="1" parent="csoc_acc">
-      <mxGeometry x="30" y="355" width="640" height="130" as="geometry" />
-    </mxCell>
-
-    <!-- Arrows inside CSOC -->
-    <mxCell id="e_eks_oidc" value="exposes" style="endArrow=open;endFill=0;dashed=1;fontSize=10;" edge="1" source="eks_box" target="oidc" parent="csoc_acc">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="e_oidc_role" value="① IRSA trust" style="endArrow=block;endFill=1;dashed=1;fontSize=10;strokeColor=#9673a6;" edge="1" source="oidc" target="ack_src_role" parent="csoc_acc">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="e_pods_role" value="② assume via OIDC" style="endArrow=block;endFill=1;fontSize=10;strokeColor=#6c8ebf;" edge="1" source="ack_pods" target="ack_src_role" parent="csoc_acc">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- ════════ Spoke 1 ════════ -->
-    <mxCell id="spoke1_acc" value="Spoke Account 1 (&lt;SPOKE1_ACCOUNT_ID&gt;)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD2264;fillColor=#F4B9DA;verticalLabelPosition=top;align=center;verticalAlign=bottom;spacingTop=25;fontSize=12;fontStyle=1;labelBackgroundColor=none;" vertex="1" parent="1">
-      <mxGeometry x="760" y="60" width="380" height="190" as="geometry" />
-    </mxCell>
-
-    <mxCell id="wr1" value="ACK Workload Role&#xa;&lt;CLUSTER&gt;-ack-shared-spoke1-workload&#xa;&#xa;Policy: iam/_default/ack/inline-policy.json" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;" vertex="1" parent="spoke1_acc">
-      <mxGeometry x="20" y="40" width="340" height="75" as="geometry" />
-    </mxCell>
-
-    <mxCell id="res1" value="AWS Resources (VPC, EKS, RDS, S3...)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="spoke1_acc">
-      <mxGeometry x="20" y="140" width="340" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- ════════ Spoke 2 ════════ -->
-    <mxCell id="spoke2_acc" value="Spoke Account 2 (&lt;SPOKE2_ACCOUNT_ID&gt;)" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD2264;fillColor=#F4B9DA;verticalLabelPosition=top;align=center;verticalAlign=bottom;spacingTop=25;fontSize=12;fontStyle=1;labelBackgroundColor=none;" vertex="1" parent="1">
-      <mxGeometry x="760" y="290" width="380" height="210" as="geometry" />
-    </mxCell>
-
-    <mxCell id="wr2" value="ACK Workload Role&#xa;&lt;CLUSTER&gt;-ack-shared-spoke2-workload&#xa;&#xa;Policy: iam/spoke2/ack/inline-policy.json" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;" vertex="1" parent="spoke2_acc">
-      <mxGeometry x="20" y="40" width="340" height="75" as="geometry" />
-    </mxCell>
-
-    <mxCell id="res2" value="AWS Resources (VPC, EKS, RDS, S3...)" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;" vertex="1" parent="spoke2_acc">
-      <mxGeometry x="20" y="135" width="340" height="40" as="geometry" />
-    </mxCell>
-
-    <!-- Cross-account assume arrows -->
-    <mxCell id="e_cross1" value="③ sts:AssumeRole&#xa;(ExternalId + ArnLike)" style="endArrow=block;endFill=1;dashed=1;strokeColor=#FF6600;fontColor=#FF6600;fontSize=10;fontStyle=1;" edge="1" source="ack_src_role" target="wr1" parent="1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="e_cross2" value="③ sts:AssumeRole&#xa;(ExternalId + ArnLike)" style="endArrow=block;endFill=1;dashed=1;strokeColor=#FF6600;fontColor=#FF6600;fontSize=10;fontStyle=1;" edge="1" source="ack_src_role" target="wr2" parent="1">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- Spoke internal arrows -->
-    <mxCell id="e_wr1_res" value="④ manages" style="endArrow=block;endFill=1;fontSize=10;" edge="1" source="wr1" target="res1" parent="spoke1_acc">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-    <mxCell id="e_wr2_res" value="④ manages" style="endArrow=block;endFill=1;fontSize=10;" edge="1" source="wr2" target="res2" parent="spoke2_acc">
-      <mxGeometry relative="1" as="geometry" />
-    </mxCell>
-
-    <!-- Legend row -->
-    <mxCell id="leg_bg" value="Flow: ① OIDC trusts ACK source role → ② ACK pods assume source role → ③ Source role cross-account assumes spoke role → ④ Spoke role manages AWS resources" style="text;html=1;strokeColor=none;fillColor=#FFF3CD;align=left;verticalAlign=middle;spacingLeft=10;fontSize=11;fontStyle=2;" vertex="1" parent="1">
-      <mxGeometry x="20" y="590" width="1120" height="40" as="geometry" />
-    </mxCell>
-
-  </root>
-</mxGraphModel>
+<mxfile host="Electron" agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) draw.io/29.5.2 Chrome/142.0.7444.265 Electron/39.6.1 Safari/537.36" version="29.5.2">
+  <diagram id="POdA0IGa7hi-4E3ymxfe" name="Page-1">
+    <mxGraphModel dx="1028" dy="707" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1400" pageHeight="700" background="#FFFFFF" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="title" parent="1" style="text;html=1;align=center;verticalAlign=middle;resizable=0;strokeColor=none;fillColor=none;fontSize=18;fontStyle=1;fontColor=#000000;" value="Cross-Account IAM Trust Model" vertex="1">
+          <mxGeometry height="40" width="700" x="200" y="10" as="geometry" />
+        </mxCell>
+        <mxCell id="csoc_acc" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD2264;fillColor=#F4B9DA;verticalLabelPosition=top;align=center;verticalAlign=bottom;spacingTop=25;fontSize=13;fontStyle=1;labelBackgroundColor=none;fontColor=#000000;" value="CSOC Account (&lt;CSOC_ACCOUNT_ID&gt;)" vertex="1">
+          <mxGeometry height="500" width="700" x="20" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="eks_box" parent="csoc_acc" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;fontColor=#000000;" value="EKS Cluster&#xa;{csoc_alias}-csoc-cluster" vertex="1">
+          <mxGeometry height="60" width="160" x="30" y="50" as="geometry" />
+        </mxCell>
+        <mxCell id="oidc" parent="csoc_acc" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=10;fontColor=#000000;" value="OIDC Provider&#xa;(oidc.eks.us-east-1.amazonaws.com)" vertex="1">
+          <mxGeometry height="55" width="200" x="30" y="160" as="geometry" />
+        </mxCell>
+        <mxCell id="ack_pods" parent="csoc_acc" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#000000;" value="ACK Controller Pods&#xa;(ServiceAccounts w/ IRSA annotations)" vertex="1">
+          <mxGeometry height="60" width="200" x="30" y="280" as="geometry" />
+        </mxCell>
+        <mxCell id="ack_src_role" parent="csoc_acc" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;fontColor=#000000;" value="ACK Source Role&#xa;{csoc_alias}-csoc-role&#xa;&#xa;Trust: OIDC provider&#xa;Permissions: sts:AssumeRole on spokes" vertex="1">
+          <mxGeometry height="100" width="360" x="300" y="150" as="geometry" />
+        </mxCell>
+        <mxCell id="trust_policy" parent="csoc_acc" style="rounded=0;whiteSpace=wrap;fillColor=#fff2cc;strokeColor=#d6b656;fontSize=10;align=left;fontColor=#000000;" value="Trust Policy (spoke side):&#xa;Principal: arn:aws:iam::&lt;CSOC&gt;:root&#xa;Condition: ArnLike aws:PrincipalArn = *-csoc-role&#xa;&#xa;• Account-root principal — always valid&#xa;• ArnLike evaluated at assume-time&#xa;• No ExternalId — ACK does not pass it" vertex="1">
+          <mxGeometry height="130" width="640" x="30" y="355" as="geometry" />
+        </mxCell>
+        <mxCell id="e_eks_oidc" edge="1" parent="csoc_acc" source="eks_box" style="endArrow=open;endFill=0;dashed=1;fontSize=10;fontColor=#000000;labelBackgroundColor=#FFFFFF;" target="oidc" value="exposes">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_oidc_role" edge="1" parent="csoc_acc" source="oidc" style="endArrow=block;endFill=1;dashed=1;fontSize=10;strokeColor=#9673a6;fontColor=#000000;labelBackgroundColor=#FFFFFF;" target="ack_src_role" value="① IRSA trust">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_pods_role" edge="1" parent="csoc_acc" source="ack_pods" style="endArrow=block;endFill=1;fontSize=10;strokeColor=#6c8ebf;fontColor=#000000;labelBackgroundColor=#FFFFFF;" target="ack_src_role" value="② assume via OIDC">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="spoke1_acc" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD2264;fillColor=#F4B9DA;verticalLabelPosition=top;align=center;verticalAlign=bottom;spacingTop=25;fontSize=12;fontStyle=1;labelBackgroundColor=none;fontColor=#000000;" value="Spoke Account 1 (&lt;SPOKE1_ACCOUNT_ID&gt;)" vertex="1">
+          <mxGeometry height="190" width="380" x="760" y="60" as="geometry" />
+        </mxCell>
+        <mxCell id="wr1" parent="spoke1_acc" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;fontColor=#000000;" value="ACK Workload Role&#xa;spoke1-spoke-role&#xa;&#xa;Policy: iam/_default/ack/inline-policy.json" vertex="1">
+          <mxGeometry height="75" width="340" x="20" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="res1" parent="spoke1_acc" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#000000;" value="AWS Resources (VPC, EKS, RDS, S3...)" vertex="1">
+          <mxGeometry height="40" width="340" x="20" y="140" as="geometry" />
+        </mxCell>
+        <mxCell id="e_wr1_res" edge="1" parent="spoke1_acc" source="wr1" style="endArrow=block;endFill=1;fontSize=10;fontColor=#000000;labelBackgroundColor=#FFFFFF;" target="res1" value="④ manages">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="spoke2_acc" parent="1" style="points=[[0,0],[0.25,0],[0.5,0],[0.75,0],[1,0],[1,0.25],[1,0.5],[1,0.75],[1,1],[0.75,1],[0.5,1],[0.25,1],[0,1],[0,0.75],[0,0.5],[0,0.25]];shape=mxgraph.aws4.group;grIcon=mxgraph.aws4.group_account;strokeColor=#CD2264;fillColor=#F4B9DA;verticalLabelPosition=top;align=center;verticalAlign=bottom;spacingTop=25;fontSize=12;fontStyle=1;labelBackgroundColor=#FFFFFF;fontColor=#000000;" value="Spoke Account 2 (&lt;SPOKE2_ACCOUNT_ID&gt;)" vertex="1">
+          <mxGeometry height="210" width="380" x="760" y="290" as="geometry" />
+        </mxCell>
+        <mxCell id="wr2" parent="spoke2_acc" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;align=left;fontColor=#000000;" value="ACK Workload Role&#xa;spoke2-spoke-role&#xa;&#xa;Policy: iam/spoke2/ack/inline-policy.json" vertex="1">
+          <mxGeometry height="75" width="340" x="20" y="40" as="geometry" />
+        </mxCell>
+        <mxCell id="res2" parent="spoke2_acc" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;fontColor=#000000;" value="AWS Resources (VPC, EKS, RDS, S3...)" vertex="1">
+          <mxGeometry height="40" width="340" x="20" y="135" as="geometry" />
+        </mxCell>
+        <mxCell id="e_wr2_res" edge="1" parent="spoke2_acc" source="wr2" style="endArrow=block;endFill=1;fontSize=10;fontColor=#000000;labelBackgroundColor=#FFFFFF;" target="res2" value="④ manages">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cross1" edge="1" parent="1" source="ack_src_role" style="endArrow=block;endFill=1;dashed=1;strokeColor=#FF6600;fontColor=#000000;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;" target="wr1" value="③ sts:AssumeRole&#xa;(ExternalId + ArnLike)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="e_cross2" edge="1" parent="1" source="ack_src_role" style="endArrow=block;endFill=1;dashed=1;strokeColor=#FF6600;fontColor=#000000;fontSize=10;fontStyle=1;labelBackgroundColor=#FFFFFF;" target="wr2" value="③ sts:AssumeRole&#xa;(ExternalId + ArnLike)">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="leg_bg" parent="1" style="text;html=1;strokeColor=none;fillColor=#FFF3CD;align=left;verticalAlign=middle;spacingLeft=10;fontSize=11;fontStyle=2;fontColor=#000000;" value="Flow: ① OIDC trusts ACK source role → ② ACK pods assume source role → ③ Source role cross-account assumes spoke role → ④ Spoke role manages AWS resources" vertex="1">
+          <mxGeometry height="40" width="1120" x="20" y="590" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

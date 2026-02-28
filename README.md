@@ -50,10 +50,10 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 
 ```
 ├── argocd/                      # GitOps configuration
-│   ├── bootstrap/               #   Entry-point ApplicationSets
+│   ├── bootstrap/               #   Entry-point ApplicationSets (4 files)
 │   ├── addons/                  #   Addon values (CSOC + environments)
 │   ├── charts/                  #   Helm charts consumed by ApplicationSets
-│   └── cluster-fleet/           #   Per-cluster overrides
+│   └── cluster-fleet/           #   Per-cluster overrides (csoc, spoke1, spoke2)
 ├── config/                      # User config files (gitignored except examples)
 ├── terraform/
 │   ├── env/aws/csoc-cluster/    # Root module (single entry point)
@@ -162,7 +162,8 @@ terragrunt stack run destroy
 | [Deployment Guide](docs/deployment-guide.md) | Step-by-step deployment procedures |
 | [Security Model](docs/security.md) | IAM, cross-account trust, credentials |
 | [ArgoCD Configuration](argocd/README.md) | GitOps structure and conventions |
-| [Dev Container](.devcontainer/README.md) | Development environment setup |
+| [Platform Status](docs/platform-status.md) | Pending items, risks, limitations |
+| [Contributing](CONTRIBUTING.md) | Branching, code quality, PR process |
 
 ## Project Conventions
 

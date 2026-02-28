@@ -3,7 +3,7 @@
 Consolidated tracking document for the EKS Cluster Management Platform.
 Items migrate here from `pending.md` once triaged and documented.
 
-> **Last updated:** 2026-02-24
+> **Last updated:** 2026-02-28
 
 ---
 
@@ -18,15 +18,18 @@ Items migrate here from `pending.md` once triaged and documented.
 
 ## Pending Items
 
-Active work items that require code or configuration changes.
+**Platform Status: Fully Deployed ✅**
+
+All core infrastructure and GitOps components are operational. Previous blocking items (C-BOOT1, C-BOOT2, C-BOOT3) have been resolved.
+
+Active items requiring attention:
 
 | ID | Summary | Blocking? | Status |
 |----|---------|-----------|--------|
-| C-BOOT1 | Bootstrap path double-prefix causes ArgoCD `ComparisonError` | Yes — blocks all ArgoCD reconciliation | Pending fix in `config/shared.auto.tfvars.json` |
-| C-BOOT2 | No child ApplicationSets exist | Blocked on C-BOOT1 | Waiting |
-| C-BOOT3 | KRO and ACK controllers not installed | Blocked on C-BOOT1 → C-BOOT2 | Waiting |
-| C16 | Instances chart alignment with cluster-fleet overrides | Blocked on C-BOOT1 | Cannot validate until KRO running |
-| C18 | Addons ApplicationSet environment selector verification | Blocked on C-BOOT2 | Cannot validate until child AppSets exist |
+| P1 | Self-healing configuration review | No — functional | Active — needs decision |
+| P2 | Spoke2 infrastructure not deployed | No — spoke1 operational | Waiting for config |
+| M1 | ESO SecretStore pattern verification | No — runtime validation | Ready to verify |
+| M2 | Workload deployment validation | No — infrastructure ready | Monitoring |
 
 ---
 

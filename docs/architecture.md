@@ -160,13 +160,13 @@ helm_release.bootstrap
         │       ├── kro-eks-rgs Application             (wave 10)
         │       └── external-secrets Application        (wave 15)
         │
-        ├── spoke-addons.yaml
-        │   └── spoke-addons ApplicationSet (fleet_member: spoke)
-        │       └── external-secrets-per-spoke           (wave 20)
-        │
         ├── cross-acct.yaml
         │   └── ack-multi-acct ApplicationSet (wave 5)
         │       └── ACK CARM namespaces + IAMRoleSelectors
+        │
+        ├── spoke-addons.yaml
+        │   └── spoke-addons ApplicationSet (fleet_member: spoke)
+        │       └── external-secrets-per-spoke           (wave 20)
         │
         └── cluster-fleet.yaml
             ├── fleet ApplicationSet (fleet_member: fleet-spoke-infra)
@@ -300,15 +300,14 @@ Sync waves enforce a deterministic deployment order. Resources in lower waves mu
 ```
 eks-cluster-mgmt/
 ├── README.md                            # Project overview + quick start
-├── AGENTS.md                            # AI agent deployment instructions
 ├── Dockerfile                           # Dev container base image
 │
 ├── argocd/
 │   ├── README.md                        #   ArgoCD layer documentation
 │   ├── bootstrap/
 │   │   ├── csoc-addons.yaml             #   CSOC addon ApplicationSet (wave -20)
-│   │   ├── spoke-addons.yaml            #   Spoke addon ApplicationSet (wave 20)
 │   │   ├── cross-acct.yaml              #   ACK CARM multi-account (wave 5)
+│   │   ├── spoke-addons.yaml            #   Spoke addon ApplicationSet (wave 20)
 │   │   └── cluster-fleet.yaml           #   Fleet infra + workloads ApplicationSets (wave 30, 40)
 │   ├── addons/
 │   │   ├── csoc/addons.yaml             #   CSOC addon values (KRO, ACK, ESO)
@@ -320,7 +319,9 @@ eks-cluster-mgmt/
 │   │   ├── resource-groups/             #   KRO RGD manifests chart
 │   │   └── workloads/                   #   Gen3 workload Helm chart
 │   └── cluster-fleet/
-│       └── {csoc,spoke1,spoke2}/        #   Per-cluster addon + infra overrides
+│       ├── csoc/
+│       │   └── infrastructure.yaml      #   CSOC base infrastructure (shared defaults)
+│       └── {spoke1,spoke2}/              #   Per-cluster addon + infra overrides
 │           ├── addons.yaml
 │           ├── infrastructure.yaml
 │           └── workload.yaml
