@@ -100,6 +100,9 @@ config/*
 config/ssm-repo-secrets/*
 !config/ssm-repo-secrets/*.example
 
+# Reference repos (cloned for documentation/comparison, not part of this project)
+references/
+
 # Generated script copies (container-init.sh places these in env dir)
 terraform/env/aws/csoc-cluster/install.sh
 terraform/env/aws/csoc-cluster/destroy.sh

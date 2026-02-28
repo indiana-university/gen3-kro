@@ -1,3 +1,0 @@
-{{- if or (.Values.secrets.awsSecretAccessKey) (.Values.global.aws.awsSecretAccessKey) (.Values.global.aws.externalSecrets.enabled) }}
-{{ include "common.awsconfig" . }}
-{{- end -}}

@@ -1,7 +1,0 @@
-{{- range $key, $value := .Values.clusters }}
----
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: {{ $key }}
-{{- end }}
