@@ -11,28 +11,25 @@
 # (manageMasterUserPassword: true) and stored in AWS Secrets Manager.
 # Use ExternalSecrets on the spoke cluster to pull them into K8s secrets.
 #
-# Database testing: Deploys the gen3 umbrella chart with only the
-# database-dependent services enabled, pointing at the external Aurora
-# cluster provisioned by the RGD.
+# DATABASE-ONLY DEPLOYMENT: Sets up PostgreSQL databases on external Aurora
+# with only the core database-dependent Gen3 services enabled. Each enabled
+# service triggers a db-create Job (via common._db_setup_job) that creates
+# its database schema on the Aurora cluster.
 workloads:
-  # ── Gen3 umbrella chart (database-focused subset) ──────────────────
-  # Deploys indexd + fence + sheepdog + peregrine + their dependencies
-  # against the external Aurora PostgreSQL cluster.
+  # ── Gen3 umbrella chart (database-only setup) ─────────────────────
+  # Deploys the minimum set of services needed to create and validate
+  # PostgreSQL databases on the external Aurora cluster provisioned by KRO.
   gen3:
     enabled: true
     syncWave: "50"
     namespace: default
-    # clusterName is optional — defaults to the top-level clusterName
-    # set by the fleet-workloads ApplicationSet (argoCDClusterSecret name).
-    # Override here to target a specific cluster within this spoke:
-    # clusterName: spoke1-spoke1-staging
     spec:
       helmRepo: "https://github.com/uc-cdis/gen3-helm"
       helmPath: "helm/gen3"
       helmRevision: master
       values: |
         global:
-          # ── AWS / External Database Mode ──────────────────────────
+          # ── External Database Mode (no local postgres) ────────────
           dev: false
           aws:
             enabled: true
@@ -45,36 +42,39 @@ workloads:
             dbCreate: true
             master:
               port: "5432"
-              # password is managed by AWS Secrets Manager via
-              # manageMasterUserPassword — use ExternalSecrets to pull it.
-          # ── ExternalSecrets for credentials ──────────────────────
-          externalSecrets:
-            deploy: true
           # ── Common settings ──────────────────────────────────────
           environment: dev
           hostname: spoke1-dev.example.com
           dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
-        # ── Database-dependent services (enabled for testing) ───────
+        # ── Local dev databases — DISABLED (using external Aurora) ──
+        postgresql:
+          enabled: false
+        elasticsearch:
+          enabled: false
+        # ── Database-dependent services (create schemas on Aurora) ──
         indexd:
           enabled: true
           defaultPrefix: "dg.TEST/"
         fence:
           enabled: true
+          usersync:
+            usersync: false
         sheepdog:
           enabled: true
         peregrine:
           enabled: true
         arborist:
           enabled: true
-        # ── Supporting services ─────────────────────────────────────
-        revproxy:
+        metadata:
           enabled: true
-        portal:
-          enabled: false
-        # ── Disabled services (not needed for DB testing) ───────────
+        # ── ALL other services DISABLED (database-only setup) ───────
         ambassador:
           enabled: false
         audit:
+          enabled: false
+        portal:
+          enabled: false
+        revproxy:
           enabled: false
         etl:
           enabled: false
@@ -84,11 +84,35 @@ workloads:
           enabled: false
         manifestservice:
           enabled: false
-        metadata:
-          enabled: false
         ssjdispatcher:
           enabled: false
         sower:
           enabled: false
         wts:
+          enabled: false
+        requestor:
+          enabled: false
+        access-backend:
+          enabled: false
+        argo-wrapper:
+          enabled: false
+        aws-es-proxy:
+          enabled: false
+        cohort-middleware:
+          enabled: false
+        dashboard:
+          enabled: false
+        datareplicate:
+          enabled: false
+        frontend-framework:
+          enabled: false
+        cedar:
+          enabled: false
+        gen3-user-data-library:
+          enabled: false
+        gen3-workflow:
+          enabled: false
+        data-upload-cron:
+          enabled: false
+        gen3-analysis:
           enabled: false
