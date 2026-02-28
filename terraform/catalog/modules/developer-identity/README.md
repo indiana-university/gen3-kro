@@ -17,7 +17,7 @@ static IAM access keys.
 │                                                         │
 │  ┌──────────────────────────────────┐                   │  ┌──────────────────────────┐
 │  │ ~/.aws/credentials               │                   │  │ ~/.aws (bind mount)      │
-│  │  [boadeyem_tf]  ← static keys    │                   │  │                          │
+│  │  [csoc]  ← static keys           │                   │  │                          │
 │  │  [eks-devcontainer] ← temp creds │───── bind-mount ──│──│ AWS_PROFILE=             │
 │  │                                  │                   │  │   eks-devcontainer       │
 │  └──────────────────────────────────┘                   │  │                          │
@@ -41,7 +41,7 @@ static IAM access keys.
 
 - AWS CLI installed on the host
 - An authenticator app (Google Authenticator, Authy, 1Password, etc.)
-- The `boadeyem_tf` profile configured in `~/.aws/credentials` with static keys
+- The `csoc` profile configured in `~/.aws/credentials` with static keys
 
 ## Setup (One-Time)
 
@@ -84,7 +84,7 @@ aws iam enable-mfa-device \
   --serial-number <MFA_ARN_FROM_OUTPUT> \
   --authentication-code-1 <CODE_1> \
   --authentication-code-2 <CODE_2> \
-  --profile boadeyem_tf
+  --profile csoc
 ```
 
 ### Step 4: Add the profile to ~/.aws/config
@@ -140,7 +140,7 @@ Usage: bash scripts/mfa-session.sh <MFA_CODE> [OPTIONS]
 
 Options:
   --duration SECONDS       Session duration (default: 43200 = 12h)
-  --profile PROFILE        Source AWS profile (default: boadeyem_tf)
+  --profile PROFILE        Source AWS profile (default: csoc)
   --role-arn ARN           Role to assume (auto-detected from config)
   --mfa-serial ARN         MFA device ARN (auto-detected from IAM)
   --session-profile NAME   Target credentials profile (default: eks-devcontainer)
