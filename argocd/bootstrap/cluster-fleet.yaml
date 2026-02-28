@@ -65,18 +65,24 @@ spec:
 # ======================================================================
 # fleet-workloads — Application workloads on spoke clusters
 # ======================================================================
-# Triggered by KRO-created argoCDClusterSecret (fleet_member: spoke).
-# Uses a matrix generator:
-#   Child 1 (control-plane) — supplies repo annotations via `values` alias
-#   Child 2 (spoke clusters) — supplies infra output annotations (gen3.io/*)
+# Uses a simple cluster generator targeting KRO-created spoke secrets
+# (fleet_member: spoke).  Repo coordinates are supplied as static values
+# because the spoke secret (created by the RGD) does not carry repo
+# annotations.  Infrastructure outputs (Aurora endpoint, VPC ID, etc.)
+# are read from the spoke secret's gen3.io/* annotations and injected
+# as Helm parameters.
+#
+# A matrix generator cannot be used here: with goTemplate, Child 2's
+# values-templates are pre-rendered against Child 1's params, so the
+# control-plane's annotations are unreachable when spoke is Child 1.
 #
 # This naturally gates workload deployment on infrastructure readiness:
 # the spoke cluster secret only exists after the RGD's argoCDClusterSecret
 # node is ready (i.e. EKS + Aurora are provisioned).
 #
-# Non-sensitive infra metadata (aurora endpoint, VPC ID, etc.) is passed
-# as Helm parameters. Actual secrets (DB passwords) are consumed on the
-# spoke cluster via ExternalSecrets reading from AWS Secrets Manager.
+# Non-sensitive infra metadata is passed as Helm parameters.
+# Actual secrets (DB passwords) are consumed on the spoke cluster via
+# ExternalSecrets reading from AWS Secrets Manager.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -91,26 +97,16 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-  - matrix:
-      generators:
-      # Child 1: CSOC control-plane cluster — provides git repo annotations.
-      # The `values` field aliases them so they survive the matrix merge
-      # (the spoke generator's metadata replaces control-plane metadata).
-      - clusters:
-          selector:
-            matchLabels:
-              fleet_member: control-plane
-          values:
-            repoUrl: '{{.metadata.annotations.fleet_repo_url}}'
-            repoRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-            repoBasepath: '{{.metadata.annotations.fleet_repo_basepath}}'
-      # Child 2: KRO-created spoke cluster secrets — provides infra annotations.
-      # These secrets are created by the RGD's argoCDClusterSecret node and
-      # carry gen3.io/* annotations with infrastructure outputs.
-      - clusters:
-          selector:
-            matchLabels:
-              fleet_member: spoke
+  - clusters:
+      selector:
+        matchLabels:
+          fleet_member: spoke
+      values:
+        # Static repo coordinates — must match the bootstrap ApplicationSet
+        # source.  Update here if the repo URL or branch changes.
+        repoUrl: 'https://github.com/indiana-university/gen3-kro.git'
+        repoRevision: 'Version2'
+        repoBasepath: 'argocd/'
   template:
     metadata:
       name: 'workloads-{{.name}}'

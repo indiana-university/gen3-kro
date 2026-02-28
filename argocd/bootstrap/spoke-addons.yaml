@@ -1,9 +1,15 @@
 # ======================================================================
 # spoke-addons — Deploy addons to KRO-provisioned spoke clusters
 # ======================================================================
-# Uses a matrix generator (same pattern as fleet-workloads):
-#   Child 1 (control-plane) — supplies repo annotations via `values` aliases
-#   Child 2 (spoke clusters) — supplies spoke identity (fleet_member: spoke)
+# Uses a simple cluster generator targeting KRO-created spoke secrets
+# (fleet_member: spoke).  Repo coordinates are supplied as static values
+# because the spoke secret (created by the RGD) does not carry repo
+# annotations — those live only on the Terraform-created control-plane
+# and fleet-spoke-infra secrets.
+#
+# A matrix generator cannot be used here: with goTemplate, Child 2's
+# values-templates are pre-rendered against Child 1's params, so the
+# control-plane's annotations are unreachable when spoke is Child 1.
 #
 # This naturally gates addon deployment on infrastructure readiness:
 # the spoke cluster secret only exists after the RGD's argoCDClusterSecret
@@ -22,27 +28,17 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-  - matrix:
-      generators:
-      # Child 1: CSOC control-plane cluster — provides git repo annotations.
-      # The `values` field aliases them so they survive the matrix merge
-      # (the spoke generator's metadata replaces control-plane metadata).
-      - clusters:
-          selector:
-            matchLabels:
-              fleet_member: control-plane
-          values:
-            addonsRepoUrl: '{{.metadata.annotations.addons_repo_url}}'
-            addonsRepoRevision: '{{.metadata.annotations.addons_repo_revision}}'
-            addonsRepoBasepath: '{{.metadata.annotations.addons_repo_basepath}}'
-            addonChart: application-sets
-      # Child 2: KRO-created spoke cluster secrets — provides spoke identity.
-      # These secrets are created by the RGD's argoCDClusterSecret node and
-      # carry the fleet_member: spoke label + gen3.io/* annotations.
-      - clusters:
-          selector:
-            matchLabels:
-              fleet_member: spoke
+  - clusters:
+      selector:
+        matchLabels:
+          fleet_member: spoke
+      values:
+        # Static repo coordinates — must match the bootstrap ApplicationSet
+        # source.  Update here if the repo URL or branch changes.
+        addonsRepoUrl: 'https://github.com/indiana-university/gen3-kro.git'
+        addonsRepoRevision: 'Version2'
+        addonsRepoBasepath: 'argocd/'
+        addonChart: application-sets
   template:
     metadata:
       name: spoke-addons-{{.name}}
