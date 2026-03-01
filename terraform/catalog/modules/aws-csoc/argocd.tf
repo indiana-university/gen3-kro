@@ -29,6 +29,85 @@ resource "aws_iam_role" "argocd_self_managed" {
   tags = local.tags
 }
 
+###############################################################################
+# ArgoCD permission policies
+###############################################################################
+
+# Allow the ArgoCD role to assume spoke ArgoCD roles created by the RGD.
+# Pattern mirrors ack_csoc_assume_spoke but scoped to *-argocd-spoke-role.
+resource "aws_iam_role_policy" "argocd_assume_spoke" {
+  count = local.argocd_self_managed && var.enable_argocd_self_managed && length(aws_iam_role.argocd_self_managed) > 0 ? 1 : 0
+  name  = "${local.name}-argocd-assume-spoke"
+  role  = aws_iam_role.argocd_self_managed[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "AssumeArgoCDSpokeRoles"
+        Effect = "Allow"
+        Action = [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ]
+        Resource = "arn:aws:iam::*:role/*-argocd-spoke-role"
+      }
+    ]
+  })
+}
+
+# Inline policy: Secrets Manager, SSM, and EKS read access for ArgoCD.
+# Matches the reference policy at iam/_default/argocd/inline-policy.json.
+resource "aws_iam_role_policy" "argocd_inline" {
+  count = local.argocd_self_managed && var.enable_argocd_self_managed && length(aws_iam_role.argocd_self_managed) > 0 ? 1 : 0
+  name  = "${local.name}-argocd-inline"
+  role  = aws_iam_role.argocd_self_managed[0].id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ArgoCDSecretsAccess"
+        Effect = "Allow"
+        Action = [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret"
+        ]
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "secretsmanager:Name" = ["argocd/*", "argo-cd/*"]
+          }
+        }
+      },
+      {
+        Sid    = "ArgoCDParameterStoreAccess"
+        Effect = "Allow"
+        Action = [
+          "ssm:GetParameter",
+          "ssm:GetParameters",
+          "ssm:GetParametersByPath"
+        ]
+        Resource = "*"
+        Condition = {
+          StringLike = {
+            "ssm:Name" = ["/argocd/*", "/argo-cd/*"]
+          }
+        }
+      },
+      {
+        Sid    = "EKSReadAccess"
+        Effect = "Allow"
+        Action = [
+          "eks:DescribeCluster",
+          "eks:ListClusters"
+        ]
+        Resource = "*"
+      }
+    ]
+  })
+}
+
 resource "kubernetes_namespace_v1" "argocd" {
   count = local.argocd_enabled ? 1 : 0
 
@@ -37,6 +116,11 @@ resource "kubernetes_namespace_v1" "argocd" {
     labels = {
       "app.kubernetes.io/managed-by" = "terraform"
       "app.kubernetes.io/part-of"    = "argocd"
+    }
+    annotations = {
+      # Consumed by the KRO RGD (argocdNamespace externalRef) to build
+      # the spoke ArgoCD role trust policy without hardcoding account IDs.
+      "csoc-account-id" = local.csoc_account_id
     }
   }
 }
