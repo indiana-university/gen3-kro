@@ -43,12 +43,6 @@
           "iam:GetOpenIDConnectProvider",
           "iam:ListOpenIDConnectProviders",
           "iam:ListOpenIDConnectProviderTags",
-          "iam:ListVirtualMFADevices",
-          "iam:ListMFADeviceTags",
-          "iam:CreateVirtualMFADevice",
-          "iam:DeleteVirtualMFADevice",
-          "iam:EnableMFADevice",
-          "iam:DeactivateMFADevice",
           "logs:DescribeLogGroups",
           "logs:ListTagsForResource",
           "logs:ListTagsLogGroup"
