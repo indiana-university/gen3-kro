@@ -1602,12 +1602,12 @@ spec:
             OPENID_CONNECT:
               google:
                 discovery_url: 'https://accounts.google.com/.well-known/openid-configuration'
-                redirect_url: '{{BASE_URL}}/login/google/login/'
+                redirect_url: '{{"{{"}}BASE_URL}}/login/google/login/'
                 scope: 'openid email'
                 client_id: 'REPLACE_WITH_GOOGLE_CLIENT_ID'
                 client_secret: 'REPLACE_WITH_GOOGLE_CLIENT_SECRET'
             DEFAULT_LOGIN_IDP: '${schema.spec.defaultLoginIDP}'
-            DEFAULT_LOGIN_URL: '{{BASE_URL}}/login/${schema.spec.defaultLoginIDP}'
+            DEFAULT_LOGIN_URL: '{{"{{"}}BASE_URL}}/login/${schema.spec.defaultLoginIDP}'
             LOGIN_OPTIONS:
               - name: 'Login from Google'
                 desc: ''

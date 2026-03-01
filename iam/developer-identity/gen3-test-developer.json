@@ -86,7 +86,10 @@
           "ec2:AcceptVpcPeeringConnection",
           "ec2:DeleteVpcPeeringConnection",
           "ec2:CreateTags",
-          "ec2:DeleteTags"
+          "ec2:DeleteTags",
+          "ec2:CreateNetworkAclEntry",
+          "ec2:ReplaceNetworkAclEntry",
+          "ec2:DeleteNetworkAclEntry"
         ],
         "Resource": "*"
       },
@@ -159,6 +162,8 @@
           "iam:CreatePolicyVersion",
           "iam:DeletePolicyVersion",
           "iam:SetDefaultPolicyVersion",
+          "iam:TagPolicy",
+          "iam:UntagPolicy",
           "iam:CreateOpenIDConnectProvider",
           "iam:DeleteOpenIDConnectProvider",
           "iam:UpdateOpenIDConnectProviderThumbprint",
