@@ -37,7 +37,11 @@ spec:
   sources:
   - repoURL: {{ $cr.spec.helmRepo }}
     targetRevision: {{ $cr.spec.helmRevision | default "master" }}
+    {{- if $cr.spec.helmChart }}
+    chart: {{ $cr.spec.helmChart }}
+    {{- else }}
     path: {{ $cr.spec.helmPath }}
+    {{- end }}
     helm:
       releaseName: {{ $name }}
       {{- if $cr.spec.values }}

@@ -19,18 +19,22 @@
 # ── Cluster-Level Resources ──────────────────────────────────────────
 # Deploys cluster-wide infrastructure to the spoke before Gen3 services.
 # These run at syncWave "20" so they are ready before workloads (wave "50").
+#
+# IMPORTANT: Deploy Helm charts DIRECTLY here (not gen3-helm's
+# cluster-level-resources chart, which is an app-of-apps that renders
+# ArgoCD Application CRDs — the spoke has no ArgoCD CRDs).
 clusterResources:
-  cluster-level-resources:
+  external-secrets:
     enabled: true
     syncWave: "20"
-    namespace: kube-system
+    namespace: external-secrets
     spec:
-      helmRepo: "https://github.com/uc-cdis/gen3-helm"
-      helmPath: "helm/cluster-level-resources"
-      helmRevision: master
+      helmRepo: "https://charts.external-secrets.io"
+      helmChart: external-secrets
+      helmRevision: "0.10.3"
       values: |
-        external-secrets:
-          enabled: true
+        serviceAccount:
+          name: "external-secrets-sa"
 
 # ── Application Workloads ────────────────────────────────────────────
 workloads:
