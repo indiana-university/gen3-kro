@@ -61,7 +61,7 @@ report_rgd_resources() {
 
   # Find the KRO instance in this namespace
   INSTANCE_NAME=$(kubectl get awsgen3infra1flat -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo "")
-  
+
   if [[ -z "$INSTANCE_NAME" ]]; then
     note "No AwsGen3Infra1Flat instance found in namespace $NAMESPACE"
     return
@@ -70,7 +70,7 @@ report_rgd_resources() {
   section "KRO Instance"
   kubectl get awsgen3infra1flat "$INSTANCE_NAME" -n "$NAMESPACE" \
     -o custom-columns='NAME:.metadata.name,STATE:.status.conditions[0].reason,AGE:.metadata.creationTimestamp'
-  
+
   echo ""
   note "═══ Dependency Order (bottom → top) ═══"
   echo ""
@@ -284,7 +284,7 @@ report_summary() {
   echo -e "${YELLOW}VPC ID:${RESET} $(kubectl get vpcs.ec2.services.k8s.aws -n "$NAMESPACE" -o jsonpath='{.items[0].status.vpcID}' 2>/dev/null || echo 'None')"
   echo -e "${YELLOW}EKS Cluster:${RESET} $(kubectl get clusters.eks.services.k8s.aws -n "$NAMESPACE" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null || echo 'None')"
   echo -e "${YELLOW}Aurora Endpoint:${RESET} $(kubectl get dbclusters.rds.services.k8s.aws -n "$NAMESPACE" -o jsonpath='{.items[0].status.endpoint}' 2>/dev/null || echo 'None')"
-  
+
   echo ""
   echo -e "${DIM}Resource counts:${RESET}"
   echo "  KMS Keys:        $(kubectl get keys.kms.services.k8s.aws -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l)"
