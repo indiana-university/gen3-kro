@@ -15,6 +15,24 @@
 # with only the core database-dependent Gen3 services enabled. Each enabled
 # service triggers a db-create Job (via common._db_setup_job) that creates
 # its database schema on the Aurora cluster.
+
+# ── Cluster-Level Resources ──────────────────────────────────────────
+# Deploys cluster-wide infrastructure to the spoke before Gen3 services.
+# These run at syncWave "20" so they are ready before workloads (wave "50").
+clusterResources:
+  cluster-level-resources:
+    enabled: true
+    syncWave: "20"
+    namespace: kube-system
+    spec:
+      helmRepo: "https://github.com/uc-cdis/gen3-helm"
+      helmPath: "helm/cluster-level-resources"
+      helmRevision: master
+      values: |
+        external-secrets:
+          enabled: true
+
+# ── Application Workloads ────────────────────────────────────────────
 workloads:
   # ── Gen3 umbrella chart (database-only setup) ─────────────────────
   # Deploys the minimum set of services needed to create and validate

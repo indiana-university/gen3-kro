@@ -1,19 +1,80 @@
 {{/*
-workloads.yaml — renders one ArgoCD Application per enabled workload entry.
+workloads.yaml — renders ArgoCD Applications for spoke clusters.
 
-Each Application targets a spoke cluster registered by the RGD's argoCDClusterSecret.
+Two types of Applications are rendered:
+  1. Cluster-level resources (external-secrets, cert-manager, Karpenter, etc.)
+     from gen3-helm's cluster-level-resources chart — deployed to the spoke
+     cluster directly.
+  2. Application workloads (Gen3 services) — each enabled workload becomes
+     an ArgoCD Application pointing at the spoke cluster.
+
 Infrastructure outputs (Aurora endpoint, VPC ID, etc.) are passed from the
 fleet-workloads ApplicationSet as .Values.infraOutputs and injected as
-helm.parameters on the generated Application — parameters override values,
-so static config in workload.yaml is cleanly augmented with dynamic infra data.
+helm.parameters on the generated Application.
 
 Cluster selection:
-  - Default: Uses top-level .Values.clusterName (set by the ApplicationSet from
-    the argoCDClusterSecret's data.name).
-  - Override: Each workload can set its own clusterName to target a different
-    EKS cluster within the same spoke (useful when multiple infrastructure
-    instances exist for one spoke).
+  - Default: Uses top-level .Values.clusterName (set by the ApplicationSet).
+  - Override: Each entry can set its own clusterName.
 */}}
+
+{{/* ── Cluster-Level Resources ───────────────────────────────────── */}}
+{{- range $name, $cr := .Values.clusterResources }}
+{{- if $cr.enabled }}
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: {{ $.Values.spokeNamespace | default $.Release.Namespace }}-{{ $name }}
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: {{ $cr.syncWave | default "20" | quote }}
+  labels:
+    app.kubernetes.io/managed-by: workloads-chart
+    gen3.io/cluster-resource: {{ $name | quote }}
+    gen3.io/spoke: {{ $.Values.spokeNamespace | default $.Release.Namespace | quote }}
+spec:
+  project: default
+  sources:
+  - repoURL: {{ $cr.spec.helmRepo }}
+    targetRevision: {{ $cr.spec.helmRevision | default "master" }}
+    path: {{ $cr.spec.helmPath }}
+    helm:
+      releaseName: {{ $name }}
+      {{- if $cr.spec.values }}
+      values: |
+        {{- $cr.spec.values | nindent 8 }}
+      {{- end }}
+      {{- if $cr.spec.valueFiles }}
+      valueFiles:
+        {{- range $cr.spec.valueFiles }}
+        - {{ . | quote }}
+        {{- end }}
+      {{- end }}
+  {{- if $cr.spec.valuesRef }}
+  - repoURL: {{ $cr.spec.valuesRef.repoURL }}
+    targetRevision: {{ $cr.spec.valuesRef.targetRevision | default "master" }}
+    ref: values
+  {{- end }}
+  destination:
+    name: {{ $cr.clusterName | default $.Values.clusterName }}
+    namespace: {{ $cr.namespace | default "argocd" }}
+  syncPolicy:
+    automated:
+      selfHeal: true
+      prune: false
+    retry:
+      limit: 10
+      backoff:
+        duration: "30s"
+        factor: 2
+        maxDuration: "5m"
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+{{- end }}
+{{- end }}
+
+{{/* ── Application Workloads ─────────────────────────────────────── */}}
 {{- range $name, $wl := .Values.workloads }}
 {{- if $wl.enabled }}
 ---
@@ -59,9 +120,6 @@ spec:
         {{- end }}
       {{- end }}
   destination:
-    # Per-workload clusterName overrides the top-level clusterName.
-    # This enables deploying different workloads to different clusters
-    # within the same spoke.
     name: {{ $wl.clusterName | default $.Values.clusterName | default (printf "%s-%s" ($.Values.spokeNamespace | default $.Release.Namespace) ($.Values.spokeNamespace | default $.Release.Namespace)) }}
     namespace: {{ $wl.namespace | default "default" }}
   syncPolicy:
@@ -76,6 +134,6 @@ spec:
         maxDuration: "5m"
     syncOptions:
       - CreateNamespace=true
-      - Replace=true
+      - ServerSideApply=true
 {{- end }}
 {{- end }}
