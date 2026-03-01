@@ -1,15 +1,20 @@
 # Default values for workloads chart.
 # Per-spoke overrides are in cluster-fleet/<spoke>/workload.yaml.
 #
-# Each workload entry renders an ArgoCD Application targeting the spoke cluster.
-# The spoke cluster must be registered via the RGD's argoCDClusterSecret before
-# these Applications can sync.
+# Renders two types of ArgoCD Applications per spoke:
+#   1. clusterResources — cluster-level infrastructure (external-secrets,
+#      cert-manager, Karpenter, etc.) from gen3-helm cluster-level-resources.
+#   2. workloads — Gen3 services (indexd, fence, sheepdog, etc.) from
+#      gen3-helm umbrella chart.
+#
+# The spoke cluster must be registered via the RGD's argoCDClusterSecret
+# before these Applications can sync.
 
 # spokeNamespace is set by the fleet-workloads ApplicationSet (from gen3.io/spoke-alias annotation).
 spokeNamespace: ""
 
 # clusterName is the ArgoCD cluster name (data.name in the argoCDClusterSecret).
-# Set by the fleet-workloads ApplicationSet. Individual workloads can override
+# Set by the fleet-workloads ApplicationSet. Individual entries can override
 # this to target a different cluster within the same spoke.
 clusterName: ""
 
@@ -29,6 +34,27 @@ infraOutputs:
   region: ""
   infraOutputsSecret: ""
 
+# ── Cluster-Level Resources ────────────────────────────────────────
+# Each entry renders an ArgoCD Application deploying cluster-wide
+# infrastructure to the spoke (external-secrets, cert-manager, etc.).
+# Uses gen3-helm's cluster-level-resources chart.
+clusterResources: {}
+  # Example:
+  # cluster-level-resources:
+  #   enabled: true
+  #   syncWave: "20"
+  #   namespace: argocd
+  #   spec:
+  #     helmRepo: "https://github.com/uc-cdis/gen3-helm"
+  #     helmPath: "helm/cluster-level-resources"
+  #     helmRevision: master
+  #     values: |
+  #       external-secrets:
+  #         enabled: true
+
+# ── Application Workloads ──────────────────────────────────────────
+# Each entry renders an ArgoCD Application deploying Gen3 services
+# to the spoke cluster.
 workloads: {}
   # Example:
   # gen3:
