@@ -11,8 +11,7 @@ argocd/
 ├── bootstrap/                      # Entry-point ApplicationSets (Terraform-created bootstrap reads this)
 │   ├── csoc-addons.yaml            #   CSOC addon ApplicationSet (wave -20)
 │   ├── cross-acct.yaml             #   ACK CARM multi-account ApplicationSet (wave 5)
-│   ├── spoke-addons.yaml           #   Spoke addon ApplicationSet (wave 20)
-│   └── cluster-fleet.yaml          #   fleet + fleet-workloads ApplicationSets (wave 30, 40)
+│   └── cluster-fleet.yaml          #   fleet, fleet-cluster-resources, fleet-apps ApplicationSets (wave 30, 40, 50)
 ├── addons/                         # Addon value files (merged via multi-source Helm)
 │   ├── csoc/
 │   │   └── addons.yaml             #   CSOC addons: KRO, 17x ACK controllers, ESO
@@ -21,20 +20,20 @@ argocd/
 │       └── prod/addons.yaml         #   Prod spoke addons
 ├── charts/                         # Helm charts consumed by ApplicationSets
 │   ├── application-sets/           #   Meta-chart: generates per-addon ApplicationSets
+│   ├── cluster-resources/          #   Umbrella chart: spoke cluster-level infra (external-secrets, etc.)
 │   ├── instances/                  #   KRO custom resource instance renderer
-│   ├── resource-groups/            #   KRO ResourceGraphDefinition manifests
-│   └── workloads/                  #   Gen3 application workload chart
+│   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
 └── cluster-fleet/                  # Per-cluster override values (highest precedence)
     ├── csoc/
     │   └── infrastructure.yaml     #   CSOC base infrastructure (shared defaults)
     ├── spoke1/
     │   ├── addons.yaml             #   Addon overrides for spoke1
     │   ├── infrastructure.yaml     #   KRO instance definitions
-    │   └── workload.yaml           #   Application workload values
+    │   ├── cluster-resources.yaml  #   Cluster-level resources (1 per cluster)
+    │   └── apps.yaml               #   Gen3 application values (1 per environment)
     └── spoke2/
         ├── addons.yaml
-        ├── infrastructure.yaml
-        └── workload.yaml
+        └── infrastructure.yaml
 ```
 
 ## Reconciliation Chain
@@ -59,8 +58,10 @@ Terraform creates:
               │
               └── cluster-fleet.yaml → fleet AppSet (wave 30)
                                        └── KRO instances
-                                     → fleet-workloads AppSet (wave 40)
-                                       └── Gen3 workloads on spoke clusters
+                                     → fleet-cluster-resources AppSet (wave 40)
+                                       └── Spoke cluster-level infra
+                                     → fleet-apps AppSet (wave 50)
+                                       └── Gen3 apps on spoke clusters
 ```
 
 ## Sync Wave Ordering
@@ -73,7 +74,9 @@ Terraform creates:
 | 10 | KRO ResourceGraphDefinitions | CRDs must be registered before instances |
 | 15 | External Secrets Operator | Credential provider for workloads |
 | 20 | Spoke addons ApplicationSet | Spoke-specific addons after CSOC is ready |
-| 30 | Fleet instances / workloads | Infrastructure and apps depend on all controllers |
+| 30 | Fleet instances (KRO) | Infrastructure CRs depend on all controllers |
+| 40 | Fleet cluster-resources | Spoke cluster-level infra (external-secrets, etc.) |
+| 50 | Fleet apps | Gen3 services on spoke clusters |
 
 ## Values Merge Priority (Last Wins)
 
@@ -168,9 +171,11 @@ instances:
 
 Static KRO `ResourceGraphDefinition` YAML files. Files follow naming: `<provider><name>-rg.yaml`.
 
-### workloads
+### cluster-resources
 
-Gen3 application deployment wrapper (future use).
+Umbrella chart for cluster-level infrastructure on spoke clusters. Uses Helm
+dependencies (external-secrets, future: cert-manager, karpenter). Matches
+gen3-gitops's "cluster-level-resources" pattern — ONE per EKS cluster.
 
 ## CSOC Addons (`addons/csoc/addons.yaml`)
 
@@ -189,7 +194,8 @@ Each subdirectory must match a spoke alias defined in `spoke_account_ids` in `co
 |------|---------|
 | `addons.yaml` | Override addon values (empty `{}` = accept defaults) |
 | `infrastructure.yaml` | KRO instance definitions (`instances:` key) |
-| `workload.yaml` | Application workload values (`workload:` key) |
+| `cluster-resources.yaml` | Cluster-level resource values (1 per cluster) |
+| `apps.yaml` | Gen3 application values (1 per environment) |
 
 ## Conventions
 
