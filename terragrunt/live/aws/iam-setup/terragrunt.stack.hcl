@@ -51,12 +51,17 @@ locals {
   iam_base_path   = lookup(local.config, "iam_base_path", "iam")
   iam_policy_file = "inline-policy.json"
 
-  # Load per-spoke ACK inline policy from iam/<spoke-alias>/ack/ with _default fallback
+  # Load per-spoke ACK inline policy from iam/<spoke-alias>/ack/ with _default fallback.
+  # Uses templatefile() to substitute ${account_id} with the spoke's AWS account ID.
   spoke_ack_policy_documents = {
     for spoke in local.spokes :
     spoke.alias => try(
-      jsondecode(file("${local.repo_root}/${local.iam_base_path}/${spoke.alias}/ack/${local.iam_policy_file}")),
-      jsondecode(file("${local.repo_root}/${local.iam_base_path}/_default/ack/${local.iam_policy_file}")),
+      jsondecode(templatefile("${local.repo_root}/${local.iam_base_path}/${spoke.alias}/ack/${local.iam_policy_file}", {
+        account_id = lookup(lookup(spoke, "provider", {}), "account_id", local.csoc_account_id)
+      })),
+      jsondecode(templatefile("${local.repo_root}/${local.iam_base_path}/_default/ack/${local.iam_policy_file}", {
+        account_id = lookup(lookup(spoke, "provider", {}), "account_id", local.csoc_account_id)
+      })),
       null
     )
   }

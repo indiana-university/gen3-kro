@@ -169,11 +169,11 @@ helm_release.bootstrap
         │       └── external-secrets-per-spoke           (wave 20)
         │
         └── cluster-fleet.yaml
-            ├── fleet ApplicationSet (fleet_member: fleet-spoke-infra)
+            ├── fleet-infra-instances ApplicationSet (fleet_member: fleet-spoke-infra)
             │   └── KRO Instances (VPC, EKS, RDS...)    (wave 30)
             ├── fleet-cluster-resources ApplicationSet (fleet_member: spoke)
             │   └── Spoke cluster-level infra           (wave 40)
-            └── fleet-apps ApplicationSet (fleet_member: spoke)
+            └── fleet-gen3 ApplicationSet (fleet_member: spoke)
                 └── Gen3 apps on spoke clusters          (wave 50)
 ```
 
@@ -183,7 +183,7 @@ helm_release.bootstrap
 |------------------------------|--------------------------|----------|
 | `csoc-addons.yaml` | `csoc-addons` | -20 |
 | `cross-acct.yaml` | `ack-multi-acct` | 5 |
-| `cluster-fleet.yaml` | `fleet`, `fleet-cluster-resources`, `fleet-apps` | 30, 40, 50 |
+| `cluster-fleet.yaml` | `fleet-infra-instances`, `fleet-cluster-resources`, `fleet-gen3` | 30, 40, 50 |
 
 ### Values Merge Priority (last wins, maps deep-merged)
 

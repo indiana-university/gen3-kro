@@ -1298,9 +1298,13 @@ spec:
 
     # ArgoCD Cluster Secret
     # Labels and annotations on this secret are exposed by the ArgoCD cluster
-    # generator as template parameters. The fleet-apps ApplicationSet reads
+    # generator as template parameters. The fleet-gen3 ApplicationSet reads
     # infra output annotations (gen3.io/*) to inject dynamic values (Aurora
     # endpoint, VPC ID, etc.) into Helm parameters — no plugins required.
+    #
+    # NAMING: The secret name and data.name use the spoke ALIAS (namespace)
+    # only — NOT namespace-name — to avoid redundancy (e.g. spoke1, not
+    # spoke1-spoke1-dev). The EKS cluster name is preserved in annotations.
     - id: argoCDClusterSecret
       readyWhen:
         - ${argoCDClusterSecret.metadata.?name.orValue('null') != 'null'}
@@ -1308,11 +1312,11 @@ spec:
         apiVersion: v1
         kind: Secret
         metadata:
-          name: ${schema.spec.namespace}-${schema.spec.name}-cluster
+          name: ${schema.spec.namespace}-cluster
           namespace: ${schema.spec.argoCDNamespace}
           labels:
             argocd.argoproj.io/secret-type: cluster
-            # Selectors for fleet-cluster-resources and fleet-apps ApplicationSets
+            # Selectors for fleet-cluster-resources and fleet-gen3 ApplicationSets
             fleet_member: spoke
             environment: ${schema.spec.environment}
           annotations:
@@ -1320,7 +1324,7 @@ spec:
             kro.run/eks-endpoint: ${eksCluster.status.?endpoint}
             kro.run/aurora-endpoint: ${auroraCluster.status.?endpoint}
             services.k8s.aws/owner-account-id: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
-            # ── Infra outputs exposed to fleet-apps ApplicationSet ──
+            # ── Infra outputs exposed to fleet-gen3 ApplicationSet ──
             # Non-sensitive metadata only; passwords stay in infraOutputsSecret
             # and are consumed on the spoke cluster via ExternalSecrets.
             gen3.io/spoke-alias: ${schema.spec.namespace}
@@ -1336,7 +1340,7 @@ spec:
             gen3.io/infra-outputs-secret: ${schema.spec.name}-infra-outputs
         type: Opaque
         stringData:
-          name: ${schema.spec.namespace}-${schema.spec.name}
+          name: ${schema.spec.namespace}
           server: ${eksCluster.status.?endpoint}
           config: |
             {

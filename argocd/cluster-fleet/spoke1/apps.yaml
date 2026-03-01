@@ -1,16 +1,17 @@
 # Spoke1 Gen3 application values. ONE per namespace/environment.
-# Consumed by the fleet-apps ApplicationSet.
+# Consumed by the fleet-gen3 ApplicationSet.
 #
 # Matches gen3-gitops's per-environment values pattern:
 #   <cluster>/<hostname>/values/values.yaml
+# Integrates patterns from gen3-terraform's values.tftpl and fence-config.tftpl.
 #
 # Infrastructure connection values (Aurora endpoint, VPC ID, etc.) are NOT
-# hardcoded here. They are injected automatically by the fleet-apps
+# hardcoded here. They are injected automatically by the fleet-gen3
 # ApplicationSet from the argoCDClusterSecret annotations (gen3.io/*).
 #
 # DB passwords are NOT passed via annotations — they are managed by AWS
 # (manageMasterUserPassword: true) and stored in AWS Secrets Manager.
-# Use ExternalSecrets on the spoke cluster to pull them into K8s secrets.
+# ExternalSecrets on the spoke cluster pull them into K8s Secrets.
 #
 # DATABASE-ONLY DEPLOYMENT: Sets up PostgreSQL databases on external Aurora
 # with only the core database-dependent Gen3 services enabled.
@@ -21,14 +22,24 @@ global:
   aws:
     enabled: true
     region: us-east-1
+    # ExternalSecrets service account for pulling secrets from AWS SM
+    secretStoreServiceAccount:
+      enabled: true
+      name: external-secrets-sa
+  # ── ExternalSecrets integration ───────────────────────────
+  # Deploy ExternalSecret CRDs that pull DB passwords from AWS SM
+  externalSecrets:
+    deploy: true
   # ── External Aurora PostgreSQL ─────────────────────────────
-  # host and username are injected by the fleet-apps ApplicationSet
+  # host and username are injected by the fleet-gen3 ApplicationSet
   # from infraOutputs (via helm.parameters — overrides this block).
   # Password comes from ExternalSecrets on the spoke cluster.
   postgres:
     dbCreate: true
     master:
       port: "5432"
+    # ExternalSecret for Aurora master password (from AWS SM)
+    externalSecret: "spoke1-dev-aurora-master-password"
   # ── Common settings ──────────────────────────────────────
   environment: dev
   hostname: spoke1-dev.example.com
@@ -41,21 +52,42 @@ elasticsearch:
   enabled: false
 
 # ── Database-dependent services (create schemas on Aurora) ──
+# ExternalSecrets names follow gen3-gitops convention:
+#   {vpc_name}-{namespace}-{service}-creds
 indexd:
   enabled: true
   defaultPrefix: "dg.TEST/"
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-indexd-creds"
+    createK8sServiceCredsSecret: true
 fence:
   enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-fence-creds"
+    fenceConfig: "spoke1-dev-fence-config"
+    fenceJwtKeys: "spoke1-dev-fence-jwt-keys"
+    fenceGoogleAppCredsSecret: ""
+    fenceGoogleStorageCredsSecret: ""
+    createK8sGoogleAppSecrets: true
   usersync:
     usersync: false
 sheepdog:
   enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-sheepdog-creds"
 peregrine:
   enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-sheepdog-creds"
 arborist:
   enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-arborist-creds"
 metadata:
   enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-metadata-creds"
+    createK8sMetadataSecret: true
 
 # ── ALL other services DISABLED (database-only setup) ───────
 ambassador:

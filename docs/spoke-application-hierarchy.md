@@ -10,7 +10,7 @@ adapted for our RGD/KRO method.
 fleet-cluster-resources (ApplicationSet on CSOC)
   └─ spoke1-cluster-resources  (Application → deploys to spoke)
 
-fleet-apps (ApplicationSet on CSOC)
+fleet-gen3 (ApplicationSet on CSOC)
   └─ spoke1-gen3               (Application → deploys to spoke)
 ```
 
@@ -22,7 +22,7 @@ creates its Application directly.
 | Concept | gen3-gitops / gen3-terraform | gen3-kro (this repo) |
 |---------|------------------------------|----------------------|
 | Cluster resources | `cluster-app.tftpl` → one Application per cluster | `fleet-cluster-resources` ApplicationSet → one Application per spoke |
-| Gen3 services | `app.tftpl` → one Application per environment | `fleet-apps` ApplicationSet → one Application per spoke |
+| Gen3 services | `app.tftpl` → one Application per environment | `fleet-gen3` ApplicationSet → one Application per spoke |
 | Values (cluster) | `<cluster>/cluster-values/cluster-values.yaml` | `cluster-fleet/<spoke>/cluster-resources.yaml` |
 | Values (app) | `<cluster>/<hostname>/values/values.yaml` | `cluster-fleet/<spoke>/apps.yaml` |
 | Infrastructure | `<cluster>/cluster-values/` (one per cluster) | `cluster-fleet/<spoke>/infrastructure.yaml` (KRO instances) |
@@ -32,7 +32,7 @@ creates its Application directly.
 ```
 argocd/
 ├── bootstrap/
-│   └── cluster-fleet.yaml          ← 3 ApplicationSets: fleet, fleet-cluster-resources, fleet-apps
+│   └── cluster-fleet.yaml          ← 3 ApplicationSets: fleet-infra-instances, fleet-cluster-resources, fleet-gen3
 ├── charts/
 │   └── cluster-resources/          ← Umbrella chart (external-secrets dependency)
 │       ├── Chart.yaml
@@ -56,7 +56,7 @@ argocd/
 
 ### 2. `spoke1-gen3` — Gen3 Services
 
-- **Created by**: `fleet-apps` ApplicationSet
+- **Created by**: `fleet-gen3` ApplicationSet
 - **Source**: gen3-helm `helm/gen3` umbrella chart + `cluster-fleet/spoke1/apps.yaml` values
 - **Destination**: spoke cluster directly (via ArgoCD cluster name)
 - **Purpose**: Deploys Gen3 services (indexd, fence, sheepdog, etc.) with database-creation Jobs targeting the external Aurora cluster
