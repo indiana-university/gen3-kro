@@ -42,6 +42,9 @@ self-managed-kro:
   valuesObject:
     serviceAccount:
       create: true
+    config:
+      # Enable parallel resource syncing within RGDs (default: 1)
+      dynamicControllerConcurrentReconciles: 5
 
 kro-eks-rgs:
   enabled: true
