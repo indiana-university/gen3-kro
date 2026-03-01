@@ -39,18 +39,26 @@ infraOutputs:
 # infrastructure to the spoke (external-secrets, cert-manager, etc.).
 # Uses gen3-helm's cluster-level-resources chart.
 clusterResources: {}
-  # Example:
-  # cluster-level-resources:
+  # Example (Helm registry chart):
+  # external-secrets:
   #   enabled: true
   #   syncWave: "20"
-  #   namespace: argocd
+  #   namespace: external-secrets
   #   spec:
-  #     helmRepo: "https://github.com/uc-cdis/gen3-helm"
-  #     helmPath: "helm/cluster-level-resources"
-  #     helmRevision: master
+  #     helmRepo: "https://charts.external-secrets.io"
+  #     helmChart: external-secrets       # 'chart' for Helm registries
+  #     helmRevision: "0.10.3"
   #     values: |
-  #       external-secrets:
-  #         enabled: true
+  #       serviceAccount:
+  #         name: "external-secrets-sa"
+  #
+  # Example (Git repo chart):
+  # my-chart:
+  #   enabled: true
+  #   spec:
+  #     helmRepo: "https://github.com/org/repo"
+  #     helmPath: "charts/my-chart"       # 'path' for git repos
+  #     helmRevision: main
 
 # ── Application Workloads ──────────────────────────────────────────
 # Each entry renders an ArgoCD Application deploying Gen3 services
