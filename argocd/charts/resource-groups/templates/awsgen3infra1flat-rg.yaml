@@ -1298,7 +1298,7 @@ spec:
 
     # ArgoCD Cluster Secret
     # Labels and annotations on this secret are exposed by the ArgoCD cluster
-    # generator as template parameters. The fleet-workloads ApplicationSet reads
+    # generator as template parameters. The fleet-apps ApplicationSet reads
     # infra output annotations (gen3.io/*) to inject dynamic values (Aurora
     # endpoint, VPC ID, etc.) into Helm parameters — no plugins required.
     - id: argoCDClusterSecret
@@ -1312,7 +1312,7 @@ spec:
           namespace: ${schema.spec.argoCDNamespace}
           labels:
             argocd.argoproj.io/secret-type: cluster
-            # Selectors for the fleet-workloads ApplicationSet
+            # Selectors for fleet-cluster-resources and fleet-apps ApplicationSets
             fleet_member: spoke
             environment: ${schema.spec.environment}
           annotations:
@@ -1320,7 +1320,7 @@ spec:
             kro.run/eks-endpoint: ${eksCluster.status.?endpoint}
             kro.run/aurora-endpoint: ${auroraCluster.status.?endpoint}
             services.k8s.aws/owner-account-id: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
-            # ── Infra outputs exposed to fleet-workloads ApplicationSet ──
+            # ── Infra outputs exposed to fleet-apps ApplicationSet ──
             # Non-sensitive metadata only; passwords stay in infraOutputsSecret
             # and are consumed on the spoke cluster via ExternalSecrets.
             gen3.io/spoke-alias: ${schema.spec.namespace}
@@ -1496,8 +1496,8 @@ spec:
   # INFRASTRUCTURE OUTPUTS SECRET
   # ====================================================================
   # Final node: emits a Secret containing all key infra outputs.
-  # This bridges the infrastructure graph to the workloads chart.
-  # Workloads reference this Secret via infraSecretName in workload.yaml.
+  # This bridges the infrastructure graph to downstream consumers.
+  # Referenced by fleet-apps ApplicationSet for infra output injection.
     - id: infraOutputsSecret
       readyWhen:
         - ${infraOutputsSecret.metadata.?name.orValue('null') != 'null'}

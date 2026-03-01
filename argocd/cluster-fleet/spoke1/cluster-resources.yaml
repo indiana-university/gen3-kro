@@ -1,0 +1,15 @@
+# Spoke1 cluster-level resources. ONE per EKS cluster.
+# Consumed by the fleet-cluster-resources ApplicationSet.
+#
+# Matches gen3-gitops's cluster-level-resources pattern:
+#   <cluster>/cluster-values/cluster-values.yaml
+# Adapted for our umbrella-chart approach (no app-of-apps).
+#
+# These resources are deployed BEFORE Gen3 services and are shared
+# across all namespaces/environments on this cluster.
+
+# ── External Secrets Operator ──────────────────────────────────────
+external-secrets:
+  enabled: true
+  serviceAccount:
+    name: "external-secrets-sa"

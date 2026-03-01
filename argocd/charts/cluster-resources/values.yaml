@@ -1,0 +1,13 @@
+# Default values for cluster-resources chart.
+# Per-spoke overrides are in cluster-fleet/<spoke>/cluster-resources.yaml.
+#
+# ONE instance per EKS cluster — shared across all namespaces/environments
+# on that cluster (matches gen3-gitops's cluster-level-resources pattern).
+
+# ── External Secrets Operator ──────────────────────────────────────
+# Manages ExternalSecret CRDs that pull secrets from AWS Secrets Manager
+# into Kubernetes Secrets on the spoke cluster.
+external-secrets:
+  enabled: false
+  # serviceAccount:
+  #   name: "external-secrets-sa"

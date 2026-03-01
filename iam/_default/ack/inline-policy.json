@@ -177,7 +177,7 @@
         "kms:CreateGrant",
         "kms:ListGrants"
       ],
-      "Resource": "arn:aws:kms:*:859011005590:key/*"
+      "Resource": "arn:aws:kms:*:ACCOUNT_ID:key/*"
     },
     {
       "Sid": "ManageIAMRolesForEKSResources",

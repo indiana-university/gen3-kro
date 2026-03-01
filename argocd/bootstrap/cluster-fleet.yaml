@@ -63,30 +63,24 @@ spec:
           - ServerSideApply=true
 ---
 # ======================================================================
-# fleet-workloads — Application workloads on spoke clusters
+# fleet-cluster-resources — Cluster-level infrastructure on spoke clusters
 # ======================================================================
-# Uses a simple cluster generator targeting KRO-created spoke secrets
-# (fleet_member: spoke).  Repo coordinates are supplied as static values
-# because the spoke secret (created by the RGD) does not carry repo
-# annotations.  Infrastructure outputs (Aurora endpoint, VPC ID, etc.)
-# are read from the spoke secret's gen3.io/* annotations and injected
-# as Helm parameters.
+# ONE per EKS cluster — deploys cluster-wide prerequisites (external-secrets,
+# cert-manager, etc.) before Gen3 services arrive.
 #
-# A matrix generator cannot be used here: with goTemplate, Child 2's
-# values-templates are pre-rendered against Child 1's params, so the
-# control-plane's annotations are unreachable when spoke is Child 1.
+# Matches gen3-gitops's "cluster-level-resources" pattern: one Application
+# per cluster, shared across all namespaces/environments on that cluster.
 #
-# This naturally gates workload deployment on infrastructure readiness:
-# the spoke cluster secret only exists after the RGD's argoCDClusterSecret
-# node is ready (i.e. EKS + Aurora are provisioned).
+# Uses our cluster-resources umbrella chart (Helm dependencies) instead of
+# gen3-helm's cluster-level-resources (which is an app-of-apps that renders
+# ArgoCD Application CRDs — the spoke has no ArgoCD CRDs).
 #
-# Non-sensitive infra metadata is passed as Helm parameters.
-# Actual secrets (DB passwords) are consumed on the spoke cluster via
-# ExternalSecrets reading from AWS Secrets Manager.
+# Gated on infrastructure readiness: the spoke cluster secret only exists
+# after the RGD's argoCDClusterSecret node is ready (EKS is provisioned).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: fleet-workloads
+  name: fleet-cluster-resources
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "40"
@@ -102,14 +96,12 @@ spec:
         matchLabels:
           fleet_member: spoke
       values:
-        # Static repo coordinates — must match the bootstrap ApplicationSet
-        # source.  Update here if the repo URL or branch changes.
         repoUrl: 'https://github.com/indiana-university/gen3-kro.git'
         repoRevision: 'Version2'
         repoBasepath: 'argocd/'
   template:
     metadata:
-      name: 'workloads-{{.name}}'
+      name: '{{index .metadata.annotations "gen3.io/spoke-alias"}}-cluster-resources'
       labels:
         environment: '{{index .metadata.labels "environment"}}'
         fleet_spoke: '{{index .metadata.annotations "gen3.io/spoke-alias"}}'
@@ -119,52 +111,116 @@ spec:
       - repoURL: '{{.values.repoUrl}}'
         targetRevision: '{{.values.repoRevision}}'
         ref: values
-      # Application workloads chart
+      # Cluster-resources umbrella chart (external-secrets, etc.)
       - repoURL: '{{.values.repoUrl}}'
-        path: '{{.values.repoBasepath}}charts/workloads/'
+        path: '{{.values.repoBasepath}}charts/cluster-resources/'
         targetRevision: '{{.values.repoRevision}}'
         helm:
-          releaseName: 'workloads-{{.name}}'
+          releaseName: 'cluster-resources-{{index .metadata.annotations "gen3.io/spoke-alias"}}'
           ignoreMissingValueFiles: true
-          parameters:
-            - name: spokeNamespace
-              value: '{{index .metadata.annotations "gen3.io/spoke-alias"}}'
-            - name: clusterName
-              value: '{{.name}}'
-            # ── Infrastructure outputs (from argoCDClusterSecret annotations) ──
-            - name: infraOutputs.auroraEndpoint
-              value: '{{index .metadata.annotations "gen3.io/aurora-endpoint"}}'
-            - name: infraOutputs.auroraReaderEndpoint
-              value: '{{index .metadata.annotations "gen3.io/aurora-reader-endpoint"}}'
-            - name: infraOutputs.auroraMasterUsername
-              value: '{{index .metadata.annotations "gen3.io/aurora-master-username"}}'
-            - name: infraOutputs.auroraDatabaseName
-              value: '{{index .metadata.annotations "gen3.io/aurora-database-name"}}'
-            - name: infraOutputs.vpcId
-              value: '{{index .metadata.annotations "gen3.io/vpc-id"}}'
-            - name: infraOutputs.eksClusterName
-              value: '{{index .metadata.annotations "gen3.io/eks-cluster-name"}}'
-            - name: infraOutputs.environment
-              value: '{{index .metadata.annotations "gen3.io/environment"}}'
-            - name: infraOutputs.region
-              value: '{{index .metadata.annotations "gen3.io/region"}}'
-            - name: infraOutputs.infraOutputsSecret
-              value: '{{index .metadata.annotations "gen3.io/infra-outputs-secret"}}'
           valueFiles:
-            - '$values/{{.values.repoBasepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/workload.yaml'
+            - '$values/{{.values.repoBasepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/cluster-resources.yaml'
       destination:
-        namespace: argocd
-        # Target the CSOC cluster — ArgoCD Applications are CSOC-side objects.
-        # The rendered Applications themselves target the spoke via destination.name
-        # using .Values.clusterName (set to the spoke cluster name by the parameters below).
-        server: 'https://kubernetes.default.svc'
+        # Deploy directly to the spoke cluster
+        name: '{{.name}}'
+        namespace: external-secrets
       syncPolicy:
         automated:
-          selfHeal: false
+          selfHeal: true
+          allowEmpty: true
+          prune: false
+        retry:
+          limit: 100
+          backoff:
+            duration: "30s"
+            factor: 2
+            maxDuration: "5m"
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+---
+# ======================================================================
+# fleet-apps — Gen3 application workloads on spoke clusters
+# ======================================================================
+# ONE per namespace/environment — deploys the gen3-helm umbrella chart
+# directly to the spoke cluster.
+#
+# Matches gen3-gitops's per-environment pattern: one Application per
+# hostname/namespace, with values from cluster-fleet/<spoke>/apps.yaml.
+#
+# Infrastructure outputs (Aurora endpoint, VPC ID, etc.) are read from
+# the spoke secret's gen3.io/* annotations and injected as Helm parameters.
+# Actual secrets (DB passwords) are consumed on the spoke via ExternalSecrets
+# reading from AWS Secrets Manager.
+#
+# Gated on infrastructure readiness: the spoke cluster secret only exists
+# after the RGD's argoCDClusterSecret node is ready (EKS + Aurora provisioned).
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet-apps
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          fleet_member: spoke
+      values:
+        repoUrl: 'https://github.com/indiana-university/gen3-kro.git'
+        repoRevision: 'Version2'
+        repoBasepath: 'argocd/'
+  template:
+    metadata:
+      name: '{{index .metadata.annotations "gen3.io/spoke-alias"}}-gen3'
+      labels:
+        environment: '{{index .metadata.labels "environment"}}'
+        fleet_spoke: '{{index .metadata.annotations "gen3.io/spoke-alias"}}'
+    spec:
+      project: default
+      sources:
+      - repoURL: '{{.values.repoUrl}}'
+        targetRevision: '{{.values.repoRevision}}'
+        ref: values
+      # gen3-helm umbrella chart — deployed directly (no intermediate chart)
+      - repoURL: 'https://github.com/uc-cdis/gen3-helm'
+        path: 'helm/gen3'
+        targetRevision: master
+        helm:
+          releaseName: 'gen3-{{index .metadata.annotations "gen3.io/spoke-alias"}}'
+          ignoreMissingValueFiles: true
+          parameters:
+            # ── Infrastructure outputs (from argoCDClusterSecret annotations) ──
+            - name: global.postgres.master.host
+              value: '{{index .metadata.annotations "gen3.io/aurora-endpoint"}}'
+            - name: global.postgres.master.username
+              value: '{{index .metadata.annotations "gen3.io/aurora-master-username"}}'
+            - name: global.postgres.master.dbName
+              value: '{{index .metadata.annotations "gen3.io/aurora-database-name"}}'
+          valueFiles:
+            - '$values/{{.values.repoBasepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/apps.yaml'
+      destination:
+        # Deploy directly to the spoke cluster
+        name: '{{.name}}'
+        namespace: default
+      syncPolicy:
+        automated:
+          selfHeal: true
           allowEmpty: true
           prune: true
         retry:
-          limit: 100
+          limit: 5
+          backoff:
+            duration: "30s"
+            factor: 2
+            maxDuration: "5m"
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

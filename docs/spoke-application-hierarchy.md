@@ -1,47 +1,73 @@
 # Spoke Application Hierarchy
 
-Brief explanation of the three ArgoCD Applications involved in spoke deployment.
+How ArgoCD deploys Gen3 services to spoke clusters, matching the
+[gen3-gitops](https://github.com/uc-cdis/gen3-gitops) deployment pattern
+adapted for our RGD/KRO method.
 
-## Application Flow
+## Application Flow (flat — 2 levels)
 
 ```
-fleet-workloads (ApplicationSet on CSOC)
-  └─ workloads-spoke1-spoke1-dev (Application on CSOC)
-       ├─ spoke1-cluster-level-resources (Application on CSOC → deploys to spoke)
-       └─ spoke1-gen3 (Application on CSOC → deploys to spoke)
+fleet-cluster-resources (ApplicationSet on CSOC)
+  └─ spoke1-cluster-resources  (Application → deploys to spoke)
+
+fleet-apps (ApplicationSet on CSOC)
+  └─ spoke1-gen3               (Application → deploys to spoke)
+```
+
+No intermediate chart renders child Application CRDs. Each ApplicationSet
+creates its Application directly.
+
+## Comparison with gen3-gitops
+
+| Concept | gen3-gitops / gen3-terraform | gen3-kro (this repo) |
+|---------|------------------------------|----------------------|
+| Cluster resources | `cluster-app.tftpl` → one Application per cluster | `fleet-cluster-resources` ApplicationSet → one Application per spoke |
+| Gen3 services | `app.tftpl` → one Application per environment | `fleet-apps` ApplicationSet → one Application per spoke |
+| Values (cluster) | `<cluster>/cluster-values/cluster-values.yaml` | `cluster-fleet/<spoke>/cluster-resources.yaml` |
+| Values (app) | `<cluster>/<hostname>/values/values.yaml` | `cluster-fleet/<spoke>/apps.yaml` |
+| Infrastructure | `<cluster>/cluster-values/` (one per cluster) | `cluster-fleet/<spoke>/infrastructure.yaml` (KRO instances) |
+
+## File Layout
+
+```
+argocd/
+├── bootstrap/
+│   └── cluster-fleet.yaml          ← 3 ApplicationSets: fleet, fleet-cluster-resources, fleet-apps
+├── charts/
+│   └── cluster-resources/          ← Umbrella chart (external-secrets dependency)
+│       ├── Chart.yaml
+│       └── values.yaml
+└── cluster-fleet/
+    └── spoke1/
+        ├── infrastructure.yaml     ← KRO instances (EKS, Aurora, VPC, etc.)
+        ├── cluster-resources.yaml  ← Cluster-wide infra (external-secrets)
+        └── apps.yaml               ← Gen3 service values (indexd, fence, etc.)
 ```
 
 ## What Each Application Does
 
-### 1. `workloads-spoke1-spoke1-dev` — Parent (Synced/Healthy)
+### 1. `spoke1-cluster-resources` — Cluster Infrastructure
 
-- **Created by**: `fleet-workloads` ApplicationSet in [cluster-fleet.yaml](../argocd/bootstrap/cluster-fleet.yaml)
-- **Source**: `argocd/charts/workloads/` Helm chart + `argocd/cluster-fleet/spoke1/workload.yaml` values
-- **Destination**: CSOC cluster (itself) — because it renders ArgoCD Application CRDs that must exist where ArgoCD runs
-- **Purpose**: Reads workload.yaml and renders child ArgoCD Application resources. It does NOT deploy to the spoke directly. It creates the Application CRDs below.
+- **Created by**: `fleet-cluster-resources` ApplicationSet
+- **Source**: `argocd/charts/cluster-resources/` umbrella chart + `cluster-fleet/spoke1/cluster-resources.yaml` values
+- **Destination**: spoke cluster directly (via ArgoCD cluster name)
+- **Purpose**: Deploys cluster-wide infrastructure prerequisites (external-secrets operator, future: cert-manager, karpenter nodes, etc.)
+- **One per cluster**: Shared across all namespaces/environments on the spoke
 
-### 2. `spoke1-cluster-level-resources` — Cluster Infrastructure (OutOfSync)
+### 2. `spoke1-gen3` — Gen3 Services
 
-- **Created by**: The workloads chart's `clusterResources` section
-- **Source**: Helm chart for cluster-wide infrastructure (external-secrets, cert-manager, etc.)
-- **Destination**: spoke1-dev cluster (via ArgoCD cluster name)
-- **Purpose**: Deploys cluster-level infrastructure prerequisites to the spoke before Gen3 services arrive
-- **Current Issue**: Was pointed at gen3-helm's `cluster-level-resources` app-of-apps chart, which renders more ArgoCD Application CRDs. The spoke doesn't have ArgoCD CRDs, so it fails. **Fix**: Point directly at the external-secrets Helm chart instead of the app-of-apps wrapper.
+- **Created by**: `fleet-apps` ApplicationSet
+- **Source**: gen3-helm `helm/gen3` umbrella chart + `cluster-fleet/spoke1/apps.yaml` values
+- **Destination**: spoke cluster directly (via ArgoCD cluster name)
+- **Purpose**: Deploys Gen3 services (indexd, fence, sheepdog, etc.) with database-creation Jobs targeting the external Aurora cluster
+- **One per environment**: Each namespace/hostname gets its own Application
+- **Infrastructure injection**: Aurora endpoint, username, and database name are injected as Helm parameters from the argoCDClusterSecret annotations
 
-### 3. `spoke1-gen3` — Gen3 Services (OutOfSync/Missing)
+## Key Architecture Points
 
-- **Created by**: The workloads chart's `workloads` section
-- **Source**: gen3-helm `helm/gen3` umbrella chart
-- **Destination**: spoke1-dev cluster (via ArgoCD cluster name)
-- **Purpose**: Deploys Gen3 services (indexd, fence, sheepdog, peregrine, arborist, metadata) with database-creation Jobs targeting the external Aurora cluster
-- **Current Issue**: Previously-completed db-create Jobs (arborist-dbcreate, fence-dbcreate, etc.) are immutable K8s resources. ArgoCD can't replace them. **Fix**: Delete completed Jobs on the spoke, then re-sync.
+- All Applications live on the CSOC cluster (where ArgoCD runs). The spoke has NO ArgoCD.
+- `destination.name` points each Application at the spoke cluster via the cluster secret.
+- Infrastructure outputs (Aurora endpoint, etc.) flow from KRO → argoCDClusterSecret annotations → ApplicationSet parameters → Helm values.
+- DB passwords stay in AWS Secrets Manager — consumed on the spoke via ExternalSecrets.
+- The `cluster-resources` umbrella chart deploys Helm dependencies directly (NOT gen3-helm's `cluster-level-resources` app-of-apps, which renders ArgoCD Application CRDs that don't exist on the spoke).
 
-## Key Architecture Insight
-
-All three Applications live on the CSOC cluster (where ArgoCD runs). The spoke cluster has NO ArgoCD installation. ArgoCD on the CSOC manages the spoke remotely via the cluster secret created by the KRO ResourceGraphDefinition.
-
-This means:
-- Application CRDs must always be created on the CSOC
-- The `destination.name` field points child apps at the spoke cluster
-- App-of-apps charts that render more Application CRDs can only target the CSOC, never the spoke
-- For spoke cluster-level resources, deploy Helm charts **directly** (not through an app-of-apps wrapper)

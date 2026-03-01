@@ -82,11 +82,13 @@ Known constraints of the current platform state. These are expected and will be 
 - **File**: `argocd/charts/resource-groups/awsgen3infra1flat-rg.yaml`
 - **Status**: Only the `AwsGen3Infra1Flat` ResourceGroupDefinition exists. The chart structure supports multiple RGD files — additional RGDs will be added as new infrastructure patterns are needed.
 
-### L3: Workloads chart templates implemented
+### L3: Flat spoke deployment (apps + cluster-resources)
 
-- **Files**: `argocd/charts/workloads/` — `Chart.yaml`, `values.yaml`, `templates/workloads.yaml`
-- **Status**: The workloads chart template is implemented. It renders one ArgoCD Application per enabled workload entry. Infrastructure outputs are injected via the `fleet-workloads` ApplicationSet's `helm.parameters` (sourced from `argoCDClusterSecret` `gen3.io/*` annotations). DB passwords use ExternalSecrets from AWS Secrets Manager on the spoke cluster.
-- **Architecture**: The `fleet-workloads` ApplicationSet (wave 40) uses a matrix generator combining the CSOC control-plane cluster (for repo annotations) with KRO-created spoke cluster secrets (for infra annotations). This naturally gates workloads on infrastructure readiness.
+- **Files**: `argocd/charts/cluster-resources/`, `argocd/bootstrap/cluster-fleet.yaml`, `argocd/cluster-fleet/<spoke>/apps.yaml`, `argocd/cluster-fleet/<spoke>/cluster-resources.yaml`
+- **Status**: Spoke deployments use two flat ApplicationSets (no intermediate chart rendering Application CRDs):
+  - `fleet-cluster-resources` (wave 40) — deploys cluster-level infra (external-secrets umbrella chart) directly to the spoke.
+  - `fleet-apps` (wave 50) — deploys gen3-helm umbrella chart directly to the spoke. Infrastructure outputs are injected via Helm parameters from argoCDClusterSecret annotations.
+- **Architecture**: Matches gen3-gitops pattern: cluster-level-resources = ONE per EKS cluster, gen3 app = ONE per namespace/environment. Two levels of hierarchy (ApplicationSet → Application), not three.
 
 ### L4: Diagram SVG exports not generated
 
@@ -108,12 +110,12 @@ Replace the `argocd-initial-admin-secret` password-based auth with GitHub/Okta S
 
 Extend `argocd/charts/resource-groups/` with additional ResourceGroupDefinitions for different infrastructure patterns (e.g., HA Aurora, multi-AZ ElastiCache, GPU-enabled EKS node groups).
 
-### F3: Workload chart refinement
+### F3: Gen3 service refinement
 
-The `argocd/charts/workloads/templates/workloads.yaml` template is implemented with `infraOutputs`
-injection via `fleet-workloads` ApplicationSet (wave 40). Future work: add per-workload ExternalSecret
-templates for DB credential injection on spoke clusters, add health checks, and refine the
-`infraOutputs` parameter passthrough to individual Gen3 service charts.
+The `fleet-apps` ApplicationSet deploys gen3-helm directly with `infraOutputs`
+parameter injection (wave 50). Future work: add ExternalSecret resources for DB
+credential injection on spoke clusters, add health checks, and integrate
+fence-config / user-yaml-push templates from gen3-gitops.
 
 ### F4: Per-environment addon differentiation
 
