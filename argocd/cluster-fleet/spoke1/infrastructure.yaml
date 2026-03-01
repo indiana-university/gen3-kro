@@ -21,6 +21,10 @@ instances:
       adoptionPolicy: adopt-or-create
       deletionPolicy: delete
 
+      # ── Application Identity ────────────────────────────────────────
+      hostname: spoke1-dev.example.com
+      defaultLoginIDP: google
+
       # ── Network Configuration ───────────────────────────────────────
       vpcCIDR: "10.1.0.0/16"
       publicSubnetCIDRs:
