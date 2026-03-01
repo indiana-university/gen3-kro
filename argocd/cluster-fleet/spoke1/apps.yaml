@@ -69,6 +69,44 @@ fence:
     fenceGoogleAppCredsSecret: ""
     fenceGoogleStorageCredsSecret: ""
     createK8sGoogleAppSecrets: true
+  # ── User.yaml (inline for initial testing) ────────────────
+  # Minimal authorization policy for bootstrapping. In production,
+  # use usersync.userYamlS3Path to pull from an S3-managed user.yaml.
+  USER_YAML: |
+    authz:
+      anonymous_policies:
+        - open_data_reader
+      all_users_policies:
+        - open_data_reader
+      resources:
+        - name: open
+          subresources:
+            - name: data
+        - name: programs
+          subresources:
+            - name: open
+              subresources:
+                - name: projects
+                  subresources:
+                    - name: test
+      policies:
+        - id: open_data_reader
+          description: 'Read access to open data'
+          resource_paths:
+            - /open
+            - /open/data
+          role_ids:
+            - reader
+      roles:
+        - id: reader
+          permissions:
+            - id: read
+              action:
+                service: '*'
+                method: read
+      groups: {}
+    clients: {}
+    users: {}
   usersync:
     usersync: false
 sheepdog:
