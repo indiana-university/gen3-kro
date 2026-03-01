@@ -11,7 +11,7 @@ argocd/
 ├── bootstrap/                      # Entry-point ApplicationSets (Terraform-created bootstrap reads this)
 │   ├── csoc-addons.yaml            #   CSOC addon ApplicationSet (wave -20)
 │   ├── cross-acct.yaml             #   ACK CARM multi-account ApplicationSet (wave 5)
-│   └── cluster-fleet.yaml          #   fleet, fleet-cluster-resources, fleet-apps ApplicationSets (wave 30, 40, 50)
+│   └── cluster-fleet.yaml          #   fleet-infra-instances, fleet-cluster-resources, fleet-gen3 ApplicationSets (wave 30, 40, 50)
 ├── addons/                         # Addon value files (merged via multi-source Helm)
 │   ├── csoc/
 │   │   └── addons.yaml             #   CSOC addons: KRO, 17x ACK controllers, ESO
@@ -20,7 +20,7 @@ argocd/
 │       └── prod/addons.yaml         #   Prod spoke addons
 ├── charts/                         # Helm charts consumed by ApplicationSets
 │   ├── application-sets/           #   Meta-chart: generates per-addon ApplicationSets
-│   ├── cluster-resources/          #   Umbrella chart: spoke cluster-level infra (external-secrets, etc.)
+│   ├── cluster-resources/          #   Umbrella chart: spoke cluster-level infra (external-secrets, cert-manager, etc.)
 │   ├── instances/                  #   KRO custom resource instance renderer
 │   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
 └── cluster-fleet/                  # Per-cluster override values (highest precedence)
@@ -56,11 +56,11 @@ Terraform creates:
               ├── spoke-addons.yaml → spoke-addons AppSet (wave 20)
               │                       └── Spoke-specific addons
               │
-              └── cluster-fleet.yaml → fleet AppSet (wave 30)
+              └── cluster-fleet.yaml → fleet-infra-instances AppSet (wave 30)
                                        └── KRO instances
                                      → fleet-cluster-resources AppSet (wave 40)
                                        └── Spoke cluster-level infra
-                                     → fleet-apps AppSet (wave 50)
+                                     → fleet-gen3 AppSet (wave 50)
                                        └── Gen3 apps on spoke clusters
 ```
 
@@ -75,7 +75,7 @@ Terraform creates:
 | 15 | External Secrets Operator | Credential provider for workloads |
 | 20 | Spoke addons ApplicationSet | Spoke-specific addons after CSOC is ready |
 | 30 | Fleet instances (KRO) | Infrastructure CRs depend on all controllers |
-| 40 | Fleet cluster-resources | Spoke cluster-level infra (external-secrets, etc.) |
+| 40 | Fleet cluster-resources | Spoke cluster-level infra (external-secrets, cert-manager, etc.) |
 | 50 | Fleet apps | Gen3 services on spoke clusters |
 
 ## Values Merge Priority (Last Wins)

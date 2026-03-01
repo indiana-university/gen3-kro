@@ -7,9 +7,20 @@
 #
 # These resources are deployed BEFORE Gen3 services and are shared
 # across all namespaces/environments on this cluster.
+#
+# NOTE: EKS automode manages vpc-cni, kube-proxy, ebs-csi-driver,
+# CoreDNS, karpenter, and ALB controller. Only enable components
+# here that are NOT managed by automode.
 
 # ── External Secrets Operator ──────────────────────────────────────
 external-secrets:
   enabled: true
   serviceAccount:
     name: "external-secrets-sa"
+
+# ── cert-manager (TLS certificate management) ─────────────────────
+cert-manager:
+  enabled: true
+  crds:
+    enabled: true
+    keep: true

@@ -30,3 +30,8 @@ dependencies:
     version: "0.10.3"
     repository: "https://charts.external-secrets.io"
     condition: external-secrets.enabled
+
+  - name: cert-manager
+    version: "1.16.3"
+    repository: "https://charts.jetstack.io"
+    condition: cert-manager.enabled

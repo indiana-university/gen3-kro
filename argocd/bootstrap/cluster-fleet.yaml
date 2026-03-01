@@ -1,5 +1,5 @@
 # ======================================================================
-# fleet — KRO infrastructure instances
+# fleet-infra-instances — KRO infrastructure instances
 # ======================================================================
 # Triggered by Terraform-created per-spoke cluster secrets (fleet_member:
 # fleet-spoke-infra).  Renders infrastructure.yaml through the instances
@@ -7,7 +7,7 @@
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: fleet
+  name: fleet-infra-instances
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "30"
@@ -28,7 +28,7 @@ spec:
           fleet_member: fleet-spoke-infra
   template:
     metadata:
-      name: 'fleet-{{.name}}'
+      name: '{{.name}}-infra-instance'
       labels:
         environment: '{{.metadata.labels.environment}}'
         fleet_spoke: '{{.name}}'
@@ -43,7 +43,7 @@ spec:
         path: '{{.metadata.annotations.fleet_repo_basepath}}charts/instances/'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
         helm:
-          releaseName: 'kro-instances-{{.name}}'
+          releaseName: 'infrastructure-instance'
           ignoreMissingValueFiles: true
           valueFiles:
             - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/csoc/infrastructure.yaml'
@@ -116,14 +116,14 @@ spec:
         path: '{{.values.repoBasepath}}charts/cluster-resources/'
         targetRevision: '{{.values.repoRevision}}'
         helm:
-          releaseName: 'cluster-resources-{{index .metadata.annotations "gen3.io/spoke-alias"}}'
+          releaseName: 'cluster-resources'
           ignoreMissingValueFiles: true
           valueFiles:
             - '$values/{{.values.repoBasepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/cluster-resources.yaml'
       destination:
         # Deploy directly to the spoke cluster
         name: '{{.name}}'
-        namespace: external-secrets
+        namespace: cluster-resources
       syncPolicy:
         automated:
           selfHeal: true
@@ -140,7 +140,7 @@ spec:
           - ServerSideApply=true
 ---
 # ======================================================================
-# fleet-apps — Gen3 application workloads on spoke clusters
+# fleet-gen3 — Gen3 application workloads on spoke clusters
 # ======================================================================
 # ONE per namespace/environment — deploys the gen3-helm umbrella chart
 # directly to the spoke cluster.
@@ -155,10 +155,15 @@ spec:
 #
 # Gated on infrastructure readiness: the spoke cluster secret only exists
 # after the RGD's argoCDClusterSecret node is ready (EKS + Aurora provisioned).
+#
+# Naming convention:
+#   ApplicationSet: fleet-gen3
+#   Application:    {spoke-alias}-gen3    (e.g. spoke1-gen3)
+#   Helm release:   gen3
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: fleet-apps
+  name: fleet-gen3
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "50"
@@ -185,6 +190,16 @@ spec:
         fleet_spoke: '{{index .metadata.annotations "gen3.io/spoke-alias"}}'
     spec:
       project: default
+      # ── Ignore auto-generated secrets (gen3-helm generates random passwords) ──
+      # These Secrets regenerate random values on each Helm render, causing
+      # permanent OutOfSync. Ignore the data field so ArgoCD doesn't fight
+      # the initial random values already applied to the spoke cluster.
+      ignoreDifferences:
+        - group: ""
+          kind: Secret
+          jsonPointers:
+            - /data
+            - /stringData
       sources:
       - repoURL: '{{.values.repoUrl}}'
         targetRevision: '{{.values.repoRevision}}'
@@ -194,7 +209,7 @@ spec:
         path: 'helm/gen3'
         targetRevision: master
         helm:
-          releaseName: 'gen3-{{index .metadata.annotations "gen3.io/spoke-alias"}}'
+          releaseName: 'gen3'
           ignoreMissingValueFiles: true
           parameters:
             # ── Infrastructure outputs (from argoCDClusterSecret annotations) ──

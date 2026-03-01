@@ -87,7 +87,7 @@ Known constraints of the current platform state. These are expected and will be 
 - **Files**: `argocd/charts/cluster-resources/`, `argocd/bootstrap/cluster-fleet.yaml`, `argocd/cluster-fleet/<spoke>/apps.yaml`, `argocd/cluster-fleet/<spoke>/cluster-resources.yaml`
 - **Status**: Spoke deployments use two flat ApplicationSets (no intermediate chart rendering Application CRDs):
   - `fleet-cluster-resources` (wave 40) — deploys cluster-level infra (external-secrets umbrella chart) directly to the spoke.
-  - `fleet-apps` (wave 50) — deploys gen3-helm umbrella chart directly to the spoke. Infrastructure outputs are injected via Helm parameters from argoCDClusterSecret annotations.
+  - `fleet-gen3` (wave 50) — deploys gen3-helm umbrella chart directly to the spoke. Infrastructure outputs are injected via Helm parameters from argoCDClusterSecret annotations.
 - **Architecture**: Matches gen3-gitops pattern: cluster-level-resources = ONE per EKS cluster, gen3 app = ONE per namespace/environment. Two levels of hierarchy (ApplicationSet → Application), not three.
 
 ### L4: Diagram SVG exports not generated
@@ -112,7 +112,7 @@ Extend `argocd/charts/resource-groups/` with additional ResourceGroupDefinitions
 
 ### F3: Gen3 service refinement
 
-The `fleet-apps` ApplicationSet deploys gen3-helm directly with `infraOutputs`
+The `fleet-gen3` ApplicationSet deploys gen3-helm directly with `infraOutputs`
 parameter injection (wave 50). Future work: add ExternalSecret resources for DB
 credential injection on spoke clusters, add health checks, and integrate
 fence-config / user-yaml-push templates from gen3-gitops.
