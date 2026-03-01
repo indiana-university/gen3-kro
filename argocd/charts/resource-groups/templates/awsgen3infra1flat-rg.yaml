@@ -167,13 +167,23 @@ spec:
     #   openSearchEndpoint: ${openSearchDomain.status.?endpoint.orValue("loading")}
   resources:
   # ====================================================================
-    # Layer 0: Spoke Namespace Reference
+    # Layer 0: Namespace References
+    # Read spoke namespace to get spoke account ID (CARM annotation)
     - id: spokeNamespace
       externalRef:
         apiVersion: v1
         kind: Namespace
         metadata:
           name: ${schema.spec.namespace}
+    # Read argocd namespace to get CSOC account ID (Terraform annotation)
+    # Used in the spoke ArgoCD role trust policy so the CSOC controller
+    # can STS AssumeRole without hardcoding any account number in git.
+    - id: argocdNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.argoCDNamespace}
   # ====================================================================
   # SECTION 2: NETWORKING (VPC & Subnets)
   # ====================================================================
@@ -1085,9 +1095,12 @@ spec:
             - key: Project
               value: ${schema.spec.project}
     # Layer 1: ArgoCD Spoke IAM Role
-    # Grants ArgoCD application-controller on the spoke side the permissions
-    # it needs to sync workloads. Trust policy uses EKS Pod Identity so the
-    # PodIdentityAssociation below can bind this role to the service account.
+    # Used by argocd-k8s-auth on the CSOC ArgoCD controller to authenticate
+    # to the spoke EKS cluster via STS AssumeRole + EKS GetToken.
+    # Trust policy:
+    #   - pods.eks.amazonaws.com  — enables EKS Pod Identity (spoke-side)
+    #   - *-argocd-role in CSOC   — enables STS AssumeRole from CSOC ArgoCD
+    # The matching EKS AccessEntry (below) grants this role cluster admin.
     - id: argoCDSpokeRole
       readyWhen:
         - ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -1108,11 +1121,23 @@ spec:
           assumeRolePolicyDocument: |
             {
               "Version": "2012-10-17",
-              "Statement": [{
-                "Effect": "Allow",
-                "Principal": {"Service": "pods.eks.amazonaws.com"},
-                "Action": ["sts:AssumeRole", "sts:TagSession"]
-              }]
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Service": "pods.eks.amazonaws.com"},
+                  "Action": ["sts:AssumeRole", "sts:TagSession"]
+                },
+                {
+                  "Effect": "Allow",
+                  "Principal": {"AWS": "arn:aws:iam::${argocdNamespace.metadata.annotations['csoc-account-id']}:root"},
+                  "Action": "sts:AssumeRole",
+                  "Condition": {
+                    "ArnLike": {
+                      "aws:PrincipalArn": "arn:aws:iam::${argocdNamespace.metadata.annotations['csoc-account-id']}:role/*-argocd-role"
+                    }
+                  }
+                }
+              ]
             }
           inlinePolicies:
             ArgoCDSpokePolicy: |

@@ -59,8 +59,6 @@ instances:
 
       # ── ArgoCD Cluster Registration ─────────────────────────────────
       argoCDNamespace: argocd
-      # argoCDRoleArn is derived by the RGD from the CARM namespace annotation:
-      #   arn:aws:iam::<spokeAccountId>:role/<namespace>-argocd-spoke-role
 
       # ── EKS Access ──────────────────────────────────────────────────
       # Uses the same derived role for EKS access entry + pod identity

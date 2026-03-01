@@ -33,13 +33,14 @@ CSOC Account
 | Role | Trust | Purpose |
 |------|-------|---------|
 | `{csoc_alias}-csoc-role` | EKS OIDC Provider (IRSA) | ACK controllers assume this via pod identity. No long-lived keys. |
-| `{csoc_alias}-argocd-role` | EKS OIDC Provider (IRSA) | ArgoCD access to AWS resources (e.g., Secrets Manager for git creds) |
+| `{csoc_alias}-argocd-role` | EKS OIDC Provider (IRSA) | ArgoCD access to AWS resources + STS AssumeRole to spoke ArgoCD roles |
 
 ### Spoke Roles
 
 | Role | Trust | Purpose |
 |------|-------|---------|
-| `<spoke-alias>-spoke-role` | CSOC account root + ArnLike | ACK cross-account resource management |
+| `<spoke-alias>-spoke-role` | CSOC account root + ArnLike `*-csoc-role` | ACK cross-account resource management |
+| `<namespace>-argocd-spoke-role` | `pods.eks.amazonaws.com` + CSOC root with ArnLike `*-argocd-role` | ArgoCD controller authentication to spoke EKS; created by RGD |
 
 No IAM users or long-lived access keys are used for cross-account operations. All credentials are short-lived session tokens obtained via `sts:AssumeRole`.
 
@@ -108,6 +109,28 @@ arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-csoc-role
    → Receives spoke session credentials (1h TTL)
 
 5. ACK uses spoke credentials to create/update/delete AWS resources
+```
+
+### ArgoCD Spoke Authentication Chain
+
+```
+1. ArgoCD application-controller pod starts with ServiceAccount annotation:
+   eks.amazonaws.com/role-arn: arn:aws:iam::<CSOC>:role/{csoc_alias}-argocd-role
+
+2. EKS IRSA webhook injects env vars + projected volume (OIDC JWT token)
+
+3. Controller encounters a cluster secret with awsAuthConfig:
+   { "clusterName": "<spoke-name>", "roleARN": "<spoke-argocd-role-arn>" }
+
+4. argocd-k8s-auth calls sts:AssumeRole on the spoke ArgoCD role:
+   → arn:aws:iam::<SPOKE>:role/<namespace>-argocd-spoke-role
+   → Trust policy allows *-argocd-role from CSOC account
+
+5. Using the assumed role credentials, argocd-k8s-auth generates an EKS token:
+   → Presigned STS GetCallerIdentity URL wrapped in a bearer token
+
+6. EKS API authenticates the token → AccessEntry grants cluster-admin
+   → ArgoCD syncs Applications to the spoke cluster
 ```
 
 ### Human Operator Credential Chain
