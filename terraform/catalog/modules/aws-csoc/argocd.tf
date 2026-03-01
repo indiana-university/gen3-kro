@@ -16,7 +16,10 @@ resource "aws_iam_role" "argocd_self_managed" {
       Action = "sts:AssumeRoleWithWebIdentity"
       Condition = {
         StringEquals = {
-          "${local.oidc_provider_id}:sub" = "system:serviceaccount:${var.argocd_namespace}:argocd-server"
+          "${local.oidc_provider_id}:sub" = [
+            "system:serviceaccount:${var.argocd_namespace}:argocd-server",
+            "system:serviceaccount:${var.argocd_namespace}:argocd-application-controller"
+          ]
           "${local.oidc_provider_id}:aud" = "sts.amazonaws.com"
         }
       }
@@ -50,6 +53,18 @@ resource "kubernetes_service_account_v1" "argocd" {
   }
 }
 
+resource "kubernetes_service_account_v1" "argocd_controller" {
+  count = local.argocd_self_managed && var.enable_argocd_self_managed && length(aws_iam_role.argocd_self_managed) > 0 ? 1 : 0
+
+  metadata {
+    name      = "argocd-application-controller"
+    namespace = kubernetes_namespace_v1.argocd[0].metadata[0].name
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.argocd_self_managed[0].arn
+    }
+  }
+}
+
 resource "helm_release" "argocd" {
   count = local.argocd_self_managed && var.enable_argocd_self_managed ? 1 : 0
 
@@ -68,6 +83,14 @@ resource "helm_release" "argocd" {
       name  = "server.serviceAccount.name"
       value = "argocd-server"
     },
+    {
+      name  = "controller.serviceAccount.create"
+      value = "false"
+    },
+    {
+      name  = "controller.serviceAccount.name"
+      value = "argocd-application-controller"
+    },
   ]
 
   values = length(var.argocd_values) > 0 ? [
@@ -76,6 +99,7 @@ resource "helm_release" "argocd" {
 
   depends_on = [
     kubernetes_service_account_v1.argocd,
+    kubernetes_service_account_v1.argocd_controller,
     aws_iam_role.argocd_self_managed
   ]
 }

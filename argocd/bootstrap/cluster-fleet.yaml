@@ -155,8 +155,9 @@ spec:
       destination:
         namespace: argocd
         # Target the CSOC cluster — ArgoCD Applications are CSOC-side objects.
-        # The rendered Applications themselves target the spoke via destination.name.
-        name: '{{.name}}'
+        # The rendered Applications themselves target the spoke via destination.name
+        # using .Values.clusterName (set to the spoke cluster name by the parameters below).
+        server: 'https://kubernetes.default.svc'
       syncPolicy:
         automated:
           selfHeal: false
