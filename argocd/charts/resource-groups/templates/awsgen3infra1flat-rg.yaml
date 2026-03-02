@@ -1308,9 +1308,11 @@ spec:
     # infra output annotations (gen3.io/*) to inject dynamic values (Aurora
     # endpoint, VPC ID, etc.) into Helm parameters — no plugins required.
     #
-    # NAMING: The secret name and data.name use the spoke ALIAS (namespace)
-    # only — NOT namespace-name — to avoid redundancy (e.g. spoke1, not
-    # spoke1-spoke1-dev). The EKS cluster name is preserved in annotations.
+    # NAMING: The secret metadata.name uses <namespace>-cluster (e.g.
+    # spoke1-cluster) while data.name uses the INSTANCE name (e.g. spoke1-dev)
+    # to avoid collision with the Terraform-managed <namespace>-fleet secret
+    # whose data.name is the spoke alias (e.g. spoke1).  The spoke alias is
+    # preserved in the gen3.io/spoke-alias annotation for ApplicationSet naming.
     - id: argoCDClusterSecret
       readyWhen:
         - ${argoCDClusterSecret.metadata.?name.orValue('null') != 'null'}
@@ -1349,7 +1351,7 @@ spec:
             gen3.io/hostname: ${schema.spec.hostname}
         type: Opaque
         stringData:
-          name: ${schema.spec.namespace}
+          name: ${schema.spec.name}
           server: ${eksCluster.status.?endpoint}
           config: |
             {
