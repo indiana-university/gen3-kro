@@ -22,9 +22,10 @@ global:
   aws:
     enabled: true
     region: us-east-1
-    # ExternalSecrets service account for pulling secrets from AWS SM
+    # ExternalSecrets SA is managed by the cluster-resources chart (not gen3-helm).
+    # Disable gen3-helm's SA creation to avoid nil IRSA annotation errors.
     secretStoreServiceAccount:
-      enabled: true
+      enabled: false
       name: external-secrets-sa
   # ── ExternalSecrets integration ───────────────────────────
   # Deploy ExternalSecret CRDs that pull DB passwords from AWS SM
