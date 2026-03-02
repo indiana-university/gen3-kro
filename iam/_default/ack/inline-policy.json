@@ -66,6 +66,8 @@
         "elasticache:DescribeCacheSubnetGroups",
         "elasticache:DescribeReplicationGroups",
         "elasticache:ListTagsForResource",
+        "secretsmanager:ListSecrets",
+        "secretsmanager:DescribeSecret",
         "es:DescribeDomain",
         "es:DescribeDomainConfig",
         "es:ListDomainNames",
@@ -202,7 +204,7 @@
       ]
     },
     {
-      "Sid": "ManageSecretsManagerForRDSMasterPassword",
+      "Sid": "ManageSecretsManagerForInfraGraph",
       "Effect": "Allow",
       "Action": [
         "secretsmanager:CreateSecret",
@@ -216,7 +218,11 @@
         "secretsmanager:ListSecretVersionIds",
         "secretsmanager:RestoreSecret"
       ],
-      "Resource": "arn:aws:secretsmanager:*:*:secret:rds!*"
+      "Resource": [
+        "arn:aws:secretsmanager:*:*:secret:rds!*",
+        "arn:aws:secretsmanager:*:*:secret:gen3-*",
+        "arn:aws:secretsmanager:*:*:secret:spoke*-*"
+      ]
     },
     {
       "Sid": "ManageServiceLinkedRolesForManagedServices",
