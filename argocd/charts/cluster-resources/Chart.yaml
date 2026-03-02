@@ -1,0 +1,37 @@
+# Cluster-level resources for Gen3 spoke clusters.
+# Umbrella chart that installs cluster-wide prerequisites before Gen3 services.
+# Matches gen3-gitops's "cluster-level-resources" pattern (one per EKS cluster)
+# but deploys charts directly instead of rendering app-of-apps Application CRDs
+# (the spoke has no ArgoCD — CRDs don't exist there).
+#
+# Add new cluster-level dependencies below (cert-manager, karpenter nodes, etc.)
+# and enable them per-spoke in cluster-fleet/<spoke>/cluster-resources.yaml.
+apiVersion: v2
+name: cluster-resources
+description: Cluster-level resources deployed directly to spoke clusters
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+maintainers:
+  - name: RDServices
+    email: rdservices@iu.edu
+  - name: Basanami (Jimi) Adeyemi
+    email: boadeyem@iu.edu
+
+keywords:
+  - gen3
+  - cluster-resources
+  - external-secrets
+  - argocd
+
+dependencies:
+  - name: external-secrets
+    version: "0.10.3"
+    repository: "https://charts.external-secrets.io"
+    condition: external-secrets.enabled
+
+  - name: cert-manager
+    version: "1.16.3"
+    repository: "https://charts.jetstack.io"
+    condition: cert-manager.enabled

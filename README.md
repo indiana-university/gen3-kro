@@ -1,174 +1,181 @@
-# Gen3-KRO
+# EKS Cluster Management Platform
 
- This is a platform for deploying cloud resources in a provider account via Terragrunt-managed Terraform modules, then bootstraps created Kubernetes clusters with cloud-specific controllers (ASO, ACKs, Config Connector) and KRO through a GitOps-driven continuous delivery (ArgoCD-managed). The csoc then uses boilerplate KRO resource graphs to deploy multiple customizable instances of the application infrastructure in the destination cloud account using their respective controllers.
+Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cluster that provisions spoke infrastructure via [KRO](https://github.com/awslabs/kro) + [ACK](https://aws-controllers-k8s.github.io/community/) controllers, orchestrated by [ArgoCD](https://argo-cd.readthedocs.io/) ApplicationSets.
 
- The application we deploy in this repository is the Gen3 data commons platform.
+## Architecture Overview
 
-## Overview
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│                           CSOC Account                              │
+│  ┌───────────────────────────────────────────────────────────────┐  │
+│  │                    EKS Cluster ({csoc_alias}-csoc-cluster)       │  │
+│  │                                                               │  │
+│  │  ┌──────────┐  ┌──────────────┐  ┌────────────────────────┐  │  │
+│  │  │  ArgoCD  │  │ KRO          │  │ ACK Controllers (17x)  │  │  │
+│  │  │  Server  │→ │ Controller   │→ │ ec2, eks, iam, rds,    │  │  │
+│  │  │          │  │              │  │ s3, route53, ...        │  │  │
+│  │  └──────────┘  └──────────────┘  └───────────┬────────────┘  │  │
+│  │       │                                       │               │  │
+│  │       │ ApplicationSets                       │ Cross-account │  │
+│  │       ▼                                       │ STS assume    │  │
+│  │  ┌──────────────────────┐                     │               │  │
+│  │  │ ResourceGraph        │                     │               │  │
+│  │  │ Definitions (RGDs)   │                     │               │  │
+│  │  └──────────────────────┘                     │               │  │
+│  └───────────────────────────────────────────────┼───────────────┘  │
+│                                                   │                  │
+└───────────────────────────────────────────────────┼──────────────────┘
+                                                    │
+                    ┌───────────────────────────────┼──────────────┐
+                    │                               ▼              │
+                    │  ┌─────────────────────────────────────────┐ │
+                    │  │   Spoke Account(s)                      │ │
+                    │  │   ┌─────────┐  ┌──────┐  ┌──────────┐  │ │
+                    │  │   │ VPC     │  │ EKS  │  │ RDS,     │  │ │
+                    │  │   │ Subnets │  │      │  │ S3, etc. │  │ │
+                    │  │   └─────────┘  └──────┘  └──────────┘  │ │
+                    │  └─────────────────────────────────────────┘ │
+                    └──────────────────────────────────────────────┘
+```
 
-`gen3-kro` provides a hub-and-spoke architecture for deploying and managing Gen3 data commons infrastructure. The platform provisions cloud resources (VPCs, Kubernetes clusters, IAM roles) via Terragrunt-managed Terraform modules, then bootstraps GitOps-driven continuous delivery using ArgoCD, cloud-specific controllers, and Kubernetes Resource Orchestrator (KRO) ResourceGraphDefinitions.
+## Key Features
 
-**Testing Status:**
-- ✅ **AWS cross-account deployment**: Fully tested and production-ready
-- 🚧 **Azure deployment**: Implementation complete, testing pending
-- 🚧 **Google Cloud deployment**: Implementation complete, testing pending
-- 🚧 **Cross-provider scenarios**: Pending validation
-
-**Important Notes:**
-- **KRO Controller**: Currently in pre-1.0 minor releases (0.x). Major 1.0 release planned before 2026.
-- **Terragrunt**: Pre-1.0 minor releases (0.x). Production-stable despite version numbering.
-
-**Key features:**
-- **Multi-cloud support**: AWS (EKS), Azure (AKS), Google Cloud (GKE)
-- **Hub-spoke topology**:  Central control plane (csoc) managing multiple spoke environments
-- **GitOps workflow**:     ArgoCD ApplicationSets and KRO graphs for declarative deployments
-- **IAM policy layering**: Environment-specific and default policies for fine-grained access control
-- **Terragrunt-based**:    Promotes DRY principles with hierarchical configuration (catalog → combinations → units → live stacks)
+- **Multi-account management** — Single CSOC cluster provisions infrastructure across multiple AWS accounts
+- **GitOps-driven** — ArgoCD ApplicationSets reconcile all cluster addons and infrastructure
+- **KRO + ACK** — Kubernetes Resource Orchestrator composes ACK resources into reusable infrastructure templates
+- **Two-phase deployment** — Host-side Terragrunt for spoke IAM, container-side Terraform for CSOC EKS + ArgoCD
+- **Sync wave ordering** — Deterministic deployment: KRO → ACK → RGDs → Instances → Workloads
 
 ## Repository Structure
 
 ```
-├── terraform/               # Infrastructure as Code
-│   ├── catalog/
-│   │   ├── modules/         # Reusable Terraform modules (VPC, EKS, AKS, GKE, IAM, ArgoCD)
-│   │   └── combinations/    # Provider-specific compositions (csoc, spoke)
-│   └── units/               # Terragrunt unit definitions (csoc, spokes)
-├── argocd/                  # GitOps manifests
-│   ├── bootstrap/           # App-of-apps ApplicationSets (csoc-addons, spoke-addons, graphs)
-│   ├── addons/              # Addon catalogs and values (KRO, ACK controllers)
-│   ├── graphs/              # KRO ResourceGraphDefinitions by cloud provider
-│   └── spokes/              # Spoke-specific overlays and application definitions
-├── iam/                     # IAM policy definitions
-│   ├── aws/                 # AWS pod identity policies
-│   ├── azure/               # Azure managed identity policies
-│   └── gcp/                 # GCP workload identity policies
-├── live/                    # Environment configurations
-│   └── aws/us-east-1/gen3-kro-dev/   # Example environment
-│       ├── terragrunt.stack.hcl      # Stack definition in Terragrunt HCL format
-│       ├── credentials/              # Cloud provider credentials (gitignored)
-│       └── secrets.yaml              # Sensitive configuration (gitignored)
-├── scripts/                 # Automation utilities
-│   ├── connect-cluster.sh   # Configure kubectl/ArgoCD CLI access
-│   ├── docker-build-push.sh # Build and publish container images
-│   └── version-bump.sh      # Semantic versioning helper
-├── outputs/                 # Generated outputs and logs
-│   └── logs/                # Terragrunt and script execution logs
-├── .devcontainer/           # VS Code dev container definitions
-├── docs/                    # User guides
-└── init.sh                  # Bootstrap wrapper for Terragrunt operations
+├── argocd/                      # GitOps configuration
+│   ├── bootstrap/               #   Entry-point ApplicationSets (4 files)
+│   ├── addons/                  #   Addon values (CSOC + environments)
+│   ├── charts/                  #   Helm charts consumed by ApplicationSets
+│   └── cluster-fleet/           #   Per-cluster overrides (csoc, spoke1, spoke2)
+├── config/                      # User config files (gitignored except examples)
+├── terraform/
+│   ├── env/aws/csoc-cluster/    # Root module (single entry point)
+│   └── catalog/
+│       ├── modules/             #   csoc-cluster, aws-csoc, argocd-bootstrap, aws-spoke
+│       └── units/               #   Terragrunt unit wrappers (host-only)
+├── terragrunt/live/aws/         # Spoke IAM Terragrunt stack (host-only, iam-setup/)
+├── iam/                         # Per-spoke IAM inline policies
+├── scripts/                     # Deployment scripts
+├── docs/                        # Documentation and diagrams
+└── outputs/                     # Generated artifacts (gitignored)
 ```
+
+See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation with diagrams.
+
+## Prerequisites
+
+| Tool | Version | Purpose |
+|------|---------|---------|
+| Terraform | 1.13.5 | Infrastructure provisioning (pre-installed in container) |
+| Terragrunt | 0.99.1 | Spoke IAM role management (host-side only) |
+| AWS CLI v2 | 2.32.0 | Cloud authentication and management |
+| kubectl | 1.35.1 | Kubernetes cluster interaction |
+| Helm | 3.16.1 | Chart templating and validation |
+| jq | system | JSON processing |
+| Docker | latest | Dev container runtime (host-side) |
 
 ## Quick Start
 
-### 1. Launch Development Environment
+> **Windows users:** The repository must live on a native Linux filesystem (WSL ext4, e.g. `~/src/eks-cluster-mgmt`), **not** `/mnt/c/...`. See [docs/deployment-guide.md](docs/deployment-guide.md).
 
-Open this repository in a VS Code dev container (requires Docker):
+### 1. Configure Variables
 
 ```bash
-# VS Code will detect .devcontainer/devcontainer.json
-# Select "Reopen in Container" when prompted
+# Copy the single config file (all variables + backend config)
+cp config/shared.auto.tfvars.json.example config/shared.auto.tfvars.json
 
-# Or use Docker CLI directly with the root Dockerfile:
-docker build -t gen3-kro-dev .
-docker run -it --rm -v $(pwd):/workspace -w /workspace gen3-kro-dev bash
+# Fill in your AWS profiles, cluster name, VPC CIDRs, spoke account IDs, etc.
 ```
 
-The Docker container includes all required tools: Terragrunt, Terraform, kubectl, ArgoCD CLI, AWS CLI, Azure CLI, gcloud.
-
-### 2. Configure Environment
-
-Navigate to your environment directory (or copy the example):
+### 2. Authenticate (Host)
 
 ```bash
-cd live/aws/us-east-1/<csoc_alias>
-cp secrets-example.yaml secrets.yaml
-# Edit secrets.yaml with your cloud credentials and configuration
+# Option A: Assume CSOC role with MFA (recommended)
+bash scripts/mfa-session.sh <MFA_CODE>
+
+# Option B: Copy static credentials from source profile (no MFA)
+bash scripts/mfa-session.sh --no-mfa
 ```
 
-See [`live/README.md`](live/README.md) for secrets schema and [`docs/guides/setup.md`](docs/guides/setup.md) for detailed first-time setup.
+Credentials are written to `~/.aws/eks-devcontainer/credentials [csoc]`.
 
-### 3. Deploy Infrastructure
-
-Run the bootstrap script from the repository root:
+### 3. Deploy Spoke IAM Roles (Host)
 
 ```bash
-./init.sh plan   # Preview changes (runs terragrunt plan --all)
-./init.sh apply  # Deploy csoc hub and spokes (runs terragrunt apply --all)
+cd terragrunt/live/aws/iam-setup
+terragrunt stack run init
+terragrunt stack run apply
 ```
 
-This will:
-1. Provision cloud resources (VPC, cluster, IAM roles) using the Terraform catalog
-2. Install ArgoCD on the hub cluster
-3. Deploy bootstrap ApplicationSets that sync addons and spoke configurations from the GitOps repository
-4. Automatically configure kubectl and ArgoCD CLI access
-
-### 4. Verify Cluster Access
-
-After deployment completes, verify connectivity:
+### 4. Deploy CSOC Cluster (Container)
 
 ```bash
-kubectl get nodes
-argocd app list
+# Inside dev container or WSL with AWS credentials
+bash scripts/install.sh apply
+```
+
+This single command:
+1. Runs `terraform init` with backend config extracted from `config/shared.auto.tfvars.json`
+2. Runs `terraform apply` — creates EKS cluster, VPC, ArgoCD, ACK roles, bootstrap ApplicationSet
+3. Configures kubeconfig and retrieves ArgoCD admin password
+
+### 5. Verify
+
+```bash
+kubectl get pods -n argocd          # All pods Running
+kubectl get applicationsets -n argocd  # Bootstrap ApplicationSet exists
+kubectl get applications -n argocd     # Bootstrap Application created
+```
+
+## Deployment Phases
+
+| Phase | Context | Tool | What |
+|-------|---------|------|------|
+| **Phase 1** | Host machine | Terragrunt | Spoke ACK workload IAM roles (cross-account) |
+| **Phase 2** | Container/WSL | Terraform | CSOC EKS cluster + VPC + ArgoCD + bootstrap |
+
+See [docs/deployment-guide.md](docs/deployment-guide.md) for detailed deployment procedures.
+
+## Teardown
+
+```bash
+# Destroy CSOC cluster and all Terraform-managed resources
+bash scripts/destroy.sh
+
+# Destroy spoke IAM roles (from host)
+cd terragrunt/live/aws/iam-setup
+terragrunt stack run destroy
 ```
 
 ## Documentation
 
-- **[Terraform Catalog](terraform/README.md)**: Module layering, supported providers, testing workflows
-- **[ArgoCD GitOps](argocd/README.md)**: ApplicationSet hierarchy, sync strategy, secret management
-- **[IAM Policies](iam/README.md)**: Policy organization, environment overrides, controller mappings
-- **[Live Environments](live/README.md)**: Stack configuration, secrets handling, deployment checklists
-- **[Development Container](.devcontainer/README.md)**: Devcontainer setup, VS Code extensions, environment variables
-- **[Automation Scripts](scripts/README.md)**: Script reference, inputs, destructive operations
+| Document | Description |
+|----------|-------------|
+| [Architecture](docs/architecture.md) | Detailed architecture with diagrams |
+| [Deployment Guide](docs/deployment-guide.md) | Step-by-step deployment procedures |
+| [Security Model](docs/security.md) | IAM, cross-account trust, credentials |
+| [ArgoCD Configuration](argocd/README.md) | GitOps structure and conventions |
+| [Platform Status](docs/platform-status.md) | Pending items, risks, limitations |
+| [Contributing](CONTRIBUTING.md) | Branching, code quality, PR process |
 
-### User Guides
+## Project Conventions
 
-- **[Setup Guide](docs/guides/setup.md)**: Step-by-step onboarding for new contributors
-- **[Customization Guide](docs/guides/customization.md)**: Overriding modules, adjusting IAM policies, extending KRO graphs
-- **[Operations Guide](docs/guides/operations.md)**: Day-2 operations (planning, applying, syncing, troubleshooting)
-- **[Contribution Guide](CONTRIBUTING.md)**: Branching conventions, linting, PR checklist, documentation standards
-
-## Day-2 Operations
-
-**Plan changes:**
-```bash
-cd live/<provider>/<region>/<csoc_alias>
-terragrunt plan --all
-```
-
-**Apply updates:**
-```bash
-terragrunt apply --all
-```
-
-**Sync ArgoCD applications:**
-```bash
-argocd app sync -l argocd.argoproj.io/instance=csoc-addons
-```
-
-**Review logs:**
-```bash
-./outputs/logs/terragrunt-*.log
-./outputs/logs/connect-cluster-*.log
-```
-
-See [`docs/operations.md`](docs/guides/operations.md) for troubleshooting drift, rotating credentials, and managing spoke environments.
-
-## Contributing
-
-We welcome contributions! Please review:
-- [Contribution guidelines](CONTRIBUTING.md) for branching conventions and PR requirements
-- [Terraform module standards](terraform/catalog/modules/README.md) for authoring new modules
-
-Lint and format before committing:
-```bash
-terraform fmt -recursive terraform/
-terragrunt hcl format
-```
+- **CSOC** — replaces "hub" in all documentation and configuration
+- **WSL ext4** — repo must live on a native Linux filesystem, not `/mnt/c/...`
+- **Config** — `config/shared.auto.tfvars.json` (gitignored); single source of truth for all Terraform + Terragrunt config
+- **SSM secrets** — `config/ssm-repo-secrets/input.json` (gitignored); copy from `input.json.example`
+- **IAM policies** — file-driven: `iam/<spoke>/ack/inline-policy.json` with `iam/_default/` fallback
+- **Sync waves** — enforce deployment ordering (negative = first, higher = later)
+- **Management modes** — `self_managed` (Helm via ArgoCD) or `aws_managed` (EKS Capabilities)
+- **Single root module** — `terraform/env/aws/csoc-cluster/` calls composite `csoc-cluster` module
 
 ## License
 
-See [LICENSE](LICENSE) for details.
-See [Apache 2.0 License](third-party-licenses/apache-2.0) for licensing information.
-
----
-**Last updated:** 2025-10-28
+Internal use — Indiana University Research Data Services.

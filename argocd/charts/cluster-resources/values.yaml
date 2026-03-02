@@ -1,0 +1,22 @@
+# Default values for cluster-resources chart.
+# Per-spoke overrides are in cluster-fleet/<spoke>/cluster-resources.yaml.
+#
+# ONE instance per EKS cluster — shared across all namespaces/environments
+# on that cluster (matches gen3-gitops's cluster-level-resources pattern).
+#
+# NOTE: EKS automode (computeConfig.enabled=true) manages vpc-cni,
+# kube-proxy, ebs-csi-driver, CoreDNS, karpenter, and ALB controller.
+# Only add components here that are NOT managed by EKS automode.
+
+# ── External Secrets Operator ────────────────────────────────────────
+external-secrets:
+  enabled: false
+  # serviceAccount:
+  #   name: "external-secrets-sa"
+
+# ── cert-manager (TLS certificate management) ────────────────────────
+cert-manager:
+  enabled: false
+  crds:
+    enabled: true
+    keep: true

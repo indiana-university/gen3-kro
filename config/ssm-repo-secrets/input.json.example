@@ -1,0 +1,15 @@
+{
+  "repos": [
+    {
+      "name": "eks-cluster-mgmt",
+      "ssm_secret_name": "/gen3-kro-csoc/eks-cluster-mgmt/git-credentials",
+      "github_url": "github.com",
+      "org_name": "your-org",
+      "repo_name": "eks-cluster-mgmt",
+      "github_app_id": "12345",
+      "github_client_id": "Iv1.xxxxxxxxxxxxxxxx",
+      "github_app_private_key_file": "config/ssm-repo-secrets/eks-cluster-mgmt.pem",
+      "github_app_client_secret": "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    }
+  ]
+}

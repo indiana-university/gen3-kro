@@ -1,0 +1,336 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Sid": "IdentityAndDiscovery",
+        "Effect": "Allow",
+        "Action": [
+          "sts:GetCallerIdentity",
+          "sts:GetSessionToken",
+          "tag:GetResources",
+          "ec2:Describe*",
+          "ec2:GetEbsDefaultKmsKeyId",
+          "ec2:GetEbsEncryptionByDefault",
+          "ecr:GetAuthorizationToken",
+          "ecr:BatchCheckLayerAvailability",
+          "ecr:GetDownloadUrlForLayer",
+          "ecr:BatchGetImage",
+          "s3:GetBucketLocation",
+          "s3:GetBucketVersioning",
+          "s3:GetEncryptionConfiguration",
+          "s3:GetBucketPublicAccessBlock",
+          "s3:GetBucketTagging",
+          "s3:ListBucket",
+          "kms:DescribeKey",
+          "kms:GetKeyPolicy",
+          "kms:GetKeyRotationStatus",
+          "kms:ListAliases",
+          "kms:ListResourceTags",
+          "iam:GetRole",
+          "iam:GetUser",
+          "iam:GetUserPolicy",
+          "iam:ListUserPolicies",
+          "iam:ListAttachedUserPolicies",
+          "iam:GetPolicy",
+          "iam:GetPolicyVersion",
+          "iam:ListPolicyVersions",
+          "iam:ListAttachedRolePolicies",
+          "iam:ListRolePolicies",
+          "iam:GetRolePolicy",
+          "iam:ListRoleTags",
+          "iam:ListInstanceProfilesForRole",
+          "iam:GetInstanceProfile",
+          "iam:GetOpenIDConnectProvider",
+          "iam:ListOpenIDConnectProviders",
+          "iam:ListOpenIDConnectProviderTags",
+          "logs:DescribeLogGroups",
+          "logs:ListTagsForResource",
+          "logs:ListTagsLogGroup"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "VPCNetworking",
+        "Effect": "Allow",
+        "Action": [
+          "ec2:CreateVpc",
+          "ec2:DeleteVpc",
+          "ec2:ModifyVpcAttribute",
+          "ec2:CreateSubnet",
+          "ec2:DeleteSubnet",
+          "ec2:ModifySubnetAttribute",
+          "ec2:CreateInternetGateway",
+          "ec2:AttachInternetGateway",
+          "ec2:DetachInternetGateway",
+          "ec2:DeleteInternetGateway",
+          "ec2:CreateRouteTable",
+          "ec2:DeleteRouteTable",
+          "ec2:CreateRoute",
+          "ec2:ReplaceRoute",
+          "ec2:DeleteRoute",
+          "ec2:AssociateRouteTable",
+          "ec2:DisassociateRouteTable",
+          "ec2:AllocateAddress",
+          "ec2:DisassociateAddress",
+          "ec2:ReleaseAddress",
+          "ec2:CreateNatGateway",
+          "ec2:DeleteNatGateway",
+          "ec2:CreateSecurityGroup",
+          "ec2:DeleteSecurityGroup",
+          "ec2:AuthorizeSecurityGroupIngress",
+          "ec2:RevokeSecurityGroupIngress",
+          "ec2:AuthorizeSecurityGroupEgress",
+          "ec2:RevokeSecurityGroupEgress",
+          "ec2:CreateVpcPeeringConnection",
+          "ec2:AcceptVpcPeeringConnection",
+          "ec2:DeleteVpcPeeringConnection",
+          "ec2:CreateTags",
+          "ec2:DeleteTags",
+          "ec2:CreateNetworkAclEntry",
+          "ec2:ReplaceNetworkAclEntry",
+          "ec2:DeleteNetworkAclEntry"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "EKSManagement",
+        "Effect": "Allow",
+        "Action": [
+          "eks:CreateCluster",
+          "eks:DeleteCluster",
+          "eks:UpdateClusterConfig",
+          "eks:UpdateClusterVersion",
+          "eks:DescribeCluster",
+          "eks:ListClusters",
+          "eks:TagResource",
+          "eks:UntagResource",
+          "eks:CreateAccessEntry",
+          "eks:UpdateAccessEntry",
+          "eks:DeleteAccessEntry",
+          "eks:DescribeAccessEntry",
+          "eks:ListAccessEntries",
+          "eks:AssociateAccessPolicy",
+          "eks:DisassociateAccessPolicy",
+          "eks:ListAssociatedAccessPolicies",
+          "eks:CreatePodIdentityAssociation",
+          "eks:DeletePodIdentityAssociation",
+          "eks:DescribePodIdentityAssociation",
+          "eks:ListPodIdentityAssociations",
+          "eks:CreateAddon",
+          "eks:DeleteAddon",
+          "eks:DescribeAddon",
+          "eks:DescribeAddonVersions",
+          "eks:ListAddons",
+          "eks:UpdateAddon",
+          "eks:DescribeUpdate",
+          "eks:ListUpdates"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "EKSCapabilities",
+        "Effect": "Allow",
+        "Action": [
+          "eks:CreateCapability",
+          "eks:DeleteCapability",
+          "eks:DescribeCapability",
+          "eks:ListCapabilities"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "IAMRoleManagement",
+        "Effect": "Allow",
+        "Action": [
+          "iam:CreateRole",
+          "iam:DeleteRole",
+          "iam:UpdateRole",
+          "iam:UpdateAssumeRolePolicy",
+          "iam:TagRole",
+          "iam:UntagRole",
+          "iam:AttachRolePolicy",
+          "iam:DetachRolePolicy",
+          "iam:PutRolePolicy",
+          "iam:DeleteRolePolicy",
+          "iam:PassRole",
+          "iam:CreatePolicy",
+          "iam:DeletePolicy",
+          "iam:CreatePolicyVersion",
+          "iam:DeletePolicyVersion",
+          "iam:SetDefaultPolicyVersion",
+          "iam:TagPolicy",
+          "iam:UntagPolicy",
+          "iam:CreateOpenIDConnectProvider",
+          "iam:DeleteOpenIDConnectProvider",
+          "iam:UpdateOpenIDConnectProviderThumbprint",
+          "iam:AddClientIDToOpenIDConnectProvider",
+          "iam:TagOpenIDConnectProvider",
+          "iam:UntagOpenIDConnectProvider"
+        ],
+        "Resource": [
+          "arn:aws:iam::${account_id}:role/*",
+          "arn:aws:iam::${account_id}:policy/*",
+          "arn:aws:iam::${account_id}:oidc-provider/*"
+        ]
+      },
+      {
+        "Sid": "IAMServiceLinkedRoles",
+        "Effect": "Allow",
+        "Action": "iam:CreateServiceLinkedRole",
+        "Resource": "*",
+        "Condition": {
+          "StringLike": {
+            "iam:AWSServiceName": [
+              "eks.amazonaws.com",
+              "eks-nodegroup.amazonaws.com",
+              "rds.amazonaws.com",
+              "elasticache.amazonaws.com",
+              "opensearchservice.amazonaws.com",
+              "es.amazonaws.com"
+            ]
+          }
+        }
+      },
+
+      {
+        "Sid": "S3Management",
+        "Effect": "Allow",
+        "Action": [
+          "s3:CreateBucket",
+          "s3:DeleteBucket",
+          "s3:PutBucketVersioning",
+          "s3:PutEncryptionConfiguration",
+          "s3:PutBucketPublicAccessBlock",
+          "s3:PutBucketTagging",
+          "s3:DeleteBucketTagging",
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject"
+        ],
+        "Resource": [
+          "arn:aws:s3:::*"
+        ]
+      },
+
+
+      {
+        "Sid": "KMSManagement",
+        "Effect": "Allow",
+        "Action": [
+          "kms:CreateKey",
+          "kms:PutKeyPolicy",
+          "kms:EnableKeyRotation",
+          "kms:DisableKeyRotation",
+          "kms:ScheduleKeyDeletion",
+          "kms:CancelKeyDeletion",
+          "kms:TagResource",
+          "kms:UntagResource",
+          "kms:CreateAlias",
+          "kms:DeleteAlias",
+          "kms:CreateGrant"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "SecretsManagerRead",
+        "Effect": "Allow",
+        "Action": [
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:ListSecrets"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "CloudWatchLogs",
+        "Effect": "Allow",
+        "Action": [
+          "logs:CreateLogGroup",
+          "logs:DeleteLogGroup",
+          "logs:PutRetentionPolicy",
+          "logs:TagLogGroup",
+          "logs:UntagLogGroup",
+          "logs:TagResource",
+          "logs:UntagResource"
+        ],
+        "Resource": "arn:aws:logs:${region}:${account_id}:log-group:/aws/eks/*"
+      },
+
+      {
+        "Sid": "STSAssumeRoleCrossAccount",
+        "Effect": "Allow",
+        "Action": [
+          "sts:AssumeRole",
+          "sts:TagSession"
+        ],
+        "Resource": "arn:aws:iam::*:role/*-spoke-role"
+      },
+
+      {
+        "Sid": "RDSManagement",
+        "Effect": "Allow",
+        "Action": [
+          "rds:CreateDBSubnetGroup",
+          "rds:ModifyDBSubnetGroup",
+          "rds:DeleteDBSubnetGroup",
+          "rds:DescribeDBSubnetGroups",
+          "rds:CreateDBCluster",
+          "rds:ModifyDBCluster",
+          "rds:DeleteDBCluster",
+          "rds:DescribeDBClusters",
+          "rds:CreateDBInstance",
+          "rds:ModifyDBInstance",
+          "rds:DeleteDBInstance",
+          "rds:DescribeDBInstances",
+          "rds:DescribeDBEngineVersions",
+          "rds:AddTagsToResource",
+          "rds:RemoveTagsFromResource",
+          "rds:ListTagsForResource"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "ElastiCacheManagement",
+        "Effect": "Allow",
+        "Action": [
+          "elasticache:CreateCacheSubnetGroup",
+          "elasticache:ModifyCacheSubnetGroup",
+          "elasticache:DeleteCacheSubnetGroup",
+          "elasticache:DescribeCacheSubnetGroups",
+          "elasticache:CreateReplicationGroup",
+          "elasticache:ModifyReplicationGroup",
+          "elasticache:DeleteReplicationGroup",
+          "elasticache:DescribeReplicationGroups",
+          "elasticache:AddTagsToResource",
+          "elasticache:RemoveTagsFromResource",
+          "elasticache:ListTagsForResource"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "OpenSearchManagement",
+        "Effect": "Allow",
+        "Action": [
+          "es:CreateDomain",
+          "es:UpdateDomainConfig",
+          "es:DeleteDomain",
+          "es:DescribeDomain",
+          "es:DescribeDomainConfig",
+          "es:ListDomainNames",
+          "es:AddTags",
+          "es:RemoveTags",
+          "es:ListTags"
+        ],
+        "Resource": "*"
+      }
+    ]
+}
+
