@@ -1,0 +1,14 @@
+# Currently contains only one RGD (AwsGen3Infra1Flat). The chart is structured
+# to support additional RGDs as new infrastructure patterns are needed.
+# See docs/platform-status.md L2 for details.
+apiVersion: v2
+name: resource-groups
+description: KRO ResourceGroupDefinitions for Gen3 infrastructure
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: RDServices
+    email: rdservices@iu.edu
+  - name: Basanami (Jimi) Adeyemi
+    email: boadeyem@iu.edu

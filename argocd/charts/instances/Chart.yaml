@@ -1,0 +1,11 @@
+apiVersion: v2
+name: instances
+description: KRO instance templates for provisioning workload infrastructure
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: RDServices
+    email: rdservices@iu.edu
+  - name: Basanami (Jimi) Adeyemi
+    email: boadeyem@iu.edu

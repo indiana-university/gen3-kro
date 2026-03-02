@@ -1,0 +1,14 @@
+apiVersion: v2
+name: multi-acct
+description: >
+  Creates per-spoke Kubernetes Namespaces with ACK CARM annotations so that
+  ACK controllers on the CSOC cluster route API calls to the correct spoke
+  AWS account / IAM role.  Also renders IAMRoleSelector CRs for the ACK
+  cross-account role binding (services.k8s.aws/v1alpha1).
+type: application
+version: 0.1.0
+maintainers:
+  - name: RDServices
+    email: rdservices@iu.edu
+  - name: Basanami (Jimi) Adeyemi
+    email: boadeyem@iu.edu

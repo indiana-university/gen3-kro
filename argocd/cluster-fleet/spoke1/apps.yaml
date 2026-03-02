@@ -1,0 +1,179 @@
+# Spoke1 Gen3 application values. ONE per namespace/environment.
+# Consumed by the fleet-gen3 ApplicationSet.
+#
+# Matches gen3-gitops's per-environment values pattern:
+#   <cluster>/<hostname>/values/values.yaml
+# Integrates patterns from gen3-terraform's values.tftpl and fence-config.tftpl.
+#
+# Infrastructure connection values (Aurora endpoint, VPC ID, etc.) are NOT
+# hardcoded here. They are injected automatically by the fleet-gen3
+# ApplicationSet from the argoCDClusterSecret annotations (gen3.io/*).
+#
+# DB passwords are NOT passed via annotations — they are managed by AWS
+# (manageMasterUserPassword: true) and stored in AWS Secrets Manager.
+# ExternalSecrets on the spoke cluster pull them into K8s Secrets.
+#
+# DATABASE-ONLY DEPLOYMENT: Sets up PostgreSQL databases on external Aurora
+# with only the core database-dependent Gen3 services enabled.
+
+global:
+  # ── External Database Mode (no local postgres) ────────────
+  dev: false
+  aws:
+    enabled: true
+    region: us-east-1
+    # ExternalSecrets SA is managed by the cluster-resources chart (not gen3-helm).
+    # Disable gen3-helm's SA creation to avoid nil IRSA annotation errors.
+    secretStoreServiceAccount:
+      enabled: false
+      name: external-secrets-sa
+  # ── ExternalSecrets integration ───────────────────────────
+  # Deploy ExternalSecret CRDs that pull DB passwords from AWS SM
+  externalSecrets:
+    deploy: true
+  # ── External Aurora PostgreSQL ─────────────────────────────
+  # host and username are injected by the fleet-gen3 ApplicationSet
+  # from infraOutputs (via helm.parameters — overrides this block).
+  # Password comes from ExternalSecrets on the spoke cluster.
+  postgres:
+    dbCreate: true
+    master:
+      port: "5432"
+    # ExternalSecret for Aurora master password (from AWS SM)
+    externalSecret: "spoke1-dev-aurora-master-password"
+  # ── Common settings ──────────────────────────────────────
+  environment: dev
+  hostname: spoke1-dev.example.com
+  dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
+
+# ── Local dev databases — DISABLED (using external Aurora) ──
+postgresql:
+  enabled: false
+elasticsearch:
+  enabled: false
+
+# ── Database-dependent services (create schemas on Aurora) ──
+# ExternalSecrets names follow gen3-gitops convention:
+#   {vpc_name}-{namespace}-{service}-creds
+indexd:
+  enabled: true
+  defaultPrefix: "dg.TEST/"
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-indexd-creds"
+    createK8sServiceCredsSecret: true
+fence:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-fence-creds"
+    fenceConfig: "spoke1-dev-fence-config"
+    fenceJwtKeys: "spoke1-dev-fence-jwt-keys"
+    fenceGoogleAppCredsSecret: ""
+    fenceGoogleStorageCredsSecret: ""
+    createK8sGoogleAppSecrets: true
+  # ── User.yaml (inline for initial testing) ────────────────
+  # Minimal authorization policy for bootstrapping. In production,
+  # use usersync.userYamlS3Path to pull from an S3-managed user.yaml.
+  USER_YAML: |
+    authz:
+      anonymous_policies:
+        - open_data_reader
+      all_users_policies:
+        - open_data_reader
+      resources:
+        - name: open
+          subresources:
+            - name: data
+        - name: programs
+          subresources:
+            - name: open
+              subresources:
+                - name: projects
+                  subresources:
+                    - name: test
+      policies:
+        - id: open_data_reader
+          description: 'Read access to open data'
+          resource_paths:
+            - /open
+            - /open/data
+          role_ids:
+            - reader
+      roles:
+        - id: reader
+          permissions:
+            - id: read
+              action:
+                service: '*'
+                method: read
+      groups: {}
+    clients: {}
+    users: {}
+  usersync:
+    usersync: false
+sheepdog:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-sheepdog-creds"
+peregrine:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-sheepdog-creds"
+arborist:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-arborist-creds"
+metadata:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-dev-default-metadata-creds"
+    createK8sMetadataSecret: true
+
+# ── ALL other services DISABLED (database-only setup) ───────
+ambassador:
+  enabled: false
+audit:
+  enabled: false
+portal:
+  enabled: false
+revproxy:
+  enabled: false
+etl:
+  enabled: false
+guppy:
+  enabled: false
+hatchery:
+  enabled: false
+manifestservice:
+  enabled: false
+ssjdispatcher:
+  enabled: false
+sower:
+  enabled: false
+wts:
+  enabled: false
+requestor:
+  enabled: false
+access-backend:
+  enabled: false
+argo-wrapper:
+  enabled: false
+aws-es-proxy:
+  enabled: false
+cohort-middleware:
+  enabled: false
+dashboard:
+  enabled: false
+datareplicate:
+  enabled: false
+frontend-framework:
+  enabled: false
+cedar:
+  enabled: false
+gen3-user-data-library:
+  enabled: false
+gen3-workflow:
+  enabled: false
+data-upload-cron:
+  enabled: false
+gen3-analysis:
+  enabled: false

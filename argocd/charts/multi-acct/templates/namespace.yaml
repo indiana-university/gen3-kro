@@ -1,0 +1,27 @@
+{{- /*
+  Creates one Kubernetes Namespace per spoke with ACK CARM annotations.
+
+  ACK uses namespace annotations for Cross-Account Resource Management:
+    services.k8s.aws/owner-account-id          - target AWS account ID
+    services.k8s.aws/owner-account-role-arn    - IAM role ARN to assume in that account
+
+  The role ARN follows the per-spoke naming convention:
+    <spoke-alias>-spoke-role  (e.g., spoke1-spoke-role)
+  Created by the aws-spoke Terraform module.
+*/}}
+{{- $clusters := .Values.clustersJson | fromJson }}
+{{- range $alias, $accountId := $clusters }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $alias }}
+  annotations:
+    # ACK CARM — the AWS account this namespace's resources will be created in
+    services.k8s.aws/owner-account-id: {{ $accountId | quote }}
+    # ACK CARM — the IAM role ACK assumes when reconciling resources in this namespace
+    services.k8s.aws/owner-account-role-arn: {{ printf "arn:aws:iam::%s:role/%s-spoke-role" $accountId $alias | quote }}
+  labels:
+    app.kubernetes.io/managed-by: Helm
+    gen3.io/spoke: {{ $alias | quote }}
+{{- end }}

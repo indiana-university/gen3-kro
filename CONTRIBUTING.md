@@ -242,4 +242,4 @@ When updating dependencies:
 By contributing, you agree that your contributions will be licensed under the same license as the project (see [LICENSE](../LICENSE)).
 
 ---
-**Last updated:** 2025-10-28
+**Last updated:** 2026-02-28

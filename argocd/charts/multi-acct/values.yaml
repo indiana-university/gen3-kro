@@ -1,0 +1,14 @@
+# clustersJson: JSON-encoded map of spoke-alias → AWS account ID
+# Injected by the ack-multi-acct ApplicationSet from the CSOC cluster secret
+# annotation fleet_spokes_json (set by Terraform argocd-bootstrap module).
+# Example: '{"spoke1":"1111111111111","spoke2":"2222222222222"}'
+clustersJson: "{}"
+
+# Role naming convention:
+#   CSOC source role:  ${cluster_name}-csoc-role
+#   Spoke role:        ${spoke_alias}-spoke-role  (e.g., spoke1-spoke-role)
+# Role names are derived from the spoke alias — no ackRoleName needed.
+
+# clusterName: CSOC EKS cluster name — used for informational annotations.
+# Injected by the ApplicationSet from the aws_cluster_name annotation.
+clusterName: ""
