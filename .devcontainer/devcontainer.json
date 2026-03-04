@@ -29,7 +29,7 @@
   //   Tier 2 (OK):    Static IAM user — long-lived, broader access
   //   Tier 3/4:       Invalid/expired or missing — downstream stages blocked
   "containerEnv": {
-    "REPO_ROOT": "/workspaces/${localWorkspaceFolderBasename}",
+    "REPO_ROOT":   "/workspaces/${localWorkspaceFolderBasename}",
     "AWS_PROFILE": "csoc"
   },
 

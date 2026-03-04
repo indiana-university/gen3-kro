@@ -80,15 +80,6 @@ spec:
       efsPerformanceMode: string | default="generalPurpose"
       efsThroughputMode: string | default="bursting"
 
-      # ==================== Application Configuration ====================
-      # Indexd Configuration
-      indexdEnabled: boolean | default=true
-      indexdDefaultPrefix: string | default="dg.TEST/"
-      indexdHelmRepo: string | default="https://github.com/uc-cdis/gen3-helm"
-      indexdHelmPath: string | default="helm/indexd"
-      indexdHelmRevision: string | default="master"
-      indexdNamespace: string | default="default"
-
       # ArgoCD Cluster Registration
       argoCDNamespace: string | default="argocd"
 
@@ -171,6 +162,7 @@ spec:
     #   # Search Status (OpenSearch)
     #   openSearchDomainARN: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
     #   openSearchEndpoint: ${openSearchDomain.status.?endpoint.orValue("loading")}
+
   resources:
   # ====================================================================
     # Layer 0: Namespace References
@@ -182,8 +174,6 @@ spec:
         metadata:
           name: ${schema.spec.namespace}
     # Read argocd namespace to get CSOC account ID (Terraform annotation)
-    # Used in the spoke ArgoCD role trust policy so the CSOC controller
-    # can STS AssumeRole without hardcoding any account number in git.
     - id: argocdNamespace
       externalRef:
         apiVersion: v1
@@ -497,6 +487,8 @@ spec:
               value: ${schema.spec.project}
             - key: kubernetes.io/role/internal-elb
               value: "1"
+            - key: kubernetes.io/cluster/${schema.spec.name}
+              value: owned
     # Layer 7: Private Subnet 2 (Required)
     - id: privatesubnet2
       readyWhen:
@@ -532,6 +524,8 @@ spec:
               value: ${schema.spec.project}
             - key: kubernetes.io/role/internal-elb
               value: "1"
+            - key: kubernetes.io/cluster/${schema.spec.name}
+              value: owned
     # Layer 7: DB Subnet 1 (Required)
     - id: dbsubnet1
       readyWhen:
@@ -1045,7 +1039,7 @@ spec:
               "Statement": [{
                 "Effect": "Allow",
                 "Principal": {"Service": "eks.amazonaws.com"},
-                "Action": "sts:AssumeRole"
+                "Action": ["sts:AssumeRole", "sts:TagSession"]
               }]
             }
           policies:
