@@ -80,6 +80,15 @@ spec:
       efsPerformanceMode: string | default="generalPurpose"
       efsThroughputMode: string | default="bursting"
 
+      # ==================== Application Configuration ====================
+      # Indexd Configuration
+      indexdEnabled: boolean | default=true
+      indexdDefaultPrefix: string | default="dg.TEST/"
+      indexdHelmRepo: string | default="https://github.com/uc-cdis/gen3-helm"
+      indexdHelmPath: string | default="helm/indexd"
+      indexdHelmRevision: string | default="master"
+      indexdNamespace: string | default="default"
+
       # ArgoCD Cluster Registration
       argoCDNamespace: string | default="argocd"
 
