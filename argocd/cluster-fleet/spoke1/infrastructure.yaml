@@ -67,13 +67,5 @@ instances:
       # ── EKS Access ──────────────────────────────────────────────────
       # Uses the same derived role for EKS access entry + pod identity
 
-      # ── Application defaults (indexd — will move to workloads chart) ──
-      indexdEnabled: true
-      indexdDefaultPrefix: "dg.TEST/"
-      indexdHelmRepo: "https://github.com/uc-cdis/gen3-helm"
-      indexdHelmPath: "helm/indexd"
-      indexdHelmRevision: master
-      indexdNamespace: default
-
       # ── OpenSearch (disabled but schema-required) ───────────────────
       openSearchMasterPasswordSecretRef: opensearch-master-password
