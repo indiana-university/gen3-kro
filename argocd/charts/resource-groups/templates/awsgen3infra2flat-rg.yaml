@@ -101,7 +101,7 @@ spec:
       # ==================== Git Repository Configuration ====================
       # Repository settings for ArgoCD Application sources (cluster-resources, gen3)
       repoUrl: string | default="https://github.com/indiana-university/gen3-kro.git"
-      repoRevision: string | default="Version2"
+      repoRevision: string | default="main"
       repoBasepath: string | default="argocd/"
 
       # ==================== Cluster Resources Configuration ====================

@@ -67,7 +67,7 @@ instances: {}
 
   #     # ── Git Repository (for ArgoCD Applications) ────────────────────
   #     repoUrl: "https://github.com/indiana-university/gen3-kro.git"
-  #     repoRevision: "Version2"
+  #     repoRevision: "main"
   #     repoBasepath: "argocd/"
 
   #     # ── Cluster Resources ──────────────────────────────────────────

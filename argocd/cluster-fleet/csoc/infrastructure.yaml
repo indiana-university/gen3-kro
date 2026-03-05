@@ -1,4 +1,0 @@
-# CSOC base infrastructure values (shared across all spokes).
-# Merged FIRST by the fleet ApplicationSet; per-spoke files override.
-# Keep empty unless common default instance values are needed.
-instances: {}

@@ -46,7 +46,6 @@ spec:
           releaseName: 'infrastructure-instance'
           ignoreMissingValueFiles: true
           valueFiles:
-            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/csoc/infrastructure.yaml'
             - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/infrastructure.yaml'
       destination:
         namespace: argocd

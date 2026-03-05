@@ -10,8 +10,10 @@ This directory contains the declarative GitOps configuration for a multi-cluster
 argocd/
 ├── bootstrap/                      # Entry-point ApplicationSets (Terraform-created bootstrap reads this)
 │   ├── csoc-addons.yaml            #   CSOC addon ApplicationSet (wave -20)
-│   ├── cross-acct.yaml             #   ACK CARM multi-account ApplicationSet (wave 5)
-│   └── cluster-fleet.yaml          #   fleet-infra-instances, fleet-cluster-resources, fleet-gen3 ApplicationSets (wave 30, 40, 50)
+│   ├── ack-multi-acct.yaml         #   ACK CARM multi-account ApplicationSet (wave 5)
+│   ├── fleet-infra-instances.yaml  #   KRO infrastructure instances (wave 30)
+│   ├── fleet-cluster-resources.yaml #  Spoke cluster-level infra (wave 40)
+│   └── fleet-gen3.yaml             #   Gen3 apps on spoke clusters (wave 50)
 ├── addons/                         # Addon value files (merged via multi-source Helm)
 │   └── csoc/
 │       └── addons.yaml             #   CSOC addons: KRO, 17x ACK controllers, ESO
@@ -21,8 +23,6 @@ argocd/
 │   ├── instances/                  #   KRO custom resource instance renderer
 │   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
 └── cluster-fleet/                  # Per-cluster override values (highest precedence)
-    ├── csoc/
-    │   └── infrastructure.yaml     #   CSOC base infrastructure (shared defaults)
     ├── spoke1/
     │   ├── infrastructure.yaml     #   KRO instance definitions
     │   ├── cluster-resources.yaml  #   Cluster-level resources (1 per cluster)
@@ -47,18 +47,17 @@ Terraform creates:
               │                      └── KRO RGDs (wave 10)
               │                      └── External Secrets (wave 15)
               │
-              ├── cross-acct.yaml → ack-multi-acct AppSet (wave 5)
-              │                     └── CARM namespaces + IAMRoleSelectors
+              ├── ack-multi-acct.yaml → ack-multi-acct AppSet (wave 5)
+              │                         └── CARM namespaces + IAMRoleSelectors
               │
-              ├── spoke-addons.yaml → spoke-addons AppSet (wave 20)
-              │                       └── Spoke-specific addons
+              ├── fleet-infra-instances.yaml → fleet-infra-instances AppSet (wave 30)
+              │                                └── KRO instances
               │
-              └── cluster-fleet.yaml → fleet-infra-instances AppSet (wave 30)
-                                       └── KRO instances
-                                     → fleet-cluster-resources AppSet (wave 40)
-                                       └── Spoke cluster-level infra
-                                     → fleet-gen3 AppSet (wave 50)
-                                       └── Gen3 apps on spoke clusters
+              ├── fleet-cluster-resources.yaml → fleet-cluster-resources AppSet (wave 40)
+              │                                   └── Spoke cluster-level infra
+              │
+              └── fleet-gen3.yaml → fleet-gen3 AppSet (wave 50)
+                                    └── Gen3 apps on spoke clusters
 ```
 
 ## Sync Wave Ordering
@@ -68,9 +67,9 @@ Terraform creates:
 | -30 | KRO controller | Must be running before RGDs can be applied |
 | -20 | CSOC addons ApplicationSet | Installs ACK controllers and resource groups |
 | 1 | ACK controllers (self-managed) | Must exist before KRO instances reference them |
+| 5 | ACK multi-account (CARM) | Namespace + IAMRoleSelector for each spoke |
 | 10 | KRO ResourceGraphDefinitions | CRDs must be registered before instances |
 | 15 | External Secrets Operator | Credential provider for workloads |
-| 20 | Spoke addons ApplicationSet | Spoke-specific addons after CSOC is ready |
 | 30 | Fleet instances (KRO) | Infrastructure CRs depend on all controllers |
 | 40 | Fleet cluster-resources | Spoke cluster-level infra (external-secrets, cert-manager, etc.) |
 | 50 | Fleet apps | Gen3 services on spoke clusters |
@@ -121,10 +120,10 @@ ApplicationSets use the **cluster generator** with label selectors. The ArgoCD c
 | Annotation | Example | Purpose |
 |------------|---------|---------|
 | `addons_repo_url` | `https://github.iu.edu/.../eks-cluster-mgmt.git` | Git repo for addon configs |
-| `addons_repo_revision` | `v2` | Branch/tag |
+| `addons_repo_revision` | `main` | Branch/tag |
 | `addons_repo_basepath` | `argocd/` | Path prefix in repo |
 | `fleet_repo_url` | Same repo | Git repo for fleet configs |
-| `fleet_repo_revision` | `v2` | Branch/tag |
+| `fleet_repo_revision` | `main` | Branch/tag |
 | `aws_account_id` | `<CSOC_ACCOUNT_ID>` | CSOC account ID |
 | `aws_cluster_name` | `{csoc_alias}-csoc-cluster` | EKS cluster name |
 | `aws_region` | `us-east-1` | AWS region |
@@ -157,7 +156,7 @@ Renders KRO custom resources from `cluster-fleet/<cluster>/infrastructure.yaml`:
 ```yaml
 instances:
   my-environment:
-    kind: AwsGen3Infra1Flat        # KRO kind from RGD
+    kind: AwsGen3Infra2Flat        # KRO kind from RGD (consolidated: infra + cluster-resources + gen3 app)
     namespace: default
     syncWave: "30"
     spec:                          # Spec per RGD schema
