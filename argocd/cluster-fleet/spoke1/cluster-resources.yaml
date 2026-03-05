@@ -12,15 +12,15 @@
 # CoreDNS, karpenter, and ALB controller. Only enable components
 # here that are NOT managed by automode.
 
-# ── External Secrets Operator ──────────────────────────────────────
-external-secrets:
-  enabled: true
-  serviceAccount:
-    name: "external-secrets-sa"
+# # ── External Secrets Operator ──────────────────────────────────────
+# external-secrets:
+#   enabled: true
+#   serviceAccount:
+#     name: "external-secrets-sa"
 
-# ── cert-manager (TLS certificate management) ─────────────────────
-cert-manager:
-  enabled: true
-  crds:
-    enabled: true
-    keep: true
+# # ── cert-manager (TLS certificate management) ─────────────────────
+# cert-manager:
+#   enabled: true
+#   crds:
+#     enabled: true
+#     keep: true

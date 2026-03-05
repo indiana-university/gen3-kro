@@ -1,0 +1,63 @@
+# ======================================================================
+# fleet-infra-instances — KRO infrastructure instances
+# ======================================================================
+# Triggered by Terraform-created per-spoke cluster secrets (fleet_member:
+# fleet-spoke-infra).  Renders infrastructure.yaml through the instances
+# chart so KRO custom resources are applied to the CSOC cluster.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet-infra-instances
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+  # One cluster secret per spoke is created by Terraform (argocd-bootstrap module).
+  # Each secret is labeled fleet_member: fleet-spoke-infra and carries the repo
+  # annotations copied from the CSOC cluster secret.
+  # {{.name}} resolves to the spoke alias (data.name in the secret).
+  - clusters:
+      selector:
+        matchLabels:
+          fleet_member: fleet-spoke-infra
+  template:
+    metadata:
+      name: '{{.name}}-infra-instance'
+      labels:
+        environment: '{{.metadata.labels.environment}}'
+        fleet_spoke: '{{.name}}'
+    spec:
+      project: default
+      sources:
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        ref: values
+      # KRO infrastructure instances
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}charts/instances/'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        helm:
+          releaseName: 'infrastructure-instance'
+          ignoreMissingValueFiles: true
+          valueFiles:
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/infrastructure.yaml'
+      destination:
+        namespace: argocd
+        name: '{{.name}}'
+      syncPolicy:
+        preserveResourcesOnDeletion: true
+        automated:
+          selfHeal: false
+          allowEmpty: true
+          prune: true
+        retry:
+          limit: 100
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true

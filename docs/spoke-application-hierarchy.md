@@ -32,7 +32,9 @@ creates its Application directly.
 ```
 argocd/
 ├── bootstrap/
-│   └── cluster-fleet.yaml          ← 3 ApplicationSets: fleet-infra-instances, fleet-cluster-resources, fleet-gen3
+│   ├── fleet-infra-instances.yaml    ← KRO infrastructure instances AppSet (wave 30)
+│   ├── fleet-cluster-resources.yaml  ← Spoke cluster-level infra AppSet (wave 40)
+│   └── fleet-gen3.yaml               ← Gen3 apps on spoke clusters AppSet (wave 50)
 ├── charts/
 │   └── cluster-resources/          ← Umbrella chart (external-secrets dependency)
 │       ├── Chart.yaml
