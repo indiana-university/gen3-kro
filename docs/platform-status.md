@@ -71,18 +71,12 @@ Documented security and operational risks accepted for the current phase.
 
 Known constraints of the current platform state. These are expected and will be addressed as the platform evolves.
 
-### L1: Environment addons are identical (dev/prod)
-
-- **Files**: `argocd/addons/environments/dev/addons.yaml`, `argocd/addons/environments/prod/addons.yaml`
-- **Status**: Both files have identical content. Environment-specific differentiation (e.g., different Helm chart versions, replica counts, or resource limits) is not yet implemented.
-- **Rationale**: The structure is in place for per-environment overrides. Values will diverge as environment-specific requirements are defined.
-
-### L2: Single RGD exists in resource-groups chart
+### L1: Single RGD exists in resource-groups chart
 
 - **File**: `argocd/charts/resource-groups/awsgen3infra1flat-rg.yaml`
 - **Status**: Only the `AwsGen3Infra1Flat` ResourceGroupDefinition exists. The chart structure supports multiple RGD files — additional RGDs will be added as new infrastructure patterns are needed.
 
-### L3: Flat spoke deployment (apps + cluster-resources)
+### L2: Flat spoke deployment (apps + cluster-resources)
 
 - **Files**: `argocd/charts/cluster-resources/`, `argocd/bootstrap/cluster-fleet.yaml`, `argocd/cluster-fleet/<spoke>/apps.yaml`, `argocd/cluster-fleet/<spoke>/cluster-resources.yaml`
 - **Status**: Spoke deployments use two flat ApplicationSets (no intermediate chart rendering Application CRDs):
@@ -90,7 +84,7 @@ Known constraints of the current platform state. These are expected and will be 
   - `fleet-gen3` (wave 50) — deploys gen3-helm umbrella chart directly to the spoke. Infrastructure outputs are injected via Helm parameters from argoCDClusterSecret annotations.
 - **Architecture**: Matches gen3-gitops pattern: cluster-level-resources = ONE per EKS cluster, gen3 app = ONE per namespace/environment. Two levels of hierarchy (ApplicationSet → Application), not three.
 
-### L4: Diagram SVG exports not generated
+### L3: Diagram SVG exports not generated
 
 - **Files**: `docs/diagrams/*.drawio`
 - **Status**: All 5 drawio files are updated with correct content, white backgrounds, and stale text removed. However, SVG exports for README embedding are not yet produced. No headless draw.io CLI is available in the container.
@@ -117,14 +111,10 @@ parameter injection (wave 50). Future work: add ExternalSecret resources for DB
 credential injection on spoke clusters, add health checks, and integrate
 fence-config / user-yaml-push templates from gen3-gitops.
 
-### F4: Per-environment addon differentiation
-
-Diverge `argocd/addons/environments/dev/addons.yaml` and `prod/addons.yaml` with environment-specific overrides (e.g., resource limits, replica counts, feature flags).
-
-### F5: ACK `aws_managed` mode evaluation
+### F4: ACK `aws_managed` mode evaluation
 
 The `aws_managed` ACK module path has been validated via Terraform plan (4 add, 2 change, 0 destroy). Decision pending on whether to switch from `self_managed` (ArgoCD Helm) to `aws_managed` (EKS Capability) for ACK controllers.
 
-### F6: Hardened credential validation in `install.sh`
+### F5: Hardened credential validation in `install.sh`
 
 Replace `aws sts get-caller-identity` pre-flight check with a targeted API call (e.g., `aws eks describe-cluster`) that validates the session has the specific permissions needed for plan/apply.

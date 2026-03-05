@@ -13,11 +13,8 @@ argocd/
 │   ├── cross-acct.yaml             #   ACK CARM multi-account ApplicationSet (wave 5)
 │   └── cluster-fleet.yaml          #   fleet-infra-instances, fleet-cluster-resources, fleet-gen3 ApplicationSets (wave 30, 40, 50)
 ├── addons/                         # Addon value files (merged via multi-source Helm)
-│   ├── csoc/
-│   │   └── addons.yaml             #   CSOC addons: KRO, 17x ACK controllers, ESO
-│   └── environments/
-│       ├── dev/addons.yaml          #   Dev spoke addons
-│       └── prod/addons.yaml         #   Prod spoke addons
+│   └── csoc/
+│       └── addons.yaml             #   CSOC addons: KRO, 17x ACK controllers, ESO
 ├── charts/                         # Helm charts consumed by ApplicationSets
 │   ├── application-sets/           #   Meta-chart: generates per-addon ApplicationSets
 │   ├── cluster-resources/          #   Umbrella chart: spoke cluster-level infra (external-secrets, cert-manager, etc.)
@@ -27,13 +24,13 @@ argocd/
     ├── csoc/
     │   └── infrastructure.yaml     #   CSOC base infrastructure (shared defaults)
     ├── spoke1/
-    │   ├── addons.yaml             #   Addon overrides for spoke1
     │   ├── infrastructure.yaml     #   KRO instance definitions
     │   ├── cluster-resources.yaml  #   Cluster-level resources (1 per cluster)
     │   └── apps.yaml               #   Gen3 application values (1 per environment)
     └── spoke2/
-        ├── addons.yaml
-        └── infrastructure.yaml
+        ├── infrastructure.yaml
+        ├── cluster-resources.yaml
+        └── apps.yaml
 ```
 
 ## Reconciliation Chain
@@ -82,7 +79,7 @@ Terraform creates:
 
 ### Addon Values
 1. `charts/application-sets/` defaults (lowest)
-2. `addons/csoc/addons.yaml` or `addons/environments/<env>/addons.yaml`
+2. `addons/csoc/addons.yaml`
 3. `cluster-fleet/<cluster>/addons.yaml` **(highest — wins)**
 
 ### Infrastructure Values
