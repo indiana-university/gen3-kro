@@ -269,7 +269,10 @@
           "sts:AssumeRole",
           "sts:TagSession"
         ],
-        "Resource": "arn:aws:iam::*:role/*-spoke-role"
+        "Resource": [
+          "arn:aws:iam::${spoke1_account_id}:role/*-spoke-role",
+          "arn:aws:iam::${spoke2_account_id}:role/*-spoke-role"
+        ]
       },
 
       {

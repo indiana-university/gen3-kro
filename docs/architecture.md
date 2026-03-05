@@ -78,9 +78,11 @@ Phase 2 — CONTAINER / WSL (Terraform)
 Phase 3 — ArgoCD (Automatic GitOps)
   Bootstrap AppSet reads argocd/bootstrap/
     → csoc-addons AppSet (wave -20)
-    → spoke-addons AppSet (wave 20)
-    → fleet AppSet (wave 30)
-  Sync waves enforce: KRO → ACK → RGDs → ESO → Spoke → Instances
+    → ack-multi-acct AppSet (wave 5)
+    → fleet-infra-instances AppSet (wave 30)
+    → fleet-cluster-resources AppSet (wave 40)
+    → fleet-gen3 AppSet (wave 50)
+  Sync waves enforce: KRO → ACK → RGDs → ESO → CARM → Instances → Cluster Resources → Gen3
 ```
 
 ### Why Two Phases?
@@ -160,19 +162,19 @@ helm_release.bootstrap
         │       ├── kro-eks-rgs Application             (wave 10)
         │       └── external-secrets Application        (wave 15)
         │
-        ├── cross-acct.yaml
+        ├── ack-multi-acct.yaml
         │   └── ack-multi-acct ApplicationSet (wave 5)
         │       └── ACK CARM namespaces + IAMRoleSelectors
         │
-        ├── spoke-addons.yaml
-        │   └── spoke-addons ApplicationSet (fleet_member: spoke)
-        │       └── external-secrets-per-spoke           (wave 20)
+        ├── fleet-infra-instances.yaml
+        │   └── fleet-infra-instances ApplicationSet (fleet_member: fleet-spoke-infra)
+        │       └── KRO Instances (VPC, EKS, RDS...)    (wave 30)
         │
-        └── cluster-fleet.yaml
-            ├── fleet-infra-instances ApplicationSet (fleet_member: fleet-spoke-infra)
-            │   └── KRO Instances (VPC, EKS, RDS...)    (wave 30)
-            ├── fleet-cluster-resources ApplicationSet (fleet_member: spoke)
-            │   └── Spoke cluster-level infra           (wave 40)
+        ├── fleet-cluster-resources.yaml
+        │   └── fleet-cluster-resources ApplicationSet (fleet_member: spoke)
+        │       └── Spoke cluster-level infra           (wave 40)
+        │
+        └── fleet-gen3.yaml
             └── fleet-gen3 ApplicationSet (fleet_member: spoke)
                 └── Gen3 apps on spoke clusters          (wave 50)
 ```
@@ -182,15 +184,17 @@ helm_release.bootstrap
 | File in `argocd/bootstrap/` | ApplicationSet(s) Created | Sync Wave |
 |------------------------------|--------------------------|----------|
 | `csoc-addons.yaml` | `csoc-addons` | -20 |
-| `cross-acct.yaml` | `ack-multi-acct` | 5 |
-| `cluster-fleet.yaml` | `fleet-infra-instances`, `fleet-cluster-resources`, `fleet-gen3` | 30, 40, 50 |
+| `ack-multi-acct.yaml` | `ack-multi-acct` | 5 |
+| `fleet-infra-instances.yaml` | `fleet-infra-instances` | 30 |
+| `fleet-cluster-resources.yaml` | `fleet-cluster-resources` | 40 |
+| `fleet-gen3.yaml` | `fleet-gen3` | 50 |
 
 ### Values Merge Priority (last wins, maps deep-merged)
 
 ```
 1. Helm chart defaults         (argocd/charts/<chart>/values.yaml)
-2. Env or CSOC addons          (argocd/addons/csoc/addons.yaml)
-3. Cluster-fleet overrides     (argocd/cluster-fleet/<cluster>/addons.yaml)  ← WINS
+2. CSOC addons                 (argocd/addons/csoc/addons.yaml)
+3. Cluster-fleet overrides     (argocd/cluster-fleet/<cluster>/)  ← WINS
 ```
 
 ---
@@ -289,10 +293,9 @@ Sync waves enforce a deterministic deployment order. Resources in lower waves mu
 | 5 | ACK multi-account (CARM) | ACK controllers | CARM namespaces and IAMRoleSelectors require ACK CRDs |
 | 10 | KRO ResourceGraphDefinitions | KRO, ACK | RGDs reference ACK CRDs; CRDs must exist |
 | 15 | External Secrets Operator | — | Independent; can start anytime after cluster exists |
-| 20 | Spoke addons ApplicationSet | ACK, RGDs | Spoke ESO needs the RGD-defined secret stores |
-| 30 | Fleet KRO instances | ACK, RGDs, spoke addons | KRO instances expand into ACK resources using RGDs |
-| 40 | Fleet workloads | KRO instances healthy | Workloads gate on KRO-created argoCDClusterSecret |
-| 50 | Individual Gen3 workloads | Fleet workloads | Per-service Applications on spoke clusters |
+| 30 | Fleet KRO instances | ACK, RGDs, ESO | KRO instances expand into ACK resources using RGDs |
+| 40 | Fleet cluster-resources | KRO instances healthy | Cluster-level infra (external-secrets, cert-manager) on spoke |
+| 50 | Fleet Gen3 apps | Fleet cluster-resources | Gen3 services on spoke clusters |
 
 ---
 
@@ -307,23 +310,20 @@ eks-cluster-mgmt/
 │   ├── README.md                        #   ArgoCD layer documentation
 │   ├── bootstrap/
 │   │   ├── csoc-addons.yaml             #   CSOC addon ApplicationSet (wave -20)
-│   │   ├── cross-acct.yaml              #   ACK CARM multi-account (wave 5)
-│   │   ├── spoke-addons.yaml            #   Spoke addon ApplicationSet (wave 20)
-│   │   └── cluster-fleet.yaml           #   Fleet infra + workloads ApplicationSets (wave 30, 40)
+│   │   ├── ack-multi-acct.yaml          #   ACK CARM multi-account (wave 5)
+│   │   ├── fleet-infra-instances.yaml   #   KRO infrastructure instances (wave 30)
+│   │   ├── fleet-cluster-resources.yaml #   Spoke cluster-level infra (wave 40)
+│   │   └── fleet-gen3.yaml              #   Gen3 apps on spoke clusters (wave 50)
 │   ├── addons/
-│   │   ├── csoc/addons.yaml             #   CSOC addon values (KRO, ACK, ESO)
-│   │   └── environments/{dev,prod}/     #   Environment-specific addon values
+│   │   └── csoc/addons.yaml             #   CSOC addon values (KRO, ACK, ESO)
 │   ├── charts/
 │   │   ├── application-sets/            #   Meta-chart: generates child ApplicationSets
 │   │   ├── instances/                   #   KRO instance renderer chart
 │   │   ├── multi-acct/                  #   ACK CARM namespace + IAMRoleSelector chart
 │   │   ├── resource-groups/             #   KRO RGD manifests chart
-│   │   └── cluster-resources/               #   Umbrella chart: spoke cluster-level infra
+│   │   └── cluster-resources/           #   Umbrella chart: spoke cluster-level infra
 │   └── cluster-fleet/
-│       ├── csoc/
-│       │   └── infrastructure.yaml      #   CSOC base infrastructure (shared defaults)
-│       └── {spoke1,spoke2}/              #   Per-cluster addon + infra overrides
-│           ├── addons.yaml
+│       └── spoke1/                  #   Per-cluster infra + resource overrides
 │           ├── infrastructure.yaml
 │           ├── cluster-resources.yaml
 │           └── apps.yaml

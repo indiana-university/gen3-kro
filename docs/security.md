@@ -368,7 +368,7 @@ Use this checklist before production deployment:
 - [ ] No IAM access keys exist for cross-account operations (all via `sts:AssumeRole`)
 - [ ] Spoke workload role inline policies are scoped to minimum required permissions
 - [ ] ACK source role trust policy is restricted to the EKS OIDC provider
-- [ ] `ExternalId` condition is set on all spoke role trust policies
+- [ ] `ArnLike` condition is set on all spoke role trust policies
 
 ### Credentials
 

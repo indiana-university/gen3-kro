@@ -1,5 +1,7 @@
 # Deployment Guide
 
+> **⚠️ Not for production use.** This platform is under active development. Follow these procedures in development/testing environments only.
+
 Step-by-step procedures for deploying, managing, and tearing down the EKS Cluster Management Platform.
 
 ## Table of Contents
@@ -447,7 +449,6 @@ Edit the appropriate values file:
 |-------|-------------|
 | All CSOC addons | `argocd/addons/csoc/addons.yaml` |
 | Single cluster | `argocd/cluster-fleet/<cluster>/addons.yaml` |
-| Environment-wide | `argocd/addons/environments/<env>/` |
 
 Push to git — ArgoCD will reconcile automatically.
 
