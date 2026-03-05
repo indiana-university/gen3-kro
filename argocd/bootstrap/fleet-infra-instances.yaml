@@ -13,7 +13,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "30"
 spec:
   syncPolicy:
-    preserveResourcesOnDeletion: false
+    preserveResourcesOnDeletion: true
   goTemplate: true
   goTemplateOptions:
     - missingkey=error
@@ -52,7 +52,7 @@ spec:
         namespace: argocd
         name: '{{.name}}'
       syncPolicy:
-        preserveResourcesOnDeletion: false
+        preserveResourcesOnDeletion: true
         automated:
           selfHeal: false
           allowEmpty: true
