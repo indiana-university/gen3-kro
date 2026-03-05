@@ -23,14 +23,10 @@ argocd/
 │   ├── instances/                  #   KRO custom resource instance renderer
 │   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
 └── cluster-fleet/                  # Per-cluster override values (highest precedence)
-    ├── spoke1/
-    │   ├── infrastructure.yaml     #   KRO instance definitions
-    │   ├── cluster-resources.yaml  #   Cluster-level resources (1 per cluster)
-    │   └── apps.yaml               #   Gen3 application values (1 per environment)
-    └── spoke2/
-        ├── infrastructure.yaml
-        ├── cluster-resources.yaml
-        └── apps.yaml
+    └── spoke1/
+        ├── infrastructure.yaml     #   KRO instance definitions
+        ├── cluster-resources.yaml  #   Cluster-level resources (1 per cluster)
+        └── apps.yaml               #   Gen3 application values (1 per environment)
 ```
 
 ## Reconciliation Chain

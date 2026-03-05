@@ -27,7 +27,7 @@ Active items requiring attention:
 | ID | Summary | Blocking? | Status |
 |----|---------|-----------|--------|
 | P1 | Self-healing configuration review | No — functional | Active — needs decision |
-| P2 | Spoke2 infrastructure not deployed | No — spoke1 operational | Values files created; awaiting deployment |
+| P2 | Spoke2 infrastructure not deployed | No — spoke1 operational | Deferred to next release |
 | M1 | ESO SecretStore pattern verification | No — runtime validation | Ready to verify |
 | M2 | Workload deployment validation | No — infrastructure ready | Monitoring |
 
@@ -71,10 +71,10 @@ Documented security and operational risks accepted for the current phase.
 
 Known constraints of the current platform state. These are expected and will be addressed as the platform evolves.
 
-### L1: Two RGDs exist in resource-groups chart
+### L1: Single RGD exists in resource-groups chart
 
-- **Files**: `argocd/charts/resource-groups/templates/awsgen3infra1flat-rg.yaml`, `argocd/charts/resource-groups/templates/awsgen3infra2flat-rg.yaml`
-- **Status**: Two ResourceGraphDefinitions exist — `AwsGen3Infra1Flat` (original) and `AwsGen3Infra2Flat` (consolidated: includes multi-account resources, cluster-resources ArgoCD app, and gen3 ArgoCD app in a single dependency graph). The chart structure supports additional RGD files as new infrastructure patterns are needed.
+- **Files**: `argocd/charts/resource-groups/templates/awsgen3infra1flat-rg.yaml`
+- **Status**: Only the `AwsGen3Infra1Flat` ResourceGraphDefinition exists. The chart structure supports multiple RGD files — additional RGDs will be added as new infrastructure patterns are needed.
 
 ### L2: Flat spoke deployment (apps + cluster-resources)
 
@@ -100,21 +100,25 @@ Planned enhancements and improvements for upcoming iterations.
 
 Replace the `argocd-initial-admin-secret` password-based auth with GitHub/Okta SSO. After SSO is configured, disable local admin account.
 
-### F2: Multi-RGD support
+### F2: Consolidated RGD (`AwsGen3Infra2Flat`)
+
+A second ResourceGraphDefinition consolidating multi-account resources (IAMRoleSelector, spoke namespace), cluster-resources ArgoCD Application, and gen3 ArgoCD Application into a single dependency graph. This solves the deletion deadlock where CARM resources were deleted before ACK finished cleaning up spoke AWS resources. Planned for the next release.
+
+### F3: Additional infrastructure patterns
 
 Extend `argocd/charts/resource-groups/` with additional ResourceGroupDefinitions for different infrastructure patterns (e.g., HA Aurora, multi-AZ ElastiCache, GPU-enabled EKS node groups).
 
-### F3: Gen3 service refinement
+### F4: Gen3 service refinement
 
 The `fleet-gen3` ApplicationSet deploys gen3-helm directly with `infraOutputs`
 parameter injection (wave 50). Future work: add ExternalSecret resources for DB
 credential injection on spoke clusters, add health checks, and integrate
 fence-config / user-yaml-push templates from gen3-gitops.
 
-### F4: ACK `aws_managed` mode evaluation
+### F5: ACK `aws_managed` mode evaluation
 
 The `aws_managed` ACK module path has been validated via Terraform plan (4 add, 2 change, 0 destroy). Decision pending on whether to switch from `self_managed` (ArgoCD Helm) to `aws_managed` (EKS Capability) for ACK controllers.
 
-### F5: Hardened credential validation in `install.sh`
+### F6: Hardened credential validation in `install.sh`
 
 Replace `aws sts get-caller-identity` pre-flight check with a targeted API call (e.g., `aws eks describe-cluster`) that validates the session has the specific permissions needed for plan/apply.

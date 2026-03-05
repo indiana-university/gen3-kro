@@ -323,7 +323,7 @@ eks-cluster-mgmt/
 │   │   ├── resource-groups/             #   KRO RGD manifests chart
 │   │   └── cluster-resources/           #   Umbrella chart: spoke cluster-level infra
 │   └── cluster-fleet/
-│       └── {spoke1,spoke2}/             #   Per-cluster infra + resource overrides
+│       └── spoke1/                  #   Per-cluster infra + resource overrides
 │           ├── infrastructure.yaml
 │           ├── cluster-resources.yaml
 │           └── apps.yaml
