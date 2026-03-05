@@ -140,10 +140,18 @@ terraform_destroy() {
 
   log "  Running terraform init (required before destroy)..."
   log "  TF_DATA_DIR: ${TF_DATA_DIR:-<not set>}"
-  terraform init \
-    -backend-config="bucket=${backend_bucket}" \
-    -backend-config="key=${backend_key}" \
-    -backend-config="region=${backend_region}"
+
+  # Run init; if backend has changed since last init, retry with -reconfigure
+  if ! terraform init \
+      -backend-config="bucket=${backend_bucket}" \
+      -backend-config="key=${backend_key}" \
+      -backend-config="region=${backend_region}" 2>&1; then
+    log "  terraform init failed — retrying with -reconfigure..."
+    terraform init -reconfigure \
+      -backend-config="bucket=${backend_bucket}" \
+      -backend-config="key=${backend_key}" \
+      -backend-config="region=${backend_region}"
+  fi
 
   local destroy_start destroy_end rc=0
   destroy_start="$(date +%s)"

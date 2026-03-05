@@ -1,5 +1,7 @@
 # EKS Cluster Management Platform
 
+> **⚠️ Not for production use.** This platform is under active development and is intended for development, testing, and evaluation purposes only. Infrastructure patterns, APIs, and configuration formats may change without notice between releases.
+
 Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cluster that provisions spoke infrastructure via [KRO](https://github.com/awslabs/kro) + [ACK](https://aws-controllers-k8s.github.io/community/) controllers, orchestrated by [ArgoCD](https://argo-cd.readthedocs.io/) ApplicationSets.
 
 ## Architecture Overview
@@ -50,10 +52,10 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 
 ```
 ├── argocd/                      # GitOps configuration
-│   ├── bootstrap/               #   Entry-point ApplicationSets (4 files)
-│   ├── addons/                  #   Addon values (CSOC + environments)
+│   ├── bootstrap/               #   Entry-point ApplicationSets (5 files)
+│   ├── addons/                  #   Addon values (CSOC)
 │   ├── charts/                  #   Helm charts consumed by ApplicationSets
-│   └── cluster-fleet/           #   Per-cluster overrides (csoc, spoke1, spoke2)
+│   └── cluster-fleet/           #   Per-cluster overrides (spoke1, spoke2)
 ├── config/                      # User config files (gitignored except examples)
 ├── terraform/
 │   ├── env/aws/csoc-cluster/    # Root module (single entry point)

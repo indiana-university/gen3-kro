@@ -14,7 +14,7 @@ cd gen3-kro
 ```bash
 git remote add upstream https://github.com/indiana-university/gen3-kro.git
 ```
-4. **Launch devcontainer**: Follow [setup guide](setup.md) to start development environment
+4. **Launch devcontainer**: Follow [deployment guide](docs/deployment-guide.md) to set up and start the development environment
 
 ## Code Quality Standards
 
@@ -148,7 +148,7 @@ Closes #123
 2. **Reviewer assignment**: Maintainers review PR
 3. **Feedback**: Address review comments
 4. **Approval**: At least one maintainer approval required
-5. **Merge**: Squash and merge to `testing-fork/<branch-name>`
+5. **Merge**: Squash and merge to `main`
 
 **Review criteria:**
 - Code quality and adherence to standards

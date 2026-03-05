@@ -27,7 +27,7 @@ Active items requiring attention:
 | ID | Summary | Blocking? | Status |
 |----|---------|-----------|--------|
 | P1 | Self-healing configuration review | No — functional | Active — needs decision |
-| P2 | Spoke2 infrastructure not deployed | No — spoke1 operational | Waiting for config |
+| P2 | Spoke2 infrastructure not deployed | No — spoke1 operational | Values files created; awaiting deployment |
 | M1 | ESO SecretStore pattern verification | No — runtime validation | Ready to verify |
 | M2 | Workload deployment validation | No — infrastructure ready | Monitoring |
 
@@ -63,7 +63,7 @@ Documented security and operational risks accepted for the current phase.
 - **Source**: `iam/spoke*/argocd/inline-policy.json`
 - **Risk**: Conditions scope Secrets Manager access to `argocd/*` and `argo-cd/*` prefixes, and SSM to `/argocd/*` and `/argo-cd/*`. If External Secrets Operator or other components store secrets under different prefixes, access will fail silently.
 - **Mitigation**: No spoke secrets are deployed yet (ArgoCD hasn't reconciled). Pattern will be validated when ESO (wave 15) deploys and creates SecretStore resources.
-- **Future verification**: After C-BOOT1 is resolved and spoke addons deploy, verify that ESO SecretStore definitions reference secrets matching these condition patterns.
+- **Future verification**: Verify that ESO SecretStore definitions reference secrets matching these condition patterns when ESO deploys on spoke clusters.
 
 ---
 
@@ -71,14 +71,14 @@ Documented security and operational risks accepted for the current phase.
 
 Known constraints of the current platform state. These are expected and will be addressed as the platform evolves.
 
-### L1: Single RGD exists in resource-groups chart
+### L1: Two RGDs exist in resource-groups chart
 
-- **File**: `argocd/charts/resource-groups/awsgen3infra1flat-rg.yaml`
-- **Status**: Only the `AwsGen3Infra1Flat` ResourceGroupDefinition exists. The chart structure supports multiple RGD files — additional RGDs will be added as new infrastructure patterns are needed.
+- **Files**: `argocd/charts/resource-groups/templates/awsgen3infra1flat-rg.yaml`, `argocd/charts/resource-groups/templates/awsgen3infra2flat-rg.yaml`
+- **Status**: Two ResourceGraphDefinitions exist — `AwsGen3Infra1Flat` (original) and `AwsGen3Infra2Flat` (consolidated: includes multi-account resources, cluster-resources ArgoCD app, and gen3 ArgoCD app in a single dependency graph). The chart structure supports additional RGD files as new infrastructure patterns are needed.
 
 ### L2: Flat spoke deployment (apps + cluster-resources)
 
-- **Files**: `argocd/charts/cluster-resources/`, `argocd/bootstrap/cluster-fleet.yaml`, `argocd/cluster-fleet/<spoke>/apps.yaml`, `argocd/cluster-fleet/<spoke>/cluster-resources.yaml`
+- **Files**: `argocd/charts/cluster-resources/`, `argocd/bootstrap/fleet-cluster-resources.yaml`, `argocd/bootstrap/fleet-gen3.yaml`, `argocd/cluster-fleet/<spoke>/apps.yaml`, `argocd/cluster-fleet/<spoke>/cluster-resources.yaml`
 - **Status**: Spoke deployments use two flat ApplicationSets (no intermediate chart rendering Application CRDs):
   - `fleet-cluster-resources` (wave 40) — deploys cluster-level infra (external-secrets umbrella chart) directly to the spoke.
   - `fleet-gen3` (wave 50) — deploys gen3-helm umbrella chart directly to the spoke. Infrastructure outputs are injected via Helm parameters from argoCDClusterSecret annotations.
