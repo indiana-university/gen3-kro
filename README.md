@@ -55,7 +55,7 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 │   ├── bootstrap/               #   Entry-point ApplicationSets (5 files)
 │   ├── addons/                  #   Addon values (CSOC)
 │   ├── charts/                  #   Helm charts consumed by ApplicationSets
-│   └── cluster-fleet/           #   Per-cluster overrides (spoke1, spoke2)
+│   └── cluster-fleet/           #   Per-cluster overrides (spoke1)
 ├── config/                      # User config files (gitignored except examples)
 ├── terraform/
 │   ├── env/aws/csoc-cluster/    # Root module (single entry point)

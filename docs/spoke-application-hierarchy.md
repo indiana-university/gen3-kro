@@ -40,14 +40,10 @@ argocd/
 │       ├── Chart.yaml
 │       └── values.yaml
 └── cluster-fleet/
-    ├── spoke1/
-    │   ├── infrastructure.yaml     ← KRO instances (EKS, Aurora, VPC, etc.)
-    │   ├── cluster-resources.yaml  ← Cluster-wide infra (external-secrets)
-    │   └── apps.yaml               ← Gen3 service values (indexd, fence, etc.)
-    └── spoke2/
-        ├── infrastructure.yaml
-        ├── cluster-resources.yaml
-        └── apps.yaml
+    └── spoke1/
+        ├── infrastructure.yaml     ← KRO instances (EKS, Aurora, VPC, etc.)
+        ├── cluster-resources.yaml  ← Cluster-wide infra (external-secrets)
+        └── apps.yaml               ← Gen3 service values (indexd, fence, etc.)
 ```
 
 ## What Each Application Does
