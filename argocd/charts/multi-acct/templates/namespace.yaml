@@ -17,6 +17,7 @@ kind: Namespace
 metadata:
   name: {{ $alias }}
   annotations:
+    argocd.argoproj.io/sync-wave: "-5"
     # ACK CARM — the AWS account this namespace's resources will be created in
     services.k8s.aws/owner-account-id: {{ $accountId | quote }}
     # ACK CARM — the IAM role ACK assumes when reconciling resources in this namespace
