@@ -2,70 +2,70 @@
 # Values are rendered by argocd/charts/instances/ into KRO custom resources on the CSOC cluster.
 # Required: populate csocVpcId after initial CSOC terraform apply:
 #   terraform -chdir=terraform/env/aws/csoc-cluster output -raw vpc_id
-instances:
-  spoke1-dev:
-    kind: AwsGen3Infra1Flat
-    namespace: spoke1
-    syncWave: "30"
-    environment: dev
-    links:
-      aws-console: "https://us-east-1.console.aws.amazon.com/vpc/home?region=us-east-1"
-      eks-console: "https://us-east-1.console.aws.amazon.com/eks/home?region=us-east-1#/clusters"
-    spec:
-      # ── Basic metadata ──────────────────────────────────────────────
-      name: spoke1-dev
-      namespace: spoke1
-      region: us-east-1
-      environment: dev
-      project: spoke1
-      adoptionPolicy: adopt-or-create
-      deletionPolicy: delete
+instances: {}
+  # spoke1-dev:
+  #   kind: AwsGen3Infra1Flat
+  #   namespace: spoke1
+  #   syncWave: "30"
+  #   environment: dev
+  #   links:
+  #     aws-console: "https://us-east-1.console.aws.amazon.com/vpc/home?region=us-east-1"
+  #     eks-console: "https://us-east-1.console.aws.amazon.com/eks/home?region=us-east-1#/clusters"
+  #   spec:
+  #     # ── Basic metadata ──────────────────────────────────────────────
+  #     name: spoke1-dev
+  #     namespace: spoke1
+  #     region: us-east-1
+  #     environment: dev
+  #     project: spoke1
+  #     adoptionPolicy: adopt-or-create
+  #     deletionPolicy: delete
 
-      # ── Application Identity ────────────────────────────────────────
-      hostname: spoke1-dev.example.com
-      defaultLoginIDP: google
+  #     # ── Application Identity ────────────────────────────────────────
+  #     hostname: spoke1-dev.example.com
+  #     defaultLoginIDP: google
 
-      # ── Network Configuration ───────────────────────────────────────
-      vpcCIDR: "10.1.0.0/16"
-      publicSubnetCIDRs:
-        - "10.1.240.0/24"
-        - "10.1.241.0/24"
-      privateSubnetCIDRs:
-        - "10.1.0.0/20"
-        - "10.1.16.0/20"
-      dbSubnetCIDRs:
-        - "10.1.32.0/24"
-        - "10.1.33.0/24"
-      availabilityZones:
-        - "us-east-1a"
-        - "us-east-1b"
+  #     # ── Network Configuration ───────────────────────────────────────
+  #     vpcCIDR: "10.1.0.0/16"
+  #     publicSubnetCIDRs:
+  #       - "10.1.240.0/24"
+  #       - "10.1.241.0/24"
+  #     privateSubnetCIDRs:
+  #       - "10.1.0.0/20"
+  #       - "10.1.16.0/20"
+  #     dbSubnetCIDRs:
+  #       - "10.1.32.0/24"
+  #       - "10.1.33.0/24"
+  #     availabilityZones:
+  #       - "us-east-1a"
+  #       - "us-east-1b"
 
-      # ── S3 Buckets ─────────────────────────────────────────────────
-      loggingBucketName: gen3-spoke1-dev-logging
-      dataBucketName: gen3-spoke1-dev-data
-      uploadBucketName: gen3-spoke1-dev-upload
+  #     # ── S3 Buckets ─────────────────────────────────────────────────
+  #     loggingBucketName: gen3-spoke1-dev-logging
+  #     dataBucketName: gen3-spoke1-dev-data
+  #     uploadBucketName: gen3-spoke1-dev-upload
 
-      # ── Aurora PostgreSQL ───────────────────────────────────────────
-      auroraEngine: aurora-postgresql
-      auroraEngineMode: provisioned
-      auroraEngineVersion: "14.19"
-      auroraMasterUsername: postgres
-      auroraDatabaseName: app
-      auroraInstanceClass: db.r6g.large
-      auroraInstanceCount: 2
+  #     # ── Aurora PostgreSQL ───────────────────────────────────────────
+  #     auroraEngine: aurora-postgresql
+  #     auroraEngineMode: provisioned
+  #     auroraEngineVersion: "14.19"
+  #     auroraMasterUsername: postgres
+  #     auroraDatabaseName: app
+  #     auroraInstanceClass: db.r6g.large
+  #     auroraInstanceCount: 2
 
-      # ── EKS ─────────────────────────────────────────────────────────
-      eksVersion: "1.35"
+  #     # ── EKS ─────────────────────────────────────────────────────────
+  #     eksVersion: "1.35"
 
-      # ── KMS ─────────────────────────────────────────────────────────
-      kmsKeyDescription: gen3-spoke1 encryption key
-      kmsKeyAlias: gen3-spoke1-key
+  #     # ── KMS ─────────────────────────────────────────────────────────
+  #     kmsKeyDescription: gen3-spoke1 encryption key
+  #     kmsKeyAlias: gen3-spoke1-key
 
-      # ── ArgoCD Cluster Registration ─────────────────────────────────
-      argoCDNamespace: argocd
+  #     # ── ArgoCD Cluster Registration ─────────────────────────────────
+  #     argoCDNamespace: argocd
 
-      # ── EKS Access ──────────────────────────────────────────────────
-      # Uses the same derived role for EKS access entry + pod identity
+  #     # ── EKS Access ──────────────────────────────────────────────────
+  #     # Uses the same derived role for EKS access entry + pod identity
 
-      # ── OpenSearch (disabled but schema-required) ───────────────────
-      openSearchMasterPasswordSecretRef: opensearch-master-password
+  #     # ── OpenSearch (disabled but schema-required) ───────────────────
+  #     openSearchMasterPasswordSecretRef: opensearch-master-password

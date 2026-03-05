@@ -447,7 +447,6 @@ Edit the appropriate values file:
 |-------|-------------|
 | All CSOC addons | `argocd/addons/csoc/addons.yaml` |
 | Single cluster | `argocd/cluster-fleet/<cluster>/addons.yaml` |
-| Environment-wide | `argocd/addons/environments/<env>/` |
 
 Push to git — ArgoCD will reconcile automatically.
 

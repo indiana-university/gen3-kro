@@ -1,13 +1,9 @@
-# # Spoke1 Gen3 application values. ONE per namespace/environment.
-# # Consumed by the fleet-gen3 ApplicationSet.
-# #
-# # Matches gen3-gitops's per-environment values pattern:
-# #   <cluster>/<hostname>/values/values.yaml
-# # Integrates patterns from gen3-terraform's values.tftpl and fence-config.tftpl.
+# # Spoke2 Gen3 application values. ONE per namespace/environment.
+# # Consumed by the gen3App ArgoCD Application in the RGD.
 # #
 # # Infrastructure connection values (Aurora endpoint, VPC ID, etc.) are NOT
-# # hardcoded here. They are injected automatically by the fleet-gen3
-# # ApplicationSet from the argoCDClusterSecret annotations (gen3.io/*).
+# # hardcoded here. They are injected automatically by the RGD's gen3App
+# # resource as Helm parameters from KRO CEL expressions.
 # #
 # # DB passwords are NOT passed via annotations — they are managed by AWS
 # # (manageMasterUserPassword: true) and stored in AWS Secrets Manager.
@@ -31,19 +27,18 @@
 #   # Deploy ExternalSecret CRDs that pull DB passwords from AWS SM
 #   externalSecrets:
 #     deploy: true
-#   # ── External Aurora PostgreSQL ───A──────────────────────────
-#   # host and username are injected by the fleet-gen3 ApplicationSet
-#   # from infraOutputs (via helm.parameters — overrides this block).
+#   # ── External Aurora PostgreSQL ─────────────────────────────
+#   # host and username are injected by the RGD gen3App as Helm parameters.
 #   # Password comes from ExternalSecrets on the spoke cluster.
 #   postgres:
 #     dbCreate: true
 #     master:
 #       port: "5432"
 #     # ExternalSecret for Aurora master password (from AWS SM)
-#     externalSecret: "spoke1-dev-aurora-master-password"
+#     externalSecret: "spoke2-dev-aurora-master-password"
 #   # ── Common settings ──────────────────────────────────────
 #   environment: dev
-#   hostname: spoke1-dev.example.com
+#   hostname: spoke2-dev.example.com
 #   dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
 
 # # ── Local dev databases — DISABLED (using external Aurora) ──
@@ -59,20 +54,18 @@
 #   enabled: true
 #   defaultPrefix: "dg.TEST/"
 #   externalSecrets:
-#     dbcreds: "spoke1-dev-default-indexd-creds"
+#     dbcreds: "spoke2-dev-default-indexd-creds"
 #     createK8sServiceCredsSecret: true
 # fence:
 #   enabled: true
 #   externalSecrets:
-#     dbcreds: "spoke1-dev-default-fence-creds"
-#     fenceConfig: "spoke1-dev-fence-config"
-#     fenceJwtKeys: "spoke1-dev-fence-jwt-keys"
+#     dbcreds: "spoke2-dev-default-fence-creds"
+#     fenceConfig: "spoke2-dev-fence-config"
+#     fenceJwtKeys: "spoke2-dev-fence-jwt-keys"
 #     fenceGoogleAppCredsSecret: ""
 #     fenceGoogleStorageCredsSecret: ""
 #     createK8sGoogleAppSecrets: true
 #   # ── User.yaml (inline for initial testing) ────────────────
-#   # Minimal authorization policy for bootstrapping. In production,
-#   # use usersync.userYamlS3Path to pull from an S3-managed user.yaml.
 #   USER_YAML: |
 #     authz:
 #       anonymous_policies:
@@ -113,19 +106,19 @@
 # sheepdog:
 #   enabled: true
 #   externalSecrets:
-#     dbcreds: "spoke1-dev-default-sheepdog-creds"
+#     dbcreds: "spoke2-dev-default-sheepdog-creds"
 # peregrine:
 #   enabled: true
 #   externalSecrets:
-#     dbcreds: "spoke1-dev-default-sheepdog-creds"
+#     dbcreds: "spoke2-dev-default-sheepdog-creds"
 # arborist:
 #   enabled: true
 #   externalSecrets:
-#     dbcreds: "spoke1-dev-default-arborist-creds"
+#     dbcreds: "spoke2-dev-default-arborist-creds"
 # metadata:
 #   enabled: true
 #   externalSecrets:
-#     dbcreds: "spoke1-dev-default-metadata-creds"
+#     dbcreds: "spoke2-dev-default-metadata-creds"
 #     createK8sMetadataSecret: true
 
 # # ── ALL other services DISABLED (database-only setup) ───────
