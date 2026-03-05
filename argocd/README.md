@@ -152,7 +152,7 @@ Renders KRO custom resources from `cluster-fleet/<cluster>/infrastructure.yaml`:
 ```yaml
 instances:
   my-environment:
-    kind: AwsGen3Infra2Flat        # KRO kind from RGD (consolidated: infra + cluster-resources + gen3 app)
+    kind: AwsGen3Infra1Flat        # KRO kind from RGD
     namespace: default
     syncWave: "30"
     spec:                          # Spec per RGD schema
