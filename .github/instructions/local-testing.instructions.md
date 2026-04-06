@@ -87,7 +87,7 @@ ACK controllers talk directly to **real AWS APIs** (no LocalStack).
 Credentials are MFA-assumed-role, written by `mfa-session.sh` on the host.
 
 Because Kind has no OIDC provider (no IRSA), credentials are injected
-as a K8s Secret (`ack-aws-credentials`) in the `ack-system` namespace.
+as a K8s Secret (`ack-aws-credentials`) in the `ack` namespace.
 
 After renewing credentials on the host, run:
 ```bash

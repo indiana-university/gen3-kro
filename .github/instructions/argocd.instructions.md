@@ -29,7 +29,8 @@ gen3-kro uses a **3-layer ApplicationSet** bootstrap:
 3. Region ApplicationSets render addons from `argocd/addons/csoc/addons.yaml`
 
 When adding a new component to the EKS stack:
-1. Add its entry to `argocd/addons/csoc/addons.yaml` with the correct sync-wave
+1. Add its entry to `argocd/addons/addons.yaml` with the correct sync-wave
+   and `cluster_type: eks` selector
 2. Follow the Helm values pattern used by existing entries
 3. Update the ACK controller table in `.github/copilot-instructions.md` if applicable
 
@@ -42,8 +43,8 @@ The local cluster mirrors the EKS structure but uses a simplified bootstrap:
 4. ArgoCD reconciles: application-sets chart → per-addon ApplicationSets → Applications
 
 When adding a new component to the local stack:
-1. Add its install step to `kind-local-test.sh` → `stage_install()`
-2. Document it in `argocd/addons/local/addons.yaml`
+1. Add its entry to `argocd/addons/addons.yaml` with a `cluster_type: kind` selector
+2. Follow the Kind ACK entry pattern (no IRSA, `ignoreDifferences` on Deployment env)
 3. Follow the sync-wave ordering above
 
 ## Helm Chart Conventions
@@ -62,18 +63,22 @@ KRO handles parameterization via the RGD schema spec, not Helm values.
 No credentials stored in the cluster.
 
 **Local CSOC:** ACK controllers use a K8s Secret (`ack-aws-credentials`) created
-from `~/.aws/credentials` on the host. Run `kind-local-test.sh inject-creds` after
-renewing credentials.
+from `~/.aws/credentials` on the host in the `ack` namespace. Run
+`kind-local-test.sh inject-creds` after renewing credentials.
 
 Both modes: no `endpoint_url` override — controllers talk directly to real AWS APIs.
 
 ## Adding New ACK Controllers (Local CSOC)
 
-1. Add the Helm install step to `stage_install()` in `kind-local-test.sh`
-2. Use the same pattern: `oci://public.ecr.aws/aws-controllers-k8s/<svc>-chart`
-3. Set `aws.region` (no endpoint_url)
-4. Update the ACK controller table in `.github/copilot-instructions.md`
-5. Document in `argocd/addons/local/addons.yaml`
+1. Add a new entry to `argocd/addons/addons.yaml` following the Kind ACK pattern:
+   - Key suffix: `-kind` (e.g. `ack-newservice-kind`)
+   - `selector: cluster_type: kind`
+   - No IRSA annotations on serviceAccount
+   - Include `ignoreDifferences` on Deployment env (for credential injection)
+2. Use `chartRepository: "public.ecr.aws/aws-controllers-k8s"` (no `oci://` prefix)
+3. Set `aws.region: '{{.metadata.annotations.aws_region}}'`
+4. Update `ACK_CONTROLLERS` in `kind-local-test.sh` with the new service name + version
+5. Update the ACK controller table in `.github/copilot-instructions.md`
 
 ## Cluster Fleet Structure
 

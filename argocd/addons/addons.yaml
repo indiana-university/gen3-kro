@@ -945,6 +945,10 @@ ack-opensearchservice-kind:
       name: "ack-opensearchservice-controller"
     aws:
       region: '{{.metadata.annotations.aws_region}}'
+      credentials:
+        # Disable file-based credentials; Kind uses env var injection via inject-creds
+        secretName: ""
+        profile: ""
     enableCARM: false
     featureGates:
       IAMRoleSelector: "true"

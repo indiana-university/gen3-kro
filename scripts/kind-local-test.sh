@@ -95,17 +95,18 @@ GIT_REPO_BASEPATH="argocd/"
 
 # ACK Controllers — installed by ArgoCD, credentials injected by this script
 # NO endpoint_url override — controllers talk to REAL AWS APIs
+# Versions here must match addons.yaml Kind ACK entries (ack-*-kind)
 ACK_NAMESPACE="ack"
 declare -A ACK_CONTROLLERS=(
-  [ec2]="1.9.2"
-  [eks]="1.11.1"
-  [iam]="1.6.1"
-  [kms]="1.2.1"
-  [opensearchservice]="1.2.2"
-  [rds]="1.7.6"
-  [s3]="1.3.1"
-  [secretsmanager]="1.2.1"
-  [sqs]="1.4.1"
+  [ec2]="1.10.1"
+  [eks]="1.12.0"
+  [iam]="1.6.2"
+  [kms]="1.2.2"
+  [opensearchservice]="1.2.3"
+  [rds]="1.7.7"
+  [s3]="1.3.2"
+  [secretsmanager]="1.2.2"
+  [sqs]="1.4.2"
 )
 
 # AWS credential state (set by validate_credentials)
@@ -335,7 +336,9 @@ stage_create() {
   log_success "Kubeconfig exported to: ${KUBECONFIG_PATH}"
 
   # For devcontainer access: replace 127.0.0.1 with host.docker.internal
-  if [[ -f "$KUBECONFIG_PATH" ]]; then
+  # Only apply when running inside a Docker container (e.g. devcontainer).
+  # When running on the host or WSL, keep 127.0.0.1 as-is.
+  if [[ -f "$KUBECONFIG_PATH" ]] && [[ -f /.dockerenv ]]; then
     sed -i 's|server: https://127\.0\.0\.1:|server: https://host.docker.internal:|g' "$KUBECONFIG_PATH" 2>/dev/null || true
     sed -i 's|server: https://0\.0\.0\.0:|server: https://host.docker.internal:|g' "$KUBECONFIG_PATH" 2>/dev/null || true
     log_info "Kubeconfig server updated for Docker Desktop access"
@@ -410,9 +413,31 @@ $(echo "$secret_data" | while IFS='=' read -r key val; do
 YAML
   log_success "ACK credentials Secret created/updated in ${ACK_NAMESPACE}"
 
+  # Wait for ACK deployments to exist before patching (ArgoCD creates them async)
+  log_info "Waiting for ACK controller deployments to be created by ArgoCD..."
+  local max_deploy_wait=300
+  local deploy_elapsed=0
+  local expected_count="${#ACK_CONTROLLERS[@]}"
+  while true; do
+    local found_count
+    found_count=$(kubectl get deployments -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" \
+      --no-headers 2>/dev/null | wc -l || echo 0)
+    if [[ "$found_count" -ge "$expected_count" ]]; then
+      log_success "All ${expected_count} ACK controller deployments found"
+      break
+    fi
+    if [[ $deploy_elapsed -ge $max_deploy_wait ]]; then
+      log_warn "Only ${found_count}/${expected_count} ACK deployments found after ${max_deploy_wait}s — proceeding with available"
+      break
+    fi
+    sleep 10
+    deploy_elapsed=$((deploy_elapsed + 10))
+    log_info "  ${found_count}/${expected_count} ACK deployments found (${deploy_elapsed}s)"
+  done
+
   # Patch ACK controller deployments to inject credentials from Secret
   for svc in "${!ACK_CONTROLLERS[@]}"; do
-    local deploy
+    local deploy=""
     # Try common deployment name patterns
     for pattern in "${svc}-chart" "ack-${svc}-${svc}-chart" "ack-${svc}-controller"; do
       if kubectl get deployment "$pattern" -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" &>/dev/null; then
@@ -421,12 +446,20 @@ YAML
       fi
     done
 
-    if [[ -n "${deploy:-}" ]]; then
+    if [[ -n "${deploy}" ]]; then
+      # Clear any chart-default file-based credential env vars (e.g. opensearchservice)
+      # so the controller falls back to env var credentials from the Secret.
+      kubectl set env deployment/"$deploy" \
+        AWS_SHARED_CREDENTIALS_FILE- \
+        AWS_PROFILE- \
+        -n "$ACK_NAMESPACE" \
+        --context "$KIND_CONTEXT" 2>/dev/null || true
+
       kubectl set env deployment/"$deploy" \
         --from=secret/ack-aws-credentials \
         -n "$ACK_NAMESPACE" \
         --context "$KIND_CONTEXT" 2>/dev/null && \
-        log_success "Credentials injected into ${svc} controller" || \
+        log_success "Credentials injected into ${svc} controller (${deploy})" || \
         log_warn "Could not inject credentials into ${svc} controller"
     else
       log_warn "ACK ${svc} deployment not found (may not be installed yet)"
