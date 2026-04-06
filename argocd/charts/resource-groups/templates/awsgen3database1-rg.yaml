@@ -117,6 +117,7 @@ spec:
           masterUsername: ${schema.spec.auroraMasterUsername}
           masterUserPassword:
             name: ${schema.spec.masterPasswordSecretName}
+            namespace: ${schema.spec.namespace}
             key: ${schema.spec.masterPasswordSecretKey}
           dbSubnetGroupName: ${databasePrepBridge.data['db-subnet-group-name']}
           vpcSecurityGroupIDs:
