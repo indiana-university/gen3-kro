@@ -24,9 +24,9 @@ argocd/
 │   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
 └── cluster-fleet/                  # Per-cluster override values (highest precedence)
     └── spoke1/
-        ├── infrastructure.yaml     #   KRO instance definitions
-        ├── cluster-resources.yaml  #   Cluster-level resources (1 per cluster)
-        └── apps.yaml               #   Gen3 application values (1 per environment)
+        ├── infrastructure/         #   KRO instance definitions (one YAML file per tier)
+        ├── cluster-resources/      #   Cluster-level resource values (1 per cluster)
+        └── <domain>/               #   Gen3 application values (1 per environment)
 ```
 
 ## Reconciliation Chain
@@ -76,10 +76,6 @@ Terraform creates:
 1. `charts/application-sets/` defaults (lowest)
 2. `addons/csoc/addons.yaml`
 3. `cluster-fleet/<cluster>/addons.yaml` **(highest — wins)**
-
-### Infrastructure Values
-1. `charts/instances/` defaults (lowest)
-2. `cluster-fleet/<cluster>/infrastructure.yaml` **(wins)**
 
 The merge uses multi-source Helm with ref-based value files:
 ```yaml
@@ -145,20 +141,6 @@ addon-name:
     ack_management_mode: self_managed
 ```
 
-### instances
-
-Renders KRO custom resources from `cluster-fleet/<cluster>/infrastructure.yaml`:
-
-```yaml
-instances:
-  my-environment:
-    kind: AwsGen3Infra1Flat        # KRO kind from RGD
-    namespace: default
-    syncWave: "30"
-    spec:                          # Spec per RGD schema
-      vpcCIDR: "10.1.0.0/16"
-```
-
 ### resource-groups
 
 Static KRO `ResourceGraphDefinition` YAML files. Files follow naming: `<provider><name>-rg.yaml`.
@@ -182,12 +164,12 @@ gen3-gitops's "cluster-level-resources" pattern — ONE per EKS cluster.
 
 Each subdirectory must match a spoke alias defined in `spoke_account_ids` in `config/shared.auto.tfvars.json`. Files:
 
-| File | Purpose |
-|------|---------|
+| File/Dir | Purpose |
+|----------|---------|
 | `addons.yaml` | Override addon values (empty `{}` = accept defaults) |
-| `infrastructure.yaml` | KRO instance definitions (`instances:` key) |
-| `cluster-resources.yaml` | Cluster-level resource values (1 per cluster) |
-| `apps.yaml` | Gen3 application values (1 per environment) |
+| `infrastructure/` | KRO instance definitions (one standalone YAML file per tier) |
+| `cluster-resources/` | Cluster-level resource values (1 per cluster) |
+| `<domain>/` | Gen3 application values (1 per environment) |
 
 ## Conventions
 
@@ -203,10 +185,11 @@ Each subdirectory must match a spoke alias defined in `spoke_account_ids` in `co
 ```bash
 # Validate charts render correctly
 helm template argocd/charts/application-sets/
-helm template argocd/charts/instances/
 helm template argocd/charts/resource-groups/
 
 # Validate with values
 helm template argocd/charts/application-sets/ -f argocd/addons/csoc/addons.yaml
-helm template argocd/charts/instances/ -f argocd/cluster-fleet/spoke1/infrastructure.yaml
+
+# Validate KRO instance YAML files directly
+kubectl apply --dry-run=client -f argocd/cluster-fleet/spoke1/infrastructure/
 ```

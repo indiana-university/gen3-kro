@@ -1,6 +1,6 @@
 # cluster: "ardac1prd"
 
-# accountNumber: "742378880825"
+# accountNumber: "123456789012"  # placeholder — real value injected at runtime
 
 # alb-controller:
 #   enabled: true

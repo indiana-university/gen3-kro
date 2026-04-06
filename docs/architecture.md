@@ -13,6 +13,7 @@ Detailed architecture documentation for the EKS Cluster Management Platform.
 - [Cross-Account Trust Model](#cross-account-trust-model)
 - [Data Flow](#data-flow)
 - [Sync Wave Ordering](#sync-wave-ordering)
+- [Local CSOC (Kind)](#local-csoc-kind)
 
 ---
 
@@ -318,14 +319,13 @@ eks-cluster-mgmt/
 │   │   └── csoc/addons.yaml             #   CSOC addon values (KRO, ACK, ESO)
 │   ├── charts/
 │   │   ├── application-sets/            #   Meta-chart: generates child ApplicationSets
-│   │   ├── instances/                   #   KRO instance renderer chart
 │   │   ├── multi-acct/                  #   ACK CARM namespace + IAMRoleSelector chart
 │   │   ├── resource-groups/             #   KRO RGD manifests chart
 │   │   └── cluster-resources/           #   Umbrella chart: spoke cluster-level infra
 │   └── cluster-fleet/
 │       └── spoke1/                  #   Per-cluster infra + resource overrides
-│           ├── infrastructure.yaml
-│           ├── cluster-resources.yaml
+            ├── infrastructure/
+            ├── cluster-resources/
 │           └── apps.yaml
 │
 ├── terraform/
@@ -373,3 +373,63 @@ eks-cluster-mgmt/
     ├── connect-csoc.sh                  #   Cluster connection script
     └── argocd-password.txt             #   ArgoCD admin password
 ```
+
+---
+
+## Local CSOC (Kind)
+
+The local CSOC is a **host-based** Kind cluster used for RGD authoring and
+capability testing. It mirrors the EKS CSOC structure but runs entirely on the
+developer's laptop without a DevContainer.
+
+```
+Developer's Laptop (host)
+└── Kind cluster (gen3-local)
+    ├── ArgoCD               — GitOps controller (git → cluster)
+    ├── KRO                  — Composes ACK resources into single custom resources
+    ├── ACK Controllers x9   — Provisions AWS resources via K8s CRDs
+    └── ResourceGraphDefs    — Same RGDs as EKS CSOC
+
+via K8s Secret (ack-aws-credentials)
+└── Real AWS account  → VPC, SGs, EKS, RDS, S3 (managed by ACK)
+```
+
+### Key Differences from EKS CSOC
+
+| Aspect | Local CSOC | EKS CSOC |
+|--------|-----------|---------|
+| Cluster | Kind on host | EKS (Terraform-managed) |
+| Container | None (host-only) | VS Code DevContainer |
+| ACK auth | K8s Secret (`ack-aws-credentials`) | IRSA (no long-lived keys) |
+| Deployment | `kind-local-test.sh create install` | `scripts/install.sh apply` |
+| Addons config | `argocd/addons/local/addons.yaml` | `argocd/addons/csoc/addons.yaml` |
+| Spoke accounts | One (developer's account) | Multiple cross-account |
+
+### Local Bootstrap Chain
+
+```
+scripts/kind-local-test.sh create install
+    │
+    ├── kind create cluster --config scripts/kind-config.yaml
+    ├── helm install argocd (only direct Helm install)
+    ├── kubectl apply bootstrap ApplicationSets
+    │
+    └── ArgoCD reconciles:
+         Wave -30: KRO controller
+         Wave   1: ACK controllers (→ real AWS: ec2, eks, iam, kms, rds, s3, …)
+         Wave  10: ResourceGraphDefinitions
+         Wave  30: KRO instances
+```
+
+### Credential Flow (Local CSOC)
+
+```
+Developer runs: bash scripts/mfa-session.sh <MFA_CODE>
+    → Writes ~/.aws/credentials [csoc] with STS session token
+
+bash scripts/kind-local-test.sh inject-creds
+    → kubectl create secret ack-aws-credentials (in ack-system)
+    → ACK controllers pick up credentials on next reconcile
+```
+
+See [docs/local-csoc-guide.md](local-csoc-guide.md) for the full step-by-step guide.

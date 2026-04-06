@@ -572,6 +572,10 @@ spec:
   # ====================================================================
   # BRIDGE: AppIAM Outputs ConfigMap (for downstream tiers)
   # ====================================================================
+  # NOTE: Role ARNs and queue URLs reference conditional resources.
+  # Per KRO Test 8, if a feature flag is disabled, the corresponding
+  # bridge data field is silently dropped. Require ALL feature flags
+  # enabled when downstream tiers consume this bridge.
 
     - id: appIAMBridge
       includeWhen:
@@ -591,3 +595,12 @@ spec:
         data:
           oidc-provider-arn: ${oidcProvider.status.?ackResourceMetadata.?arn.orValue("loading")}
           eks-oidc-issuer: ${computeBridge.data['eks-oidc-issuer']}
+          fence-role-arn: ${fenceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          audit-role-arn: ${auditRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          hatchery-role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          manifestservice-role-arn: ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          external-secrets-role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          audit-sqs-url: ${auditQueue.status.?queueURL.orValue("loading")}
+          ssjdispatcher-sqs-url: ${ssjdispatcherQueue.status.?queueURL.orValue("loading")}
+          fence-config-secret-arn: ${fenceConfigSecret.status.?ackResourceMetadata.?arn.orValue("loading")}
+          fence-jwt-keys-secret-arn: ${fenceJwtKeysSecret.status.?ackResourceMetadata.?arn.orValue("loading")}

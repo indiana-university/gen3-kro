@@ -35,7 +35,7 @@
 #   3. Applies bootstrap ApplicationSets (csoc-addons + local-infra-instances)
 #   4. ArgoCD reconciles everything via application-sets chart:
 #      Wave -30: KRO controller
-#      Wave   1: ACK controllers (7 active, pointed at REAL AWS)
+#      Wave   1: ACK controllers (from addons.yaml, pointed at REAL AWS)
 #      Wave  10: KRO ResourceGraphDefinitions
 #      Wave  30: KRO instances
 #
@@ -95,19 +95,11 @@ GIT_REPO_BASEPATH="argocd/"
 
 # ACK Controllers — installed by ArgoCD, credentials injected by this script
 # NO endpoint_url override — controllers talk to REAL AWS APIs
-# Versions here must match addons.yaml Kind ACK entries (ack-*-kind)
+# Controller list and versions are defined ONLY in addons.yaml (ack-*-kind entries).
+# This script discovers them dynamically — no hardcoded list.
 ACK_NAMESPACE="ack"
-declare -A ACK_CONTROLLERS=(
-  [ec2]="1.10.1"
-  [eks]="1.12.0"
-  [iam]="1.6.2"
-  [kms]="1.2.2"
-  [opensearchservice]="1.2.3"
-  [rds]="1.7.7"
-  [s3]="1.3.2"
-  [secretsmanager]="1.2.2"
-  [sqs]="1.4.2"
-)
+ADDONS_YAML="${REPO_DIR}/argocd/addons/addons.yaml"
+FLEET_DIR="${REPO_DIR}/argocd/cluster-fleet/local-aws-dev"
 
 # AWS credential state (set by validate_credentials)
 CRED_TIER="tier4"
@@ -414,10 +406,13 @@ YAML
   log_success "ACK credentials Secret created/updated in ${ACK_NAMESPACE}"
 
   # Wait for ACK deployments to exist before patching (ArgoCD creates them async)
+  # Expected count derived from addons.yaml (single source of truth) — no hardcoded list.
   log_info "Waiting for ACK controller deployments to be created by ArgoCD..."
   local max_deploy_wait=300
   local deploy_elapsed=0
-  local expected_count="${#ACK_CONTROLLERS[@]}"
+  local expected_count
+  expected_count=$(grep -c '^ack-.*-kind:' "${ADDONS_YAML}" 2>/dev/null || echo 0)
+  log_info "Expected ACK controllers (from addons.yaml): ${expected_count}"
   while true; do
     local found_count
     found_count=$(kubectl get deployments -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" \
@@ -435,18 +430,15 @@ YAML
     log_info "  ${found_count}/${expected_count} ACK deployments found (${deploy_elapsed}s)"
   done
 
-  # Patch ACK controller deployments to inject credentials from Secret
-  for svc in "${!ACK_CONTROLLERS[@]}"; do
-    local deploy=""
-    # Try common deployment name patterns
-    for pattern in "${svc}-chart" "ack-${svc}-${svc}-chart" "ack-${svc}-controller"; do
-      if kubectl get deployment "$pattern" -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" &>/dev/null; then
-        deploy="$pattern"
-        break
-      fi
-    done
-
-    if [[ -n "${deploy}" ]]; then
+  # Inject credentials into ALL ACK deployments (discovered dynamically from cluster)
+  local deployments
+  deployments=$(kubectl get deployments -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" \
+    --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null || true)
+  if [[ -z "$deployments" ]]; then
+    log_warn "No ACK deployments found in ${ACK_NAMESPACE} — nothing to inject"
+  else
+    while IFS= read -r deploy; do
+      [[ -z "$deploy" ]] && continue
       # Clear any chart-default file-based credential env vars (e.g. opensearchservice)
       # so the controller falls back to env var credentials from the Secret.
       kubectl set env deployment/"$deploy" \
@@ -459,12 +451,10 @@ YAML
         --from=secret/ack-aws-credentials \
         -n "$ACK_NAMESPACE" \
         --context "$KIND_CONTEXT" 2>/dev/null && \
-        log_success "Credentials injected into ${svc} controller (${deploy})" || \
-        log_warn "Could not inject credentials into ${svc} controller"
-    else
-      log_warn "ACK ${svc} deployment not found (may not be installed yet)"
-    fi
-  done
+        log_success "Credentials injected into ${deploy}" || \
+        log_warn "Could not inject credentials into ${deploy}"
+    done <<< "$deployments"
+  fi
 
   # ── Update AWS Account ID on ArgoCD cluster Secret and spoke Namespaces ──
   # The install stage sets aws_account_id on the cluster Secret initially.
@@ -493,10 +483,44 @@ YAML
 }
 
 ###############################################################################
+# HELPER: discover_spoke_namespaces — Extract namespaces from fleet instance YAMLs
+#
+# Scans cluster-fleet/local-aws-dev/{infrastructure,tests}/*.yaml for
+# metadata.namespace values. Handles both active and commented-out instances
+# so namespaces are pre-created before instances are uncommented.
+# This is the ONLY place namespace lists are derived — the YAML files in
+# cluster-fleet/ are the single source of truth.
+###############################################################################
+discover_spoke_namespaces() {
+  local namespaces=()
+  for dir in infrastructure tests; do
+    local scan_dir="${FLEET_DIR}/${dir}"
+    [[ -d "$scan_dir" ]] || continue
+    # Match '  namespace: <value>' lines (active or commented-out).
+    # Anchored to start-of-line so camelCase fields like
+    # foundationNamespace/computeNamespace/producerNamespace are excluded
+    # (they don't start with 'namespace:' after stripping comments/whitespace).
+    while IFS= read -r ns; do
+      [[ -n "$ns" ]] && namespaces+=("$ns")
+    done < <(
+      grep -rh '^\s*#*\s*namespace:' "$scan_dir"/*.yaml 2>/dev/null \
+        | sed 's/^[# ]*//' \
+        | sed 's/namespace:\s*//' \
+        | tr -d '"' | tr -d "'" | tr -d ' ' \
+        | grep -v '^$' \
+        | sort -u
+    )
+  done
+  # Output unique, sorted list
+  printf '%s\n' "${namespaces[@]}" | sort -u
+}
+
+###############################################################################
 # HELPER: create_spoke_namespaces — Create spoke Namespaces with ACK annotation
 #
 # Creates all KRO instance namespaces with services.k8s.aws/owner-account-id,
 # required by ACK controllers to route API calls to the correct AWS account.
+# Namespace list is discovered from fleet instance YAMLs (not hardcoded).
 # Called by stage_install (initial setup) and stage_inject_creds (cred renewal).
 ###############################################################################
 create_spoke_namespaces() {
@@ -507,24 +531,19 @@ create_spoke_namespaces() {
   fi
   log_banner "Creating/updating spoke Namespaces with AWS account ID annotation"
 
-  local spoke_namespaces=(
-    spoke1
-    kro-test-foreach
-    kro-test-foreach-cart
-    kro-test-includewhen
-    kro-test-includewhen-full
-    kro-test-bridge
-    kro-test-cel
-    kro-test-cel-prod
-    kro-test-sg
-    kro-test-sg-full
-    kro-test-crossrgd
-    kro-test-crossrgd-consumer
-    kro-test-chained-orvalue
-    kro-test-chained-orvalue-b
-  )
+  local discovered_namespaces
+  discovered_namespaces=$(discover_spoke_namespaces)
+  if [[ -z "$discovered_namespaces" ]]; then
+    log_warn "No namespaces found in fleet instance YAMLs — nothing to create"
+    return 0
+  fi
 
-  for ns in "${spoke_namespaces[@]}"; do
+  local ns_count
+  ns_count=$(echo "$discovered_namespaces" | wc -l)
+  log_info "Discovered ${ns_count} namespaces from fleet instance YAMLs"
+
+  while IFS= read -r ns; do
+    [[ -z "$ns" ]] && continue
     kubectl apply --context "$KIND_CONTEXT" -f - <<NSYAML
 apiVersion: v1
 kind: Namespace
@@ -534,7 +553,7 @@ metadata:
     services.k8s.aws/owner-account-id: "${aws_account_id}"
 NSYAML
     log_success "Namespace '${ns}' created/annotated with owner-account-id"
-  done
+  done <<< "$discovered_namespaces"
 }
 
 ###############################################################################

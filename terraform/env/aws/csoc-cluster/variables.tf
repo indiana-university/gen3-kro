@@ -19,7 +19,7 @@ variable "aws_profile" {
 }
 
 variable "spoke_account_ids" {
-  description = "Sink — no longer set from config. Derived inline in main.tf from var.spokes[].provider.account_id."
+  description = "Unused — derived inline in main.tf from var.spokes[].provider.account_id."
   type        = map(string)
   default     = {}
 }
@@ -167,7 +167,7 @@ variable "addons" {
   type        = any
   default = {
     enable_external_secrets = true
-    enable_kro_eks_rgs      = true
+    enable_kro_csoc_rgs     = true
     enable_multi_acct       = true
   }
 }

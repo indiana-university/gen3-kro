@@ -10,38 +10,37 @@
 #   - Tier 3 (spoke1-compute) must be Ready (provides computeBridge with OIDC endpoint)
 #   - ACK controllers (sqs, iam, secretsmanager) must be running
 #
-# Uncomment the YAML block below and populate your values to deploy.
 # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3AppIAM1
-# metadata:
-#   name: spoke1-appiam
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "25"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   region: us-east-1
-#   environment: local
-#   project: gen3-kro
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
-#
-#   # ── Bridge references (all in spoke1 namespace) ───────────────────────────
-#   foundationBridgeName: spoke1-foundation-bridge
-#   computeBridgeName: spoke1-compute-bridge
-#   foundationNamespace: spoke1
-#   computeNamespace: spoke1
-#
-#   # ── Feature flags (all optional) ──────────────────────────────────────────
-#   fenceEnabled: true
-#   auditEnabled: true
-#   hatcheryEnabled: true
-#   manifestserviceEnabled: true
-#   externalSecretsEnabled: true
-#   ssjdispatcherEnabled: true
-#
-#   # ── Bridge (creates appIAMBridge for downstream tiers) ────────────────────
-#   createBridgeSecret: true
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3AppIAM1
+metadata:
+  name: spoke1-appiam
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
+
+  # ── Bridge references (all in spoke1 namespace) ───────────────────────────
+  foundationBridgeName: spoke1-foundation-bridge
+  computeBridgeName: spoke1-compute-bridge
+  foundationNamespace: spoke1
+  computeNamespace: spoke1
+
+  # ── Feature flags (all optional) ──────────────────────────────────────────
+  fenceEnabled: true
+  auditEnabled: true
+  hatcheryEnabled: true
+  manifestserviceEnabled: true
+  externalSecretsEnabled: true
+  ssjdispatcherEnabled: true
+
+  # ── Bridge (creates appIAMBridge for downstream tiers) ────────────────────
+  createBridgeSecret: true

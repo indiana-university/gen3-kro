@@ -8,6 +8,19 @@
 # Matches gen3-gitops's "cluster-level-resources" pattern: one Application
 # per cluster, shared across all namespaces/environments on that cluster.
 #
+# Values are read from:
+#   cluster-fleet/<spoke-alias>/cluster-resources/cluster-values.yaml
+#
+# Per-spoke repo support: the repo URL, revision, and basepath are read from
+# cluster Secret annotations (fleet_repo_url, fleet_repo_revision,
+# fleet_repo_basepath). Each spoke can point to a different git repository.
+#
+# REQUIRED cluster Secret annotations (fleet_member: spoke):
+#   fleet_repo_url       — git repo containing the cluster-fleet folder
+#   fleet_repo_revision  — branch/tag/commit to use
+#   fleet_repo_basepath  — path prefix within repo (e.g. "argocd/")
+#   gen3.io/spoke-alias  — spoke folder name within cluster-fleet/
+#
 # Uses our cluster-resources umbrella chart (Helm dependencies) instead of
 # gen3-helm's cluster-level-resources (which is an app-of-apps that renders
 # ArgoCD Application CRDs — the spoke has no ArgoCD CRDs).
@@ -32,10 +45,6 @@ spec:
       selector:
         matchLabels:
           fleet_member: spoke
-      values:
-        repoUrl: 'https://github.com/indiana-university/gen3-kro.git'
-        repoRevision: 'main'
-        repoBasepath: 'argocd/'
   template:
     metadata:
       name: '{{index .metadata.annotations "gen3.io/spoke-alias"}}-cluster-resources'
@@ -45,18 +54,20 @@ spec:
     spec:
       project: default
       sources:
-      - repoURL: '{{.values.repoUrl}}'
-        targetRevision: '{{.values.repoRevision}}'
+      # Values ref — per-spoke repo from cluster Secret annotations
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
         ref: values
       # Cluster-resources umbrella chart (external-secrets, etc.)
-      - repoURL: '{{.values.repoUrl}}'
-        path: '{{.values.repoBasepath}}charts/cluster-resources/'
-        targetRevision: '{{.values.repoRevision}}'
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}charts/cluster-resources/'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
         helm:
           releaseName: 'cluster-resources'
           ignoreMissingValueFiles: true
           valueFiles:
-            - '$values/{{.values.repoBasepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/cluster-resources.yaml'
+            # Cluster-resources folder: cluster-fleet/<spoke-alias>/cluster-resources/cluster-values.yaml
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/cluster-resources/cluster-values.yaml'
       destination:
         # Deploy directly to the spoke cluster
         name: '{{.name}}'

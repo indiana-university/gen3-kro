@@ -25,7 +25,7 @@ creates its Application directly.
 | Gen3 services | `app.tftpl` → one Application per environment | `fleet-gen3` ApplicationSet → one Application per spoke |
 | Values (cluster) | `<cluster>/cluster-values/cluster-values.yaml` | `cluster-fleet/<spoke>/cluster-resources.yaml` |
 | Values (app) | `<cluster>/<hostname>/values/values.yaml` | `cluster-fleet/<spoke>/apps.yaml` |
-| Infrastructure | `<cluster>/cluster-values/` (one per cluster) | `cluster-fleet/<spoke>/infrastructure.yaml` (KRO instances) |
+| Infrastructure | `<cluster>/cluster-values/` (one per cluster) | `cluster-fleet/<spoke>/infrastructure/` (KRO instances, one YAML per tier) |
 
 ## File Layout
 
@@ -41,8 +41,8 @@ argocd/
 │       └── values.yaml
 └── cluster-fleet/
     └── spoke1/
-        ├── infrastructure.yaml     ← KRO instances (EKS, Aurora, VPC, etc.)
-        ├── cluster-resources.yaml  ← Cluster-wide infra (external-secrets)
+            ├── infrastructure/         ← KRO instance files (one YAML per tier: EKS, Aurora, VPC, etc.)
+        ├── cluster-resources/      ← Cluster-wide infra (external-secrets)
         └── apps.yaml               ← Gen3 service values (indexd, fence, etc.)
 ```
 

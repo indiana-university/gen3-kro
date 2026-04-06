@@ -5,7 +5,20 @@
 # directly to the spoke cluster.
 #
 # Matches gen3-gitops's per-environment pattern: one Application per
-# hostname/namespace, with values from cluster-fleet/<spoke>/apps.yaml.
+# hostname/namespace, with values from:
+#   cluster-fleet/<spoke-alias>/<hostname>/values.yaml
+#
+# Per-spoke repo support: the repo URL, revision, and basepath are read from
+# cluster Secret annotations (fleet_repo_url, fleet_repo_revision,
+# fleet_repo_basepath). The hostname folder is read from the gen3.io/hostname
+# annotation. Each spoke can point to a different git repository.
+#
+# REQUIRED cluster Secret annotations (fleet_member: spoke):
+#   fleet_repo_url       — git repo containing the cluster-fleet folder
+#   fleet_repo_revision  — branch/tag/commit to use
+#   fleet_repo_basepath  — path prefix within repo (e.g. "argocd/")
+#   gen3.io/hostname     — hostname folder (e.g. "spoke1-dev.example.com")
+#   gen3.io/spoke-alias  — spoke folder name within cluster-fleet/
 #
 # Infrastructure outputs (Aurora endpoint, VPC ID, etc.) are read from
 # the spoke secret's gen3.io/* annotations and injected as Helm parameters.
@@ -37,10 +50,6 @@ spec:
       selector:
         matchLabels:
           fleet_member: spoke
-      values:
-        repoUrl: 'https://github.com/indiana-university/gen3-kro.git'
-        repoRevision: 'main'
-        repoBasepath: 'argocd/'
   template:
     metadata:
       name: '{{index .metadata.annotations "gen3.io/spoke-alias"}}-gen3'
@@ -60,8 +69,9 @@ spec:
             - /data
             - /stringData
       sources:
-      - repoURL: '{{.values.repoUrl}}'
-        targetRevision: '{{.values.repoRevision}}'
+      # Values ref — per-spoke repo from cluster Secret annotations
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
         ref: values
       # gen3-helm umbrella chart — deployed directly (no intermediate chart)
       - repoURL: 'https://github.com/uc-cdis/gen3-helm'
@@ -79,7 +89,8 @@ spec:
             - name: global.postgres.master.dbName
               value: '{{index .metadata.annotations "gen3.io/aurora-database-name"}}'
           valueFiles:
-            - '$values/{{.values.repoBasepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/apps.yaml'
+            # Hostname-based folder: cluster-fleet/<spoke-alias>/<hostname>/values.yaml
+            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/{{index .metadata.annotations "gen3.io/hostname"}}/values.yaml'
       destination:
         # Deploy directly to the spoke cluster
         name: '{{.name}}'

@@ -13,37 +13,36 @@
 #         -n spoke1 --from-literal=password='<your-secure-password>'
 #   - ACK controller 'rds' must be running
 #
-# Uncomment the YAML block below and populate your values to deploy.
 # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Database1
-# metadata:
-#   name: spoke1-database
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "20"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   region: us-east-1
-#   environment: local
-#   project: gen3-kro
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
-#
-#   # ── Bridge references to Foundation's database prep ───────────────────────
-#   databasePrepBridgeName: spoke1-database-prep-bridge
-#   foundationNamespace: spoke1
-#
-#   # ── Aurora Serverless v2 configuration ────────────────────────────────────
-#   auroraEngineVersion: "16.6"
-#   auroraDBName: gen3
-#   auroraMasterUsername: postgres
-#   masterPasswordSecretName: aurora-master-password
-#   masterPasswordSecretKey: password
-#   auroraMinCapacity: "0.5"
-#   auroraMaxCapacity: "4"
-#
-#   # ── Bridge (creates databaseBridge for downstream tiers) ──────────────────
-#   createBridgeSecret: true
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Database1
+metadata:
+  name: spoke1-database
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
+
+  # ── Bridge references to Foundation's database prep ───────────────────────
+  databasePrepBridgeName: spoke1-database-prep-bridge
+  foundationNamespace: spoke1
+
+  # ── Aurora Serverless v2 configuration ────────────────────────────────────
+  auroraEngineVersion: "16.6"
+  auroraDBName: gen3
+  auroraMasterUsername: postgres
+  masterPasswordSecretName: aurora-master-password
+  masterPasswordSecretKey: password
+  auroraMinCapacity: "0.5"
+  auroraMaxCapacity: "4"
+
+  # ── Bridge (creates databaseBridge for downstream tiers) ──────────────────
+  createBridgeSecret: true

@@ -20,7 +20,7 @@ Items migrate here from `pending.md` once triaged and documented.
 
 **Platform Status: Fully Deployed ✅**
 
-All core infrastructure and GitOps components are operational. Previous blocking items (C-BOOT1, C-BOOT2, C-BOOT3) have been resolved.
+All core infrastructure and GitOps components are operational.
 
 Active items requiring attention:
 
@@ -87,7 +87,7 @@ Known constraints of the current platform state. These are expected and will be 
 ### L3: Diagram SVG exports not generated
 
 - **Files**: `docs/diagrams/*.drawio`
-- **Status**: All 5 drawio files are updated with correct content, white backgrounds, and stale text removed. However, SVG exports for README embedding are not yet produced. No headless draw.io CLI is available in the container.
+- **Status**: All 5 drawio files are updated with correct content and white backgrounds. However, SVG exports for README embedding are not yet produced. No headless draw.io CLI is available in the container.
 - **Workaround**: Export manually via VS Code draw.io extension → Export As → SVG.
 
 ---

@@ -21,13 +21,13 @@ cp config/ssm-repo-secrets/input.json.example  config/ssm-repo-secrets/input.jso
 | `ssm-repo-secrets/input.json` | GitHub App credentials for ArgoCD repo access | `scripts/ssm-repo-secrets/generate-ssm-payload.sh` |
 | `ssm-repo-secrets/*.pem` | GitHub App private key(s) | Referenced by `input.json` |
 
-### Deprecated (no longer required)
+### Unused Files (not required)
 
-| File | Replaced By |
-|------|-------------|
-| `terraform.tfvars` | `shared.auto.tfvars.json` — Terraform variables are now in the JSON |
-| `backend.hcl` | `shared.auto.tfvars.json` — `backend_bucket`, `backend_key`, `backend_region` keys |
-| `secrets.yaml` | `shared.auto.tfvars.json` — Terragrunt reads `spokes`, `developer_identity` from the JSON |
+| File | Notes |
+|------|-------|
+| `terraform.tfvars` | Terraform variables are in `shared.auto.tfvars.json` |
+| `backend.hcl` | Backend config (`backend_bucket`, `backend_key`, `backend_region`) is in `shared.auto.tfvars.json` |
+| `secrets.yaml` | Terragrunt reads `spokes`, `developer_identity` from `shared.auto.tfvars.json` |
 
 ## Security
 

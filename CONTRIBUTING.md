@@ -14,7 +14,71 @@ cd gen3-kro
 ```bash
 git remote add upstream https://github.com/indiana-university/gen3-kro.git
 ```
-4. **Launch devcontainer**: Follow [deployment guide](docs/deployment-guide.md) to set up and start the development environment
+4. **Choose your workflow**:
+   - **EKS CSOC**: Follow [deployment guide](docs/deployment-guide.md) to set up the DevContainer environment
+   - **Local CSOC** (for RGD authoring): Follow [docs/local-csoc-guide.md](docs/local-csoc-guide.md) — no container needed
+
+## Local CSOC Development Workflow
+
+The local CSOC workflow is the recommended approach for RGD authoring and
+capability testing. It uses a Kind cluster on the host machine (no DevContainer).
+
+### When to Use Local CSOC
+
+- Authoring or modifying RGDs (`argocd/charts/resource-groups/templates/`)
+- Testing KRO capability tests
+- Iterating on KRO CR instances
+- Validating ArgoCD bootstrap chain changes
+
+### Setup
+
+```bash
+# Authenticate with MFA
+bash scripts/mfa-session.sh <MFA_CODE>
+
+# Create cluster + install stack
+bash scripts/kind-local-test.sh create install
+
+# Inject credentials
+bash scripts/kind-local-test.sh inject-creds
+```
+
+### RGD Authoring Loop
+
+```bash
+# 1. Edit your RGD
+vim argocd/charts/resource-groups/templates/awsgen3foundation1-rg.yaml
+
+# 2. Push to trigger ArgoCD sync
+git add -A && git commit -m "feat: update Foundation1 RGD" && git push
+
+# 3. Watch ArgoCD reconcile
+kubectl get application kro-local-rgs -n argocd -w
+
+# 4. Check RGD status
+kubectl get rgd awsgen3foundation1 -o yaml
+
+# 5. Watch instance reconcile
+kubectl get awsgen3foundation1 -n <namespace> -w
+```
+
+### Credential Renewal
+
+MFA credentials expire periodically. Renew them:
+```bash
+bash scripts/mfa-session.sh <NEW_MFA_CODE>
+bash scripts/kind-local-test.sh inject-creds
+```
+
+### Promoting RGDs to EKS CSOC
+
+RGDs authored locally use the same schema and annotation conventions as the
+EKS CSOC. To promote a tested RGD:
+
+1. Verify the RGD works with real AWS resources in tests 6–7 (ACK EC2)
+2. Check that `readyWhen` conditions use the two-condition pattern
+3. Confirm ACK annotations are present on all AWS resources
+4. Open a PR — no changes required for the RGD YAML itself
 
 ## Code Quality Standards
 

@@ -16,6 +16,7 @@ Step-by-step procedures for deploying, managing, and tearing down the EKS Cluste
 - [Ongoing Operations](#ongoing-operations)
 - [Teardown](#teardown)
 - [Troubleshooting](#troubleshooting)
+- [Local CSOC Setup (Host-Based Kind)](#local-csoc-setup-host-based-kind)
 
 ---
 
@@ -375,8 +376,11 @@ kubectl logs -n ack-system deployment/ack-ec2-controller | tail -20
 After fleet sync (wave 30):
 
 ```bash
-# List KRO instances
-kubectl get -A -f argocd/charts/instances/templates/
+# List KRO instances by kind (examples)
+kubectl get awsgen3foundation1,awsgen3compute2 -A
+
+# Or list all CR files for a spoke
+ls argocd/cluster-fleet/spoke1/infrastructure/
 
 # Check instance status
 kubectl describe vpc spoke1-vpc -n spoke1
@@ -454,7 +458,7 @@ Push to git — ArgoCD will reconcile automatically.
 
 ### KRO Instance Changes
 
-Edit `argocd/cluster-fleet/<cluster>/infrastructure.yaml` and push. ArgoCD will reconcile the KRO instance, which will cascade to ACK resources.
+Edit the relevant tier YAML in `argocd/cluster-fleet/<cluster>/infrastructure/` and push. ArgoCD will reconcile the KRO instance, which will cascade to ACK resources.
 
 ### Rotating Git Credentials
 
@@ -484,7 +488,7 @@ bash scripts/mfa-session.sh --no-mfa            # Option B: admin static creds
 ### Step 1: Delete KRO Instances
 
 ```bash
-kubectl delete -A -f argocd/charts/instances/templates/
+kubectl delete -f argocd/cluster-fleet/spoke1/infrastructure/
 # Wait for ACK to delete spoke resources (VPCs, EKS clusters, RDS...)
 kubectl get vpc,cluster -A   # verify gone
 ```
@@ -583,3 +587,85 @@ ArgoCD Helm releases can timeout if images are slow to pull. Increase timeout in
 kubectl get events -n argocd --sort-by='.firstTimestamp' | tail -20
 kubectl describe pod -n ack-system -l app.kubernetes.io/name=ack-ec2-controller
 ```
+
+---
+
+## Local CSOC Setup (Host-Based Kind)
+
+The local CSOC workflow uses a Kind cluster on the developer's host machine.
+No DevContainer is required — all commands run directly on the host.
+
+> **Use case:** RGD authoring, capability testing, and iteration without EKS overhead.
+> ACK controllers talk to **real AWS APIs** — not LocalStack.
+
+### Prerequisites (Local CSOC)
+
+| Tool | Version | Install |
+|------|---------|---------|
+| Kind | 0.27.0 | `curl -Lo kind https://kind.sigs.k8s.io/dl/v0.27.0/kind-linux-amd64` |
+| kubectl | 1.35.1 | Standard kubectl install |
+| Helm | 3.16.1 | Standard helm install |
+| AWS CLI v2 | 2.x | Standard AWS CLI install |
+| Docker | any | Required for Kind node containers |
+
+### Step 1 — Authenticate (Host)
+
+```bash
+bash scripts/mfa-session.sh <MFA_CODE>
+```
+
+Writes MFA-assumed-role credentials to `~/.aws/credentials [csoc]`.
+
+### Step 2 — Create Kind Cluster + Install Stack
+
+```bash
+bash scripts/kind-local-test.sh create install
+```
+
+This runs in sequence:
+1. `kind create cluster` using `scripts/kind-config.yaml`
+2. Helm installs ArgoCD
+3. Creates ArgoCD cluster Secret with `fleet_member: control-plane` and injects AWS account ID
+4. Applies bootstrap ApplicationSets
+5. ArgoCD reconciles: KRO → ACK controllers → RGDs → KRO instances
+
+### Step 3 — Inject Credentials
+
+After ArgoCD deploys the ACK controllers (wave 1), inject your credentials:
+
+```bash
+bash scripts/kind-local-test.sh inject-creds
+```
+
+Creates the `ack-aws-credentials` K8s Secret in `ack-system`.
+Re-run this command every time credentials are renewed.
+
+### Step 4 — Verify
+
+```bash
+# Check all pods are running
+kubectl get pods --all-namespaces
+
+# Check ArgoCD applications
+kubectl get application -n argocd
+
+# Check KRO RGDs are registered
+kubectl get rgd
+```
+
+### Ongoing Local CSOC Operations
+
+```bash
+# Renew credentials
+bash scripts/mfa-session.sh <MFA_CODE>
+bash scripts/kind-local-test.sh inject-creds
+
+# Check status
+bash scripts/kind-local-test.sh status
+bash scripts/kro-status-report.sh
+
+# Tear down
+bash scripts/kind-local-test.sh destroy
+```
+
+See [docs/local-csoc-guide.md](local-csoc-guide.md) for the complete local CSOC reference.

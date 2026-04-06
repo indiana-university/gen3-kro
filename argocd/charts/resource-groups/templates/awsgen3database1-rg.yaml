@@ -227,3 +227,5 @@ spec:
           aurora-reader-endpoint: ${auroraCluster.status.?readerEndpoint}
           aurora-cluster-arn: ${auroraCluster.status.?ackResourceMetadata.?arn}
           aurora-port: "5432"
+          aurora-master-username: ${schema.spec.auroraMasterUsername}
+          aurora-database-name: ${schema.spec.auroraDBName}

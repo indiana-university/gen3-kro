@@ -77,7 +77,9 @@ Both modes: no `endpoint_url` override — controllers talk directly to real AWS
    - Include `ignoreDifferences` on Deployment env (for credential injection)
 2. Use `chartRepository: "public.ecr.aws/aws-controllers-k8s"` (no `oci://` prefix)
 3. Set `aws.region: '{{.metadata.annotations.aws_region}}'`
-4. Update `ACK_CONTROLLERS` in `kind-local-test.sh` with the new service name + version
+4. No script changes needed — `kind-local-test.sh` discovers ACK controllers
+   dynamically from `addons.yaml` (grep `^ack-.*-kind:`) and discovers
+   deployments from `kubectl get deployments -n ack`
 5. Update the ACK controller table in `.github/copilot-instructions.md`
 
 ## Cluster Fleet Structure

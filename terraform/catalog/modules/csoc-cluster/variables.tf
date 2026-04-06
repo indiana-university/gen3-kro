@@ -167,7 +167,7 @@ variable "addons" {
   type        = any
   default = {
     enable_external_secrets = true
-    enable_kro_eks_rgs      = true
+    enable_kro_csoc_rgs     = true
     enable_multi_acct       = true
   }
 }

@@ -111,7 +111,7 @@ RUN set -eux; \
     rm -rf /tmp/awscliv2.zip /tmp/aws; \
     aws --version
 
-# Install k9s (Kubernetes CLI UI) - only once (removed duplicate)
+# Install k9s (Kubernetes CLI UI)
 RUN set -eux; \
     curl -fsSL --retry 3 --retry-delay 2 \
       "https://github.com/derailed/k9s/releases/latest/download/k9s_Linux_amd64.tar.gz" \

@@ -14,6 +14,7 @@ Security model, IAM design, credential management, and audit guidance for the EK
 - [Kubernetes RBAC](#kubernetes-rbac)
 - [Network Security](#network-security)
 - [Audit Checklist](#audit-checklist)
+- [Local CSOC Credential Model](#local-csoc-credential-model)
 
 ---
 
@@ -399,3 +400,58 @@ Use this checklist before production deployment:
 - [ ] AWS CloudTrail is enabled in CSOC and spoke accounts
 - [ ] `sts:AssumeRole` events are monitored for unexpected principals
 - [ ] ArgoCD audit log is enabled (`argocd.log` for all ApplicationSet/sync events)
+
+---
+
+## Local CSOC Credential Model
+
+The local CSOC uses a different credential model from the EKS CSOC:
+
+### EKS CSOC — IRSA (No Long-Lived Keys)
+
+```
+ACK Pod → OIDC token → STS → Short-lived credentials
+                           → AssumeRole → Spoke workload role
+```
+
+No long-lived credentials exist in the cluster. All credentials are obtained
+via IRSA (IAM Roles for Service Accounts) using the EKS OIDC provider.
+
+### Local CSOC — K8s Secret (MFA-Assumed-Role)
+
+Kind does not have an OIDC provider, so IRSA is not available.
+
+```
+Developer runs: bash scripts/mfa-session.sh <MFA_CODE>
+    → STS AssumeRole with MFA → writes ~/.aws/credentials [csoc]
+
+bash scripts/kind-local-test.sh inject-creds
+    → kubectl create secret ack-aws-credentials -n ack-system
+    → ACK controllers read from this Secret
+```
+
+### Security Controls (Local CSOC)
+
+| Control | Detail |
+|---------|--------|
+| MFA required | `mfa-session.sh` enforces MFA token for every session |
+| Credential expiry | STS session tokens expire (typically 1–12 hours) |
+| No git storage | `~/.aws/credentials` is never committed |
+| K8s Secret scope | `ack-aws-credentials` lives only in `ack-system` namespace |
+| No restart needed | ACK controllers re-read the Secret on next reconcile |
+
+### Credential Renewal (Local CSOC)
+
+```bash
+# Step 1: Renew on host
+bash scripts/mfa-session.sh <NEW_MFA_CODE>
+
+# Step 2: Inject into cluster
+bash scripts/kind-local-test.sh inject-creds
+
+# Step 3: Verify
+aws sts get-caller-identity --profile csoc
+kubectl get secret ack-aws-credentials -n ack-system
+```
+
+> Never store the `ack-aws-credentials` Secret value in git, logs, or outputs.

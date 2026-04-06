@@ -18,9 +18,9 @@ This devcontainer follows the principle of least privilege:
 
 | Risk Area | Mitigation |
 |-----------|------------|
-| No `--privileged` | Removed `docker-outside-of-docker` feature that injected it |
+| No `--privileged` | No features require privileged mode |
 | No Docker socket mount | Docker CLI not required by any scripts or modules |
-| No `--network=host` | Replaced with scoped `forwardPorts: [8080]` for ArgoCD UI |
+| No `--network=host` | Scoped `forwardPorts: [8080]` for ArgoCD UI |
 | `--security-opt=no-new-privileges` | Prevents SUID/SGID privilege escalation inside container |
 | Scoped credential mount | Only `~/.aws/eks-devcontainer` is mounted — not all of `~/.aws` |
 | `~/.kube` not mounted | Created empty at runtime; `connect` stage populates it |
@@ -204,7 +204,6 @@ bash scripts/container-init.sh connect
 
 # Validate Helm charts
 helm template argocd/charts/application-sets/
-helm template argocd/charts/instances/
 helm template argocd/charts/resource-groups/
 ```
 

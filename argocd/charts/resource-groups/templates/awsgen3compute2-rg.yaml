@@ -10,10 +10,14 @@
 # Resources:
 #   - eksCluster: EKS cluster with 4 subnets (public + private)
 #   - eksNodeGroup: Managed node group on private subnets
+#   - vpcCniAddon, coreDnsAddon, kubeProxyAddon: Essential EKS add-ons
+#   - argoCDSpokeRole: IAM role for CSOC ArgoCD to authenticate to spoke EKS
+#   - argoCDAccessEntry: EKS access entry granting ArgoCD role cluster admin
 #   - computeBridge: ConfigMap with EKS outputs for downstream tiers
 #
 # PREREQUISITES:
 #   1. Foundation1 deployed with computeEnabled=true (creates computePrepBridge)
+#   2. ACK controllers: eks, iam
 #
 # CROSS-TIER: Reads computePrepBridge (IAM roles, EKS SG) and
 # foundationBridge (VPC, subnets, platform key) via externalRef.
@@ -190,6 +194,150 @@ spec:
             Project: ${schema.spec.project}
 
   # ====================================================================
+  # EKS ADDONS: Essential cluster add-ons
+  # ====================================================================
+
+    # ── VPC CNI Add-on ───────────────────────────────────────────────
+    - id: vpcCniAddon
+      readyWhen:
+        - ${vpcCniAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${vpcCniAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.name}-vpc-cni
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: vpc-cni
+          clusterName: ${eksCluster.spec.name}
+          tags:
+            Name: ${schema.spec.name}-vpc-cni
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+
+    # ── CoreDNS Add-on ───────────────────────────────────────────────
+    - id: coreDnsAddon
+      readyWhen:
+        - ${coreDnsAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${coreDnsAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.name}-coredns
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: coredns
+          clusterName: ${eksCluster.spec.name}
+          tags:
+            Name: ${schema.spec.name}-coredns
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+
+    # ── kube-proxy Add-on ────────────────────────────────────────────
+    - id: kubeProxyAddon
+      readyWhen:
+        - ${kubeProxyAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${kubeProxyAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.name}-kube-proxy
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: kube-proxy
+          clusterName: ${eksCluster.spec.name}
+          tags:
+            Name: ${schema.spec.name}-kube-proxy
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+
+  # ====================================================================
+  # ARGOCD ACCESS: IAM Role + EKS Access Entry for CSOC ArgoCD
+  # ====================================================================
+
+    # ── IAM Role for ArgoCD spoke access ─────────────────────────────
+    - id: argoCDSpokeRole
+      readyWhen:
+        - ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDSpokeRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-argocd-spoke-access
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-argocd-spoke-access
+          description: "Allows CSOC ArgoCD to authenticate to ${schema.spec.name} spoke EKS cluster"
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-argocd-spoke-access
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ── EKS Access Entry for ArgoCD role ─────────────────────────────
+    - id: argoCDAccessEntry
+      readyWhen:
+        - ${argoCDAccessEntry.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDAccessEntry.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: AccessEntry
+        metadata:
+          name: ${schema.spec.name}-argocd-access
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          clusterName: ${eksCluster.spec.name}
+          principalARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('loading')}
+          type: STANDARD
+          accessPolicies:
+            - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+              accessScope:
+                type: cluster
+          tags:
+            Name: ${schema.spec.name}-argocd-access
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+
+  # ====================================================================
   # BRIDGE: Compute Outputs ConfigMap (for downstream tiers)
   # ====================================================================
 
@@ -214,3 +362,4 @@ spec:
           eks-cluster-name: ${schema.spec.name}-eks
           eks-cluster-ca: ${eksCluster.status.?certificateAuthority.?data.orValue("loading")}
           eks-oidc-issuer: ${eksCluster.status.?identity.?oidc.?issuer.orValue("loading")}
+          argocd-spoke-role-arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}

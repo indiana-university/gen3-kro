@@ -136,6 +136,43 @@ kubectl get applicationsets -n argocd  # Bootstrap ApplicationSet exists
 kubectl get applications -n argocd     # Bootstrap Application created
 ```
 
+## Local CSOC Quick Start (Host-Based Kind)
+
+Use the local CSOC for RGD authoring and testing without EKS overhead.
+**No container needed** — runs entirely on the host.
+
+### Prerequisites
+
+Install on host: `kind` 0.27.0, `kubectl`, `helm`, `aws` CLI v2, `docker`.
+
+### 1. Authenticate
+
+```bash
+bash scripts/mfa-session.sh <MFA_CODE>
+```
+
+### 2. Create Cluster + Install Stack
+
+```bash
+bash scripts/kind-local-test.sh create install
+```
+
+### 3. Inject Credentials
+
+```bash
+bash scripts/kind-local-test.sh inject-creds
+```
+
+### 4. Verify
+
+```bash
+kubectl get pods --all-namespaces   # All pods Running
+kubectl get application -n argocd   # ArgoCD applications synced
+kubectl get rgd                     # ResourceGraphDefinitions registered
+```
+
+See [docs/local-csoc-guide.md](docs/local-csoc-guide.md) for the full guide.
+
 ## Deployment Phases
 
 | Phase | Context | Tool | What |
@@ -162,6 +199,7 @@ terragrunt stack run destroy
 |----------|-------------|
 | [Architecture](docs/architecture.md) | Detailed architecture with diagrams |
 | [Deployment Guide](docs/deployment-guide.md) | Step-by-step deployment procedures |
+| [Local CSOC Guide](docs/local-csoc-guide.md) | Host-based Kind cluster setup and operations |
 | [Security Model](docs/security.md) | IAM, cross-account trust, credentials |
 | [ArgoCD Configuration](argocd/README.md) | GitOps structure and conventions |
 | [Platform Status](docs/platform-status.md) | Pending items, risks, limitations |
