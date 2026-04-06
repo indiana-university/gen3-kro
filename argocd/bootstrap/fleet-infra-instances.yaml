@@ -1,9 +1,23 @@
 # ======================================================================
 # fleet-infra-instances — KRO infrastructure instances
 # ======================================================================
-# Triggered by Terraform-created per-spoke cluster secrets (fleet_member:
-# fleet-spoke-infra).  Renders infrastructure.yaml through the instances
-# chart so KRO custom resources are applied to the CSOC cluster.
+# Applies raw KRO Custom Resource YAMLs from
+# cluster-fleet/<cluster>/infrastructure/ using a directory source.
+#
+# Matched by any cluster secret with enable_infra_instances: "true":
+#   - EKS spokes:  Terraform-created per-spoke secrets (argocd-bootstrap module)
+#   - Kind (local): cluster secret created by kind-local-test.sh
+#
+# Each instance is a standalone YAML file (one per RGD tier).
+# Uncomment a file's YAML to deploy that tier.
+#
+# Repo coordinates (fleet_repo_url, fleet_repo_revision, fleet_repo_basepath)
+# are read from cluster Secret annotations. Each spoke can point to a
+# different git repository.
+#
+# NAMESPACE PREREQUISITE: The spoke namespace (e.g. 'spoke1') must exist on
+# the cluster with the services.k8s.aws/owner-account-id annotation set.
+# EKS: Terraform argocd-bootstrap module.  Kind: kind-local-test.sh inject-creds.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -18,35 +32,29 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-  # One cluster secret per spoke is created by Terraform (argocd-bootstrap module).
-  # Each secret is labeled fleet_member: fleet-spoke-infra and carries the repo
-  # annotations copied from the CSOC cluster secret.
-  # {{.name}} resolves to the spoke alias (data.name in the secret).
+  # Matches both EKS spoke secrets and Kind cluster secret.
+  # {{.name}} resolves to the spoke alias (EKS) or cluster name (Kind).
   - clusters:
       selector:
         matchLabels:
-          fleet_member: fleet-spoke-infra
+          enable_infra_instances: "true"
   template:
     metadata:
       name: '{{.name}}-infra-instance'
       labels:
-        environment: '{{.metadata.labels.environment}}'
         fleet_spoke: '{{.name}}'
     spec:
       project: default
       sources:
+      # Directory source: applies all *.yaml files in infrastructure/ as raw K8s objects.
+      # KRO CRs have argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      # embedded in their metadata so ArgoCD tolerates missing CRDs at sync time.
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        ref: values
-      # KRO infrastructure instances
-      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}charts/instances/'
-        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        helm:
-          releaseName: 'infrastructure-instance'
-          ignoreMissingValueFiles: true
-          valueFiles:
-            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/infrastructure.yaml'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/infrastructure/'
+        directory:
+          recurse: false
+          include: '*.yaml'
       destination:
         namespace: argocd
         name: '{{.name}}'
@@ -61,3 +69,10 @@ spec:
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+      ignoreDifferences:
+        - kind: Namespace
+          jsonPointers:
+            - /metadata/labels
+            - /metadata/annotations
+            - /metadata/finalizers

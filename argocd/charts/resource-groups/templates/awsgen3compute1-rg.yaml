@@ -1,0 +1,333 @@
+# AwsGen3Compute1 — Tier 3: Compute (Modular RGD v1)
+#
+# Thin EKS tier. All IAM roles and security groups are pre-provisioned by
+# Foundation1 (Tier 0) with computeEnabled=true.
+#
+# Per Plan 02 Revision 4, this tier supports two mutually exclusive variants:
+#
+# EKS Standard Mode (eksAutoMode=false, default):
+#   - eksClusterStandard: EKS cluster with 4 subnets (public+private)
+#   - eksNodeGroup: Managed node group on private subnets
+#
+# EKS Auto Mode (eksAutoMode=true):
+#   - eksClusterAutoMode: EKS cluster with 2 private subnets + computeConfig
+#   - No explicit node group (EKS manages nodes via nodePools)
+#
+# Both variants share:
+#   - computeBridge: ConfigMap with EKS outputs for downstream tiers
+#     (uses CONDITIONAL DUPLICATE pattern — see krotest08 findings)
+#
+# PREREQUISITES:
+#   1. Foundation1 deployed with computeEnabled=true (creates computePrepBridge)
+#
+# CROSS-TIER: Reads computePrepBridge (IAM roles, EKS SG) and
+# foundationBridge (VPC, subnets, platform key) via externalRef.
+#
+# KRO LIMITATION (krotest08): KRO v0.8.5 cannot reference excluded resources,
+# even with .? optional chaining + .orValue() fallback. The bridge uses two
+# identically-named conditional ConfigMaps instead of chained orValue().
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3compute1
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Compute1
+    spec:
+      # ── Identity ──────────────────────────────────────────────────
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="gen3"
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+      # ── Bridge References (from Foundation1) ─────────────────────
+      foundationBridgeName: string | required=true
+      computePrepBridgeName: string | required=true
+      foundationNamespace: string | required=true
+
+      # ── EKS Configuration ───────────────────────────────────────
+      kubernetesVersion: string | default="1.31"
+      eksAutoMode: boolean | default=false
+
+      # ── Standard Mode Node Group (ignored when eksAutoMode=true) ─
+      nodeInstanceTypes: "[]string | required=true"
+      nodeDesiredSize: integer | default=2
+      nodeMinSize: integer | default=1
+      nodeMaxSize: integer | default=4
+      nodeDiskSize: integer | default=20
+      nodeAMIType: string | default="AL2023_x86_64_STANDARD"
+
+      # ── Bridge ───────────────────────────────────────────────────
+      createBridgeSecret: boolean | default=true
+
+    status:
+      # NOTE: Cannot reference excluded resources (even with orValue).
+      # Downstream tiers read the computeBridge ConfigMap instead.
+      # See krotest08 findings: KRO drops expressions referencing excluded resources.
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+
+  resources:
+  # ====================================================================
+  # Layer 0: External References
+  # ====================================================================
+
+    # ── Namespace ────────────────────────────────────────────────────
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    # ── Foundation Bridge (VPC, subnets, platform key) ───────────────
+    - id: foundationBridge
+      readyWhen:
+        - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.foundationBridgeName}
+          namespace: ${schema.spec.foundationNamespace}
+
+    # ── Compute Prep Bridge (IAM roles, EKS SG) ─────────────────────
+    - id: computePrepBridge
+      readyWhen:
+        - ${computePrepBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computePrepBridgeName}
+          namespace: ${schema.spec.foundationNamespace}
+
+  # ====================================================================
+  # COMPUTE: EKS Standard Mode (includeWhen: !eksAutoMode)
+  # ====================================================================
+
+    # ── EKS Cluster (Standard) ───────────────────────────────────────
+    - id: eksClusterStandard
+      includeWhen:
+        - ${schema.spec.eksAutoMode == false}
+      readyWhen:
+        - ${eksClusterStandard.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksClusterStandard.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksClusterStandard.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.spec.name}-eks-standard
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-eks
+          roleARN: ${computePrepBridge.data['cluster-role-arn']}
+          version: ${schema.spec.kubernetesVersion}
+          resourcesVPCConfig:
+            subnetIDs:
+              - ${foundationBridge.data['public-subnet-1-id']}
+              - ${foundationBridge.data['public-subnet-2-id']}
+              - ${foundationBridge.data['private-subnet-1-id']}
+              - ${foundationBridge.data['private-subnet-2-id']}
+            securityGroupIDs:
+              - ${computePrepBridge.data['eks-security-group-id']}
+            endpointPrivateAccess: true
+            endpointPublicAccess: true
+          encryptionConfig:
+            - provider:
+                keyARN: ${foundationBridge.data['platform-key-arn']}
+              resources:
+                - secrets
+          accessConfig:
+            authenticationMode: "API"
+            bootstrapClusterCreatorAdminPermissions: true
+          logging:
+            clusterLogging:
+              - types:
+                  - api
+                  - audit
+                  - authenticator
+                  - controllerManager
+                  - scheduler
+                enabled: true
+          tags:
+            Name: ${schema.spec.name}-eks
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+
+    # ── EKS Managed Node Group (Standard mode only) ──────────────────
+    - id: eksNodeGroup
+      includeWhen:
+        - ${schema.spec.eksAutoMode == false}
+      readyWhen:
+        - ${eksNodeGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksNodeGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksNodeGroup.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Nodegroup
+        metadata:
+          name: ${schema.spec.name}-nodegroup
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-nodegroup
+          clusterName: ${eksClusterStandard.spec.name}
+          nodeRole: ${computePrepBridge.data['node-role-arn']}
+          subnets:
+            - ${foundationBridge.data['private-subnet-1-id']}
+            - ${foundationBridge.data['private-subnet-2-id']}
+          scalingConfig:
+            desiredSize: ${schema.spec.nodeDesiredSize}
+            minSize: ${schema.spec.nodeMinSize}
+            maxSize: ${schema.spec.nodeMaxSize}
+          instanceTypes: ${schema.spec.nodeInstanceTypes}
+          amiType: ${schema.spec.nodeAMIType}
+          diskSize: ${schema.spec.nodeDiskSize}
+          tags:
+            Name: ${schema.spec.name}-nodegroup
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+
+  # ====================================================================
+  # COMPUTE: EKS Auto Mode (includeWhen: eksAutoMode)
+  # ====================================================================
+
+    # ── EKS Cluster (Auto Mode) ──────────────────────────────────────
+    - id: eksClusterAutoMode
+      includeWhen:
+        - ${schema.spec.eksAutoMode == true}
+      readyWhen:
+        - ${eksClusterAutoMode.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksClusterAutoMode.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksClusterAutoMode.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.spec.name}-eks-auto
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-eks
+          roleARN: ${computePrepBridge.data['cluster-role-arn']}
+          version: ${schema.spec.kubernetesVersion}
+          resourcesVPCConfig:
+            subnetIDs:
+              - ${foundationBridge.data['private-subnet-1-id']}
+              - ${foundationBridge.data['private-subnet-2-id']}
+            securityGroupIDs:
+              - ${computePrepBridge.data['eks-security-group-id']}
+            endpointPrivateAccess: true
+            endpointPublicAccess: true
+          computeConfig:
+            enabled: true
+            nodeRoleARN: ${computePrepBridge.data['node-role-arn']}
+            nodePools:
+              - system
+              - general-purpose
+          storageConfig:
+            blockStorage:
+              enabled: true
+          kubernetesNetworkConfig:
+            ipFamily: ipv4
+            elasticLoadBalancing:
+              enabled: true
+          encryptionConfig:
+            - provider:
+                keyARN: ${foundationBridge.data['platform-key-arn']}
+              resources:
+                - secrets
+          accessConfig:
+            authenticationMode: "API"
+            bootstrapClusterCreatorAdminPermissions: true
+          logging:
+            clusterLogging:
+              - types:
+                  - api
+                  - audit
+                  - authenticator
+                  - controllerManager
+                  - scheduler
+                enabled: true
+          tags:
+            Name: ${schema.spec.name}-eks
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+
+  # ====================================================================
+  # BRIDGE: Compute Outputs ConfigMap (for downstream tiers)
+  # Uses CONDITIONAL DUPLICATE pattern — two identically-named ConfigMaps
+  # with opposite includeWhen. Only one is created per instance.
+  # KRO cannot reference excluded resources (even with orValue), so each
+  # bridge variant references only resources that share its includeWhen.
+  # ====================================================================
+
+    # ── Bridge: Standard Mode variant ────────────────────────────────
+    - id: computeBridgeStandard
+      includeWhen:
+        - ${schema.spec.eksAutoMode == false}
+        - ${schema.spec.createBridgeSecret == true}
+      readyWhen:
+        - ${computeBridgeStandard.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-compute-bridge
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: compute
+            gen3.io/bridge: "true"
+        data:
+          eks-cluster-arn: ${eksClusterStandard.status.?ackResourceMetadata.?arn.orValue("loading")}
+          eks-cluster-endpoint: ${eksClusterStandard.status.?endpoint.orValue("loading")}
+          eks-cluster-name: ${schema.spec.name}-eks
+          eks-cluster-ca: ${eksClusterStandard.status.?certificateAuthority.?data.orValue("loading")}
+          eks-oidc-issuer: ${eksClusterStandard.status.?identity.?oidc.?issuer.orValue("loading")}
+
+    # ── Bridge: Auto Mode variant ────────────────────────────────────
+    - id: computeBridgeAutoMode
+      includeWhen:
+        - ${schema.spec.eksAutoMode == true}
+        - ${schema.spec.createBridgeSecret == true}
+      readyWhen:
+        - ${computeBridgeAutoMode.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-compute-bridge
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: compute
+            gen3.io/bridge: "true"
+        data:
+          eks-cluster-arn: ${eksClusterAutoMode.status.?ackResourceMetadata.?arn.orValue("loading")}
+          eks-cluster-endpoint: ${eksClusterAutoMode.status.?endpoint.orValue("loading")}
+          eks-cluster-name: ${schema.spec.name}-eks
+          eks-cluster-ca: ${eksClusterAutoMode.status.?certificateAuthority.?data.orValue("loading")}
+          eks-oidc-issuer: ${eksClusterAutoMode.status.?identity.?oidc.?issuer.orValue("loading")}

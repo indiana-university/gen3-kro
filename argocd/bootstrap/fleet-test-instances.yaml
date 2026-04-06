@@ -1,0 +1,66 @@
+# ======================================================================
+# fleet-test-instances — KRO capability test instances
+# ======================================================================
+# Applies raw KRO capability test YAMLs from
+# cluster-fleet/<cluster>/tests/ using a directory source.
+#
+# Matched by any cluster secret with enable_test_instances: "true".
+# Currently enabled on Kind (local CSOC) only. EKS spokes run production
+# infrastructure; tests are development-only.
+#
+# Test instances include both pure-K8s tests (ConfigMaps) and real-AWS
+# tests (ACK SecurityGroups, VPCs) — see the KRO capability test table
+# in copilot-instructions.md.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet-test-instances
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          enable_test_instances: "true"
+  template:
+    metadata:
+      name: '{{.name}}-test-instance'
+      labels:
+        fleet_spoke: '{{.name}}'
+    spec:
+      project: default
+      sources:
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/tests/'
+        directory:
+          recurse: false
+          include: '*.yaml'
+      destination:
+        namespace: argocd
+        name: '{{.name}}'
+      syncPolicy:
+        preserveResourcesOnDeletion: true
+        automated:
+          selfHeal: false
+          allowEmpty: true
+          prune: true
+        retry:
+          limit: 100
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+      ignoreDifferences:
+        - kind: Namespace
+          jsonPointers:
+            - /metadata/labels
+            - /metadata/annotations
+            - /metadata/finalizers

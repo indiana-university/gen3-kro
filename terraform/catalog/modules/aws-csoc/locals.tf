@@ -44,7 +44,7 @@ locals {
 
   aws_addons = {
     enable_external_secrets = try(var.addons.enable_external_secrets, false)
-    enable_kro_eks_rgs      = try(var.addons.enable_kro_eks_rgs, false)
+    enable_kro_csoc_rgs     = try(coalesce(try(var.addons.enable_kro_csoc_rgs, null), try(var.addons.enable_kro_eks_rgs, null)), false)
     enable_multi_acct       = try(var.addons.enable_multi_acct, false)
   }
   oss_addons = {
@@ -53,11 +53,12 @@ locals {
   # Labels used by ApplicationSet selectors only — do not add keys not referenced
   # in a selector matchLabels / matchExpressions block.
   addons = merge(
-    local.aws_addons,   # enable_external_secrets, enable_kro_eks_rgs, enable_multi_acct
+    local.aws_addons,   # enable_external_secrets, enable_kro_csoc_rgs, enable_multi_acct
     local.oss_addons,
     { fleet_member        = local.fleet_member },
     { environment         = local.environment },
     { ack_management_mode = var.ack_management_type }, # selector: self_managed / aws_managed
+    { cluster_type        = "eks" },                   # selector: eks / kind
   )
 
   # Annotations consumed by ArgoCD ApplicationSet templates via
@@ -75,6 +76,7 @@ locals {
       addons_repo_basepath = var.gitops_addons_repo_base_path
       addons_repo_path     = var.gitops_addons_repo_path
       addons_repo_revision = var.gitops_addons_repo_revision
+      addons_config_path   = "argocd/addons/addons.yaml"
     },
     {
       # GitOps — fleet + workloads ApplicationSets

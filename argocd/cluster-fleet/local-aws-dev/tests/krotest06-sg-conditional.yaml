@@ -1,0 +1,64 @@
+# ── Test 06: SecurityGroup & RouteTable conditional — KroTest06SgConditional ──
+# Validates: Pattern A (multiple SGs with includeWhen per tier).
+# FINDING: KRO cannot add conditional entries within a single SG array.
+# SOLUTION: Separate SG/RT resource per tier with includeWhen (Pattern A).
+#
+# RGD: krotest06-sg-conditional-rg.yaml  |  Kind: KroTest06SgConditional
+#
+# !! REAL AWS RESOURCES — INCURS COST if using non-free-tier account !!
+# Creates: VPC, IGW, SecurityGroup(s), RouteTable(s) — ~$0/mo (no NAT GW)
+#
+# PREREQUISITES:
+#   - ACK controller 'ec2' must be running
+#   - Namespace must have services.k8s.aws/owner-account-id annotation
+#     (created by kind-local-test.sh stage_install for kro-test-sg namespace)
+#
+# Uncomment ONE or BOTH blocks below to deploy.
+# ----------------------------------------------------------------------------
+
+# ── Variant: base-only (database/compute/admin/routing all disabled) ──────────
+# apiVersion: kro.run/v1alpha1
+# kind: KroTest06SgConditional
+# metadata:
+#   name: kro-sg-base-only
+#   namespace: kro-test-sg
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "15"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+# spec:
+#   name: secgrp-base
+#   namespace: kro-test-sg
+#   environment: local
+#   region: us-east-1
+#   adoptionPolicy: adopt-or-create
+#   deletionPolicy: delete
+#   project: gen3-kro
+#   vpcCidr: "10.100.0.0/16"
+#   databaseEnabled: false
+#   computeEnabled: false
+#   adminEnabled: false
+#   privateRoutingEnabled: false
+
+---
+# ── Variant: all-features (all optional SG tiers enabled) ─────────────────────
+# apiVersion: kro.run/v1alpha1
+# kind: KroTest06SgConditional
+# metadata:
+#   name: kro-sg-all-features
+#   namespace: kro-test-sg-full
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "15"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+# spec:
+#   name: secgrp-full
+#   namespace: kro-test-sg-full
+#   environment: local
+#   region: us-east-1
+#   adoptionPolicy: adopt-or-create
+#   deletionPolicy: delete
+#   project: gen3-kro
+#   vpcCidr: "10.101.0.0/16"
+#   databaseEnabled: true
+#   computeEnabled: true
+#   adminEnabled: true
+#   privateRoutingEnabled: true

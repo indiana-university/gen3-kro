@@ -1,0 +1,161 @@
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3search1
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  # ─────────────────────────────────────────────────────────────────────
+  # AwsGen3Search1 — Tier 2: Thin Search (OpenSearch Only)
+  #
+  # Creates an OpenSearch domain using prep resources from Foundation1.
+  # Foundation must have searchEnabled=true so searchPrepBridge exists.
+  # ACK opensearchservice controller must be installed.
+  #
+  # Resources (4 total):
+  #   externalRef: spokeNamespace, searchPrepBridge, foundationBridge
+  #   always:      openSearchDomain
+  #   conditional: searchBridge (createBridgeSecret)
+  # ─────────────────────────────────────────────────────────────────────
+
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Search1
+    spec:
+      # ── Identity ──
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="local"
+      project: string | default="gen3-dev"
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+      # ── Bridge references (from Foundation Tier 0) ──
+      foundationBridgeName: string | required=true
+      searchPrepBridgeName: string | required=true
+      foundationNamespace: string | required=true
+
+      # ── OpenSearch configuration ──
+      opensearchVersion: string | default="OpenSearch_2.11"
+      opensearchInstanceType: string | default="t3.small.search"
+      opensearchInstanceCount: integer | default=1
+      opensearchVolumeSize: integer | default=20
+      opensearchMasterEnabled: boolean | default=false
+
+      # ── Bridge control ──
+      createBridgeSecret: boolean | default=true
+
+    status:
+      openSearchEndpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
+      openSearchDomainARN: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+  # ═══════════════════════════════════════════════════════════════════════
+  # RESOURCES
+  # ═══════════════════════════════════════════════════════════════════════
+  resources:
+
+    # ─────────────────────────────────────────────────────────────────────
+    # External References
+    # ─────────────────────────────────────────────────────────────────────
+
+    # ── spokeNamespace (externalRef) ──
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    # ── searchPrepBridge (externalRef — from Foundation namespace) ──
+    - id: searchPrepBridge
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.searchPrepBridgeName}
+          namespace: ${schema.spec.foundationNamespace}
+
+    # ── foundationBridge (externalRef — from Foundation namespace) ──
+    - id: foundationBridge
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.foundationBridgeName}
+          namespace: ${schema.spec.foundationNamespace}
+
+    # ─────────────────────────────────────────────────────────────────────
+    # OpenSearch Domain
+    # ─────────────────────────────────────────────────────────────────────
+
+    - id: openSearchDomain
+      readyWhen:
+        - ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${openSearchDomain.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: opensearchservice.services.k8s.aws/v1alpha1
+        kind: Domain
+        metadata:
+          name: ${schema.spec.name}-opensearch
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-opensearch
+          engineVersion: ${schema.spec.opensearchVersion}
+          clusterConfig:
+            instanceType: ${schema.spec.opensearchInstanceType}
+            instanceCount: ${schema.spec.opensearchInstanceCount}
+            dedicatedMasterEnabled: ${schema.spec.opensearchMasterEnabled}
+            zoneAwarenessEnabled: false
+          ebsOptions:
+            ebsEnabled: true
+            volumeType: gp3
+            volumeSize: ${schema.spec.opensearchVolumeSize}
+          encryptionAtRestOptions:
+            enabled: true
+            kmsKeyID: ${searchPrepBridge.data['search-key-arn']}
+          nodeToNodeEncryptionOptions:
+            enabled: true
+          domainEndpointOptions:
+            enforceHTTPS: true
+            tlsSecurityPolicy: Policy-Min-TLS-1-2-2019-07
+          vpcOptions:
+            subnetIDs:
+              - ${foundationBridge.data['private-subnet-1-id']}
+            securityGroupIDs:
+              - ${searchPrepBridge.data['opensearch-sg-id']}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-opensearch
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Search Bridge ConfigMap
+    # ─────────────────────────────────────────────────────────────────────
+
+    - id: searchBridge
+      includeWhen:
+        - ${schema.spec.createBridgeSecret == true}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-search-bridge
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: search
+            gen3.io/bridge: "true"
+        data:
+          opensearch-endpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
+          opensearch-domain-arn: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}

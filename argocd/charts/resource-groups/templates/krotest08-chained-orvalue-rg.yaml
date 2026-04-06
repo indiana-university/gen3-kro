@@ -1,0 +1,159 @@
+# KRO Capability Test 8: Conditional Duplicate Bridge Pattern
+#
+# FINDING: KRO v0.8.5 silently drops resources and status fields that
+# reference excluded (includeWhen=false) resources — even with .? optional
+# chaining and .orValue() fallback. The .? operator handles missing FIELDS
+# on existing resources, NOT excluded resources.
+#
+# FAILED PATTERN (chained orValue across excluded resources):
+#   ${resourceA.data.?field.orValue(resourceB.data.?field.orValue("fallback"))}
+#   → Works ONLY when resourceA exists. If resourceA is excluded, the
+#     entire expression is silently dropped — both in status and templates.
+#
+# CORRECT PATTERN (conditional duplicate bridge):
+#   Two identically-named ConfigMaps with opposite includeWhen conditions.
+#   Each references ONLY resources that share its includeWhen. Downstream
+#   consumers read the bridge by name (externalRef) — unaware of which
+#   variant produced it.
+#
+# This test validates the correct pattern using pure K8s (no AWS cost).
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-chained-orvalue-test
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroChainedOrValueTest
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test"
+
+      # This boolean controls which variant is created (like eksAutoMode)
+      useVariantB: boolean | default=false
+
+    # NOTE: Status references ONLY always-present resources.
+    # Never reference excluded resources here — KRO drops them silently.
+    status:
+      ready: ${targetNamespace.status.phase}
+
+  resources:
+    # ================================================================
+    # Layer 0: Namespace
+    # ================================================================
+    - id: targetNamespace
+      readyWhen:
+        - ${targetNamespace.status.phase == "Active"}
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            test-suite: kro-capabilities
+            test-name: chained-orvalue
+
+    # ================================================================
+    # Variant A: Created when useVariantB=false (default)
+    # ================================================================
+    - id: variantA
+      includeWhen:
+        - ${schema.spec.useVariantB == false}
+      readyWhen:
+        - ${variantA.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-variant-a
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: chained-orvalue
+            variant: "a"
+        data:
+          result: "variant-a-active"
+          endpoint: "https://variant-a.example.com"
+          variantName: "VariantA"
+          detail: "This is the standard variant"
+
+    # ================================================================
+    # Variant B: Created when useVariantB=true
+    # ================================================================
+    - id: variantB
+      includeWhen:
+        - ${schema.spec.useVariantB == true}
+      readyWhen:
+        - ${variantB.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-variant-b
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: chained-orvalue
+            variant: "b"
+        data:
+          result: "variant-b-active"
+          endpoint: "https://variant-b.example.com"
+          variantName: "VariantB"
+          detail: "This is the auto-mode variant"
+
+    # ================================================================
+    # Bridge A: Conditional duplicate — produced when useVariantB=false
+    # Same ConfigMap name as Bridge B — only one ever exists.
+    # References ONLY variantA (which shares its includeWhen condition).
+    # ================================================================
+    - id: bridgeA
+      includeWhen:
+        - ${schema.spec.useVariantB == false}
+      readyWhen:
+        - ${bridgeA.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-bridge
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: chained-orvalue
+            gen3.io/bridge: "true"
+        data:
+          active-result: ${variantA.data.result}
+          active-endpoint: ${variantA.data.endpoint}
+          active-variant: ${variantA.data.variantName}
+          active-detail: ${variantA.data.detail}
+
+    # ================================================================
+    # Bridge B: Conditional duplicate — produced when useVariantB=true
+    # Same ConfigMap name as Bridge A — only one ever exists.
+    # References ONLY variantB (which shares its includeWhen condition).
+    # ================================================================
+    - id: bridgeB
+      includeWhen:
+        - ${schema.spec.useVariantB == true}
+      readyWhen:
+        - ${bridgeB.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-bridge
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: chained-orvalue
+            gen3.io/bridge: "true"
+        data:
+          active-result: ${variantB.data.result}
+          active-endpoint: ${variantB.data.endpoint}
+          active-variant: ${variantB.data.variantName}
+          active-detail: ${variantB.data.detail}

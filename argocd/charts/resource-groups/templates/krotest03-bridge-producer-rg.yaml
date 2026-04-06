@@ -1,0 +1,142 @@
+# KRO Capability Test 3: Bridge Secret Producer
+#
+# Tests the bridge Secret pattern — creating a K8s Secret containing
+# outputs from the RGD's own resources, for consumption by other RGDs.
+# This mirrors gen3-kro's infraOutputsSecret pattern.
+#
+# Validates:
+#   - Creating a Secret with stringData from resource status fields
+#   - Conditional bridge Secret (includeWhen)
+#   - Status propagation from multiple resources into Secret
+#   - Secret contains correct data for downstream consumption
+#
+# Usage:
+#   kubectl apply -f argocd/charts/resource-groups/templates/krotest03-bridge-producer-rg.yaml
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-bridge-producer
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroBridgeProducer
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test"
+      environment: string | default="test"
+
+      # Simulated infrastructure values
+      vpcCIDR: string | default="10.0.0.0/16"
+      subnetCount: string | default="2"
+
+      # Bridge Secret toggle
+      createBridgeSecret: boolean | default=true
+
+    status:
+      namespacePhase: ${targetNamespace.status.phase}
+      networkConfigName: ${networkConfig.metadata.?name.orValue("loading")}
+      storageConfigName: ${storageConfig.metadata.?name.orValue("loading")}
+      bridgeSecretName: ${bridgeSecret.metadata.?name.orValue("excluded")}
+
+  resources:
+    # ================================================================
+    # Layer 0: Namespace
+    # ================================================================
+    - id: targetNamespace
+      readyWhen:
+        - ${targetNamespace.status.phase == "Active"}
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            test-suite: kro-capabilities
+            test-name: bridge-producer
+
+    # ================================================================
+    # Layer 1: Simulated "infrastructure" resources
+    # These ConfigMaps represent what VPCs, subnets, KMS keys would produce
+    # ================================================================
+    - id: networkConfig
+      readyWhen:
+        - ${networkConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-network-config
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: bridge-producer
+            layer: infrastructure
+        data:
+          vpc_id: "vpc-simulated-001"
+          vpc_cidr: ${schema.spec.vpcCIDR}
+          subnet_count: ${schema.spec.subnetCount}
+          private_subnet_1: "subnet-priv-001"
+          private_subnet_2: "subnet-priv-002"
+          public_subnet_1: "subnet-pub-001"
+          public_subnet_2: "subnet-pub-002"
+
+    - id: storageConfig
+      readyWhen:
+        - ${storageConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-storage-config
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: bridge-producer
+            layer: infrastructure
+        data:
+          kms_key_arn: "arn:aws:kms:us-east-1:123456789012:key/simulated-key-id"
+          s3_logging_bucket: ${schema.spec.name}-logging
+          s3_data_bucket: ${schema.spec.name}-data
+
+    # ================================================================
+    # Layer 2: Bridge ConfigMap — aggregates outputs from Layer 1
+    # Uses ConfigMap (not Secret) to avoid Secret bytes/string type
+    # mismatch in KRO CEL expressions (discovered in this test).
+    # ================================================================
+    - id: bridgeSecret
+      includeWhen:
+        - ${schema.spec.createBridgeSecret == true}
+      readyWhen:
+        - ${bridgeSecret.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-bridge-outputs
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: bridge-producer
+            layer: bridge
+            gen3.io/tier: foundation
+            gen3.io/outputs: "true"
+        data:
+          # Network outputs (from networkConfig)
+          vpc_id: ${networkConfig.data.vpc_id}
+          vpc_cidr: ${networkConfig.data.vpc_cidr}
+          private_subnet_1: ${networkConfig.data.private_subnet_1}
+          private_subnet_2: ${networkConfig.data.private_subnet_2}
+          public_subnet_1: ${networkConfig.data.public_subnet_1}
+          public_subnet_2: ${networkConfig.data.public_subnet_2}
+          # Storage outputs (from storageConfig)
+          kms_key_arn: ${storageConfig.data.kms_key_arn}
+          s3_logging_bucket: ${storageConfig.data.s3_logging_bucket}
+          s3_data_bucket: ${storageConfig.data.s3_data_bucket}
+          # Metadata
+          environment: ${schema.spec.environment}
+          producer_name: ${schema.spec.name}

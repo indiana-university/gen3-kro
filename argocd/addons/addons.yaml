@@ -12,6 +12,7 @@ syncPolicy:
   syncOptions:
     - CreateNamespace=true
     - ServerSideApply=true
+    - SkipDryRunOnMissingResource=true
 syncPolicyAppSet:
   preserveResourcesOnDeletion: false
 useSelectors: true
@@ -19,7 +20,7 @@ repoURLGit: '{{.metadata.annotations.addons_repo_url}}'
 repoURLGitRevision: '{{.metadata.annotations.addons_repo_revision}}'
 repoURLGitBasePath: '{{.metadata.annotations.addons_repo_basepath}}'
 valueFiles:
-  - addons/csoc/addons
+  - addons/addons
   - cluster-fleet/{{.name}}/addons
 
 ########################################
@@ -39,6 +40,9 @@ self-managed-kro:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -60,9 +64,12 @@ kro-eks-rgs:
       - key: fleet_member
         operator: In
         values: ['control-plane']
-      - key: enable_kro_eks_rgs
+      - key: enable_kro_csoc_rgs
         operator: In
         values: ['true']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
 
 external-secrets:
   enabled: true
@@ -81,6 +88,9 @@ external-secrets:
       - key: enable_external_secrets
         operator: In
         values: ['true']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       name: "external-secrets-sa"
@@ -105,6 +115,9 @@ ack-cloudtrail:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -133,6 +146,9 @@ ack-cloudwatchlogs:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -161,6 +177,9 @@ ack-ec2:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -189,6 +208,9 @@ ack-efs:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -217,6 +239,9 @@ ack-eks:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -245,6 +270,9 @@ ack-elasticache:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -273,6 +301,9 @@ ack-iam:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -301,6 +332,9 @@ ack-kms:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -329,6 +363,9 @@ ack-lambda:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -357,6 +394,9 @@ ack-opensearchservice:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -385,6 +425,9 @@ ack-rds:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -413,6 +456,9 @@ ack-route53:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -441,6 +487,9 @@ ack-s3:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -469,6 +518,9 @@ ack-secretsmanager:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -497,6 +549,9 @@ ack-sns:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -525,6 +580,9 @@ ack-sqs:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -553,6 +611,9 @@ ack-wafv2:
       - key: fleet_member
         operator: In
         values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
   valuesObject:
     serviceAccount:
       create: true
@@ -564,3 +625,365 @@ ack-wafv2:
     enableCARM: false
     featureGates:
       IAMRoleSelector: "true"
+
+########################################
+# Kind (Local CSOC) Addons
+#
+# Kind cluster uses K8s Secret for AWS credentials (no IRSA).
+# ignoreDifferences prevents ArgoCD from reverting env vars
+# injected by `kind-local-test.sh inject-creds`.
+# Selector: cluster_type=kind distinguishes from EKS entries.
+########################################
+
+self-managed-kro-kind:
+  enabled: true
+  namespace: kro-system
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "-30"
+  chartName: kro
+  chartRepository: 'registry.k8s.io/kro/charts'
+  defaultVersion: "0.9.0"
+  selector:
+    matchExpressions:
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+    config:
+      dynamicControllerConcurrentReconciles: 5
+
+kro-csoc-rgs-kind:
+  enabled: true
+  type: manifest
+  namespace: kro
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "10"
+  path: 'argocd/charts/resource-groups'
+  chartRepository: '{{.metadata.annotations.addons_repo_url}}'
+  targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
+  selector:
+    matchExpressions:
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+
+########################################
+# Kind ACK Controllers (wave 1)
+#
+# No IRSA — credentials via K8s Secret injection.
+# ignoreDifferences prevents ArgoCD from reverting injected env vars.
+########################################
+
+ack-ec2-kind:
+  enabled: true
+  namespace: ack
+  chartName: ec2-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.10.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-ec2-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-eks-kind:
+  enabled: true
+  namespace: ack
+  chartName: eks-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.12.0"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-eks-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-iam-kind:
+  enabled: true
+  namespace: ack
+  chartName: iam-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.6.2"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-iam-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-kms-kind:
+  enabled: true
+  namespace: ack
+  chartName: kms-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.2.2"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-kms-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-rds-kind:
+  enabled: true
+  namespace: ack
+  chartName: rds-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.7.7"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-rds-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-s3-kind:
+  enabled: true
+  namespace: ack
+  chartName: s3-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.3.2"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-s3-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-secretsmanager-kind:
+  enabled: true
+  namespace: ack
+  chartName: secretsmanager-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.2.2"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-secretsmanager-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-opensearchservice-kind:
+  enabled: true
+  namespace: ack
+  chartName: opensearchservice-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.2.3"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-opensearchservice-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-sqs-kind:
+  enabled: true
+  namespace: ack
+  chartName: sqs-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.4.2"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-sqs-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env

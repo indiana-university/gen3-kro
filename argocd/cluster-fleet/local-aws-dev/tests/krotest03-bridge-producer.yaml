@@ -1,0 +1,27 @@
+# ── Test 03: bridge-producer — KroBridgeProducer ──────────────────────────────
+# Validates: KRO produces bridge Secret aggregating multiple outputs.
+# Bridge Secret name = {spec.name}-bridge-outputs = bridge-prod-bridge-outputs
+# Pure K8s only — zero AWS cost. Creates ConfigMaps + Secret.
+#
+# RGD: krotest03-bridge-producer-rg.yaml  |  Kind: KroBridgeProducer
+#
+# Deploy BEFORE Test 04 (consumer). Wave 15 < consumer wave 20.
+# Namespace must match Test 04 (kro-test-bridge) so externalRef can read Secret.
+#
+# Uncomment the block below to deploy.
+# ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: KroBridgeProducer
+# metadata:
+#   name: kro-bridge-producer
+#   namespace: kro-test-bridge
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "15"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+# spec:
+#   name: bridge-prod
+#   namespace: kro-test-bridge
+#   environment: local
+#   vpcCIDR: "10.1.0.0/16"
+#   subnetCount: "3"
+#   createBridgeSecret: true

@@ -33,7 +33,7 @@ spec:
         helm:
           ignoreMissingValueFiles: true
           valueFiles:
-            - $values/{{.metadata.annotations.addons_repo_basepath}}addons/csoc/addons.yaml
+            - $values/{{.metadata.annotations.addons_config_path}}
             - $values/{{.metadata.annotations.addons_repo_basepath}}cluster-fleet/{{ .name }}/addons.yaml
       destination:
         namespace: argocd

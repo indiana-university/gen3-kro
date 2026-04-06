@@ -1,0 +1,37 @@
+# ── Test 07b: cross-RGD consumer — KroTest07Consumer ─────────────────────────
+# Validates: Reading bridge ConfigMap via externalRef (cross-namespace),
+# creating a real SecurityGroup in the producer's VPC.
+# Consumer namespace differs from producer namespace.
+#
+# RGD: krotest07b-cross-rgd-consumer-rg.yaml  |  Kind: KroTest07Consumer
+#
+# !! REAL AWS RESOURCES — INCURS COST if using non-free-tier account !!
+# Creates: SecurityGroup in producer VPC — ~$0/mo
+#
+# PREREQUISITES:
+#   - Test 07a (kro-crossrgd-producer) must be Ready (wave 15 < 20)
+#   - Bridge ConfigMap 'crossrgd-prod-crossrgd-bridge' must exist
+#   - ACK controller 'ec2' must be running
+#   - Namespace must have services.k8s.aws/owner-account-id annotation
+#     (created by kind-local-test.sh for kro-test-crossrgd-consumer namespace)
+#
+# Uncomment the block below to deploy.
+# ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: KroTest07Consumer
+# metadata:
+#   name: kro-crossrgd-consumer
+#   namespace: kro-test-crossrgd-consumer
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "20"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+# spec:
+#   name: crossrgd-consumer
+#   namespace: kro-test-crossrgd-consumer
+#   environment: local
+#   region: us-east-1
+#   adoptionPolicy: adopt-or-create
+#   deletionPolicy: delete
+#   project: gen3-kro
+#   producerBridgeName: crossrgd-prod-crossrgd-bridge
+#   producerNamespace: kro-test-crossrgd

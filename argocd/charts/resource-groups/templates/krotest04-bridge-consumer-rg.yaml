@@ -1,0 +1,104 @@
+# KRO Capability Test 4: Bridge Secret Consumer
+#
+# Tests KRO's externalRef feature — reading a Secret created by another
+# RGD (the bridge producer from Test 3) and using its data in templates.
+# This validates the cross-RGD data flow pattern.
+#
+# Prerequisite: Test 3 (bridge-producer) must be deployed first.
+#
+# Validates:
+#   - externalRef to read an existing Secret
+#   - Using externalRef data fields in template CEL expressions
+#   - Dependency from externalRef → template resources
+#   - Status propagation from externally-referenced resources
+#
+# Usage:
+#   kubectl apply -f argocd/charts/resource-groups/templates/krotest04-bridge-consumer-rg.yaml
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-bridge-consumer
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroBridgeConsumer
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test"
+      environment: string | default="test"
+
+      # Bridge Secret reference (from producer RGD)
+      bridgeSecretName: string | required=true
+
+    status:
+      bridgeSecretFound: ${bridgeOutputs.metadata.?name.orValue("not-found")}
+      consumedVpcId: ${consumerConfig.data.consumed_vpc_id}
+      consumedKmsArn: ${consumerConfig.data.consumed_kms_arn}
+
+  resources:
+    # ================================================================
+    # Layer 0: externalRef — read the bridge ConfigMap from producer
+    # Uses ConfigMap (not Secret) to avoid bytes/string type mismatch.
+    # ================================================================
+    - id: bridgeOutputs
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.bridgeSecretName}
+          namespace: ${schema.spec.namespace}
+
+    # ================================================================
+    # Layer 1: Consume the bridge data in templates
+    # Creates a ConfigMap using data from the externally-referenced Secret
+    # ================================================================
+    - id: consumerConfig
+      readyWhen:
+        - ${consumerConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-consumer-result
+          namespace: ${schema.spec.namespace}
+          labels:
+            test-suite: kro-capabilities
+            test-name: bridge-consumer
+            layer: consumer
+        data:
+          # Data consumed from the bridge ConfigMap
+          consumed_vpc_id: ${bridgeOutputs.data.vpc_id}
+          consumed_vpc_cidr: ${bridgeOutputs.data.vpc_cidr}
+          consumed_kms_arn: ${bridgeOutputs.data.kms_key_arn}
+          consumed_subnet_1: ${bridgeOutputs.data.private_subnet_1}
+          consumed_subnet_2: ${bridgeOutputs.data.private_subnet_2}
+          consumed_environment: ${bridgeOutputs.data.environment}
+          consumed_producer: ${bridgeOutputs.data.producer_name}
+          # Consumer's own metadata
+          consumer_name: ${schema.spec.name}
+          consumer_environment: ${schema.spec.environment}
+
+    # ================================================================
+    # Layer 2: Downstream resource using consumed data
+    # Proves that consumed values can flow into further resources
+    # ================================================================
+    - id: downstreamConfig
+      readyWhen:
+        - ${downstreamConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-downstream
+          namespace: ${schema.spec.namespace}
+          labels:
+            test-suite: kro-capabilities
+            test-name: bridge-consumer-downstream
+        data:
+          # Uses data from consumerConfig (which came from bridge)
+          summary: "VPC=${consumerConfig.data.consumed_vpc_id}, KMS=${consumerConfig.data.consumed_kms_arn}"
+          chain: "producer → bridge-secret → consumer → downstream"

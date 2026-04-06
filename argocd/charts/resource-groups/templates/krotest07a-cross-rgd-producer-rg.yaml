@@ -1,0 +1,191 @@
+# KRO Capability Test 7a: Cross-RGD Status Producer (Real ACK Resources)
+#
+# Simulates a Foundation tier RGD that creates real AWS resources and
+# publishes their IDs (from ACK status) to a bridge ConfigMap so
+# downstream tier RGDs can consume them.
+#
+# WHAT THIS TESTS:
+#   - ACK EC2 status field access: vpc.status.vpcID, sg.status.id
+#   - Status value propagation from ACK resources into a bridge ConfigMap
+#   - Bridge ConfigMap pattern with real infrastructure IDs (not placeholders)
+#
+# Resources created (real AWS, zero cost):
+#   VPC:           1 (the "Foundation VPC")
+#   SecurityGroup: 1 base SG (simulates Foundation tier base SG for EKS)
+#   ConfigMap:     1 bridge (aggregates ACK status values for consumer)
+#
+# The bridge ConfigMap is read by krotest07b (consumer) via externalRef.
+# Bridge name pattern: {spec.name}-crossrgd-bridge
+#
+# Deployed via ArgoCD — instances defined in:
+#   argocd/cluster-fleet/local-aws-dev/tests/krotest07a-cross-rgd-producer.yaml
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: krotest07a-cross-rgd-producer
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroTest07Producer
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test-crossrgd"
+      environment: string | default="test"
+      region: string | default="us-east-1"
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      project: string | default="gen3-kro"
+
+      vpcCidr: string | default="10.102.0.0/16"
+
+    status:
+      namespacePhase: ${targetNamespace.status.phase}
+      # Real ACK status values — these are the IDs used in the bridge
+      vpcId: ${foundationVpc.status.?vpcID.orValue("loading")}
+      baseSgId: ${baseSg.status.?id.orValue("loading")}
+      bridgeConfigMapName: ${bridgeConfigMap.metadata.?name.orValue("loading")}
+      bridgeNamespace: ${bridgeConfigMap.metadata.?namespace.orValue("loading")}
+
+  resources:
+    # ================================================================
+    # Namespace
+    # ================================================================
+    - id: targetNamespace
+      readyWhen:
+        - ${targetNamespace.status.phase == "Active"}
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            test-suite: kro-capabilities
+            test-name: cross-rgd-producer
+
+    # ================================================================
+    # Foundation VPC
+    # Simulates the VPC that the Foundation tier would create.
+    # Its ID flows into the bridge ConfigMap for the consumer to read.
+    # ================================================================
+    - id: foundationVpc
+      readyWhen:
+        - ${foundationVpc.status.?vpcID.orValue('null') != 'null'}
+        - ${foundationVpc.status.?state.orValue('null') == 'available'}
+        - ${foundationVpc.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: VPC
+        metadata:
+          name: ${schema.spec.name}-foundation-vpc
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: cross-rgd-producer
+        spec:
+          cidrBlocks:
+            - ${schema.spec.vpcCidr}
+          enableDNSHostnames: true
+          enableDNSSupport: true
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-foundation-vpc
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Foundation Base SecurityGroup
+    # Simulates the base SG a Foundation tier would provision.
+    # Its real ACK status.id flows into the bridge for the consumer
+    # to use in a userIDGroupPairs ingress rule.
+    # ================================================================
+    - id: baseSg
+      readyWhen:
+        - ${baseSg.status.?id.orValue('null') != 'null'}
+        - ${baseSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-foundation-sg
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: cross-rgd-producer
+            sg-role: foundation
+        spec:
+          name: ${schema.spec.name}-foundation-sg
+          description: "Foundation SG - base rules, ID shared via bridge ConfigMap"
+          vpcID: ${foundationVpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 443
+              toPort: 443
+              ipRanges:
+                - cidrIP: ${schema.spec.vpcCidr}
+                  description: "HTTPS from VPC"
+            - ipProtocol: tcp
+              fromPort: 10250
+              toPort: 10250
+              ipRanges:
+                - cidrIP: ${schema.spec.vpcCidr}
+                  description: "Kubelet API from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-foundation-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Bridge ConfigMap — the cross-RGD communication channel
+    #
+    # Contains REAL ACK status values: vpc.status.vpcID and sg.status.id.
+    # The consumer RGD reads this via externalRef to obtain the real
+    # AWS resource IDs without hardcoding them in instance values.
+    #
+    # Naming: ${spec.name}-crossrgd-bridge (referenced by consumer instance)
+    # ================================================================
+    - id: bridgeConfigMap
+      readyWhen:
+        - ${bridgeConfigMap.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-crossrgd-bridge
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: cross-rgd-bridge
+            bridge-type: producer
+          annotations:
+            kro-bridge: "true"
+            producer-rgd: krotest07a-cross-rgd-producer
+        data:
+          # Real ACK EC2 resource IDs from status fields
+          vpc_id: ${foundationVpc.status.?vpcID.orValue("loading")}
+          vpc_cidr: ${schema.spec.vpcCidr}
+          region: ${schema.spec.region}
+          base_sg_id: ${baseSg.status.?id.orValue("loading")}
+          environment: ${schema.spec.environment}
+          producer_name: ${schema.spec.name}

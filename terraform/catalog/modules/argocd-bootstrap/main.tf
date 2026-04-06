@@ -116,6 +116,7 @@ resource "kubernetes_secret_v1" "spoke_fleet" {
       {
         "argocd.argoproj.io/secret-type" = "cluster"
         "fleet_member"                   = "fleet-spoke-infra"
+        "enable_infra_instances"          = "true"
       },
       # propagate environment/region labels from the CSOC cluster secret
       {

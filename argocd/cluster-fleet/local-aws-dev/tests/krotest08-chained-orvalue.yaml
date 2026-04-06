@@ -1,0 +1,41 @@
+# ── Test 08: chained orValue() with includeWhen variants — KroChainedOrValueTest
+# Validates: Chained orValue() pattern. Two mutually exclusive ConfigMaps
+# (variant A or B) with opposite includeWhen; bridge references both.
+# Key finding: conditional duplicate resources with same K8s name + opposite
+# includeWhen — each referencing only co-included resources.
+# Pure K8s only — zero AWS cost.
+#
+# RGD: krotest08-chained-orvalue-rg.yaml  |  Kind: KroChainedOrValueTest
+#
+# Uncomment ONE block at a time (A or B — not both, they use the same namespace
+# for cross-variant validation).
+# ----------------------------------------------------------------------------
+
+# ── Variant A (useVariantB: false) ───────────────────────────────────────────
+# apiVersion: kro.run/v1alpha1
+# kind: KroChainedOrValueTest
+# metadata:
+#   name: kro-chained-orvalue-a
+#   namespace: kro-test-chained-orvalue
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "15"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+# spec:
+#   name: chained-variant-a
+#   namespace: kro-test-chained-orvalue
+#   useVariantB: false
+
+---
+# ── Variant B (useVariantB: true) ────────────────────────────────────────────
+# apiVersion: kro.run/v1alpha1
+# kind: KroChainedOrValueTest
+# metadata:
+#   name: kro-chained-orvalue-b
+#   namespace: kro-test-chained-orvalue-b
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "15"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+# spec:
+#   name: chained-variant-b
+#   namespace: kro-test-chained-orvalue-b
+#   useVariantB: true

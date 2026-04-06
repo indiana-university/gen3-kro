@@ -1,0 +1,185 @@
+# AwsGen3Helm1 — Tier 5: Gen3 Application Deployment (Modular RGD v1)
+#
+# Creates an ArgoCD Application CR that deploys the gen3-helm umbrella chart
+# onto the spoke EKS cluster. Reads bridge ConfigMaps from Foundation,
+# Compute, Database, Search, and AppIAM tiers to populate Helm values.
+#
+# This RGD does NOT deploy AWS resources — it creates pure Kubernetes
+# resources (ArgoCD Application + ConfigMap). No ACK controllers needed.
+#
+# PREREQUISITES:
+#   1. Foundation1 deployed with foundationBridge
+#   2. Compute1 deployed with computeBridge
+#   3. (Optional) Database1 with databaseBridge
+#   4. (Optional) AppIAM1 with appIAMBridge
+#
+# OUTPUT: ArgoCD Application CR targeting gen3-helm chart + gen3HelmBridge.
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3helm1
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Helm1
+    spec:
+      # ── Identity ──────────────────────────────────────────────────
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="gen3"
+
+      # ── ArgoCD ───────────────────────────────────────────────────
+      argoCDNamespace: string | default="argocd"
+      argoCDProject: string | default="default"
+
+      # ── Gen3-Helm Chart ─────────────────────────────────────────
+      gen3HelmRepoURL: string | default="https://helm.gen3.org"
+      gen3HelmChartName: string | default="gen3"
+      gen3HelmChartVersion: string | default="0.1.104"
+      gen3HelmTargetRevision: string | default="0.1.104"
+
+      # ── Gen3 Configuration ─────────────────────────────────────
+      hostname: string | required=true
+
+      # ── Bridge References ────────────────────────────────────────
+      foundationBridgeName: string | required=true
+      computeBridgeName: string | required=true
+      foundationNamespace: string | required=true
+      computeNamespace: string | required=true
+
+      # ── Feature Flags (control which gen3 services are enabled) ─
+      fenceEnabled: boolean | default=true
+      auditEnabled: boolean | default=true
+      hatcheryEnabled: boolean | default=false
+      manifestserviceEnabled: boolean | default=false
+      indexdEnabled: boolean | default=true
+      metadataEnabled: boolean | default=true
+      peregrinEnabled: boolean | default=true
+      sheepdogEnabled: boolean | default=true
+      guppyEnabled: boolean | default=false
+      portalEnabled: boolean | default=true
+
+      # ── Auto Sync ───────────────────────────────────────────────
+      autoSync: boolean | default=false
+
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+
+  resources:
+  # ====================================================================
+  # Layer 0: External References
+  # ====================================================================
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: foundationBridge
+      readyWhen:
+        - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.foundationBridgeName}
+          namespace: ${schema.spec.foundationNamespace}
+
+    - id: computeBridge
+      readyWhen:
+        - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.computeNamespace}
+
+  # ====================================================================
+  # ARGOCD: Application CR for gen3-helm
+  # ====================================================================
+
+    - id: gen3App
+      readyWhen:
+        - ${gen3App.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-gen3-helm
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: application
+            gen3.io/spoke: ${schema.spec.name}
+          finalizers:
+            - resources-finalizer.argocd.argoproj.io
+        spec:
+          project: ${schema.spec.argoCDProject}
+          source:
+            repoURL: ${schema.spec.gen3HelmRepoURL}
+            chart: ${schema.spec.gen3HelmChartName}
+            targetRevision: ${schema.spec.gen3HelmTargetRevision}
+            helm:
+              releaseName: ${schema.spec.name}-gen3
+              values: |
+                global:
+                  hostname: ${schema.spec.hostname}
+                  environment: ${schema.spec.environment}
+                fence:
+                  enabled: ${string(schema.spec.fenceEnabled)}
+                audit:
+                  enabled: ${string(schema.spec.auditEnabled)}
+                hatchery:
+                  enabled: ${string(schema.spec.hatcheryEnabled)}
+                manifestservice:
+                  enabled: ${string(schema.spec.manifestserviceEnabled)}
+                indexd:
+                  enabled: ${string(schema.spec.indexdEnabled)}
+                metadata:
+                  enabled: ${string(schema.spec.metadataEnabled)}
+                peregrin:
+                  enabled: ${string(schema.spec.peregrinEnabled)}
+                sheepdog:
+                  enabled: ${string(schema.spec.sheepdogEnabled)}
+                guppy:
+                  enabled: ${string(schema.spec.guppyEnabled)}
+                portal:
+                  enabled: ${string(schema.spec.portalEnabled)}
+          destination:
+            server: ${computeBridge.data['eks-cluster-endpoint']}
+            namespace: ${schema.spec.name}
+          syncPolicy:
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+
+  # ====================================================================
+  # BRIDGE: Gen3 Helm Outputs ConfigMap
+  # ====================================================================
+
+    - id: gen3HelmBridge
+      readyWhen:
+        - ${gen3HelmBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-gen3helm-bridge
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: application
+            gen3.io/bridge: "true"
+        data:
+          argocd-app-name: ${schema.spec.name}-gen3-helm
+          hostname: ${schema.spec.hostname}
+          target-cluster: ${computeBridge.data['eks-cluster-endpoint']}

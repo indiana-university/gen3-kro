@@ -1,0 +1,22 @@
+# Kind Cluster Configuration — gen3-kro local CSOC
+# Local Kind cluster managing real AWS resources via ACK controllers.
+#
+# Extra port mappings:
+#   30080 → ArgoCD UI (NodePort)
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: gen3-local
+nodes:
+  - role: control-plane
+    extraPortMappings:
+      # ArgoCD server NodePort
+      - containerPort: 30080
+        hostPort: 30080
+        protocol: TCP
+    kubeadmConfigPatches:
+      - |
+        kind: ClusterConfiguration
+        apiServer:
+          extraArgs:
+            # Allow longer request timeouts for ACK reconciliation
+            request-timeout: "300s"
