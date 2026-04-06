@@ -85,8 +85,8 @@ spec:
 
     status:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
-      hostname: ${schema.spec.hostname}
-      argoCDClusterName: ${schema.spec.name}-spoke
+      hostname: ${gen3HelmBridge.data.hostname}
+      argoCDClusterName: ${gen3HelmBridge.data['argocd-cluster-name']}
 
   resources:
   # ====================================================================
