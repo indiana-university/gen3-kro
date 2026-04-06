@@ -59,7 +59,6 @@ spec:
         namespace: argocd
         name: '{{.name}}'
       syncPolicy:
-        preserveResourcesOnDeletion: true
         automated:
           selfHeal: false
           allowEmpty: true
