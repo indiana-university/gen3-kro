@@ -45,13 +45,11 @@ spec:
   databaseBridgeName: spoke1-database-bridge
   searchBridgeName: spoke1-search-bridge
   appIAMBridgeName: spoke1-appiam-bridge
-  acmBridgeName: spoke1-acm-bridge
   foundationNamespace: spoke1
   computeNamespace: spoke1
   databaseNamespace: spoke1
   searchNamespace: spoke1
   appIAMNamespace: spoke1
-  acmBridgeNamespace: spoke1
 
   # ── Gen3 service flags ────────────────────────────────────────────────────
   fenceEnabled: true

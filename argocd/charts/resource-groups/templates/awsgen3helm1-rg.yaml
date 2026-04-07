@@ -62,13 +62,11 @@ spec:
       databaseBridgeName: string | required=true
       searchBridgeName: string | required=true
       appIAMBridgeName: string | required=true
-      acmBridgeName: string | required=true
       foundationNamespace: string | required=true
       computeNamespace: string | required=true
       databaseNamespace: string | required=true
       searchNamespace: string | required=true
       appIAMNamespace: string | required=true
-      acmBridgeNamespace: string | required=true
 
       # ── Feature Flags (control which gen3 services are enabled) ─
       fenceEnabled: boolean | default=true
@@ -159,8 +157,8 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.acmBridgeName}
-          namespace: ${schema.spec.acmBridgeNamespace}
+          name: ${schema.spec.name}-acm-bridge
+          namespace: ${schema.spec.namespace}
 
   # ====================================================================
   # ARGOCD: Cluster Secret (spoke EKS registration via IAM auth)
