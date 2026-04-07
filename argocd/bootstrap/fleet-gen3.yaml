@@ -1,6 +1,10 @@
 # ======================================================================
 # fleet-gen3 — Gen3 application workloads on spoke clusters
 # ======================================================================
+# DISABLED: The Helm1 RGD (awsgen3helm1) now creates the gen3-helm
+# ArgoCD Application directly, making this ApplicationSet redundant.
+# Kept commented for reference and future EKS CSOC direct-deploy path.
+#
 # ONE per namespace/environment — deploys the gen3-helm umbrella chart
 # directly to the spoke cluster.
 #
@@ -32,73 +36,65 @@
 #   ApplicationSet: fleet-gen3
 #   Application:    {spoke-alias}-gen3    (e.g. spoke1-gen3)
 #   Helm release:   gen3
-apiVersion: argoproj.io/v1alpha1
-kind: ApplicationSet
-metadata:
-  name: fleet-gen3
-  namespace: argocd
-  annotations:
-    argocd.argoproj.io/sync-wave: "50"
-spec:
-  syncPolicy:
-    preserveResourcesOnDeletion: true
-  goTemplate: true
-  goTemplateOptions:
-    - missingkey=error
-  generators:
-  - clusters:
-      selector:
-        matchLabels:
-          fleet_member: spoke
-  template:
-    metadata:
-      name: '{{index .metadata.annotations "gen3.io/spoke-alias"}}-gen3'
-      labels:
-        environment: '{{index .metadata.labels "environment"}}'
-        fleet_spoke: '{{index .metadata.annotations "gen3.io/spoke-alias"}}'
-    spec:
-      project: default
-      # ── Ignore auto-generated secrets (gen3-helm generates random passwords) ──
-      # These Secrets regenerate random values on each Helm render, causing
-      # permanent OutOfSync. Ignore the data field so ArgoCD doesn't fight
-      # the initial random values already applied to the spoke cluster.
-      ignoreDifferences:
-        - group: ""
-          kind: Secret
-          jsonPointers:
-            - /data
-            - /stringData
-      sources:
-      # Values ref — per-spoke repo from cluster Secret annotations
-      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        ref: values
-      # gen3-helm umbrella chart — deployed directly (no intermediate chart)
-      - repoURL: 'https://github.com/uc-cdis/gen3-helm'
-        path: 'helm/gen3'
-        targetRevision: master
-        helm:
-          releaseName: 'gen3'
-          ignoreMissingValueFiles: true
-          parameters:
-            # ── Infrastructure outputs (from argoCDClusterSecret annotations) ──
-            - name: global.postgres.master.host
-              value: '{{index .metadata.annotations "gen3.io/aurora-endpoint"}}'
-            - name: global.postgres.master.username
-              value: '{{index .metadata.annotations "gen3.io/aurora-master-username"}}'
-            - name: global.postgres.master.dbName
-              value: '{{index .metadata.annotations "gen3.io/aurora-database-name"}}'
-          valueFiles:
-            # Hostname-based folder: cluster-fleet/<spoke-alias>/<hostname>/values.yaml
-            - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/{{index .metadata.annotations "gen3.io/hostname"}}/values.yaml'
-      destination:
-        # Deploy directly to the spoke cluster
-        name: '{{.name}}'
-        namespace: default
-      syncPolicy:
-        preserveResourcesOnDeletion: true
-        automated:
-          selfHeal: true
+#
+# apiVersion: argoproj.io/v1alpha1
+# kind: ApplicationSet
+# metadata:
+#   name: fleet-gen3
+#   namespace: argocd
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "50"
+# spec:
+#   syncPolicy:
+#     preserveResourcesOnDeletion: true
+#   goTemplate: true
+#   goTemplateOptions:
+#     - missingkey=error
+#   generators:
+#   - clusters:
+#       selector:
+#         matchLabels:
+#           fleet_member: spoke
+#   template:
+#     metadata:
+#       name: '{{index .metadata.annotations "gen3.io/spoke-alias"}}-gen3'
+#       labels:
+#         environment: '{{index .metadata.labels "environment"}}'
+#         fleet_spoke: '{{index .metadata.annotations "gen3.io/spoke-alias"}}'
+#     spec:
+#       project: default
+#       ignoreDifferences:
+#         - group: ""
+#           kind: Secret
+#           jsonPointers:
+#             - /data
+#             - /stringData
+#       sources:
+#       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+#         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+#         ref: values
+#       - repoURL: 'https://github.com/uc-cdis/gen3-helm'
+#         path: 'helm/gen3'
+#         targetRevision: master
+#         helm:
+#           releaseName: 'gen3'
+#           ignoreMissingValueFiles: true
+#           parameters:
+#             - name: global.postgres.master.host
+#               value: '{{index .metadata.annotations "gen3.io/aurora-endpoint"}}'
+#             - name: global.postgres.master.username
+#               value: '{{index .metadata.annotations "gen3.io/aurora-master-username"}}'
+#             - name: global.postgres.master.dbName
+#               value: '{{index .metadata.annotations "gen3.io/aurora-database-name"}}'
+#           valueFiles:
+#             - '$values/{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{index .metadata.annotations "gen3.io/spoke-alias"}}/{{index .metadata.annotations "gen3.io/hostname"}}/values.yaml'
+#       destination:
+#         name: '{{.name}}'
+#         namespace: default
+#       syncPolicy:
+#         preserveResourcesOnDeletion: true
+#         automated:
+#           selfHeal: true
           allowEmpty: true
           prune: true
         retry:

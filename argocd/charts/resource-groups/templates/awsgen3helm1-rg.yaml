@@ -74,6 +74,10 @@ spec:
       searchNamespace: string | required=true
       appIAMNamespace: string | required=true
 
+      # ── Gen3 Platform Settings ─────────────────────────────────
+      tierAccessLevel: string | default="private"
+      dataUploadBucket: string | default=""
+
       # ── Feature Flags (control which gen3 services are enabled) ─
       fenceEnabled: boolean | default=true
       auditEnabled: boolean | default=true
@@ -85,6 +89,14 @@ spec:
       sheepdogEnabled: boolean | default=true
       guppyEnabled: boolean | default=false
       portalEnabled: boolean | default=true
+      ssjdispatcherEnabled: boolean | default=false
+      wtsEnabled: boolean | default=true
+
+      # ── Fleet Configuration (for cluster-resources deployment) ──
+      fleetRepoURL: string | default=""
+      fleetRepoRevision: string | default="main"
+      fleetRepoBasepath: string | default="argocd/"
+      spokeAlias: string | default=""
 
       # ── Auto Sync ───────────────────────────────────────────────
       autoSync: boolean | default=false
@@ -187,6 +199,14 @@ spec:
             app.kubernetes.io/managed-by: kro
             gen3.io/tier: application
             gen3.io/spoke: ${schema.spec.name}
+            fleet_member: spoke
+            environment: ${schema.spec.environment}
+          annotations:
+            fleet_repo_url: ${schema.spec.fleetRepoURL}
+            fleet_repo_revision: ${schema.spec.fleetRepoRevision}
+            fleet_repo_basepath: ${schema.spec.fleetRepoBasepath}
+            gen3.io/spoke-alias: ${schema.spec.spokeAlias}
+            gen3.io/hostname: ${schema.spec.hostname}
         type: Opaque
         stringData:
           name: ${schema.spec.name}-spoke
@@ -237,28 +257,55 @@ spec:
             helm:
               releaseName: gen3
               values: |
+                # ── Global Configuration ───────────────────────────────────
                 global:
                   hostname: ${schema.spec.hostname}
                   environment: ${schema.spec.environment}
                   revproxyArn: ${acmBridge.data['acm-cert-arn']}
                   dev: false
+                  tierAccessLevel: ${schema.spec.tierAccessLevel}
+                  publicDataSets: true
+                  frontendRoot: portal
+                  portalApp: gitops
+                  dataUploadBucket: ${schema.spec.dataUploadBucket}
+                  dictionaryUrl: ${schema.spec.dictionaryUrl}
                   aws:
                     enabled: true
                     region: ${schema.spec.region}
+                    secretStoreServiceAccount:
+                      enabled: true
+                      name: external-secrets-sa
+                      roleArn: ${appIAMBridge.data['external-secrets-role-arn']}
                   postgres:
-                    dbCreate: false
+                    dbCreate: true
                     master:
                       host: ${databaseBridge.data['aurora-cluster-endpoint']}
-                      port: "5432"
-                      username: ${schema.spec.auroraMasterUsername}
-                      dbName: ${schema.spec.auroraDBName}
+                      port: "${databaseBridge.data['aurora-port']}"
+                      username: ${databaseBridge.data['aurora-master-username']}
+                      dbName: ${databaseBridge.data['aurora-database-name']}
                   externalSecrets:
-                    deploy: false
-                  dictionaryUrl: ${schema.spec.dictionaryUrl}
-                postgresql:
-                  enabled: false
-                elasticsearch:
-                  enabled: false
+                    deploy: true
+
+                # ── OpenSearch via aws-es-proxy ────────────────────────────
+                # The proxy creates K8s Service "gen3-elasticsearch-master"
+                # on port 9200 (when global.dev=false). All ES consumers
+                # connect through this in-cluster service name.
+                aws-es-proxy:
+                  enabled: true
+                  esEndpoint: ${searchBridge.data['opensearch-endpoint']}
+
+                # ── Core Infrastructure Services ──────────────────────────
+                ambassador:
+                  enabled: true
+                arborist:
+                  enabled: true
+                revproxy:
+                  enabled: true
+                  ingress:
+                    aws:
+                      group: ${schema.spec.name}
+
+                # ── Database-Dependent Services ───────────────────────────
                 fence:
                   enabled: ${string(schema.spec.fenceEnabled)}
                   resources:
@@ -270,11 +317,27 @@ spec:
                   serviceAccount:
                     annotations:
                       eks.amazonaws.com/role-arn: ${appIAMBridge.data['fence-role-arn']}
+                indexd:
+                  enabled: ${string(schema.spec.indexdEnabled)}
+                peregrine:
+                  enabled: ${string(schema.spec.peregrinEnabled)}
+                sheepdog:
+                  enabled: ${string(schema.spec.sheepdogEnabled)}
+                metadata:
+                  enabled: ${string(schema.spec.metadataEnabled)}
+
+                # ── Application Services ──────────────────────────────────
                 audit:
                   enabled: ${string(schema.spec.auditEnabled)}
                   serviceAccount:
                     annotations:
                       eks.amazonaws.com/role-arn: ${appIAMBridge.data['audit-role-arn']}
+                  server:
+                    pull_from_queue: ${string(schema.spec.auditEnabled)}
+                    type: aws_sqs
+                    sqs:
+                      region: ${schema.spec.region}
+                      url: ${appIAMBridge.data['audit-sqs-url']}
                 hatchery:
                   enabled: ${string(schema.spec.hatcheryEnabled)}
                   serviceAccount:
@@ -285,16 +348,6 @@ spec:
                   serviceAccount:
                     annotations:
                       eks.amazonaws.com/role-arn: ${appIAMBridge.data['manifestservice-role-arn']}
-                indexd:
-                  enabled: ${string(schema.spec.indexdEnabled)}
-                metadata:
-                  enabled: ${string(schema.spec.metadataEnabled)}
-                peregrin:
-                  enabled: ${string(schema.spec.peregrinEnabled)}
-                sheepdog:
-                  enabled: ${string(schema.spec.sheepdogEnabled)}
-                guppy:
-                  enabled: ${string(schema.spec.guppyEnabled)}
                 portal:
                   enabled: ${string(schema.spec.portalEnabled)}
                   resources:
@@ -303,6 +356,18 @@ spec:
                       cpu: 100m
                     limits:
                       memory: 3Gi
+                wts:
+                  enabled: ${string(schema.spec.wtsEnabled)}
+                guppy:
+                  enabled: ${string(schema.spec.guppyEnabled)}
+
+                # ── Data Pipeline Services ────────────────────────────────
+                ssjdispatcher:
+                  enabled: ${string(schema.spec.ssjdispatcherEnabled)}
+                  ssjcreds:
+                    sqsUrl: ${appIAMBridge.data['ssjdispatcher-sqs-url']}
+                etl:
+                  esEndpoint: gen3-elasticsearch-master
           destination:
             name: ${schema.spec.name}-spoke
             namespace: ${schema.spec.name}

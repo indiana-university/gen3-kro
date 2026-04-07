@@ -13,9 +13,6 @@
 # DB passwords are NOT passed via annotations — they are managed by AWS
 # (manageMasterUserPassword: true) and stored in AWS Secrets Manager.
 # ExternalSecrets on the spoke cluster pull them into K8s Secrets.
-#
-# DATABASE-ONLY DEPLOYMENT: Sets up PostgreSQL databases on external Aurora
-# with only the core database-dependent Gen3 services enabled.
 
 global:
   # ── External Database Mode (no local postgres) ────────────
@@ -23,13 +20,11 @@ global:
   aws:
     enabled: true
     region: us-east-1
-    # ExternalSecrets SA is managed by the cluster-resources chart (not gen3-helm).
-    # Disable gen3-helm's SA creation to avoid nil IRSA annotation errors.
     secretStoreServiceAccount:
-      enabled: false
+      enabled: true
       name: external-secrets-sa
+      # roleArn injected at runtime from appIAMBridge
   # ── ExternalSecrets integration ───────────────────────────
-  # Deploy ExternalSecret CRDs that pull DB passwords from AWS SM
   externalSecrets:
     deploy: true
   # ── External Aurora PostgreSQL ────────────────────────────
@@ -40,29 +35,50 @@ global:
     dbCreate: true
     master:
       port: "5432"
-    # ExternalSecret for Aurora master password (from AWS SM)
-    externalSecret: "spoke1-dev-aurora-master-password"
   # ── Common settings ──────────────────────────────────────
   environment: dev
   hostname: spoke1dev.rds-pla.net
-  dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
+  tierAccessLevel: private
+  publicDataSets: true
+  frontendRoot: portal
+  portalApp: gitops
+  dataUploadBucket: gen3-spoke1-upload
+  dictionaryUrl: "https://dictionary.ardac.org/2.2.2/schema.json"
 
-# ── Local dev databases — DISABLED (using external Aurora) ──
-postgresql:
-  enabled: false
-elasticsearch:
-  enabled: false
+# ── OpenSearch via aws-es-proxy (replaces bundled Elasticsearch) ──
+aws-es-proxy:
+  enabled: true
+  # esEndpoint injected from searchBridge at runtime
 
-# ── Database-dependent services (create schemas on Aurora) ──
+# ── Core Infrastructure Services ──────────────────────────
+ambassador:
+  enabled: true
+arborist:
+  enabled: true
+revproxy:
+  enabled: true
+
+# ── Database-dependent services ─────────────────────────
 indexd:
   enabled: true
   defaultPrefix: "dg.TEST/"
-
 fence:
   enabled: true
-
 peregrine:
   enabled: true
-
 sheepdog:
   enabled: true
+metadata:
+  enabled: true
+
+# ── Application services ────────────────────────────────
+audit:
+  enabled: true
+portal:
+  enabled: true
+wts:
+  enabled: true
+ssjdispatcher:
+  enabled: true
+etl:
+  esEndpoint: gen3-elasticsearch-master

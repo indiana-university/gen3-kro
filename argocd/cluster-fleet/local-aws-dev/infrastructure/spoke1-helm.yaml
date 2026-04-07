@@ -33,6 +33,8 @@ spec:
   dictionaryUrl: "https://dictionary.ardac.org/2.2.2/schema.json"
   auroraMasterUsername: postgres
   auroraDBName: gen3
+  tierAccessLevel: private
+  dataUploadBucket: gen3-spoke1-upload
 
   # ── Gen3-Helm Source (pre-packaged chart from helm.gen3.org) ─────────────────
   gen3HelmRepoURL: "https://helm.gen3.org"
@@ -62,4 +64,13 @@ spec:
   sheepdogEnabled: true
   guppyEnabled: false
   portalEnabled: true
+  ssjdispatcherEnabled: true
+  wtsEnabled: true
+
+  # ── Fleet configuration (for cluster-resources on spoke) ────────────────
+  fleetRepoURL: "https://github.com/indiana-university/gen3-kro.git"
+  fleetRepoRevision: "main"
+  fleetRepoBasepath: "argocd/"
+  spokeAlias: "local-aws-dev"
+
   autoSync: false
