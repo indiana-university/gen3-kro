@@ -61,8 +61,10 @@ spec:
   searchEnabled: true      # Search KMS, OpenSearch SG
 
   # ── ACM / TLS (provides ACM cert ARN via acmBridge for ALB HTTPS) ────────
+  # route53HostedZoneName: zone name only — zone ID is resolved at runtime via
+  # ACK Route53 HostedZone adoption (never stored in git)
   hostname: spoke1dev.rds-pla.net
-  route53HostedZoneID: REDACTED
+  route53HostedZoneName: rds-pla.net
 
   # ── Database prep (only when databaseEnabled: true) ───────────────────────
   dbSubnetCIDRs:

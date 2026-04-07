@@ -27,7 +27,8 @@
 #   Security:   1 KMS key (OpenSearch/ElastiCache policy), 1 OpenSearch SG (443)
 #   Bridge:     1 searchPrepBridge ConfigMap
 #
-# CONDITIONAL — ACM TLS (includeWhen: hostname + route53HostedZoneID, 4 resources):
+# CONDITIONAL — ACM TLS (includeWhen: hostname + route53HostedZoneName, 5 resources):
+#   Lookup:     1 Route53 HostedZone (adopted by name — zone ID never in git)
 #   TLS:        1 ACM Certificate (DNS validation), 1 Route53 CNAME (validation)
 #   Bridge:     1 acmBridge ConfigMap (real ARN or placeholder, mutual exclusion)
 #
@@ -78,9 +79,10 @@ spec:
       computeEnabled: boolean | default=false
       searchEnabled: boolean | default=false
 
-      # ── ACM / TLS (conditional on hostname + route53HostedZoneID) ─
+      # ── ACM / TLS (conditional on hostname + route53HostedZoneName) ─
+      # Provide the zone name (e.g. example.com) — zone ID resolved at runtime
       hostname: string | default=""
-      route53HostedZoneID: string | default=""
+      route53HostedZoneName: string | default=""
 
       # ── Database Prep Inputs (required when databaseEnabled=true)
       dbSubnetCIDRs: "[]string"
@@ -1300,8 +1302,33 @@ spec:
 
   # ####################################################################
   # CONDITIONAL: ACM CERTIFICATE + DNS VALIDATION
-  # (includeWhen: hostname != '' AND route53HostedZoneID != '')
+  # (includeWhen: hostname != '' AND route53HostedZoneName != '')
   # ####################################################################
+
+  # ====================================================================
+  # ACM PRE-REQUISITE: Route53 Hosted Zone Lookup (adopt existing zone)
+  # ====================================================================
+
+    # ── Adopt existing Route53 Hosted Zone by name — zone ID never stored ─
+    - id: hostedZone
+      includeWhen:
+        - ${schema.spec.hostname != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
+      readyWhen:
+        - ${hostedZone.status.?id.orValue('null') != 'null'}
+        - ${hostedZone.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: route53.services.k8s.aws/v1alpha1
+        kind: HostedZone
+        metadata:
+          name: ${schema.spec.name}-hosted-zone
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: adopt
+            services.k8s.aws/deletion-policy: retain
+        spec:
+          name: ${schema.spec.route53HostedZoneName}
 
   # ====================================================================
   # ACM: Public TLS Certificate (DNS validation, auto-issued)
@@ -1311,7 +1338,7 @@ spec:
     - id: acmCertificate
       includeWhen:
         - ${schema.spec.hostname != ''}
-        - ${schema.spec.route53HostedZoneID != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
       readyWhen:
         - ${acmCertificate.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
         - ${acmCertificate.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -1342,7 +1369,7 @@ spec:
     - id: dnsValidationRecord
       includeWhen:
         - ${schema.spec.hostname != ''}
-        - ${schema.spec.route53HostedZoneID != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
       readyWhen:
         - ${dnsValidationRecord.status.?status.orValue('null') != 'null'}
       template:
@@ -1356,7 +1383,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          hostedZoneID: ${schema.spec.route53HostedZoneID}
+          hostedZoneID: ${hostedZone.status.?id.orValue('')}
           name: ${acmCertificate.status.domainValidations[0].resourceRecord.name}
           recordType: CNAME
           ttl: 300
@@ -1371,7 +1398,7 @@ spec:
     - id: acmBridge
       includeWhen:
         - ${schema.spec.hostname != ''}
-        - ${schema.spec.route53HostedZoneID != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
       readyWhen:
         - ${acmBridge.metadata.?name.orValue('null') != 'null'}
       template:
@@ -1392,7 +1419,7 @@ spec:
     # ── ACM Bridge Placeholder (when no cert — empty values) ─────────
     - id: acmBridgePlaceholder
       includeWhen:
-        - ${schema.spec.hostname == '' || schema.spec.route53HostedZoneID == ''}
+        - ${schema.spec.hostname == '' || schema.spec.route53HostedZoneName == ''}
       readyWhen:
         - ${acmBridgePlaceholder.metadata.?name.orValue('null') != 'null'}
       template:
