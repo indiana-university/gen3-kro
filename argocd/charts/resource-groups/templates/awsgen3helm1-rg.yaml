@@ -273,18 +273,18 @@ spec:
                     enabled: true
                     region: ${schema.spec.region}
                     secretStoreServiceAccount:
-                      enabled: true
+                      enabled: false
                       name: external-secrets-sa
                       roleArn: ${appIAMBridge.data['external-secrets-role-arn']}
                   postgres:
-                    dbCreate: true
+                    dbCreate: false
                     master:
                       host: ${databaseBridge.data['aurora-cluster-endpoint']}
                       port: "${databaseBridge.data['aurora-port']}"
                       username: ${databaseBridge.data['aurora-master-username']}
                       dbName: ${databaseBridge.data['aurora-database-name']}
                   externalSecrets:
-                    deploy: true
+                    deploy: false
 
                 # ── OpenSearch via aws-es-proxy ────────────────────────────
                 # The proxy creates K8s Service "gen3-elasticsearch-master"

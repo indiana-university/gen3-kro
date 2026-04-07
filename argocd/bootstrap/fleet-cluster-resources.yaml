@@ -73,7 +73,6 @@ spec:
         name: '{{.name}}'
         namespace: cluster-resources
       syncPolicy:
-        preserveResourcesOnDeletion: true
         automated:
           selfHeal: true
           allowEmpty: true
