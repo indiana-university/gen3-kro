@@ -1,0 +1,47 @@
+# ── AwsGen3ClusterResources1 — Tier 4.5: Spoke Cluster Registration + Prereqs ─
+# Registers the spoke EKS cluster in CSOC ArgoCD and deploys cluster-wide
+# prerequisites (external-secrets, cert-manager) before Gen3 services.
+# Reads computeBridge for EKS connection details.
+#
+# RGD: awsgen3clusterresources1-rg.yaml  |  Kind: AwsGen3ClusterResources1
+#
+# PREREQUISITES:
+#   - Tier 3 (Compute2) → computeBridge (EKS endpoint, CA, cluster name, ArgoCD role)
+#
+# OUTPUT:
+#   - ArgoCD cluster Secret (spoke1-spoke-cluster) — spoke EKS registration
+#   - ArgoCD Application (spoke1-cluster-resources) — ESO chart on spoke
+#   - spoke1-cluster-resources-bridge ConfigMap — gates Helm1 (Tier 5)
+#
+# Deployed by fleet-cluster-resource-instances ApplicationSet (wave 35).
+# ─────────────────────────────────────────────────────────────────────────────
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3ClusterResources1
+metadata:
+  name: spoke1-cluster-resources
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+
+  # ── Compute bridge (EKS endpoint, CA, cluster name, ArgoCD role) ─────────
+  computeBridgeName: spoke1-compute-bridge
+  computeNamespace: spoke1
+
+  # ── Fleet / Git configuration ─────────────────────────────────────────────
+  fleetRepoURL: "https://github.com/indiana-university/gen3-kro.git"
+  fleetRepoRevision: "main"
+  fleetRepoBasepath: "argocd/"
+  spokeAlias: "local-aws-dev"
+
+  # ── Cluster-resources feature flags ──────────────────────────────────────
+  externalSecretsEnabled: true
+  certManagerEnabled: false
+
+  autoSync: false

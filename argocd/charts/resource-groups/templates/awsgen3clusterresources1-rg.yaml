@@ -1,0 +1,212 @@
+# AwsGen3ClusterResources1 — Tier 4.5: Spoke Cluster Registration + Prerequisites
+#
+# Registers the spoke EKS cluster in CSOC ArgoCD and deploys cluster-wide
+# prerequisites (external-secrets, cert-manager) before Gen3 services arrive.
+# Must reconcile before AwsGen3Helm1 (Tier 5), which reads the
+# clusterResourcesBridge to gate on ESO being installed on the spoke.
+#
+# Creates three resources:
+#   1. argoCDClusterSecret — registers the spoke EKS cluster in CSOC ArgoCD
+#      (ArgoCD uses awsAuthConfig + IRSA to authenticate to the spoke EKS)
+#   2. clusterResourcesApp — ArgoCD Application that deploys the
+#      cluster-resources umbrella chart (external-secrets, cert-manager) to spoke
+#   3. clusterResourcesBridge — bridge ConfigMap signalling readiness to
+#      downstream RGDs (gen3-helm, observability, etc.)
+#
+# Prerequisites:
+#   - Compute2 deployed with computeBridge
+#     (eks-cluster-endpoint, eks-cluster-ca, eks-cluster-name, argocd-spoke-role-arn)
+#
+# Sync-wave ordering:
+#   Wave 35 instance (fleet-cluster-resource-instances AppSet)
+#   — after fleet-infra-instances (wave 30) which applies infra bridges
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3clusterresources1
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3ClusterResources1
+    spec:
+      # ── Identity ──────────────────────────────────────────────────
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="gen3"
+
+      # ── ArgoCD ───────────────────────────────────────────────────
+      argoCDNamespace: string | default="argocd"
+      argoCDProject: string | default="default"
+
+      # ── Compute Bridge Reference ──────────────────────────────────
+      computeBridgeName: string | required=true
+      computeNamespace: string | required=true
+
+      # ── Fleet / Git Configuration ─────────────────────────────────
+      # Source repo for the cluster-resources umbrella chart and per-spoke values.
+      fleetRepoURL: string | default=""
+      fleetRepoRevision: string | default="main"
+      fleetRepoBasepath: string | default="argocd/"
+      # spokeAlias — folder name under cluster-fleet/ (e.g. "local-aws-dev")
+      # Stored in the ArgoCD cluster Secret annotation so fleet AppSets can
+      # discover per-spoke directories.
+      spokeAlias: string | default=""
+
+      # ── Cluster-Resources Feature Flags ───────────────────────────
+      externalSecretsEnabled: boolean | default=true
+      certManagerEnabled: boolean | default=false
+
+      # ── Auto Sync ────────────────────────────────────────────────
+      autoSync: boolean | default=false
+
+    status:
+      ready: ${clusterResourcesBridge.metadata.?name.orValue("loading")}
+      argoCDClusterName: ${clusterResourcesBridge.data['argocd-cluster-name']}
+      clusterRegistered: ${argoCDClusterSecret.metadata.?name.orValue("loading")}
+
+  resources:
+  # ====================================================================
+  # Layer 0: External References
+  # ====================================================================
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: computeBridge
+      readyWhen:
+        - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.computeNamespace}
+
+  # ====================================================================
+  # ArgoCD Cluster Secret (spoke EKS registration via IAM auth)
+  # ====================================================================
+  # Registers the spoke EKS cluster in CSOC ArgoCD. Uses awsAuthConfig
+  # with the ArgoCD spoke access IAM role created by Compute2.
+  # ArgoCD server STS-assumes this role to authenticate to the spoke EKS.
+
+    - id: argoCDClusterSecret
+      readyWhen:
+        - ${argoCDClusterSecret.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: ${schema.spec.name}-spoke-cluster
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            argocd.argoproj.io/secret-type: cluster
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: cluster-resources
+            gen3.io/spoke: ${schema.spec.name}
+            fleet_member: spoke
+            environment: ${schema.spec.environment}
+          annotations:
+            fleet_repo_url: ${schema.spec.fleetRepoURL}
+            fleet_repo_revision: ${schema.spec.fleetRepoRevision}
+            fleet_repo_basepath: ${schema.spec.fleetRepoBasepath}
+            gen3.io/spoke-alias: ${schema.spec.spokeAlias}
+        type: Opaque
+        stringData:
+          name: ${schema.spec.name}-spoke
+          server: ${computeBridge.data['eks-cluster-endpoint']}
+          config: |
+            {
+              "awsAuthConfig": {
+                "clusterName": "${computeBridge.data['eks-cluster-name']}",
+                "roleARN": "${computeBridge.data['argocd-spoke-role-arn']}"
+              },
+              "tlsClientConfig": {
+                "caData": "${computeBridge.data['eks-cluster-ca']}"
+              }
+            }
+
+  # ====================================================================
+  # ArgoCD Application: cluster-resources umbrella chart → spoke
+  # ====================================================================
+  # Deploys external-secrets (and optionally cert-manager) to the spoke
+  # cluster via the cluster-resources Helm umbrella chart. The chart lives
+  # in argocd/charts/cluster-resources/ in the fleet repo.
+
+    - id: clusterResourcesApp
+      readyWhen:
+        - ${clusterResourcesApp.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-cluster-resources
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: cluster-resources
+            gen3.io/spoke: ${schema.spec.name}
+          finalizers:
+            - resources-finalizer.argocd.argoproj.io
+        spec:
+          project: ${schema.spec.argoCDProject}
+          source:
+            repoURL: ${schema.spec.fleetRepoURL}
+            path: ${schema.spec.fleetRepoBasepath}charts/cluster-resources/
+            targetRevision: ${schema.spec.fleetRepoRevision}
+            helm:
+              releaseName: cluster-resources
+              values: |
+                external-secrets:
+                  enabled: ${string(schema.spec.externalSecretsEnabled)}
+                cert-manager:
+                  enabled: ${string(schema.spec.certManagerEnabled)}
+          destination:
+            name: ${schema.spec.name}-spoke
+            namespace: cluster-resources
+          syncPolicy:
+            automated:
+              selfHeal: true
+              allowEmpty: true
+              prune: false
+            retry:
+              limit: 100
+              backoff:
+                duration: "30s"
+                factor: 2
+                maxDuration: "5m"
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+
+  # ====================================================================
+  # BRIDGE: Cluster Resources Outputs ConfigMap
+  # ====================================================================
+
+    - id: clusterResourcesBridge
+      readyWhen:
+        - ${clusterResourcesBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-cluster-resources-bridge
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: cluster-resources
+            gen3.io/bridge: "true"
+        data:
+          argocd-cluster-name: ${schema.spec.name}-spoke
+          argocd-cluster-secret: ${schema.spec.name}-spoke-cluster
+          argocd-app-name: ${schema.spec.name}-cluster-resources
+          eks-cluster-endpoint: ${computeBridge.data['eks-cluster-endpoint']}

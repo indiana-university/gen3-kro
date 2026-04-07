@@ -1,0 +1,68 @@
+# ======================================================================
+# fleet-applications-instances — KRO application instances (gen3-helm, etc.)
+# ======================================================================
+# Applies application-tier KRO CRs (AwsGen3Helm1, etc.) from
+# cluster-fleet/<cluster>/applications/ to deploy Gen3 services onto spoke
+# EKS clusters via ArgoCD Applications.
+#
+# Runs at wave 45 — AFTER fleet-cluster-resource-instances (wave 35), which
+# must complete so clusterResourcesBridge exists (ESO deployed on spoke).
+# AwsGen3Helm1 reads clusterResourcesBridge via externalRef and gates on it.
+#
+# Repo coordinates are read from cluster Secret annotations.
+# Uses the same enable_infra_instances gate as fleet-infra-instances.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet-applications-instances
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "45"
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          enable_infra_instances: "true"
+  template:
+    metadata:
+      name: '{{.name}}-applications-instances'
+      labels:
+        fleet_spoke: '{{.name}}'
+    spec:
+      project: default
+      sources:
+      # Directory source: applies all *.yaml files in applications/ as raw K8s objects.
+      # KRO CRs have argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+      # embedded in their metadata so ArgoCD tolerates missing CRDs at sync time.
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/applications/'
+        directory:
+          recurse: false
+          include: '*.yaml'
+      destination:
+        namespace: argocd
+        name: '{{.name}}'
+      syncPolicy:
+        automated:
+          selfHeal: false
+          allowEmpty: true
+          prune: true
+        retry:
+          limit: 100
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+      ignoreDifferences:
+        - kind: Namespace
+          jsonPointers:
+            - /metadata/labels
+            - /metadata/annotations
+            - /metadata/finalizers

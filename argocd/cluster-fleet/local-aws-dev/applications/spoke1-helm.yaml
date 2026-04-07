@@ -1,6 +1,6 @@
-# ── AwsGen3Helm1 — Tier 5: Gen3 Application via ArgoCD (~$0, pods only) ───────
-# Creates an ArgoCD cluster Secret (spoke EKS registration) and Application CR
-# that deploys the gen3-helm umbrella chart onto the spoke EKS cluster.
+# ── AwsGen3Helm1 — Tier 5: Gen3 Application via ArgoCD (~$0, pods only) ──────
+# Creates ArgoCD Application CR that deploys the gen3-helm umbrella chart
+# onto the spoke EKS cluster.
 # Reads ALL upstream bridge ConfigMaps for complete gen3-helm values.
 #
 # RGD: awsgen3helm1-rg.yaml  |  Kind: AwsGen3Helm1
@@ -11,7 +11,8 @@
 #   - Tier 2 (Search1) → searchBridge (OpenSearch endpoint)
 #   - Tier 3 (Compute2) → computeBridge (EKS endpoint, CA, OIDC, ArgoCD role)
 #   - Tier 4 (AppIAM1) → appIAMBridge (IRSA role ARNs, SQS URLs)
-#   - ArgoCD server must have AWS credentials for EKS IAM auth
+#   - Tier 4.5 (ClusterResources1) → clusterResourcesBridge
+#     (spoke EKS registered in ArgoCD; ESO installed on spoke)
 # ----------------------------------------------------------------------------
 apiVersion: kro.run/v1alpha1
 kind: AwsGen3Helm1
@@ -53,6 +54,10 @@ spec:
   searchNamespace: spoke1
   appIAMNamespace: spoke1
 
+  # ── Cluster-resources bridge (Tier 4.5 — gates gen3App rendering) ────────
+  clusterResourcesBridgeName: spoke1-cluster-resources-bridge
+  clusterResourcesNamespace: spoke1
+
   # ── Gen3 service flags ────────────────────────────────────────────────────
   fenceEnabled: true
   auditEnabled: true
@@ -66,11 +71,5 @@ spec:
   portalEnabled: true
   ssjdispatcherEnabled: true
   wtsEnabled: true
-
-  # ── Fleet configuration (for cluster-resources on spoke) ────────────────
-  fleetRepoURL: "https://github.com/indiana-university/gen3-kro.git"
-  fleetRepoRevision: "main"
-  fleetRepoBasepath: "argocd/"
-  spokeAlias: "local-aws-dev"
 
   autoSync: false

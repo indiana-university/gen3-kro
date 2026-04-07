@@ -1,7 +1,7 @@
 # AwsGen3Helm1 — Tier 5: Gen3 Application Deployment (Modular RGD v1)
 #
-# Creates an ArgoCD cluster Secret (spoke EKS registration) and Application CR
-# that deploys the gen3-helm umbrella chart onto the spoke EKS cluster.
+# Creates an ArgoCD Application CR that deploys the gen3-helm umbrella chart
+# onto the spoke EKS cluster (registered by AwsGen3ClusterResources1, Tier 4.5).
 # Uses the pre-packaged Helm chart from helm.gen3.org (all dependencies
 # bundled in the .tgz) to avoid runtime downloads of large Helm repo indexes
 # (e.g., Bitnami's ~100MB index.yaml for the postgresql subchart).
@@ -9,7 +9,7 @@
 # gen3-helm values (database endpoint, search endpoint, IRSA role ARNs, etc.).
 #
 # This RGD does NOT deploy AWS resources — it creates pure Kubernetes
-# resources (ArgoCD Secret + Application + ConfigMap). No ACK controllers needed.
+# resources (ArgoCD Application CR + ConfigMap). No ACK controllers needed.
 #
 # PREREQUISITES:
 #   1. Foundation1 deployed with foundationBridge (S3 buckets, KMS)
@@ -18,10 +18,10 @@
 #   4. Search1 deployed with searchBridge (OpenSearch endpoint)
 #   5. AppIAM1 deployed with appIAMBridge (IRSA role ARNs, SQS URLs)
 #      — ALL feature flags must be enabled (KRO Test 8 limitation)
-#   6. ArgoCD server must have AWS credentials for EKS IAM auth
-#      (awsAuthConfig uses argocd-k8s-auth binary, included in ArgoCD 2.6+)
+#   6. ClusterResources1 deployed with clusterResourcesBridge
+#      (spoke EKS registered in ArgoCD; ESO installed on spoke)
 #
-# OUTPUT: ArgoCD cluster Secret + Application CR + gen3HelmBridge.
+# OUTPUT: ArgoCD Application CR + gen3HelmBridge ConfigMap.
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
@@ -92,11 +92,12 @@ spec:
       ssjdispatcherEnabled: boolean | default=false
       wtsEnabled: boolean | default=true
 
-      # ── Fleet Configuration (for cluster-resources deployment) ──
-      fleetRepoURL: string | default=""
-      fleetRepoRevision: string | default="main"
-      fleetRepoBasepath: string | default="argocd/"
-      spokeAlias: string | default=""
+      # ── Cluster Resources Bridge Reference ──────────────────────
+      # clusterResourcesBridge is created by AwsGen3ClusterResources1
+      # (Tier 4.5). Its existence gates gen3App rendering, ensuring ESO
+      # is deployed on the spoke before gen3-helm arrives.
+      clusterResourcesBridgeName: string | required=true
+      clusterResourcesNamespace: string | required=true
 
       # ── Auto Sync ───────────────────────────────────────────────
       autoSync: boolean | default=false
@@ -178,49 +179,15 @@ spec:
           name: ${schema.spec.name}-acm-bridge
           namespace: ${schema.spec.namespace}
 
-  # ====================================================================
-  # ARGOCD: Cluster Secret (spoke EKS registration via IAM auth)
-  # ====================================================================
-  # Registers the spoke EKS cluster in CSOC ArgoCD. Uses awsAuthConfig
-  # with the ArgoCD spoke access IAM role created by Compute2.
-  # ArgoCD server STS-assumes this role to authenticate to the spoke EKS.
-
-    - id: argoCDClusterSecret
+    - id: clusterResourcesBridge
       readyWhen:
-        - ${argoCDClusterSecret.metadata.?name.orValue('null') != 'null'}
-      template:
+        - ${clusterResourcesBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
         apiVersion: v1
-        kind: Secret
+        kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-spoke-cluster
-          namespace: ${schema.spec.argoCDNamespace}
-          labels:
-            argocd.argoproj.io/secret-type: cluster
-            app.kubernetes.io/managed-by: kro
-            gen3.io/tier: application
-            gen3.io/spoke: ${schema.spec.name}
-            fleet_member: spoke
-            environment: ${schema.spec.environment}
-          annotations:
-            fleet_repo_url: ${schema.spec.fleetRepoURL}
-            fleet_repo_revision: ${schema.spec.fleetRepoRevision}
-            fleet_repo_basepath: ${schema.spec.fleetRepoBasepath}
-            gen3.io/spoke-alias: ${schema.spec.spokeAlias}
-            gen3.io/hostname: ${schema.spec.hostname}
-        type: Opaque
-        stringData:
-          name: ${schema.spec.name}-spoke
-          server: ${computeBridge.data['eks-cluster-endpoint']}
-          config: |
-            {
-              "awsAuthConfig": {
-                "clusterName": "${computeBridge.data['eks-cluster-name']}",
-                "roleARN": "${computeBridge.data['argocd-spoke-role-arn']}"
-              },
-              "tlsClientConfig": {
-                "caData": "${computeBridge.data['eks-cluster-ca']}"
-              }
-            }
+          name: ${schema.spec.clusterResourcesBridgeName}
+          namespace: ${schema.spec.clusterResourcesNamespace}
 
   # ====================================================================
   # ARGOCD: Application CR for gen3-helm
@@ -369,7 +336,7 @@ spec:
                 etl:
                   esEndpoint: gen3-elasticsearch-master
           destination:
-            name: ${schema.spec.name}-spoke
+            name: ${clusterResourcesBridge.data['argocd-cluster-name']}
             namespace: ${schema.spec.name}
           syncPolicy:
             syncOptions:
