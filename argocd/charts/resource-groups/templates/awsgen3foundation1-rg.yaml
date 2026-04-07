@@ -27,8 +27,13 @@
 #   Security:   1 KMS key (OpenSearch/ElastiCache policy), 1 OpenSearch SG (443)
 #   Bridge:     1 searchPrepBridge ConfigMap
 #
-# Creates up to 4 bridge ConfigMaps: foundationBridge (always) +
-# databasePrepBridge, computePrepBridge, searchPrepBridge (conditional).
+# CONDITIONAL — ACM TLS (includeWhen: hostname + route53HostedZoneID, 4 resources):
+#   TLS:        1 ACM Certificate (DNS validation), 1 Route53 CNAME (validation)
+#   Bridge:     1 acmBridge ConfigMap (real ARN or placeholder, mutual exclusion)
+#
+# Creates up to 5 bridge ConfigMaps: foundationBridge (always) +
+# databasePrepBridge, computePrepBridge, searchPrepBridge (conditional) +
+# acmBridge (always — placeholder or real cert ARN).
 #
 # Downstream tiers (Database1, Compute1, Search1) are thin — they read
 # the per-capability prep bridges via externalRef.
@@ -73,6 +78,10 @@ spec:
       computeEnabled: boolean | default=false
       searchEnabled: boolean | default=false
 
+      # ── ACM / TLS (conditional on hostname + route53HostedZoneID) ─
+      hostname: string | default=""
+      route53HostedZoneID: string | default=""
+
       # ── Database Prep Inputs (required when databaseEnabled=true)
       dbSubnetCIDRs: "[]string"
 
@@ -103,6 +112,9 @@ spec:
       loggingBucketARN: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
       dataBucketARN: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
       uploadBucketARN: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+      # ACM (only populated when hostname + route53HostedZoneID are set)
+      hostname: ${schema.spec.hostname}
 
   resources:
   # ====================================================================
@@ -1288,3 +1300,115 @@ spec:
         data:
           search-key-arn: ${searchKey.status.?ackResourceMetadata.?arn}
           opensearch-sg-id: ${openSearchSg.status.?id}
+
+  # ####################################################################
+  # CONDITIONAL: ACM CERTIFICATE + DNS VALIDATION
+  # (includeWhen: hostname != '' AND route53HostedZoneID != '')
+  # ####################################################################
+
+  # ====================================================================
+  # ACM: Public TLS Certificate (DNS validation, auto-issued)
+  # ====================================================================
+
+    # ── ACM Certificate (DNS-validated, auto-issues after Route53 CNAME) ─
+    - id: acmCertificate
+      includeWhen:
+        - ${schema.spec.hostname != ''}
+        - ${schema.spec.route53HostedZoneID != ''}
+      readyWhen:
+        - ${acmCertificate.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${acmCertificate.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${acmCertificate.status.?domainValidations.orValue([]).size() > 0}
+      template:
+        apiVersion: acm.services.k8s.aws/v1alpha1
+        kind: Certificate
+        metadata:
+          name: ${schema.spec.name}-acm-cert
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          domainName: ${schema.spec.hostname}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-acm-cert
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ── Route53 DNS Validation CNAME (auto-validates the ACM cert) ───
+    - id: dnsValidationRecord
+      includeWhen:
+        - ${schema.spec.hostname != ''}
+        - ${schema.spec.route53HostedZoneID != ''}
+      readyWhen:
+        - ${dnsValidationRecord.status.?status.orValue('null') != 'null'}
+      template:
+        apiVersion: route53.services.k8s.aws/v1alpha1
+        kind: RecordSet
+        metadata:
+          name: ${schema.spec.name}-acm-validation
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          hostedZoneID: ${schema.spec.route53HostedZoneID}
+          name: ${acmCertificate.status.domainValidations[0].resourceRecord.name}
+          recordType: CNAME
+          ttl: 300
+          resourceRecords:
+            - value: ${acmCertificate.status.domainValidations[0].resourceRecord.value}
+
+  # ====================================================================
+  # ACM BRIDGE: Certificate Outputs (mutual exclusion pattern — Test 8)
+  # ====================================================================
+
+    # ── ACM Bridge (when cert exists — real ARN) ─────────────────────
+    - id: acmBridge
+      includeWhen:
+        - ${schema.spec.hostname != ''}
+        - ${schema.spec.route53HostedZoneID != ''}
+      readyWhen:
+        - ${acmBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-acm-bridge
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: foundation
+            gen3.io/bridge: "true"
+            gen3.io/purpose: acm
+        data:
+          acm-cert-arn: ${acmCertificate.status.?ackResourceMetadata.?arn}
+          hostname: ${schema.spec.hostname}
+
+    # ── ACM Bridge Placeholder (when no cert — empty values) ─────────
+    - id: acmBridgePlaceholder
+      includeWhen:
+        - ${schema.spec.hostname == '' || schema.spec.route53HostedZoneID == ''}
+      readyWhen:
+        - ${acmBridgePlaceholder.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-acm-bridge
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: foundation
+            gen3.io/bridge: "true"
+            gen3.io/purpose: acm
+        data:
+          acm-cert-arn: ""
+          hostname: ""

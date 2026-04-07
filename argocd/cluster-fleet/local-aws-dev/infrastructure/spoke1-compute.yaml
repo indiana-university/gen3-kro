@@ -38,7 +38,7 @@ spec:
 
   # ── Managed node group ────────────────────────────────────────────────────
   nodeInstanceTypes:
-    - "t3.medium"
+    - "t3.large"
   nodeDesiredSize: 2
   nodeMinSize: 1
   nodeMaxSize: 4

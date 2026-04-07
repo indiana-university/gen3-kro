@@ -471,6 +471,37 @@ ack-route53:
     featureGates:
       IAMRoleSelector: "true"
 
+ack-acm:
+  enabled: true
+  namespace: ack
+  chartName: acm-chart
+  chartRepository: "oci://public.ecr.aws/aws-controllers-k8s/acm-chart"
+  defaultVersion: "1.3.5"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['eks']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-acm-controller"
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+
 ack-s3:
   enabled: true
   namespace: ack
@@ -981,6 +1012,74 @@ ack-sqs-kind:
     serviceAccount:
       create: true
       name: "ack-sqs-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-acm-kind:
+  enabled: true
+  namespace: ack
+  chartName: acm-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.3.5"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-acm-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-route53-kind:
+  enabled: true
+  namespace: ack
+  chartName: route53-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.3.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-route53-controller"
     aws:
       region: '{{.metadata.annotations.aws_region}}'
     enableCARM: false

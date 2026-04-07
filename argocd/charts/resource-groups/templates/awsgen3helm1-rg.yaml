@@ -62,11 +62,13 @@ spec:
       databaseBridgeName: string | required=true
       searchBridgeName: string | required=true
       appIAMBridgeName: string | required=true
+      acmBridgeName: string | required=true
       foundationNamespace: string | required=true
       computeNamespace: string | required=true
       databaseNamespace: string | required=true
       searchNamespace: string | required=true
       appIAMNamespace: string | required=true
+      acmBridgeNamespace: string | required=true
 
       # ── Feature Flags (control which gen3 services are enabled) ─
       fenceEnabled: boolean | default=true
@@ -150,6 +152,16 @@ spec:
           name: ${schema.spec.appIAMBridgeName}
           namespace: ${schema.spec.appIAMNamespace}
 
+    - id: acmBridge
+      readyWhen:
+        - ${acmBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.acmBridgeName}
+          namespace: ${schema.spec.acmBridgeNamespace}
+
   # ====================================================================
   # ARGOCD: Cluster Secret (spoke EKS registration via IAM auth)
   # ====================================================================
@@ -224,19 +236,20 @@ spec:
                 global:
                   hostname: ${schema.spec.hostname}
                   environment: ${schema.spec.environment}
+                  revproxyArn: ${acmBridge.data['acm-cert-arn']}
                   dev: false
                   aws:
                     enabled: true
                     region: ${schema.spec.region}
                   postgres:
-                    dbCreate: true
+                    dbCreate: false
                     master:
                       host: ${databaseBridge.data['aurora-cluster-endpoint']}
                       port: "5432"
                       username: ${schema.spec.auroraMasterUsername}
                       dbName: ${schema.spec.auroraDBName}
                   externalSecrets:
-                    deploy: true
+                    deploy: false
                   dictionaryUrl: ${schema.spec.dictionaryUrl}
                 postgresql:
                   enabled: false
@@ -244,6 +257,12 @@ spec:
                   enabled: false
                 fence:
                   enabled: ${string(schema.spec.fenceEnabled)}
+                  resources:
+                    requests:
+                      memory: 256Mi
+                      cpu: 100m
+                    limits:
+                      memory: 512Mi
                   serviceAccount:
                     annotations:
                       eks.amazonaws.com/role-arn: ${appIAMBridge.data['fence-role-arn']}

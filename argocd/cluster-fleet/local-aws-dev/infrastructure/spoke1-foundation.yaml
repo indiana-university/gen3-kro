@@ -60,6 +60,10 @@ spec:
   computeEnabled: true     # EKS SG, Cluster IAM Role (6 policies), Node IAM Role (4 policies)
   searchEnabled: true      # Search KMS, OpenSearch SG
 
+  # ── ACM / TLS (provides ACM cert ARN via acmBridge for ALB HTTPS) ────────
+  hostname: spoke1dev.rds-pla.net
+  route53HostedZoneID: REDACTED
+
   # ── Database prep (only when databaseEnabled: true) ───────────────────────
   dbSubnetCIDRs:
     - "10.1.32.0/24"
