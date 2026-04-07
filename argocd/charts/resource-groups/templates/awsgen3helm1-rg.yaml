@@ -2,6 +2,9 @@
 #
 # Creates an ArgoCD cluster Secret (spoke EKS registration) and Application CR
 # that deploys the gen3-helm umbrella chart onto the spoke EKS cluster.
+# Uses the pre-packaged Helm chart from helm.gen3.org (all dependencies
+# bundled in the .tgz) to avoid runtime downloads of large Helm repo indexes
+# (e.g., Bitnami's ~100MB index.yaml for the postgresql subchart).
 # Reads bridge ConfigMaps from ALL upstream tiers to populate complete
 # gen3-helm values (database endpoint, search endpoint, IRSA role ARNs, etc.).
 #
@@ -44,9 +47,12 @@ spec:
       argoCDProject: string | default="default"
 
       # ── Gen3-Helm Source ─────────────────────────────────────────
-      gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm"
+      # Use the pre-packaged Helm chart repo (all deps bundled in .tgz)
+      # to avoid downloading Bitnami's 100MB index at deploy time.
+      gen3HelmRepoURL: string | default="https://helm.gen3.org"
+      gen3HelmChart: string | default="gen3"
       gen3HelmPath: string | default="helm/gen3"
-      gen3HelmTargetRevision: string | default="master"
+      gen3HelmTargetRevision: string | default="0.3.25"
 
       # ── Gen3 Configuration ─────────────────────────────────────
       hostname: string | required=true
@@ -226,7 +232,7 @@ spec:
                 - /stringData
           source:
             repoURL: ${schema.spec.gen3HelmRepoURL}
-            path: ${schema.spec.gen3HelmPath}
+            chart: ${schema.spec.gen3HelmChart}
             targetRevision: ${schema.spec.gen3HelmTargetRevision}
             helm:
               releaseName: gen3
