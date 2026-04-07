@@ -274,6 +274,12 @@ spec:
                   enabled: ${string(schema.spec.guppyEnabled)}
                 portal:
                   enabled: ${string(schema.spec.portalEnabled)}
+                  resources:
+                    requests:
+                      memory: 512Mi
+                      cpu: 100m
+                    limits:
+                      memory: 1Gi
           destination:
             name: ${schema.spec.name}-spoke
             namespace: ${schema.spec.name}
