@@ -279,7 +279,7 @@ spec:
                       memory: 512Mi
                       cpu: 100m
                     limits:
-                      memory: 2Gi
+                      memory: 3Gi
           destination:
             name: ${schema.spec.name}-spoke
             namespace: ${schema.spec.name}
