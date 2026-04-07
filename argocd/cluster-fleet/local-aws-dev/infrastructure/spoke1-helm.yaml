@@ -1,0 +1,76 @@
+# ── AwsGen3Helm1 — Tier 5: Gen3 Application via ArgoCD (~$0, pods only) ───────
+# Creates an ArgoCD cluster Secret (spoke EKS registration) and Application CR
+# that deploys the gen3-helm umbrella chart onto the spoke EKS cluster.
+# Reads ALL upstream bridge ConfigMaps for complete gen3-helm values.
+#
+# RGD: awsgen3helm1-rg.yaml  |  Kind: AwsGen3Helm1
+#
+# PREREQUISITES:
+#   - Tier 0 (Foundation1) → foundationBridge (S3, KMS)
+#   - Tier 1 (Database1) → databaseBridge (Aurora endpoint, credentials)
+#   - Tier 2 (Search1) → searchBridge (OpenSearch endpoint)
+#   - Tier 3 (Compute2) → computeBridge (EKS endpoint, CA, OIDC, ArgoCD role)
+#   - Tier 4 (AppIAM1) → appIAMBridge (IRSA role ARNs, SQS URLs)
+#   - ArgoCD server must have AWS credentials for EKS IAM auth
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Helm1
+metadata:
+  name: spoke1-gen3helm
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+
+  # ── Gen3 configuration ────────────────────────────────────────────────────
+  hostname: spoke1dev.rds-pla.net
+  dictionaryUrl: "https://dictionary.ardac.org/2.2.2/schema.json"
+  auroraMasterUsername: postgres
+  auroraDBName: gen3
+  tierAccessLevel: private
+  dataUploadBucket: gen3-spoke1-upload
+
+  # ── Gen3-Helm Source (pre-packaged chart from helm.gen3.org) ─────────────────
+  gen3HelmRepoURL: "https://helm.gen3.org"
+  gen3HelmChart: "gen3"
+  gen3HelmTargetRevision: "0.3.25"
+
+  # ── Bridge references (ALL tiers, all in spoke1 namespace) ─────────────────
+  foundationBridgeName: spoke1-foundation-bridge
+  computeBridgeName: spoke1-compute-bridge
+  databaseBridgeName: spoke1-database-bridge
+  searchBridgeName: spoke1-search-bridge
+  appIAMBridgeName: spoke1-appiam-bridge
+  foundationNamespace: spoke1
+  computeNamespace: spoke1
+  databaseNamespace: spoke1
+  searchNamespace: spoke1
+  appIAMNamespace: spoke1
+
+  # ── Gen3 service flags ────────────────────────────────────────────────────
+  fenceEnabled: true
+  auditEnabled: true
+  hatcheryEnabled: true
+  manifestserviceEnabled: true
+  indexdEnabled: true
+  metadataEnabled: true
+  peregrinEnabled: true
+  sheepdogEnabled: true
+  guppyEnabled: false
+  portalEnabled: true
+  ssjdispatcherEnabled: true
+  wtsEnabled: true
+
+  # ── Fleet configuration (for cluster-resources on spoke) ────────────────
+  fleetRepoURL: "https://github.com/indiana-university/gen3-kro.git"
+  fleetRepoRevision: "main"
+  fleetRepoBasepath: "argocd/"
+  spokeAlias: "local-aws-dev"
+
+  autoSync: false

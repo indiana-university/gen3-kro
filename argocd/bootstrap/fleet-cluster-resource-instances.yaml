@@ -16,7 +16,7 @@
 #   - clusterResourcesBridge ConfigMap (gates fleet-applications-instances)
 #
 # Repo coordinates are read from cluster Secret annotations.
-# Uses the same enable_infra_instances gate as fleet-infra-instances.
+# Selector: fleet_member: control-plane (same as fleet-infra-instances).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -34,7 +34,7 @@ spec:
   - clusters:
       selector:
         matchLabels:
-          enable_infra_instances: "true"
+          fleet_member: control-plane
   template:
     metadata:
       name: '{{.name}}-cluster-resource-instances'

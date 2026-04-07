@@ -621,7 +621,6 @@ metadata:
     fleet_member: control-plane
     ack_management_mode: self_managed
     cluster_type: kind
-    enable_infra_instances: "true"
     enable_test_instances: "true"
     enable_kro_csoc_rgs: "true"
   annotations:

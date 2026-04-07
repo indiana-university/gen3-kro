@@ -4,8 +4,8 @@
 # Applies raw KRO Custom Resource YAMLs from
 # cluster-fleet/<cluster>/infrastructure/ using a directory source.
 #
-# Matched by any cluster secret with enable_infra_instances: "true":
-#   - EKS spokes:  Terraform-created per-spoke secrets (argocd-bootstrap module)
+# Matched by any cluster secret with fleet_member: control-plane:
+#   - EKS CSOC:    Terraform-created CSOC cluster secret (argocd-bootstrap module)
 #   - Kind (local): cluster secret created by kind-local-test.sh
 #
 # Each instance is a standalone YAML file (one per RGD tier).
@@ -32,12 +32,12 @@ spec:
   goTemplateOptions:
     - missingkey=error
   generators:
-  # Matches both EKS spoke secrets and Kind cluster secret.
-  # {{.name}} resolves to the spoke alias (EKS) or cluster name (Kind).
+  # Matches both EKS CSOC cluster secret and Kind cluster secret.
+  # {{.name}} resolves to the cluster alias (e.g. 'local-aws-dev').
   - clusters:
       selector:
         matchLabels:
-          enable_infra_instances: "true"
+          fleet_member: control-plane
   template:
     metadata:
       name: '{{.name}}-infra-instance'
