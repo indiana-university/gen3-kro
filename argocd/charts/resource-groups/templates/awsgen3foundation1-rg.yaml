@@ -113,9 +113,6 @@ spec:
       dataBucketARN: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
       uploadBucketARN: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
 
-      # ACM (only populated when hostname + route53HostedZoneID are set)
-      hostname: ${schema.spec.hostname}
-
   resources:
   # ====================================================================
   # Layer 0: Namespace Reference (reads owner-account-id annotation)
