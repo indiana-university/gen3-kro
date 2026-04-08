@@ -75,7 +75,7 @@ collected_files.txt
 # HCL: ignore backend config (contains account-specific values)
 # All other .hcl files (terragrunt.hcl, terragrunt.stack.hcl) should be tracked.
 **/*.lock.info
-
+**/argocd/cluster-fleet/local-aws-dev-1
 # Temporary output files
 outputs.txt
 
