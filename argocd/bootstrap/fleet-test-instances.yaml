@@ -4,9 +4,10 @@
 # Applies raw KRO capability test YAMLs from
 # cluster-fleet/<cluster>/tests/ using a directory source.
 #
-# Matched by any cluster secret with enable_test_instances: "true".
-# Currently enabled on Kind (local CSOC) only. EKS spokes run production
-# infrastructure; tests are development-only.
+# Matched by any cluster secret with enable_infra_instances: "true".
+# Tests run wherever infrastructure instances run. On EKS spokes this is a
+# no-op if the tests/ directory is empty; the allowEmpty: true setting
+# prevents ArgoCD from erroring.
 #
 # Test instances include both pure-K8s tests (ConfigMaps) and real-AWS
 # tests (ACK SecurityGroups, VPCs) — see the KRO capability test table
@@ -28,7 +29,7 @@ spec:
   - clusters:
       selector:
         matchLabels:
-          enable_test_instances: "true"
+          enable_infra_instances: "true"
   template:
     metadata:
       name: '{{.name}}-test-instance'
