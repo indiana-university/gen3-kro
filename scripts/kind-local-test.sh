@@ -677,7 +677,7 @@ OCISECRET
   log_banner "Applying Bootstrap ApplicationSets"
   local bootstrap_dir="${REPO_DIR}/argocd/bootstrap"
 
-  for manifest in csoc-addons.yaml fleet-infra-instances.yaml fleet-cluster-resource-instances.yaml fleet-applications-instances.yaml fleet-test-instances.yaml; do
+  for manifest in csoc-addons.yaml fleet-instances.yaml; do
     local manifest_path="${bootstrap_dir}/${manifest}"
     if [[ -f "$manifest_path" ]]; then
       log_info "Applying: ${manifest}"
@@ -690,7 +690,7 @@ OCISECRET
 
   # ── Wait for ArgoCD to begin reconciling ──────────────────────────────
   log_banner "Waiting for ArgoCD to reconcile components..."
-  log_info "ArgoCD will deploy: KRO (wave -30) → ACK controllers (wave 1) → RGDs (wave 10) → infra instances (wave 30) → cluster-resource instances (wave 35) → app instances (wave 45)"
+  log_info "ArgoCD will deploy: KRO (wave -30) → ACK controllers (wave 1) → RGDs (wave 10) → fleet instances (wave 30)"
   log_info "Monitor: kubectl get applications -n argocd --context ${KIND_CONTEXT}"
 
   # Wait for KRO namespace (first component ArgoCD should create)

@@ -1,0 +1,90 @@
+# ======================================================================
+# fleet-instances — All KRO instance CRs for spoke clusters
+# ======================================================================
+# Applies ALL KRO Custom Resource YAMLs from four sub-directories of
+# cluster-fleet/<cluster>/ as a single ArgoCD Application per spoke:
+#
+#   infrastructure/     — AWS infra tiers 0-4 + observability
+#   cluster-resources/  — Tier 4.5: spoke cluster registration + ESO
+#   applications/       — Tier 5+: gen3-helm and other app-tier CRs
+#   tests/              — KRO capability test instances (dev clusters)
+#
+# Matched by any cluster secret with enable_infra_instances: "true".
+#
+# Deployment ordering is enforced by:
+#   1. argocd.argoproj.io/sync-wave on each instance YAML file
+#   2. readyWhen bridge externalRefs in each RGD (e.g. Helm1 gates on
+#      clusterResourcesBridge produced by ClusterResources1)
+#
+# Repo coordinates (fleet_repo_url, fleet_repo_revision, fleet_repo_basepath)
+# are read from the cluster Secret annotations.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: fleet-instances
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  syncPolicy:
+    preserveResourcesOnDeletion: true
+  goTemplate: true
+  goTemplateOptions:
+    - missingkey=error
+  generators:
+  - clusters:
+      selector:
+        matchLabels:
+          enable_infra_instances: "true"
+  template:
+    metadata:
+      name: '{{.name}}-fleet-instances'
+      labels:
+        fleet_spoke: '{{.name}}'
+    spec:
+      project: default
+      sources:
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/infrastructure/'
+        directory:
+          recurse: false
+          include: '*.yaml'
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/cluster-resources/'
+        directory:
+          recurse: false
+          include: '*.yaml'
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/applications/'
+        directory:
+          recurse: false
+          include: '*.yaml'
+      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/tests/'
+        directory:
+          recurse: false
+          include: '*.yaml'
+      destination:
+        namespace: argocd
+        name: '{{.name}}'
+      syncPolicy:
+        automated:
+          selfHeal: false
+          allowEmpty: true
+          prune: true
+        retry:
+          limit: 100
+        syncOptions:
+          - CreateNamespace=true
+          - ServerSideApply=true
+          - SkipDryRunOnMissingResource=true
+      ignoreDifferences:
+        - kind: Namespace
+          jsonPointers:
+            - /metadata/labels
+            - /metadata/annotations
+            - /metadata/finalizers
