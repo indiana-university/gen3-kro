@@ -34,7 +34,7 @@ self-managed-kro:
     argocd.argoproj.io/sync-wave: "-30"
   chartName: kro
   chartRepository: 'oci://registry.k8s.io/kro/charts/kro'
-  defaultVersion: "0.8.5"
+  defaultVersion: "0.9.1"
   selector:
     matchExpressions:
       - key: fleet_member
@@ -673,7 +673,7 @@ self-managed-kro-kind:
     argocd.argoproj.io/sync-wave: "-30"
   chartName: kro
   chartRepository: 'registry.k8s.io/kro/charts'
-  defaultVersion: "0.9.0"
+  defaultVersion: "0.9.1"
   selector:
     matchExpressions:
       - key: fleet_member
