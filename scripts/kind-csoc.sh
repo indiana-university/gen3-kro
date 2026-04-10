@@ -10,14 +10,14 @@
 # positional flags. With no flags, nothing runs (safe no-op).
 #
 # Usage:
-#   bash scripts/kind-local-test.sh                          # No-op
-#   bash scripts/kind-local-test.sh create                   # Kind cluster only
-#   bash scripts/kind-local-test.sh create install           # Cluster + full stack
-#   bash scripts/kind-local-test.sh create install test      # Full pipeline
-#   bash scripts/kind-local-test.sh connect                  # Reconnect ArgoCD
-#   bash scripts/kind-local-test.sh inject-creds             # Refresh ACK creds
-#   bash scripts/kind-local-test.sh status                   # Show pod status
-#   bash scripts/kind-local-test.sh destroy                  # Tear down
+#   bash scripts/kind-csoc.sh                          # No-op
+#   bash scripts/kind-csoc.sh create                   # Kind cluster only
+#   bash scripts/kind-csoc.sh create install           # Cluster + full stack
+#   bash scripts/kind-csoc.sh create install inject-creds connect  # Full pipeline
+#   bash scripts/kind-csoc.sh connect                  # Reconnect ArgoCD
+#   bash scripts/kind-csoc.sh inject-creds             # Refresh ACK creds
+#   bash scripts/kind-csoc.sh status                   # Show pod status
+#   bash scripts/kind-csoc.sh destroy                  # Tear down
 #
 # Stages:
 #   create       — Create Kind cluster + export kubeconfig
@@ -29,22 +29,36 @@
 #   destroy      — Delete Kind cluster
 #   setup        — Validate AWS creds + generate config/local.env
 #
-# Bootstrap pattern (mirrors gen3-kro):
-#   1. kind-local-test.sh installs ArgoCD via Helm (only direct install)
+# Bootstrap pattern (mirrors gen3-kro EKS CSOC):
+#   1. kind-csoc.sh installs ArgoCD via Helm (only direct install)
 #   2. Creates ArgoCD cluster Secret with fleet_member labels
-#   3. Applies bootstrap ApplicationSets (csoc-addons + local-infra-instances)
+#   3. Applies bootstrap ApplicationSets (csoc-addons + fleet-instances)
 #   4. ArgoCD reconciles everything via application-sets chart:
 #      Wave -30: KRO controller
 #      Wave   1: ACK controllers (from addons.yaml, pointed at REAL AWS)
 #      Wave  10: KRO ResourceGraphDefinitions
-#      Wave  30: KRO instances
+#      Wave  30: KRO instances (from fleet-instances, when uncommented)
+#
+# Deployment sequence (all ArgoCD-managed after bootstrap):
+#   Wave 15: Foundation1       — VPC, subnets, S3, KMS, IAM, ACM
+#   Wave 20: Compute2/Database1/Search1  — EKS, Aurora, OpenSearch
+#   Wave 25: AppIAM1           — OIDC, IRSA roles, SQS
+#   Wave 30: ClusterResources1 — Spoke EKS registration + ESO
+#   Wave 35: Helm1             — gen3-helm Application to spoke
 #
 # AWS Credentials:
 #   ACK controllers use REAL AWS APIs (no LocalStack).
-#   Credentials come from ~/.aws/credentials (mounted from host's
-#   ~/.aws/eks-devcontainer). AWS_PROFILE=csoc.
+#   Credentials come from ~/.aws/credentials.
+#   AWS_PROFILE=csoc.
 #   Run `scripts/mfa-session.sh <MFA_CODE>` on HOST to refresh.
 #   After ArgoCD deploys ACK, run: $0 inject-creds
+#
+# Fleet instance directory:
+#   argocd/cluster-fleet/local-aws-dev/
+#     infrastructure/     — Tiers 0-4 (Foundation, Compute, Database, Search, AppIAM)
+#     cluster-resources/  — Tier 4.5 (ClusterResources1)
+#     applications/       — Tier 5+ (Helm1)
+#     tests/              — KRO capability test instances
 ###############################################################################
 set -euo pipefail
 
@@ -430,7 +444,8 @@ YAML
     log_info "  ${found_count}/${expected_count} ACK deployments found (${deploy_elapsed}s)"
   done
 
-  # Inject credentials into ALL ACK deployments (discovered dynamically from cluster)
+  # Inject credentials into ACK deployments — all deployments in the ack namespace
+  # are controllers from addons.yaml ack-*-kind entries (chartName values like ec2-chart, etc.)
   local deployments
   deployments=$(kubectl get deployments -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" \
     --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null || true)
@@ -681,7 +696,8 @@ OCISECRET
     local manifest_path="${bootstrap_dir}/${manifest}"
     if [[ -f "$manifest_path" ]]; then
       log_info "Applying: ${manifest}"
-      kubectl apply -f "$manifest_path" --context "$KIND_CONTEXT"
+      kubectl apply -f "$manifest_path" --context "$KIND_CONTEXT" 2>/dev/null || \
+        log_warn "No active objects in ${manifest} (file may be fully commented-out — skipped)"
     else
       log_warn "Bootstrap manifest not found: ${manifest_path}"
     fi
@@ -693,44 +709,14 @@ OCISECRET
   log_info "ArgoCD will deploy: KRO (wave -30) → ACK controllers (wave 1) → RGDs (wave 10) → fleet instances (wave 30)"
   log_info "Monitor: kubectl get applications -n argocd --context ${KIND_CONTEXT}"
 
-  # Wait for KRO namespace (first component ArgoCD should create)
-  local max_wait=300
-  local elapsed=0
-  while ! kubectl get namespace kro-system --context "$KIND_CONTEXT" &>/dev/null; do
-    if [[ $elapsed -ge $max_wait ]]; then
-      log_warn "KRO namespace not yet created after ${max_wait}s — check ArgoCD Applications"
-      break
-    fi
-    sleep 10
-    elapsed=$((elapsed + 10))
-    log_info "Waiting for ArgoCD to deploy KRO... (${elapsed}s)"
-  done
-
-  # Wait for ACK namespace
-  elapsed=0
-  while ! kubectl get namespace "${ACK_NAMESPACE}" --context "$KIND_CONTEXT" &>/dev/null; do
-    if [[ $elapsed -ge $max_wait ]]; then
-      log_warn "ACK namespace not yet created after ${max_wait}s — check ArgoCD Applications"
-      break
-    fi
-    sleep 10
-    elapsed=$((elapsed + 10))
-    log_info "Waiting for ArgoCD to deploy ACK controllers... (${elapsed}s)"
-  done
-
-  log_banner "INSTALL COMPLETE"
+  log_banner "INSTALL COMPLETE — Bootstrap applied"
   echo ""
   log_info "ArgoCD Applications:"
   kubectl get applications -n "$ARGOCD_NAMESPACE" --context "$KIND_CONTEXT" 2>/dev/null || true
   echo ""
-  log_info "Pods (all namespaces):"
-  kubectl get pods -A --context "$KIND_CONTEXT"
-  echo ""
-  log_info "Next steps:"
-  log_info "  1. Wait for ACK controller pods to be Running"
-  log_info "  2. Run: $0 inject-creds    # Inject AWS credentials into ACK controllers"
-  log_info "  3. Run: $0 connect         # Get ArgoCD password + port-forward"
-  log_info "  4. Monitor: kubectl get applications -n argocd --context ${KIND_CONTEXT}"
+  log_info "ArgoCD is reconciling the bootstrap ApplicationSets."
+  log_info "KRO (wave -30) → ACK controllers (wave 1) → RGDs (wave 10) will deploy asynchronously."
+  log_info "Monitor: kubectl get applications -n argocd --context ${KIND_CONTEXT}"
 }
 
 ###############################################################################
@@ -777,16 +763,24 @@ stage_connect() {
   fi
 
   local pf_log="${OUTPUTS_DIR}/port-forward.log"
-  nohup kubectl port-forward -n "$ARGOCD_NAMESPACE" svc/argocd-server 8080:443 \
+  nohup kubectl port-forward -n "$ARGOCD_NAMESPACE" svc/argocd-server 8080:80 \
+    --address 0.0.0.0 \
     --context "$KIND_CONTEXT" > "$pf_log" 2>&1 &
   local pf_pid=$!
   disown "$pf_pid"
   sleep 2
 
   if kill -0 "$pf_pid" 2>/dev/null; then
-    log_success "ArgoCD UI available at: https://localhost:8080"
-    log_info "Username: admin"
-    [[ -n "${argocd_password:-}" ]] && log_info "Password: (in \$ARGOCD_ADMIN_PASSWORD or config/local.env)"
+    log_banner "ArgoCD Access"
+    echo "  URL:       http://localhost:8080"
+    echo "  Username:  admin"
+    if [[ -n "${argocd_password:-}" ]]; then
+      echo "  Password:  ${argocd_password}"
+    else
+      echo "  Password:  (not yet available — ArgoCD may still be deploying)"
+    fi
+    echo "  Port-fwd:  kubectl port-forward -n argocd svc/argocd-server 8080:80 --address 0.0.0.0 --context ${KIND_CONTEXT}"
+    echo ""
   else
     log_error "Port-forward failed to start (see ${pf_log})"
   fi

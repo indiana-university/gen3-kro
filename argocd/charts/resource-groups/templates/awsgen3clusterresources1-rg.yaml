@@ -10,16 +10,26 @@
 #      (ArgoCD uses awsAuthConfig + IRSA to authenticate to the spoke EKS)
 #   2. clusterResourcesApp — ArgoCD Application that deploys the
 #      cluster-resources umbrella chart (external-secrets, cert-manager) to spoke
+#      readyWhen gates on Application health=Healthy AND sync=Synced, ensuring
+#      ESO is actually running on the spoke before downstream tiers proceed.
 #   3. clusterResourcesBridge — bridge ConfigMap signalling readiness to
 #      downstream RGDs (gen3-helm, observability, etc.)
+#      Includes synchronization signals (app-health-status, app-sync-status)
+#      that confirm the spoke cluster-resources deployment is complete.
+#
+# Deletion safety:
+#   clusterResourcesApp does NOT use resources-finalizer.argocd.argoproj.io.
+#   Spoke resources are orphaned on Application delete to prevent rollback
+#   hang when the spoke cluster is unreachable. Clean-up happens when the
+#   spoke EKS cluster itself is deleted (Compute2 teardown).
 #
 # Prerequisites:
 #   - Compute2 deployed with computeBridge
 #     (eks-cluster-endpoint, eks-cluster-ca, eks-cluster-name, argocd-spoke-role-arn)
 #
 # Sync-wave ordering:
-#   Wave 35 instance (fleet-cluster-resource-instances AppSet)
-#   — after fleet-infra-instances (wave 30) which applies infra bridges
+#   Wave 30 instance (fleet-cluster-resource-instances AppSet)
+#   — after fleet-infra-instances (wave 15-25) which applies infra bridges
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
@@ -69,6 +79,8 @@ spec:
       ready: ${clusterResourcesBridge.metadata.?name.orValue("loading")}
       argoCDClusterName: ${clusterResourcesBridge.data['argocd-cluster-name']}
       clusterRegistered: ${argoCDClusterSecret.metadata.?name.orValue("loading")}
+      appHealthStatus: ${clusterResourcesApp.status.?health.?status.orValue("loading")}
+      appSyncStatus: ${clusterResourcesApp.status.?sync.?status.orValue("loading")}
 
   resources:
   # ====================================================================
@@ -145,6 +157,8 @@ spec:
     - id: clusterResourcesApp
       readyWhen:
         - ${clusterResourcesApp.metadata.?name.orValue('null') != 'null'}
+        - ${clusterResourcesApp.status.?health.?status.orValue('Unknown') == 'Healthy'}
+        - ${clusterResourcesApp.status.?sync.?status.orValue('Unknown') == 'Synced'}
       template:
         apiVersion: argoproj.io/v1alpha1
         kind: Application
@@ -155,8 +169,11 @@ spec:
             app.kubernetes.io/managed-by: kro
             gen3.io/tier: cluster-resources
             gen3.io/spoke: ${schema.spec.name}
-          finalizers:
-            - resources-finalizer.argocd.argoproj.io
+          annotations:
+            # Orphan spoke resources on Application delete to prevent rollback
+            # hang when the spoke cluster is unreachable. Resources on the spoke
+            # are cleaned up when the spoke EKS cluster itself is deleted.
+            argocd.argoproj.io/cascade: "orphan"
         spec:
           project: ${schema.spec.argoCDProject}
           source:
@@ -206,7 +223,15 @@ spec:
             gen3.io/tier: cluster-resources
             gen3.io/bridge: "true"
         data:
+          # ── ArgoCD spoke registration (used by Helm1 destination.name) ──────
           argocd-cluster-name: ${schema.spec.name}-spoke
           argocd-cluster-secret: ${schema.spec.name}-spoke-cluster
+          # ── Synchronization signals ─────────────────────────────────────────
+          # These fields are populated from the ArgoCD Application status.
+          # The bridge is only written after clusterResourcesApp passes
+          # readyWhen (health=Healthy, sync=Synced), so their presence
+          # confirms ESO is deployed and running on the spoke.
+          app-health-status: ${clusterResourcesApp.status.?health.?status.orValue('Unknown')}
+          app-sync-status: ${clusterResourcesApp.status.?sync.?status.orValue('Unknown')}
           argocd-app-name: ${schema.spec.name}-cluster-resources
           eks-cluster-endpoint: ${computeBridge.data['eks-cluster-endpoint']}

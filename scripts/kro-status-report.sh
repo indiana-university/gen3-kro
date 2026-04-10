@@ -7,8 +7,16 @@
 #   2. ACK controller health (auto-discovered from addons.yaml)
 #   3. Active KRO instance status (auto-discovered from infrastructure/ and tests/)
 #      — conditions, status fields, bridge ConfigMaps, per-instance ACK resources
+#      NOTE: cluster-resources/ and applications/ subdirs are not yet scanned
 #   4. ACK-managed AWS resources (all namespaces from infrastructure/ and tests/)
 #   5. ArgoCD Application health
+#
+# Fleet instance directory layout:
+#   argocd/cluster-fleet/local-aws-dev/
+#     infrastructure/     — Tiers 0-4 (Foundation, Compute, Database, Search, AppIAM)
+#     cluster-resources/  — Tier 4.5 (ClusterResources1) [not yet scanned]
+#     applications/       — Tier 5+ (Helm1) [not yet scanned]
+#     tests/              — KRO capability test instances
 #
 # Output is always written to outputs/reports/<name>.ansi (ANSI colours preserved).
 # Filename is derived from flags; existing files are overwritten unless -ts is used.
@@ -21,14 +29,14 @@
 #   bash scripts/kro-status-report.sh --json ./snap.json   # also emit JSON snapshot
 #   bash scripts/kro-status-report.sh -ts                  # append timestamp to filename
 #
-# Mirrors kind-local-test.sh script structure with inline logging helpers.
+# Mirrors kind-csoc.sh script structure with inline logging helpers.
 ###############################################################################
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 
-ADDONS_FILE="${REPO_DIR}/argocd/addons/local/addons.yaml"
+ADDONS_FILE="${REPO_DIR}/argocd/addons/addons.yaml"
 INFRA_DIR="${REPO_DIR}/argocd/cluster-fleet/local-aws-dev"
 
 # ── Argument Parsing ──────────────────────────────────────────────────────────

@@ -11,6 +11,16 @@
 # This RGD does NOT deploy AWS resources — it creates pure Kubernetes
 # resources (ArgoCD Application CR + ConfigMap). No ACK controllers needed.
 #
+# gen3App readyWhen gates on ArgoCD Application health=Healthy AND
+# sync=Synced, so the gen3HelmBridge is only produced once gen3-helm is
+# actually running on the spoke.
+#
+# Deletion safety:
+#   gen3App does NOT use resources-finalizer.argocd.argoproj.io.
+#   Spoke resources are orphaned on Application delete to prevent rollback
+#   hang when the spoke cluster is unreachable. Clean-up happens when the
+#   spoke EKS cluster itself is deleted (Compute2 teardown).
+#
 # PREREQUISITES:
 #   1. Foundation1 deployed with foundationBridge (S3 buckets, KMS)
 #   2. Compute2 deployed with computeBridge (EKS endpoint, CA, OIDC, ArgoCD role ARN)
@@ -106,6 +116,8 @@ spec:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
       hostname: ${gen3HelmBridge.data.hostname}
       argoCDClusterName: ${gen3HelmBridge.data['argocd-cluster-name']}
+      appHealthStatus: ${gen3App.status.?health.?status.orValue("loading")}
+      appSyncStatus: ${gen3App.status.?sync.?status.orValue("loading")}
 
   resources:
   # ====================================================================
@@ -196,6 +208,8 @@ spec:
     - id: gen3App
       readyWhen:
         - ${gen3App.metadata.?name.orValue('null') != 'null'}
+        - ${gen3App.status.?health.?status.orValue('Unknown') == 'Healthy'}
+        - ${gen3App.status.?sync.?status.orValue('Unknown') == 'Synced'}
       template:
         apiVersion: argoproj.io/v1alpha1
         kind: Application
@@ -206,8 +220,11 @@ spec:
             app.kubernetes.io/managed-by: kro
             gen3.io/tier: application
             gen3.io/spoke: ${schema.spec.name}
-          finalizers:
-            - resources-finalizer.argocd.argoproj.io
+          annotations:
+            # Orphan spoke resources on Application delete to prevent rollback
+            # hang when the spoke cluster is unreachable. Resources on the spoke
+            # are cleaned up when the spoke EKS cluster itself is deleted.
+            argocd.argoproj.io/cascade: "orphan"
         spec:
           project: ${schema.spec.argoCDProject}
           # ── Ignore auto-generated Secrets (gen3-helm generates random passwords)
@@ -365,3 +382,7 @@ spec:
           argocd-cluster-name: ${schema.spec.name}-spoke
           hostname: ${schema.spec.hostname}
           target-cluster: ${computeBridge.data['eks-cluster-endpoint']}
+          # ── Synchronization signals ─────────────────────────────────────────
+          # Populated from ArgoCD Application status after readyWhen passes.
+          app-health-status: ${gen3App.status.?health.?status.orValue('Unknown')}
+          app-sync-status: ${gen3App.status.?sync.?status.orValue('Unknown')}
