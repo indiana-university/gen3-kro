@@ -63,8 +63,12 @@ spec:
   # ── ACM / TLS (provides ACM cert ARN via acmBridge for ALB HTTPS) ────────
   # route53HostedZoneName: zone name only — zone ID is resolved at runtime via
   # ACK Route53 HostedZone adoption (never stored in git)
-  hostname: spoke1dev.rds-pla.net
-  route53HostedZoneName: rds-pla.net
+  # DISABLED: Route53 ACK controller v1.3.1 bug — "unexpected end of JSON input"
+  # on HostedZone adoption. Re-enable after controller fix.
+  # hostname: spoke1dev.rds-pla.net
+  # route53HostedZoneName: rds-pla.net
+  hostname: ""
+  route53HostedZoneName: ""
 
   # ── Database prep (only when databaseEnabled: true) ───────────────────────
   dbSubnetCIDRs:
