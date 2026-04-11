@@ -706,6 +706,30 @@ kro-csoc-rgs-kind:
         operator: In
         values: ['kind']
 
+external-secrets-kind:
+  enabled: true
+  enableACK: false
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "15"
+  namespace: external-secrets
+  chartName: external-secrets
+  defaultVersion: "2.0.1"
+  chartRepository: "https://charts.external-secrets.io"
+  selector:
+    matchExpressions:
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: enable_external_secrets
+        operator: In
+        values: ['true']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      name: "external-secrets-sa"
+
 ########################################
 # Kind ACK Controllers (wave 1)
 #

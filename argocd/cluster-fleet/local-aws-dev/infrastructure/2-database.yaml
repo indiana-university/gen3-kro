@@ -1,20 +1,25 @@
-# ── AwsGen3Database1 — Tier 1: Thin Database (~$45–350/mo) ───────────────────
+# ── AwsGen3Database2 — Tier 1: Thin Database (~$45–350/mo) ───────────────────
 # Reads databasePrepBridge (DB subnet group, Aurora SG, DB KMS key) from
-# Foundation. Only creates: Aurora Serverless v2 Cluster + Instance(s) +
-# databaseBridge ConfigMap.
+# Foundation. Creates: SecretStore + ExternalSecret (Aurora master password),
+# Aurora Serverless v2 Cluster + Instance(s) + databaseBridge ConfigMap.
 #
-# RGD: awsgen3database1-rg.yaml  |  Kind: AwsGen3Database1
+# RGD: awsgen3database2-rg.yaml  |  Kind: AwsGen3Database2
 #
 # PREREQUISITES:
 #   - Tier 0 (spoke1-foundation) must be Ready with databaseEnabled: true
 #   - foundationBridge + databasePrepBridge ConfigMaps must exist in namespace spoke1
-#   - Secret 'aurora-master-password' must exist in namespace spoke1:
-#       kubectl create secret generic aurora-master-password \
-#         -n spoke1 --from-literal=password='<your-secure-password>'
+#   - External Secrets Operator must be running on the CSOC cluster
+#   - Aurora master password must exist in AWS Secrets Manager:
+#       aws secretsmanager create-secret \
+#         --name "spoke1_aurora-master-password" \
+#         --secret-string '{"password":"<your-secure-password>"}' \
+#         --region us-east-1
+#   - ESO credentials: K8s Secret 'eso-aws-credentials' (local Kind) or
+#     IRSA ServiceAccount (EKS CSOC)
 #   - ACK controller 'rds' must be running
 # ----------------------------------------------------------------------------
 apiVersion: kro.run/v1alpha1
-kind: AwsGen3Database1
+kind: AwsGen3Database2
 metadata:
   name: spoke1-database
   namespace: spoke1
@@ -38,10 +43,14 @@ spec:
   auroraEngineVersion: "16.6"
   auroraDBName: gen3
   auroraMasterUsername: postgres
-  masterPasswordSecretName: aurora-master-password
-  masterPasswordSecretKey: password
   auroraMinCapacity: "0.5"
   auroraMaxCapacity: "4"
+
+  # ── External Secrets Operator (Aurora master password) ────────────────────
+  auroraMasterPasswordSMName: spoke1_aurora-master-password
+  esoUseIRSA: false
+  esoAwsCredsSecretName: eso-aws-credentials
+  esoServiceAccountName: external-secrets-sa
 
   # ── Bridge (creates databaseBridge for downstream tiers) ──────────────────
   createBridgeSecret: true
