@@ -18,58 +18,58 @@
 # required because KRO CRDs are not registered at ApplicationSet creation time.
 # Uses 10.1.0.0/16 CIDR.
 # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Foundation1
-# metadata:
-#   name: spoke1-foundation
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "15"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   region: us-east-1
-#   environment: local
-#   project: gen3-kro
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
-#
-#   # ── Network ──────────────────────────────────────────────────────────────
-#   vpcCIDR: "10.1.0.0/16"
-#   publicSubnetCIDRs:
-#     - "10.1.240.0/24"
-#     - "10.1.241.0/24"
-#   privateSubnetCIDRs:
-#     - "10.1.0.0/20"
-#     - "10.1.16.0/20"
-#   availabilityZones:
-#     - "us-east-1a"
-#     - "us-east-1b"
-#
-#   # ── Storage (S3 bucket names must be globally unique) ─────────────────────
-#   loggingBucketName: gen3-spoke1-logging
-#   dataBucketName: gen3-spoke1-data
-#   uploadBucketName: gen3-spoke1-upload
-#
-#   # ── KMS ───────────────────────────────────────────────────────────────────
-#   kmsKeyDescription: spoke1 foundation encryption key
-#
-#   # ── Feature flags (control conditional resource groups) ───────────────────
-#   databaseEnabled: true    # DB subnets, DB RT, DB subnet group, DB KMS, Aurora SG
-#   computeEnabled: true     # EKS SG, Cluster IAM Role (6 policies), Node IAM Role (4 policies)
-#   searchEnabled: true      # Search KMS, OpenSearch SG
-#
-#   # ── ACM / TLS (provides ACM cert ARN via acmBridge for ALB HTTPS) ────────
-#   # route53HostedZoneName: zone name only — zone ID is resolved at runtime via
-#   # ACK Route53 HostedZone adoption (never stored in git)
-#   hostname: spoke1dev.rds-pla.net
-#   route53HostedZoneName: rds-pla.net
-#
-#   # ── Database prep (only when databaseEnabled: true) ───────────────────────
-#   dbSubnetCIDRs:
-#     - "10.1.32.0/24"
-#     - "10.1.33.0/24"
-#
-#   # ── Bridge (always: foundationBridge; conditional: prep bridges) ──────────
-#   createBridgeSecret: true
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Foundation1
+metadata:
+  name: spoke1-foundation
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true,Prune=false
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
+
+  # ── Network ──────────────────────────────────────────────────────────────
+  vpcCIDR: "10.1.0.0/16"
+  publicSubnetCIDRs:
+    - "10.1.240.0/24"
+    - "10.1.241.0/24"
+  privateSubnetCIDRs:
+    - "10.1.0.0/20"
+    - "10.1.16.0/20"
+  availabilityZones:
+    - "us-east-1a"
+    - "us-east-1b"
+
+  # ── Storage (S3 bucket names must be globally unique) ─────────────────────
+  loggingBucketName: gen3-spoke1-logging
+  dataBucketName: gen3-spoke1-data
+  uploadBucketName: gen3-spoke1-upload
+
+  # ── KMS ───────────────────────────────────────────────────────────────────
+  kmsKeyDescription: spoke1 foundation encryption key
+
+  # ── Feature flags (control conditional resource groups) ───────────────────
+  databaseEnabled: true    # DB subnets, DB RT, DB subnet group, DB KMS, Aurora SG
+  computeEnabled: true     # EKS SG, Cluster IAM Role (6 policies), Node IAM Role (4 policies)
+  searchEnabled: true      # Search KMS, OpenSearch SG
+
+  # ── ACM / TLS (provides ACM cert ARN via acmBridge for ALB HTTPS) ────────
+  # route53HostedZoneName: zone name only — zone ID is resolved at runtime via
+  # ACK Route53 HostedZone adoption (never stored in git)
+  hostname: spoke1dev.rds-pla.net
+  route53HostedZoneName: rds-pla.net
+
+  # ── Database prep (only when databaseEnabled: true) ───────────────────────
+  dbSubnetCIDRs:
+    - "10.1.32.0/24"
+    - "10.1.33.0/24"
+
+  # ── Bridge (always: foundationBridge; conditional: prep bridges) ──────────
+  createBridgeSecret: true
