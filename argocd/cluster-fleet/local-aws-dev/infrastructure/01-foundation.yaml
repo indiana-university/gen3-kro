@@ -3,7 +3,8 @@
 # conditional DB subnets/SGs + conditional IAM roles + conditional search
 # KMS/SGs. Feature flags control prep resource groups.
 # S3 buckets managed exclusively by Storage1 tier.
-# Creates up to 5 bridge ConfigMaps (foundationBridge + conditional prep + acm).
+# ACM / TLS handled by DNS1 tier (separate instance).
+# Creates up to 4 bridge ConfigMaps (foundationBridge + conditional prep).
 #
 # RGD: awsgen3foundation1-rg.yaml  |  Kind: AwsGen3Foundation1
 #
@@ -50,10 +51,6 @@ spec:
   computeEnabled: true
   searchEnabled: true
 
-  # ── ACM / TLS ─────────────────────────────────────────────────────────────
-  hostname: spoke1dev.rds-pla.net
-  route53HostedZoneName: rds-pla.net
-
   # ── Database prep (only when databaseEnabled: true) ───────────────────────
   dbSubnetCIDRs:
     - "10.1.32.0/24"
@@ -65,4 +62,3 @@ spec:
   databasePrepBridgeName: spoke1-database-prep-bridge
   computePrepBridgeName: spoke1-compute-prep-bridge
   searchPrepBridgeName: spoke1-search-prep-bridge
-  acmBridgeName: spoke1-acm-bridge
