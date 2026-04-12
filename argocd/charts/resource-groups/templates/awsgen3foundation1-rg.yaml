@@ -83,6 +83,11 @@ spec:
       computePrepBridgeName: string | default="compute-prep-bridge"
       searchPrepBridgeName: string | default="search-prep-bridge"
 
+      # ── Deprecated (kept for CRD backwards-compat; moved to DNS1) ─
+      hostname: string | default=""
+      route53HostedZoneName: string | default=""
+      acmBridgeName: string | default=""
+
       # ── Bridge ───────────────────────────────────────────────────
       createBridgeSecret: boolean | default=true
 
