@@ -312,5 +312,5 @@ spec:
         data:
           opensearch-endpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
           opensearch-domain-arn: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
-          redis-endpoint: ${redisReplicationGroup.status.?nodeGroups.orValue([]).size() > 0 ? redisReplicationGroup.status.nodeGroups[0].?primaryEndpoint.?address.orValue("loading") : "loading"}
+          redis-endpoint: '${redisReplicationGroup.status.?nodeGroups.orValue([]).size() > 0 ? redisReplicationGroup.status.nodeGroups[0].?primaryEndpoint.?address.orValue("loading") : "loading"}'
           redis-port: ${string(schema.spec.redisPort)}
