@@ -239,7 +239,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          replicationGroupDescription: "Redis cluster for ${schema.spec.name} gen3 platform"
+          description: "Redis cluster for ${schema.spec.name} gen3 platform"
           replicationGroupID: ${schema.spec.name}-redis
           engine: redis
           engineVersion: ${schema.spec.redisEngineVersion}
