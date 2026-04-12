@@ -62,6 +62,9 @@ spec:
       # ── Bridge ───────────────────────────────────────────────────
       createBridgeSecret: boolean | default=true
 
+      # ── Bridge Name Override ──────────────────────────────────────
+      computeBridgeName: string | default="compute-bridge"
+
     status:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
 
@@ -350,7 +353,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-compute-bridge
+          name: ${schema.spec.computeBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro

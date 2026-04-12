@@ -79,6 +79,9 @@ spec:
       enableReadReplica: boolean | default=false
       createBridgeSecret: boolean | default=true
 
+      # ── Bridge Name Override ──────────────────────────────────────
+      databaseBridgeName: string | default="database-bridge"
+
     status:
       # Aurora
       auroraClusterEndpoint: ${auroraCluster.status.?endpoint.orValue("loading")}
@@ -331,7 +334,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-database-bridge
+          name: ${schema.spec.databaseBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro

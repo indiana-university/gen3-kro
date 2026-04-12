@@ -7,16 +7,19 @@ metadata:
     argocd.argoproj.io/sync-wave: "0"
 spec:
   # ─────────────────────────────────────────────────────────────────────
-  # AwsGen3Search1 — Tier 2: Thin Search (OpenSearch Only)
+  # AwsGen3Search1 — Tier 2: Search + Cache
   #
   # Creates an OpenSearch domain using prep resources from Foundation1.
+  # Optionally creates an ElastiCache Redis replication group for caching.
   # Foundation must have searchEnabled=true so searchPrepBridge exists.
   # ACK opensearchservice controller must be installed.
+  # ACK elasticache controller required when redisEnabled=true.
   #
-  # Resources (4 total):
-  #   externalRef: spokeNamespace, searchPrepBridge, foundationBridge
-  #   always:      openSearchDomain
-  #   conditional: searchBridge (createBridgeSecret)
+  # Resources:
+  #   externalRef:  spokeNamespace, searchPrepBridge, foundationBridge
+  #   always:       openSearchDomain
+  #   conditional:  redisSg, cacheSubnetGroup, redisReplicationGroup (redisEnabled)
+  #   conditional:  searchBridge / searchBridgeWithRedis (createBridgeSecret, Test 8 dual-bridge)
   # ─────────────────────────────────────────────────────────────────────
 
   schema:
@@ -27,8 +30,8 @@ spec:
       name: string | required=true
       namespace: string | default="default"
       region: string | default="us-east-1"
-      environment: string | default="local"
-      project: string | default="gen3-dev"
+      environment: string | default="dev"
+      project: string | default="gen3"
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
 
@@ -44,8 +47,22 @@ spec:
       opensearchVolumeSize: integer | default=20
       opensearchMasterEnabled: boolean | default=false
 
+      # ── Redis / ElastiCache Configuration (conditional) ──
+      redisEnabled: boolean | default=false
+      redisNodeType: string | default="cache.t3.small"
+      redisEngineVersion: string | default="7.0"
+      redisReplicasPerNodeGroup: integer | default=0
+      redisNumNodeGroups: integer | default=1
+      redisPort: integer | default=6379
+      redisSnapshotRetentionLimit: integer | default=0
+      redisAutoFailoverEnabled: boolean | default=false
+      redisTransitEncryptionEnabled: boolean | default=true
+
       # ── Bridge control ──
       createBridgeSecret: boolean | default=true
+
+      # ── Bridge Name Override ──
+      searchBridgeName: string | default="search-bridge"
 
     status:
       openSearchEndpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
@@ -140,17 +157,132 @@ spec:
               value: ${schema.spec.project}
 
     # ─────────────────────────────────────────────────────────────────────
-    # Search Bridge ConfigMap
+    # Redis / ElastiCache (conditional — requires redisEnabled=true)
     # ─────────────────────────────────────────────────────────────────────
 
+    # ── Redis Security Group ──
+    - id: redisSg
+      includeWhen:
+        - ${schema.spec.redisEnabled == true}
+      readyWhen:
+        - ${redisSg.status.?id.orValue('null') != 'null'}
+        - ${redisSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-redis-sg
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-redis-sg
+          description: "Security group for Redis ElastiCache - allows port ${schema.spec.redisPort} from VPC"
+          vpcID: ${foundationBridge.data['vpc-id']}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: ${schema.spec.redisPort}
+              toPort: ${schema.spec.redisPort}
+              ipRanges:
+                - cidrIP: ${foundationBridge.data['vpc-cidr']}
+                  description: "Redis access from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-redis-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ── Cache Subnet Group ──
+    - id: cacheSubnetGroup
+      includeWhen:
+        - ${schema.spec.redisEnabled == true}
+      readyWhen:
+        - ${cacheSubnetGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: elasticache.services.k8s.aws/v1alpha1
+        kind: CacheSubnetGroup
+        metadata:
+          name: ${schema.spec.name}-cache-subnets
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          cacheSubnetGroupName: ${schema.spec.name}-cache-subnets
+          cacheSubnetGroupDescription: "Cache subnet group for ${schema.spec.name} Redis"
+          subnetIDs:
+            - ${foundationBridge.data['private-subnet-1-id']}
+            - ${foundationBridge.data['private-subnet-2-id']}
+
+    # ── Redis Replication Group ──
+    - id: redisReplicationGroup
+      includeWhen:
+        - ${schema.spec.redisEnabled == true}
+      readyWhen:
+        - ${redisReplicationGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${redisReplicationGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: elasticache.services.k8s.aws/v1alpha1
+        kind: ReplicationGroup
+        metadata:
+          name: ${schema.spec.name}-redis
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          replicationGroupDescription: "Redis cluster for ${schema.spec.name} gen3 platform"
+          replicationGroupID: ${schema.spec.name}-redis
+          engine: redis
+          engineVersion: ${schema.spec.redisEngineVersion}
+          cacheNodeType: ${schema.spec.redisNodeType}
+          numNodeGroups: ${schema.spec.redisNumNodeGroups}
+          replicasPerNodeGroup: ${schema.spec.redisReplicasPerNodeGroup}
+          automaticFailoverEnabled: ${schema.spec.redisAutoFailoverEnabled}
+          atRestEncryptionEnabled: true
+          transitEncryptionEnabled: ${schema.spec.redisTransitEncryptionEnabled}
+          kmsKeyID: ${searchPrepBridge.data['search-key-arn']}
+          cacheSubnetGroupName: ${schema.spec.name}-cache-subnets
+          securityGroupIDs:
+            - ${redisSg.status.?id.orValue("")}
+          snapshotRetentionLimit: ${schema.spec.redisSnapshotRetentionLimit}
+          port: ${schema.spec.redisPort}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-redis
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ─────────────────────────────────────────────────────────────────────
+    # Search Bridge ConfigMap — Test 8 dual-bridge pattern
+    #
+    # Two variants with opposite includeWhen so only one ConfigMap exists.
+    # When redisEnabled=false, redis-endpoint is set to empty string.
+    # When redisEnabled=true, redis-endpoint comes from ReplicationGroup.
+    # ─────────────────────────────────────────────────────────────────────
+
+    # ── searchBridge (no Redis) ──
     - id: searchBridge
       includeWhen:
         - ${schema.spec.createBridgeSecret == true}
+        - ${schema.spec.redisEnabled == false}
       template:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-search-bridge
+          name: ${schema.spec.searchBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
@@ -159,3 +291,26 @@ spec:
         data:
           opensearch-endpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
           opensearch-domain-arn: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
+          redis-endpoint: ""
+          redis-port: ""
+
+    # ── searchBridgeWithRedis (with Redis) ──
+    - id: searchBridgeWithRedis
+      includeWhen:
+        - ${schema.spec.createBridgeSecret == true}
+        - ${schema.spec.redisEnabled == true}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.searchBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: search
+            gen3.io/bridge: "true"
+        data:
+          opensearch-endpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
+          opensearch-domain-arn: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
+          redis-endpoint: ${redisReplicationGroup.status.?nodeGroups.orValue([]).size() > 0 ? redisReplicationGroup.status.nodeGroups[0].?primaryEndpoint.?address.orValue("loading") : "loading"}
+          redis-port: ${string(schema.spec.redisPort)}

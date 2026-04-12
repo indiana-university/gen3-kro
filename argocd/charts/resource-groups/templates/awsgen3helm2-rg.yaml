@@ -1,49 +1,47 @@
-# AwsGen3Helm1 — Tier 5: Gen3 Application Deployment (Modular RGD v1)
+# AwsGen3Helm2 — Tier 5: Gen3 Application Deployment (Modular RGD v2)
+#
+# Changes from AwsGen3Helm1:
+#   - RENAMED: appIAMBridgeName → iamBridgeName, appIAMNamespace → iamNamespace
+#   - ADDED: messagingBridgeName, messagingNamespace for SQS bridge
+#   - ADDED: awsEsProxyEnabled flag, aws-es-proxy IRSA role from iamBridge
+#   - ADDED: ssjdispatcher IRSA role from iamBridge
+#   - Bridge IDs: appIAMBridge → iamBridge, new messagingBridge
+#   - SQS URLs now come from messagingBridge (was appIAMBridge)
+#   - gen3HelmBridgeName schema field for bridge name parameterization
 #
 # Creates an ArgoCD Application CR that deploys the gen3-helm umbrella chart
 # onto the spoke EKS cluster (registered by AwsGen3ClusterResources1, Tier 4.5).
-# Uses the pre-packaged Helm chart from helm.gen3.org (all dependencies
-# bundled in the .tgz) to avoid runtime downloads of large Helm repo indexes
-# (e.g., Bitnami's ~100MB index.yaml for the postgresql subchart).
 # Reads bridge ConfigMaps from ALL upstream tiers to populate complete
 # gen3-helm values (database endpoint, search endpoint, IRSA role ARNs, etc.).
 #
 # This RGD does NOT deploy AWS resources — it creates pure Kubernetes
 # resources (ArgoCD Application CR + ConfigMap). No ACK controllers needed.
 #
-# gen3App readyWhen gates on ArgoCD Application health=Healthy AND
-# sync=Synced, so the gen3HelmBridge is only produced once gen3-helm is
-# actually running on the spoke.
-#
-# Deletion safety:
-#   gen3App does NOT use resources-finalizer.argocd.argoproj.io.
-#   Spoke resources are orphaned on Application delete to prevent rollback
-#   hang when the spoke cluster is unreachable. Clean-up happens when the
-#   spoke EKS cluster itself is deleted (Compute2 teardown).
-#
 # PREREQUISITES:
-#   1. Foundation1 deployed with foundationBridge (S3 buckets, KMS)
-#   2. Compute2 deployed with computeBridge (EKS endpoint, CA, OIDC, ArgoCD role ARN)
-#   3. Database1 deployed with databaseBridge (Aurora endpoint, username, DB name)
-#   4. Search1 deployed with searchBridge (OpenSearch endpoint)
-#   5. AppIAM1 deployed with appIAMBridge (IRSA role ARNs, SQS URLs)
-#      — ALL feature flags must be enabled (KRO Test 8 limitation)
-#   6. ClusterResources1 deployed with clusterResourcesBridge
-#      (spoke EKS registered in ArgoCD; ESO installed on spoke)
+#   1. Foundation1 deployed with foundationBridge + acmBridge
+#   2. Compute2 deployed with computeBridge
+#   3. Database2 deployed with databaseBridge
+#   4. Search1 deployed with searchBridge
+#   5. IAM1 deployed with iamBridge (IRSA role ARNs)
+#   6. Messaging1 deployed with messagingBridge (SQS URLs)
+#   7. ClusterResources1 deployed with clusterResourcesBridge
+#   8. Storage1 deployed with storageBridge (S3 bucket names/ARNs)
+#   9. Advanced1 deployed with advancedBridge (WAF ACL ARN)
+#   10. AWS SM secrets created for all enabled services
 #
 # OUTPUT: ArgoCD Application CR + gen3HelmBridge ConfigMap.
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: awsgen3helm1
+  name: awsgen3helm2
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsGen3Helm1
+    kind: AwsGen3Helm2
     spec:
       # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
@@ -57,8 +55,6 @@ spec:
       argoCDProject: string | default="default"
 
       # ── Gen3-Helm Source ─────────────────────────────────────────
-      # Use the pre-packaged Helm chart repo (all deps bundled in .tgz)
-      # to avoid downloading Bitnami's 100MB index at deploy time.
       gen3HelmRepoURL: string | default="https://helm.gen3.org"
       gen3HelmChart: string | default="gen3"
       gen3HelmPath: string | default="helm/gen3"
@@ -77,16 +73,28 @@ spec:
       computeBridgeName: string | required=true
       databaseBridgeName: string | required=true
       searchBridgeName: string | required=true
-      appIAMBridgeName: string | required=true
+      iamBridgeName: string | required=true
+      messagingBridgeName: string | required=true
+      acmBridgeName: string | required=true
+      clusterResourcesBridgeName: string | required=true
       foundationNamespace: string | required=true
       computeNamespace: string | required=true
       databaseNamespace: string | required=true
       searchNamespace: string | required=true
-      appIAMNamespace: string | required=true
+      iamNamespace: string | required=true
+      messagingNamespace: string | required=true
+      acmNamespace: string | required=true
+      clusterResourcesNamespace: string | required=true
+      storageBridgeName: string | required=true
+      storageNamespace: string | required=true
+      advancedBridgeName: string | required=true
+      advancedNamespace: string | required=true
 
       # ── Gen3 Platform Settings ─────────────────────────────────
       tierAccessLevel: string | default="private"
-      dataUploadBucket: string | default=""
+      tierAccessLimit: integer | default=100
+      dbCreateEnabled: boolean | default=true
+      dashboardEnabled: boolean | default=false
 
       # ── Feature Flags (control which gen3 services are enabled) ─
       fenceEnabled: boolean | default=true
@@ -101,16 +109,33 @@ spec:
       portalEnabled: boolean | default=true
       ssjdispatcherEnabled: boolean | default=false
       wtsEnabled: boolean | default=true
-
-      # ── Cluster Resources Bridge Reference ──────────────────────
-      # clusterResourcesBridge is created by AwsGen3ClusterResources1
-      # (Tier 4.5). Its existence gates gen3App rendering, ensuring ESO
-      # is deployed on the spoke before gen3-helm arrives.
-      clusterResourcesBridgeName: string | required=true
-      clusterResourcesNamespace: string | required=true
+      requestorEnabled: boolean | default=false
+      awsEsProxyEnabled: boolean | default=true
 
       # ── Auto Sync ───────────────────────────────────────────────
       autoSync: boolean | default=false
+
+      # ── External Secrets (ESO on spoke — stanfordaimi pattern) ──
+      externalSecretsEnabled: boolean | default=true
+      # Aurora master password SM secret name (spoke ESO pulls it)
+      postgresExternalSecret: string | default=""
+      # Per-service DB credential SM secret names
+      fenceDbcredsSM: string | default=""
+      arboristDbcredsSM: string | default=""
+      auditDbcredsSM: string | default=""
+      indexdDbcredsSM: string | default=""
+      metadataDbcredsSM: string | default=""
+      peregrinDbcredsSM: string | default=""
+      sheepdogDbcredsSM: string | default=""
+      requestorDbcredsSM: string | default=""
+      wtsDbcredsSM: string | default=""
+      # Fence config from SM (JWT keys auto-generated by gen3-helm)
+      fenceConfigSM: string | default=""
+      # Indexd default prefix
+      indexdDefaultPrefix: string | default="dg.XXXX/"
+
+      # ── Bridge (output) ─────────────────────────────────────────
+      gen3HelmBridgeName: string | default="gen3helm-bridge"
 
     status:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
@@ -171,15 +196,25 @@ spec:
           name: ${schema.spec.searchBridgeName}
           namespace: ${schema.spec.searchNamespace}
 
-    - id: appIAMBridge
+    - id: iamBridge
       readyWhen:
-        - ${appIAMBridge.metadata.?name.orValue('null') != 'null'}
+        - ${iamBridge.metadata.?name.orValue('null') != 'null'}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.appIAMBridgeName}
-          namespace: ${schema.spec.appIAMNamespace}
+          name: ${schema.spec.iamBridgeName}
+          namespace: ${schema.spec.iamNamespace}
+
+    - id: messagingBridge
+      readyWhen:
+        - ${messagingBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.messagingBridgeName}
+          namespace: ${schema.spec.messagingNamespace}
 
     - id: acmBridge
       readyWhen:
@@ -188,8 +223,8 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-acm-bridge
-          namespace: ${schema.spec.namespace}
+          name: ${schema.spec.acmBridgeName}
+          namespace: ${schema.spec.acmNamespace}
 
     - id: clusterResourcesBridge
       readyWhen:
@@ -200,6 +235,26 @@ spec:
         metadata:
           name: ${schema.spec.clusterResourcesBridgeName}
           namespace: ${schema.spec.clusterResourcesNamespace}
+
+    - id: storageBridge
+      readyWhen:
+        - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.storageNamespace}
+
+    - id: advancedBridge
+      readyWhen:
+        - ${advancedBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.advancedBridgeName}
+          namespace: ${schema.spec.advancedNamespace}
 
   # ====================================================================
   # ARGOCD: Application CR for gen3-helm
@@ -221,13 +276,9 @@ spec:
             gen3.io/tier: application
             gen3.io/spoke: ${schema.spec.name}
           annotations:
-            # Orphan spoke resources on Application delete to prevent rollback
-            # hang when the spoke cluster is unreachable. Resources on the spoke
-            # are cleaned up when the spoke EKS cluster itself is deleted.
             argocd.argoproj.io/cascade: "orphan"
         spec:
           project: ${schema.spec.argoCDProject}
-          # ── Ignore auto-generated Secrets (gen3-helm generates random passwords)
           ignoreDifferences:
             - group: ""
               kind: Secret
@@ -241,115 +292,131 @@ spec:
             helm:
               releaseName: gen3
               values: |
-                # ── Global Configuration ───────────────────────────────────
+                # ── Global ─────────────────────────────────────────────────
                 global:
                   hostname: ${schema.spec.hostname}
                   environment: ${schema.spec.environment}
                   revproxyArn: ${acmBridge.data['acm-cert-arn']}
                   dev: false
                   tierAccessLevel: ${schema.spec.tierAccessLevel}
+                  tierAccessLimit: ${string(schema.spec.tierAccessLimit)}
                   publicDataSets: true
                   frontendRoot: portal
                   portalApp: gitops
-                  dataUploadBucket: ${schema.spec.dataUploadBucket}
+                  dataUploadBucket: ${storageBridge.data['upload-bucket-name']}
                   dictionaryUrl: ${schema.spec.dictionaryUrl}
                   aws:
                     enabled: true
                     region: ${schema.spec.region}
+                    wafv2:
+                      enabled: ${advancedBridge.data['waf-enabled']}
+                      wafAclArn: ${advancedBridge.data['waf-acl-arn']}
                     secretStoreServiceAccount:
-                      enabled: false
+                      enabled: ${string(schema.spec.externalSecretsEnabled)}
                       name: external-secrets-sa
-                      roleArn: ${appIAMBridge.data['external-secrets-role-arn']}
+                      roleArn: ${iamBridge.data['external-secrets-role-arn']}
                   postgres:
-                    dbCreate: false
-                    master:
-                      host: ${databaseBridge.data['aurora-cluster-endpoint']}
-                      port: "${databaseBridge.data['aurora-port']}"
-                      username: ${databaseBridge.data['aurora-master-username']}
-                      dbName: ${databaseBridge.data['aurora-database-name']}
+                    dbCreate: ${string(schema.spec.dbCreateEnabled)}
+                    externalSecret: ${schema.spec.postgresExternalSecret}
                   externalSecrets:
-                    deploy: false
+                    deploy: ${string(schema.spec.externalSecretsEnabled)}
 
-                # ── OpenSearch via aws-es-proxy ────────────────────────────
-                # The proxy creates K8s Service "gen3-elasticsearch-master"
-                # on port 9200 (when global.dev=false). All ES consumers
-                # connect through this in-cluster service name.
+                # ── OpenSearch ─────────────────────────────────────────────
                 aws-es-proxy:
-                  enabled: true
+                  enabled: ${string(schema.spec.awsEsProxyEnabled)}
                   esEndpoint: ${searchBridge.data['opensearch-endpoint']}
 
-                # ── Core Infrastructure Services ──────────────────────────
+                # ── Core Infrastructure ────────────────────────────────────
                 ambassador:
                   enabled: true
                 arborist:
                   enabled: true
+                  externalSecrets:
+                    dbcreds: ${schema.spec.arboristDbcredsSM}
                 revproxy:
                   enabled: true
                   ingress:
                     aws:
                       group: ${schema.spec.name}
 
-                # ── Database-Dependent Services ───────────────────────────
+                # ── Database-Dependent Services ────────────────────────────
                 fence:
                   enabled: ${string(schema.spec.fenceEnabled)}
-                  resources:
-                    requests:
-                      memory: 256Mi
-                      cpu: 100m
-                    limits:
-                      memory: 512Mi
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${appIAMBridge.data['fence-role-arn']}
+                      eks.amazonaws.com/role-arn: ${iamBridge.data['fence-role-arn']}
+                  externalSecrets:
+                    fenceJwtKeys: ""
+                    fenceConfig: ${schema.spec.fenceConfigSM}
+                    fenceGoogleAppCredsSecret: ""
+                    fenceGoogleStorageCredsSecret: ""
+                    createK8sJwtKeysSecret: true
+                    createK8sGoogleAppSecrets: true
+                    createK8sFenceConfigSecret: true
+                    dbcreds: ${schema.spec.fenceDbcredsSM}
                 indexd:
                   enabled: ${string(schema.spec.indexdEnabled)}
+                  defaultPrefix: ${schema.spec.indexdDefaultPrefix}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.indexdDbcredsSM}
+                    createK8sServiceCredsSecret: true
                 peregrine:
                   enabled: ${string(schema.spec.peregrinEnabled)}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.peregrinDbcredsSM}
                 sheepdog:
                   enabled: ${string(schema.spec.sheepdogEnabled)}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.sheepdogDbcredsSM}
                 metadata:
                   enabled: ${string(schema.spec.metadataEnabled)}
+                  externalSecrets:
+                    createK8sMetadataSecret: true
+                    dbcreds: ${schema.spec.metadataDbcredsSM}
 
-                # ── Application Services ──────────────────────────────────
+                # ── Application Services ───────────────────────────────────
                 audit:
                   enabled: ${string(schema.spec.auditEnabled)}
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${appIAMBridge.data['audit-role-arn']}
+                      eks.amazonaws.com/role-arn: ${iamBridge.data['audit-role-arn']}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.auditDbcredsSM}
+                    createK8sAuditSecret: true
                   server:
                     pull_from_queue: ${string(schema.spec.auditEnabled)}
                     type: aws_sqs
                     sqs:
                       region: ${schema.spec.region}
-                      url: ${appIAMBridge.data['audit-sqs-url']}
+                      url: ${messagingBridge.data['audit-sqs-url']}
                 hatchery:
                   enabled: ${string(schema.spec.hatcheryEnabled)}
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${appIAMBridge.data['hatchery-role-arn']}
+                      eks.amazonaws.com/role-arn: ${iamBridge.data['hatchery-role-arn']}
                 manifestservice:
                   enabled: ${string(schema.spec.manifestserviceEnabled)}
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${appIAMBridge.data['manifestservice-role-arn']}
+                      eks.amazonaws.com/role-arn: ${iamBridge.data['manifestservice-role-arn']}
                 portal:
                   enabled: ${string(schema.spec.portalEnabled)}
-                  resources:
-                    requests:
-                      memory: 512Mi
-                      cpu: 100m
-                    limits:
-                      memory: 3Gi
+                requestor:
+                  enabled: ${string(schema.spec.requestorEnabled)}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.requestorDbcredsSM}
                 wts:
                   enabled: ${string(schema.spec.wtsEnabled)}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.wtsDbcredsSM}
                 guppy:
                   enabled: ${string(schema.spec.guppyEnabled)}
 
-                # ── Data Pipeline Services ────────────────────────────────
+                # ── Data Pipeline ──────────────────────────────────────────
                 ssjdispatcher:
                   enabled: ${string(schema.spec.ssjdispatcherEnabled)}
                   ssjcreds:
-                    sqsUrl: ${appIAMBridge.data['ssjdispatcher-sqs-url']}
+                    sqsUrl: ${messagingBridge.data['ssjdispatcher-sqs-url']}
                 etl:
                   esEndpoint: gen3-elasticsearch-master
           destination:
@@ -371,7 +438,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-gen3helm-bridge
+          name: ${schema.spec.gen3HelmBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
@@ -382,7 +449,5 @@ spec:
           argocd-cluster-name: ${schema.spec.name}-spoke
           hostname: ${schema.spec.hostname}
           target-cluster: ${computeBridge.data['eks-cluster-endpoint']}
-          # ── Synchronization signals ─────────────────────────────────────────
-          # Populated from ArgoCD Application status after readyWhen passes.
           app-health-status: ${gen3App.status.?health.?status.orValue('Unknown')}
           app-sync-status: ${gen3App.status.?sync.?status.orValue('Unknown')}

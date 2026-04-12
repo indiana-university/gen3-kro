@@ -1,0 +1,349 @@
+# AwsGen3Storage1 — Tier 0.5: Storage (Modular RGD v1)
+#
+# Dedicated S3 bucket tier. Creates all Gen3 S3 buckets with KMS encryption
+# using keys from Foundation1's foundationBridge.
+#
+# Buckets (from gen3-gitops/gen3-terraform production patterns):
+#   ALWAYS:
+#     - loggingBucket:   ALB access logs, CloudTrail, VPC Flow Logs
+#     - dataBucket:      Core data files for Fence (DATA_UPLOAD_BUCKET)
+#     - uploadBucket:    User data uploads (CORS-enabled pattern)
+#   CONDITIONAL:
+#     - manifestBucket:  Manifest service file lists (manifestserviceEnabled)
+#     - dashboardBucket: Portal static assets and dashboard config (dashboardEnabled)
+#
+# All buckets use:
+#   - KMS encryption (logging key for logs, platform key for app buckets)
+#   - Public access blocked (all 4 flags)
+#   - Versioning enabled
+#
+# PREREQUISITES:
+#   1. Foundation1 deployed with foundationBridge (provides KMS key ARNs)
+#   2. ACK s3 controller must be running
+#
+# CROSS-TIER: Reads foundationBridge (KMS key ARNs) via externalRef.
+# OUTPUT: storageBridge ConfigMap with all bucket ARNs for downstream tiers.
+#
+# COST: ~$1-5/month (S3 storage costs depend on volume).
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3storage1
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Storage1
+    spec:
+      # ── Identity ──────────────────────────────────────────────────
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="gen3"
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+      # ── Bridge References (from Foundation1) ─────────────────────
+      foundationBridgeName: string | required=true
+      foundationNamespace: string | required=true
+
+      # ── Bucket Names (must be globally unique) ───────────────────
+      loggingBucketName: string | required=true
+      dataBucketName: string | required=true
+      uploadBucketName: string | required=true
+
+      # ── Conditional Buckets ──────────────────────────────────────
+      manifestserviceEnabled: boolean | default=false
+      manifestBucketName: string | default=""
+      dashboardEnabled: boolean | default=false
+      dashboardBucketName: string | default=""
+
+      # ── Bridge ───────────────────────────────────────────────────
+      storageBridgeName: string | default="storage-bridge"
+      createBridgeSecret: boolean | default=true
+
+    status:
+      loggingBucketARN: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+      dataBucketARN: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+      uploadBucketARN: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+  resources:
+  # ====================================================================
+  # Layer 0: External References
+  # ====================================================================
+
+    # ── Namespace ────────────────────────────────────────────────────
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    # ── Foundation Bridge (KMS key ARNs for bucket encryption) ───────
+    - id: foundationBridge
+      readyWhen:
+        - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.foundationBridgeName}
+          namespace: ${schema.spec.foundationNamespace}
+
+  # ====================================================================
+  # STORAGE: S3 Buckets (KMS-encrypted)
+  # ====================================================================
+
+    # ── Logging Bucket (ALB logs, CloudTrail, VPC Flow Logs) ─────────
+    - id: loggingBucket
+      readyWhen:
+        - ${loggingBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${loggingBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-logging-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.loggingBucketName}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${foundationBridge.data['logging-key-arn']}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${schema.spec.loggingBucketName}
+              - key: Environment
+                value: ${schema.spec.environment}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${schema.spec.project}
+              - key: BucketType
+                value: logging
+
+    # ── Data Bucket (core data files for Fence) ──────────────────────
+    - id: dataBucket
+      readyWhen:
+        - ${dataBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${dataBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-data-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.dataBucketName}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${foundationBridge.data['platform-key-arn']}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${schema.spec.dataBucketName}
+              - key: Environment
+                value: ${schema.spec.environment}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${schema.spec.project}
+              - key: BucketType
+                value: data
+
+    # ── Upload Bucket (user data uploads) ────────────────────────────
+    - id: uploadBucket
+      readyWhen:
+        - ${uploadBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${uploadBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-upload-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.uploadBucketName}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${foundationBridge.data['platform-key-arn']}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${schema.spec.uploadBucketName}
+              - key: Environment
+                value: ${schema.spec.environment}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${schema.spec.project}
+              - key: BucketType
+                value: upload
+
+    # ── Manifest Bucket (conditional — ManifestService file lists) ───
+    - id: manifestBucket
+      includeWhen:
+        - ${schema.spec.manifestserviceEnabled == true}
+        - ${schema.spec.manifestBucketName != ''}
+      readyWhen:
+        - ${manifestBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${manifestBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-manifest-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.manifestBucketName}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${foundationBridge.data['platform-key-arn']}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${schema.spec.manifestBucketName}
+              - key: Environment
+                value: ${schema.spec.environment}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${schema.spec.project}
+              - key: BucketType
+                value: manifest
+
+    # ── Dashboard Bucket (conditional — portal static assets) ────────
+    - id: dashboardBucket
+      includeWhen:
+        - ${schema.spec.dashboardEnabled == true}
+        - ${schema.spec.dashboardBucketName != ''}
+      readyWhen:
+        - ${dashboardBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${dashboardBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-dashboard-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.dashboardBucketName}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${foundationBridge.data['platform-key-arn']}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${schema.spec.dashboardBucketName}
+              - key: Environment
+                value: ${schema.spec.environment}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${schema.spec.project}
+              - key: BucketType
+                value: dashboard
+
+  # ====================================================================
+  # BRIDGE: Storage Outputs ConfigMap (for downstream tiers)
+  # ====================================================================
+  # NOTE: Conditional bucket ARNs (manifest, dashboard) use Test 8
+  # dual-bridge pattern — separate bridges for each combination to avoid
+  # KRO silently dropping excluded resource references.
+
+    # ── Storage Bridge (always — core bucket ARNs) ───────────────────
+    - id: storageBridge
+      includeWhen:
+        - ${schema.spec.createBridgeSecret == true}
+      readyWhen:
+        - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: storage
+            gen3.io/bridge: "true"
+        data:
+          logging-bucket-arn: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          logging-bucket-name: ${schema.spec.loggingBucketName}
+          data-bucket-arn: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          data-bucket-name: ${schema.spec.dataBucketName}
+          upload-bucket-arn: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          upload-bucket-name: ${schema.spec.uploadBucketName}
+          manifest-bucket-name: ${schema.spec.manifestBucketName}
+          dashboard-bucket-name: ${schema.spec.dashboardBucketName}

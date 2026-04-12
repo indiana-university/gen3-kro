@@ -7,11 +7,11 @@
 #
 # Per Plan 02 Revision 4 (02-modular-rgd-design.md), this tier creates:
 #
-# ALWAYS (16 resources, ~$37/month):
+# ALWAYS (13 resources, ~$37/month):
 #   Networking: VPC, IGW, EIP, NAT Gateway, 2 route tables, 4 subnets
 #   Security:   2 KMS keys (logging + platform)
-#   Storage:    3 S3 buckets (logging, data, upload — KMS-encrypted)
 #   Bridge:     1 foundationBridge ConfigMap (always present)
+#
 #
 # CONDITIONAL — Database prep (includeWhen: databaseEnabled, 7 resources):
 #   Networking: 2 DB subnets, 1 DB route table, 1 DB subnet group
@@ -66,10 +66,7 @@ spec:
       privateSubnetCIDRs: "[]string | required=true"
       availabilityZones: "[]string | required=true"
 
-      # ── Storage ──────────────────────────────────────────────────
-      loggingBucketName: string | required=true
-      dataBucketName: string | required=true
-      uploadBucketName: string | required=true
+
 
       # ── KMS ──────────────────────────────────────────────────────
       kmsKeyDescription: string | default="Gen3 encryption key"
@@ -86,6 +83,13 @@ spec:
 
       # ── Database Prep Inputs (required when databaseEnabled=true)
       dbSubnetCIDRs: "[]string"
+
+      # ── Bridge Name Overrides ─────────────────────────────────────
+      foundationBridgeName: string | default="foundation-bridge"
+      databasePrepBridgeName: string | default="database-prep-bridge"
+      computePrepBridgeName: string | default="compute-prep-bridge"
+      searchPrepBridgeName: string | default="search-prep-bridge"
+      acmBridgeName: string | default="acm-bridge"
 
       # ── Bridge ───────────────────────────────────────────────────
       createBridgeSecret: boolean | default=true
@@ -109,11 +113,6 @@ spec:
       # Security (KMS)
       loggingKeyARN: ${loggingKey.status.?ackResourceMetadata.?arn.orValue("loading")}
       platformKeyARN: ${platformKey.status.?ackResourceMetadata.?arn.orValue("loading")}
-
-      # Storage (S3)
-      loggingBucketARN: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
-      dataBucketARN: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
-      uploadBucketARN: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
 
   resources:
   # ====================================================================
@@ -552,137 +551,9 @@ spec:
               tagValue: platform
 
   # ====================================================================
-  # STORAGE: S3 Buckets (KMS-encrypted)
-  # ====================================================================
-
-    # ── Logging Bucket ────────────────────────────────────────────────
-    - id: loggingBucket
-      readyWhen:
-        - ${loggingBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${loggingBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: s3.services.k8s.aws/v1alpha1
-        kind: Bucket
-        metadata:
-          name: ${schema.spec.name}-logging-bucket
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${schema.spec.region}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          name: ${schema.spec.loggingBucketName}
-          versioning:
-            status: "Enabled"
-          encryption:
-            rules:
-              - applyServerSideEncryptionByDefault:
-                  sseAlgorithm: "aws:kms"
-                  kmsMasterKeyID: ${loggingKey.status.?ackResourceMetadata.?arn}
-          publicAccessBlock:
-            blockPublicACLs: true
-            blockPublicPolicy: true
-            ignorePublicACLs: true
-            restrictPublicBuckets: true
-          tagging:
-            tagSet:
-              - key: Name
-                value: ${schema.spec.loggingBucketName}
-              - key: Environment
-                value: ${schema.spec.environment}
-              - key: ManagedBy
-                value: Kro
-              - key: Project
-                value: ${schema.spec.project}
-              - key: BucketType
-                value: logging
-
-    # ── Data Bucket ───────────────────────────────────────────────────
-    - id: dataBucket
-      readyWhen:
-        - ${dataBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${dataBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: s3.services.k8s.aws/v1alpha1
-        kind: Bucket
-        metadata:
-          name: ${schema.spec.name}-data-bucket
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${schema.spec.region}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          name: ${schema.spec.dataBucketName}
-          versioning:
-            status: "Enabled"
-          encryption:
-            rules:
-              - applyServerSideEncryptionByDefault:
-                  sseAlgorithm: "aws:kms"
-                  kmsMasterKeyID: ${platformKey.status.?ackResourceMetadata.?arn}
-          publicAccessBlock:
-            blockPublicACLs: true
-            blockPublicPolicy: true
-            ignorePublicACLs: true
-            restrictPublicBuckets: true
-          tagging:
-            tagSet:
-              - key: Name
-                value: ${schema.spec.dataBucketName}
-              - key: Environment
-                value: ${schema.spec.environment}
-              - key: ManagedBy
-                value: Kro
-              - key: Project
-                value: ${schema.spec.project}
-              - key: BucketType
-                value: data
-
-    # ── Upload Bucket ─────────────────────────────────────────────────
-    - id: uploadBucket
-      readyWhen:
-        - ${uploadBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${uploadBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: s3.services.k8s.aws/v1alpha1
-        kind: Bucket
-        metadata:
-          name: ${schema.spec.name}-upload-bucket
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${schema.spec.region}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          name: ${schema.spec.uploadBucketName}
-          versioning:
-            status: "Enabled"
-          encryption:
-            rules:
-              - applyServerSideEncryptionByDefault:
-                  sseAlgorithm: "aws:kms"
-                  kmsMasterKeyID: ${platformKey.status.?ackResourceMetadata.?arn}
-          publicAccessBlock:
-            blockPublicACLs: true
-            blockPublicPolicy: true
-            ignorePublicACLs: true
-            restrictPublicBuckets: true
-          tagging:
-            tagSet:
-              - key: Name
-                value: ${schema.spec.uploadBucketName}
-              - key: Environment
-                value: ${schema.spec.environment}
-              - key: ManagedBy
-                value: Kro
-              - key: Project
-                value: ${schema.spec.project}
-              - key: BucketType
-                value: upload
-
-  # ====================================================================
-  # BRIDGE: Foundation Outputs ConfigMap (always present)
+  # BRIDGE: Foundation Outputs ConfigMap
+  # S3 buckets are managed by AwsGen3Storage1 — no S3 ARNs in this bridge.
+  # Downstream tiers read storageBridge for S3 ARNs.
   # ====================================================================
 
     - id: foundationBridge
@@ -694,7 +565,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-foundation-bridge
+          name: ${schema.spec.foundationBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
@@ -714,9 +585,6 @@ spec:
           private-route-table-id: ${privateRouteTable.status.?routeTableID}
           logging-key-arn: ${loggingKey.status.?ackResourceMetadata.?arn}
           platform-key-arn: ${platformKey.status.?ackResourceMetadata.?arn}
-          logging-bucket-arn: ${loggingBucket.status.?ackResourceMetadata.?arn}
-          data-bucket-arn: ${dataBucket.status.?ackResourceMetadata.?arn}
-          upload-bucket-arn: ${uploadBucket.status.?ackResourceMetadata.?arn}
 
   # ####################################################################
   # CONDITIONAL: DATABASE PREP (includeWhen: databaseEnabled)
@@ -983,7 +851,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-database-prep-bridge
+          name: ${schema.spec.databasePrepBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
@@ -1159,7 +1027,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-compute-prep-bridge
+          name: ${schema.spec.computePrepBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
@@ -1289,7 +1157,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-search-prep-bridge
+          name: ${schema.spec.searchPrepBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
@@ -1405,7 +1273,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-acm-bridge
+          name: ${schema.spec.acmBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
@@ -1426,7 +1294,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-acm-bridge
+          name: ${schema.spec.acmBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro

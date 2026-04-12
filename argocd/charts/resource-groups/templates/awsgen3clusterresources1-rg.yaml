@@ -74,7 +74,8 @@ spec:
 
       # ── Auto Sync ────────────────────────────────────────────────
       autoSync: boolean | default=false
-
+      # ── Bridge Name Override ──────────────────────────────────────
+      clusterResourcesBridgeName: string | default="cluster-resources-bridge"
     status:
       ready: ${clusterResourcesBridge.metadata.?name.orValue("loading")}
       argoCDClusterName: ${clusterResourcesBridge.data['argocd-cluster-name']}
@@ -216,7 +217,7 @@ spec:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.name}-cluster-resources-bridge
+          name: ${schema.spec.clusterResourcesBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro

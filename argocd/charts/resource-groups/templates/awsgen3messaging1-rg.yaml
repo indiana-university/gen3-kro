@@ -1,0 +1,141 @@
+# AwsGen3Messaging1 — Tier 4: Message Queues (Modular RGD v1)
+#
+# SQS queues extracted from AwsGen3AppIAM2 into their own RGD.
+# Both queues are always created (SQS is free-tier). This ensures
+# the messagingBridge ConfigMap always contains ALL queue URL keys,
+# avoiding KRO Test 8 silent-drop issues where Helm2 references
+# bridge keys that would otherwise be missing.
+#
+# PREREQUISITES:
+#   1. Namespace must exist with services.k8s.aws/owner-account-id annotation
+#   2. ACK controller 'sqs' must be running
+#
+# OUTPUT: messagingBridge ConfigMap with SQS queue URLs.
+#
+# COST: ~$0/month (SQS free tier covers typical gen3 volumes).
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3messaging1
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Messaging1
+    spec:
+      # ── Identity ──────────────────────────────────────────────────
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="gen3"
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+
+
+      # ── SQS Configuration ───────────────────────────────────────
+      sqsMessageRetention: string | default="345600"
+      sqsVisibilityTimeout: string | default="300"
+
+      # ── Bridge ───────────────────────────────────────────────────
+      messagingBridgeName: string | default="messaging-bridge"
+      createBridgeSecret: boolean | default=true
+
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+
+  resources:
+  # ====================================================================
+  # Layer 0: External References
+  # ====================================================================
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+  # ====================================================================
+  # SQS QUEUES
+  # ====================================================================
+
+    # ── Audit SQS Queue ──────────────────────────────────────────────
+    - id: auditQueue
+      readyWhen:
+        - ${auditQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${auditQueue.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: sqs.services.k8s.aws/v1alpha1
+        kind: Queue
+        metadata:
+          name: ${schema.spec.name}-audit-queue
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          queueName: ${schema.spec.name}-audit-sqs
+          messageRetentionPeriod: "${schema.spec.sqsMessageRetention}"
+          visibilityTimeout: "${schema.spec.sqsVisibilityTimeout}"
+          sqsManagedSSEEnabled: "true"
+          tags:
+            Name: ${schema.spec.name}-audit-sqs
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+
+    # ── SSJDispatcher SQS Queue ──────────────────────────────────────
+    - id: ssjdispatcherQueue
+      readyWhen:
+        - ${ssjdispatcherQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${ssjdispatcherQueue.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: sqs.services.k8s.aws/v1alpha1
+        kind: Queue
+        metadata:
+          name: ${schema.spec.name}-ssjdispatcher-queue
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          queueName: ${schema.spec.name}-ssjdispatcher-sqs
+          messageRetentionPeriod: "${schema.spec.sqsMessageRetention}"
+          visibilityTimeout: "${schema.spec.sqsVisibilityTimeout}"
+          sqsManagedSSEEnabled: "true"
+          tags:
+            Name: ${schema.spec.name}-ssjdispatcher-sqs
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+
+  # ====================================================================
+  # BRIDGE: Messaging Outputs ConfigMap (for downstream tiers)
+  # ====================================================================
+  # All queues are unconditional — bridge always contains ALL queue URL keys.
+  # This avoids KRO Test 8 silent-drop issues.
+
+    - id: messagingBridge
+      includeWhen:
+        - ${schema.spec.createBridgeSecret == true}
+      readyWhen:
+        - ${messagingBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.messagingBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: messaging
+            gen3.io/bridge: "true"
+        data:
+          audit-sqs-url: ${auditQueue.status.?queueURL.orValue("loading")}
+          ssjdispatcher-sqs-url: ${ssjdispatcherQueue.status.?queueURL.orValue("loading")}
