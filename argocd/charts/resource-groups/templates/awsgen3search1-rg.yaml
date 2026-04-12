@@ -179,7 +179,7 @@ spec:
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
           name: ${schema.spec.name}-redis-sg
-          description: "Security group for Redis ElastiCache - allows port ${schema.spec.redisPort} from VPC"
+          description: "Security group for Redis ElastiCache - allows port ${string(schema.spec.redisPort)} from VPC"
           vpcID: ${foundationBridge.data['vpc-id']}
           ingressRules:
             - ipProtocol: tcp
