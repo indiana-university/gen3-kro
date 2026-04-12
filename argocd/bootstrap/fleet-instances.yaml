@@ -4,9 +4,9 @@
 # Applies ALL KRO Custom Resource YAMLs from four sub-directories of
 # cluster-fleet/<cluster>/ as a single ArgoCD Application per spoke:
 #
-#   infrastructure/     — AWS infra tiers 0-4 + observability
-#   cluster-resources/  — Tier 4.5: spoke cluster registration + ESO
-#   applications/       — Tier 5+: gen3-helm and other app-tier CRs
+#   infrastructure/     — ALL tiers 0-6 (Foundation → Helm) in numbered order
+#   cluster-resources/  — (reserved, currently empty)
+#   applications/       — (reserved, currently empty)
 #   tests/              — KRO capability test instances (dev clusters)
 #
 # Matched by any cluster secret with enable_infra_instances: "true".

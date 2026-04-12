@@ -42,7 +42,7 @@ minimal change.
 | Component | Version | Purpose |
 |-----------|---------|---------|
 | KRO | 0.9.0 | Graph-based K8s resource orchestrator |
-| ACK controllers (9) | various | Kubernetes-native AWS resource management (→ real AWS) |
+| ACK controllers (13) | various | Kubernetes-native AWS resource management (→ real AWS) |
 | ArgoCD | 7.7.16 | GitOps delivery |
 | Kind | 0.27.0 | Local K8s cluster |
 | AWS CLI | 2.x | Credential validation |
@@ -53,15 +53,19 @@ minimal change.
 
 | Controller | Chart Version | ACK API Group |
 |------------|--------------|---------------|
+| acm | 1.3.5 | `acm.services.k8s.aws` |
 | ec2 | 1.10.1 | `ec2.services.k8s.aws` |
 | eks | 1.12.0 | `eks.services.k8s.aws` |
+| elasticache | 1.3.3 | `elasticache.services.k8s.aws` |
 | iam | 1.6.2 | `iam.services.k8s.aws` |
 | kms | 1.2.2 | `kms.services.k8s.aws` |
 | opensearchservice | 1.2.3 | `opensearchservice.services.k8s.aws` |
 | rds | 1.7.7 | `rds.services.k8s.aws` |
+| route53 | 1.3.1 | `route53.services.k8s.aws` |
 | s3 | 1.3.2 | `s3.services.k8s.aws` |
 | secretsmanager | 1.2.2 | `secretsmanager.services.k8s.aws` |
 | sqs | 1.4.2 | `sqs.services.k8s.aws` |
+| wafv2 | 1.2.1 | `wafv2.services.k8s.aws` |
 
 ## Directory Layout
 
@@ -203,27 +207,49 @@ The `.gitignore` covers: `*.ppk`, `*.pem`, `**/secrets/*`, `config/*.json`
 RGDs use versioned naming: modular tier graphs use
 `AwsGen3<Component><Version>` (e.g., `AwsGen3Foundation1`).
 
-### Modular RGDs (Plan 02 Revision 4 — Foundation-heavy architecture)
+### Modular RGDs (Plan 02 Revision 5 — Foundation-heavy + Storage extraction)
 
 | Tier | Category | RGD | Kind | Status | Depends On | Cost |
 |------|----------|-----|------|--------|------------|------|
-| 0 | Infra RGD | awsgen3foundation1 | AwsGen3Foundation1 | ✅ Built (31 resources) | — (standalone) | ~$37/mo |
-| 1 | Infra RGD | awsgen3database1 | AwsGen3Database1 | ✅ Built (thin) | databasePrepBridge | ~$45-350/mo |
-| 2 | Infra RGD | awsgen3search1 | AwsGen3Search1 | ✅ Built (thin) | searchPrepBridge + foundationBridge | ~$30-200/mo |
+| 0 | Infra RGD | awsgen3foundation1 | AwsGen3Foundation1 | ✅ Built (31+ resources, S3 conditional) | — (standalone) | ~$37/mo |
+| 0.5 | Infra RGD | awsgen3storage1 | AwsGen3Storage1 | ✅ Built (5 S3 buckets) | foundationBridge | ~$1-5/mo |
+| 1 | Infra RGD | awsgen3database2 | AwsGen3Database2 | ✅ Built (thin + ESO) | databasePrepBridge | ~$45-350/mo |
+| 2 | Infra RGD | awsgen3search1 | AwsGen3Search1 | ✅ Built (OpenSearch + conditional Redis) | searchPrepBridge + foundationBridge | ~$30-200/mo |
 | 3 | Infra RGD | awsgen3compute2 | AwsGen3Compute2 | ✅ Built (Managed Nodegroups) | computePrepBridge + foundationBridge | ~$350/mo |
-| 4 | Infra RGD | awsgen3appiam1 | AwsGen3AppIAM1 | ✅ Built | Foundation + Compute bridges | ~$5/mo |
-| 5 | App RGD | awsgen3helm1 | AwsGen3Helm1 | ✅ Built | Foundation + Compute bridges | ~$0 (pods) |
-| 6 | App RGD | awsgen3observability1 | AwsGen3Observability1 | ✅ Built | Compute bridge | ~$0-50/mo |
-| 7 | Infra RGD | awsgen3advanced1 | AwsGen3Advanced1 | ⬜ Future | foundationBridge | ~$0-200/mo |
+| 4 | Infra RGD | awsgen3iam1 | AwsGen3IAM1 | ✅ Built (11 IRSA roles) | Foundation + Compute + Storage bridges | ~$5/mo |
+| 4 | Infra RGD | awsgen3messaging1 | AwsGen3Messaging1 | ✅ Built (SQS queues) | — (standalone) | ~$1/mo |
+| 4.5 | Infra RGD | awsgen3clusterresources1 | AwsGen3ClusterResources1 | ✅ Built | computeBridge | ~$0 |
+| 5 | App RGD | awsgen3helm2 | AwsGen3Helm2 | ✅ Built | All upstream bridges | ~$0 (pods) |
+| 7 | Infra RGD | awsgen3advanced1 | AwsGen3Advanced1 | ✅ Built (WAFv2 WebACL) | — (standalone) | ~$5-10/mo |
 
 Foundation1 absorbs ALL prep infrastructure (SGs, IAM roles, DB subnets, KMS keys)
 behind feature flags (`databaseEnabled`, `computeEnabled`, `searchEnabled`).
-Tiers 1-3 become thin managed-service-only layers. Creates up to 4 bridge
-ConfigMaps: `foundationBridge` (always) + `databasePrepBridge`,
-`computePrepBridge`, `searchPrepBridge` (conditional).
+S3 buckets are conditional via `storageEnabled` flag — when false, Storage1 tier
+manages buckets instead. Foundation1 uses Test 8 dual-bridge pattern: `foundationBridge`
+(with S3 ARNs) or `foundationBridgeNoStorage` (empty S3 ARNs), both writing to the
+same ConfigMap name. Creates up to 5 bridge ConfigMaps: `foundationBridge` (always) +
+`databasePrepBridge`, `computePrepBridge`, `searchPrepBridge` (conditional) +
+`acmBridge` (always, placeholder or real cert).
 
-Tiers 5 and 6 are RGD-managed ArgoCD Applications that deploy Helm charts
-onto the spoke EKS cluster.
+Storage1 creates 3-5 S3 buckets (logging, data, upload + conditional manifest,
+dashboard) and exports a `storageBridge` ConfigMap with bucket ARNs and names.
+
+IAM1 provides 11 IRSA roles: 7 per-service (fence, audit, hatchery, manifestservice,
+externalSecrets, aws-es-proxy, ssjdispatcher) + 4 cluster-level (ALB controller,
+S3 CSI driver, Karpenter, dashboard). Messaging1 provides SQS queues.
+
+Search1 includes conditional ElastiCache Redis (replication group + SG + subnet group)
+controlled by `redisEnabled` flag, with dual searchBridge pattern for redis endpoint.
+
+Advanced1 provides a WAFv2 WebACL with AWS managed rules (OWASP, bad inputs, SQLi).
+CloudFront is out of scope (no ACK controller available).
+
+Observability: Gen3 implements its own observability via Grafana Alloy → Loki/Mimir/Tempo.
+No separate Observability RGD is needed — the application handles logging and metrics.
+
+Helm2 reads ALL upstream bridges including storageBridge (bucket names) and
+advancedBridge (WAF ACL ARN). Supports `dbCreateEnabled` for auto DB provisioning
+via gen3-helm init containers.
 
 ## KRO Capability Tests
 

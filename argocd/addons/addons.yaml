@@ -1114,3 +1114,71 @@ ack-route53-kind:
       kind: Deployment
       jsonPointers:
         - /spec/template/spec/containers/0/env
+
+ack-elasticache-kind:
+  enabled: true
+  namespace: ack
+  chartName: elasticache-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.3.3"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-elasticache-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
+ack-wafv2-kind:
+  enabled: true
+  namespace: ack
+  chartName: wafv2-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.2.1"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selector:
+    matchExpressions:
+      - key: ack_management_mode
+        operator: In
+        values: ['self_managed']
+      - key: fleet_member
+        operator: In
+        values: ['control-plane']
+      - key: cluster_type
+        operator: In
+        values: ['kind']
+  valuesObject:
+    serviceAccount:
+      create: true
+      name: "ack-wafv2-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env

@@ -12,17 +12,17 @@
 # Usage:
 #   bash scripts/kind-csoc.sh                          # No-op
 #   bash scripts/kind-csoc.sh create                   # Kind cluster only
-#   bash scripts/kind-csoc.sh create install           # Cluster + full stack
-#   bash scripts/kind-csoc.sh create install inject-creds connect  # Full pipeline
+#   bash scripts/kind-csoc.sh create install           # Cluster + full stack (auto-injects creds)
+#   bash scripts/kind-csoc.sh create install connect   # Full pipeline
 #   bash scripts/kind-csoc.sh connect                  # Reconnect ArgoCD
-#   bash scripts/kind-csoc.sh inject-creds             # Refresh ACK creds
+#   bash scripts/kind-csoc.sh inject-creds             # Refresh ACK creds (also auto-runs in install)
 #   bash scripts/kind-csoc.sh status                   # Show pod status
 #   bash scripts/kind-csoc.sh destroy                  # Tear down
 #
 # Stages:
 #   create       — Create Kind cluster + export kubeconfig
-#   install      — Install ArgoCD + apply bootstrap ApplicationSets
-#   inject-creds — Create/update ACK credentials Secret from mounted AWS creds
+#   install      — Install ArgoCD + apply bootstrap ApplicationSets + auto-inject ACK creds
+#   inject-creds — Refresh ACK credentials Secret (also auto-runs during install)
 #   connect      — Retrieve ArgoCD password + start port-forward
 #   test         — Apply test instances + validate RGD reconciliation
 #   status       — Show pod/resource status across all namespaces
@@ -51,7 +51,7 @@
 #   Credentials come from ~/.aws/credentials.
 #   AWS_PROFILE=csoc.
 #   Run `scripts/mfa-session.sh <MFA_CODE>` on HOST to refresh.
-#   After ArgoCD deploys ACK, run: $0 inject-creds
+#   install stage auto-injects creds; run $0 inject-creds to refresh later
 #
 # Fleet instance directory:
 #   argocd/cluster-fleet/local-aws-dev/
@@ -638,6 +638,7 @@ metadata:
     cluster_type: kind
     enable_infra_instances: "true"
     enable_kro_csoc_rgs: "true"
+    enable_external_secrets: "true"
   annotations:
     addons_repo_url: "${GIT_REPO_URL}"
     addons_repo_revision: "${GIT_REPO_REVISION}"
@@ -709,7 +710,17 @@ OCISECRET
   log_info "ArgoCD will deploy: KRO (wave -30) → ACK controllers (wave 1) → RGDs (wave 10) → fleet instances (wave 30)"
   log_info "Monitor: kubectl get applications -n argocd --context ${KIND_CONTEXT}"
 
-  log_banner "INSTALL COMPLETE — Bootstrap applied"
+  # ── Auto-inject ACK credentials ────────────────────────────────────────
+  # ArgoCD is now deploying ACK controllers asynchronously.  Inject creds
+  # automatically so ACK pods start with valid credentials and avoid an
+  # initial CrashLoopBackOff cycle.  Skipped only if inject-creds is also
+  # an explicit stage (the user wants manual control).
+  if [[ -z "${STAGES[inject-creds]:-}" ]]; then
+    log_info "Auto-injecting ACK credentials (part of install)..."
+    stage_inject_creds
+  fi
+
+  log_banner "INSTALL COMPLETE — Bootstrap applied, credentials injected"
   echo ""
   log_info "ArgoCD Applications:"
   kubectl get applications -n "$ARGOCD_NAMESPACE" --context "$KIND_CONTEXT" 2>/dev/null || true
