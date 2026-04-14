@@ -54,10 +54,15 @@
         "iam:GetRolePolicy",
         "iam:ListRoleTags",
         "eks:DescribeCluster",
+        "eks:DescribeNodegroup",
         "eks:DescribeAccessEntry",
         "eks:ListAccessEntries",
         "eks:DescribePodIdentityAssociation",
         "eks:ListPodIdentityAssociations",
+        "sqs:ListQueues",
+        "sqs:GetQueueUrl",
+        "sqs:GetQueueAttributes",
+        "sqs:ListQueueTags",
         "rds:DescribeDBSubnetGroups",
         "rds:DescribeDBClusters",
         "rds:DescribeDBInstances",
@@ -199,6 +204,8 @@
       ],
       "Resource": [
         "arn:aws:iam::*:role/*-spoke-role",
+        "arn:aws:iam::*:role/*-cluster-role",
+        "arn:aws:iam::*:role/*-node-role",
         "arn:aws:iam::*:role/*-eks-cluster-role",
         "arn:aws:iam::*:role/*-eks-node-role"
       ]
@@ -259,7 +266,11 @@
         "eks:ListAssociatedAccessPolicies",
         "eks:CreatePodIdentityAssociation",
         "eks:DeletePodIdentityAssociation",
-        "eks:ListNodegroups"
+        "eks:ListNodegroups",
+        "eks:CreateNodegroup",
+        "eks:UpdateNodegroupConfig",
+        "eks:UpdateNodegroupVersion",
+        "eks:DeleteNodegroup"
       ],
       "Resource": "*"
     },
@@ -307,6 +318,18 @@
         "es:RemoveTags"
       ],
       "Resource": "arn:aws:es:*:*:domain/*"
+    },
+    {
+      "Sid": "ManageSQSQueuesForInfraGraph",
+      "Effect": "Allow",
+      "Action": [
+        "sqs:CreateQueue",
+        "sqs:DeleteQueue",
+        "sqs:SetQueueAttributes",
+        "sqs:TagQueue",
+        "sqs:UntagQueue"
+      ],
+      "Resource": "arn:aws:sqs:*:*:*"
     }
   ]
 }

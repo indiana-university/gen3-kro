@@ -42,7 +42,7 @@ spec:
 
   # ── External Secrets Operator (Aurora master password) ────────────────────
   auroraMasterPasswordSMName: spoke1_aurora-master-password
-  esoUseIRSA: false
+  esoUseIRSA: true
   esoAwsCredsSecretName: eso-aws-credentials
   esoServiceAccountName: external-secrets-sa
 
