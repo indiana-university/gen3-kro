@@ -148,7 +148,9 @@ spec:
                     name: ${schema.spec.esoAwsCredsSecretName}
                     key: secret-access-key
 
-    # ── SecretStore: IRSA jwt mode (EKS CSOC) ───────────────────────
+    # ── SecretStore: Pod Identity mode (EKS CSOC) ───────────────────────
+    # EKS CSOC uses EKS Pod Identity for ESO — no explicit auth needed.
+    # ESO controller uses ambient credentials from Pod Identity association.
     - id: secretStoreIRSA
       includeWhen:
         - ${schema.spec.esoUseIRSA == true}
@@ -168,10 +170,7 @@ spec:
             aws:
               service: SecretsManager
               region: ${schema.spec.region}
-              auth:
-                jwt:
-                  serviceAccountRef:
-                    name: ${schema.spec.esoServiceAccountName}
+              # No auth — ESO uses EKS Pod Identity ambient credentials
 
     # ── ExternalSecret: Aurora master password ───────────────────────
     # Pulls from AWS SM → creates K8s Secret "aurora-master-password"
