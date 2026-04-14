@@ -72,14 +72,17 @@ locals {
   }
 
   extra_annotations = merge(
-    var.ack_self_managed_role_arn != "" ? {
+    # Always present so ACK EKS addon ApplicationSets (missingkey=error) don't
+    # fail when enable_ack_self_managed=false. Empty → no IRSA; real ARN → IRSA.
+    {
       ack_self_managed_role_arn = var.ack_self_managed_role_arn
-    } : {},
+    },
     local.spoke_account_annotations,
-    # JSON map of spoke alias → account ID, consumed by the ack-multi-acct addon chart
-    length(var.spoke_account_ids) > 0 ? {
-      fleet_spokes_json = jsonencode(var.spoke_account_ids)
-    } : {}
+    # Always present so ack-multi-acct ApplicationSet (missingkey=error) doesn't
+    # fail when no spoke accounts are configured yet. Empty JSON → no namespaces.
+    {
+      fleet_spokes_json = length(var.spoke_account_ids) > 0 ? jsonencode(var.spoke_account_ids) : "{}"
+    }
   )
 
   cluster_secret_labels = merge(
