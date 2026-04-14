@@ -134,6 +134,9 @@ resource "kubernetes_secret_v1" "spoke_fleet" {
         # per-spoke metadata carried as annotations for ApplicationSet parametrisation
         spoke_alias      = each.key
         spoke_account_id = each.value
+        # Explicitly empty so fleet-instances go template (missingkey=error) falls
+        # back to cluster-fleet/{{.name}} instead of erroring on a missing map key.
+        fleet_instances_path = ""
       }
     )
   }
