@@ -203,11 +203,8 @@
         "iam:DeleteRolePolicy"
       ],
       "Resource": [
-        "arn:aws:iam::*:role/*-spoke-role",
-        "arn:aws:iam::*:role/*-cluster-role",
-        "arn:aws:iam::*:role/*-node-role",
-        "arn:aws:iam::*:role/*-eks-cluster-role",
-        "arn:aws:iam::*:role/*-eks-node-role"
+        "arn:aws:iam::*:role/*-role",
+        "arn:aws:iam::*:role/*-access"
       ]
     },
     {
