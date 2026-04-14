@@ -327,6 +327,33 @@
         "sqs:UntagQueue"
       ],
       "Resource": "arn:aws:sqs:*:*:*"
+    },
+        {
+      "Sid": "ManageEKSAddons",
+      "Effect": "Allow",
+      "Action": [
+        "eks:CreateAddon",
+        "eks:UpdateAddon",
+        "eks:DeleteAddon",
+        "eks:DescribeAddon",
+        "eks:ListAddons",
+        "eks:DescribeAddonVersions"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageOIDCProvidersForEKS",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreateOpenIDConnectProvider",
+        "iam:DeleteOpenIDConnectProvider",
+        "iam:UpdateOpenIDConnectProviderThumbprint",
+        "iam:AddClientIDToOpenIDConnectProvider",
+        "iam:RemoveClientIDFromOpenIDConnectProvider",
+        "iam:TagOpenIDConnectProvider",
+        "iam:UntagOpenIDConnectProvider"
+      ],
+      "Resource": "arn:aws:iam::*:oidc-provider/*"
     }
   ]
 }

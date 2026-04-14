@@ -121,22 +121,3 @@ resource "aws_iam_role_policy" "custom_policies" {
   })
 }
 
-resource "aws_iam_role_policy" "custom_policies_2" {
-  for_each = {
-    for role_key, config in local.active_roles :
-    role_key => config
-    if length(lookup(config, "custom_policies_2", [])) > 0
-  }
-
-  name = "${var.spoke_alias}-spoke-role-custom-2"
-  role = aws_iam_role.ack_workload[each.key].id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      for stmt in each.value.custom_policies_2 :
-      try(jsondecode(stmt), stmt)
-    ]
-  })
-}
-
