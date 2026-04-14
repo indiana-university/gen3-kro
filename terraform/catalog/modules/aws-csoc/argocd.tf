@@ -123,6 +123,9 @@ resource "kubernetes_namespace_v1" "argocd" {
       "csoc-account-id" = local.csoc_account_id
     }
   }
+
+  # Wait for ALL resources inside the EKS module to complete before the first Kubernetes API call
+  depends_on = [module.eks]
 }
 
 resource "kubernetes_service_account_v1" "argocd" {

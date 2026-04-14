@@ -8,6 +8,14 @@
   // Use the standard devcontainers workspace path (repo is mounted under /workspaces/<repo>)
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
+  // Fix script permissions on the host before the workspace is mounted.
+  // The workspace bind-mount preserves host file ownership (root in Codespaces),
+  // and --security-opt=no-new-privileges blocks sudo inside the container.
+  // Array form bypasses cmd.exe on Windows (which has a different `find` command)
+  // and invokes bash directly (Git Bash on Windows, /bin/bash on Linux/Mac).
+  // The || true ensures the container builds even if chmod is unavailable.
+  "initializeCommand": ["bash", "-c", "find '${localWorkspaceFolder}/scripts' -name '*.sh' -exec chmod +x {} + 2>/dev/null || true"],
+
   // ── Credential mounts ────────────────────────────────────────────────
   // Mount ~/.aws from host so Terraform/AWS CLI picks up the pre-assumed credentials
   // written by scripts/mfa-session.sh (profile: csoc in ~/.aws/credentials).

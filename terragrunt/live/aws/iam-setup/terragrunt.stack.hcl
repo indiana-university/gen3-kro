@@ -167,10 +167,16 @@ unit "developer_identity" {
     # policy (account_id/region placeholders resolved). The module's own
     # templatefile() path doesn't resolve from the Terragrunt working copy.
     policy_filename = local.dev_policy_filename
-    inline_policy   = templatefile("${local.repo_root}/iam/developer-identity/${local.dev_policy_filename}", {
-      account_id = local.csoc_account_id
-      region     = local.region
-    })
+    inline_policy   = templatefile("${local.repo_root}/iam/developer-identity/${local.dev_policy_filename}", merge(
+      {
+        account_id = local.csoc_account_id
+        region     = local.region
+      },
+      {
+        for spoke in local.spokes_config :
+        "${spoke.alias}_account_id" => lookup(lookup(spoke, "provider", {}), "account_id", local.csoc_account_id)
+      }
+    ))
 
     # Output files land in <repo-root>/outputs/
     outputs_dir = "${local.repo_root}/outputs"
