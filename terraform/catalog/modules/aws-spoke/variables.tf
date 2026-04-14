@@ -13,7 +13,8 @@ variable "roles" {
   type = map(object({
     enabled          = bool
     managed_policies = list(string)
-    custom_policies  = optional(list(any), [])
+    custom_policies   = optional(list(any), [])
+    custom_policies_2 = optional(list(any), [])
     resource_types = optional(list(object({
       group   = string
       version = string
