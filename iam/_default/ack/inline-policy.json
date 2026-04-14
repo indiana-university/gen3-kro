@@ -328,7 +328,7 @@
       ],
       "Resource": "arn:aws:sqs:*:*:*"
     },
-        {
+    {
       "Sid": "ManageEKSAddons",
       "Effect": "Allow",
       "Action": [
@@ -347,6 +347,7 @@
       "Action": [
         "iam:CreateOpenIDConnectProvider",
         "iam:DeleteOpenIDConnectProvider",
+        "iam:GetOpenIDConnectProvider",
         "iam:UpdateOpenIDConnectProviderThumbprint",
         "iam:AddClientIDToOpenIDConnectProvider",
         "iam:RemoveClientIDFromOpenIDConnectProvider",
