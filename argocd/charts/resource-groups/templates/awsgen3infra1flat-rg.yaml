@@ -1,4 +1,4 @@
-apiVersion: kro.run/v1alpha1
+﻿apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
   name: awsgen3infra1flat
@@ -92,6 +92,76 @@ spec:
       # ArgoCD Cluster Registration
       argoCDNamespace: string | default="argocd"
 
+      # ==================== Node Group Configuration ====================
+      nodeInstanceTypes: "[]string | default=['t3.large']"
+      nodeDesiredSize: integer | default=2
+      nodeMinSize: integer | default=1
+      nodeMaxSize: integer | default=4
+      nodeDiskSize: integer | default=20
+      nodeAMIType: string | default="AL2023_x86_64_STANDARD"
+
+      # ==================== Additional S3 Buckets ====================
+      manifestBucketName: string | default=""
+      dashboardBucketName: string | default=""
+
+      # ==================== Messaging Configuration ====================
+      sqsMessageRetention: string | default="345600"
+      sqsVisibilityTimeout: string | default="300"
+
+      # ==================== WAF Configuration ====================
+      wafEnabled: boolean | default=true
+      wafScope: string | default="REGIONAL"
+
+      # ==================== Fleet / ArgoCD Deployment ====================
+      argoCDProject: string | default="default"
+      fleetRepoURL: string | default=""
+      fleetRepoRevision: string | default="main"
+      spokeAlias: string | default=""
+      externalSecretsEnabled: boolean | default=true
+      certManagerEnabled: boolean | default=false
+      autoSync: boolean | default=false
+      externalSecretsHelmVersion: string | default="0.10.7"
+      albControllerHelmVersion: string | default="1.10.0"
+
+      # ==================== Gen3-Helm Configuration ====================
+      gen3HelmRepoURL: string | default="https://helm.gen3.org"
+      gen3HelmChart: string | default="gen3"
+      gen3HelmTargetRevision: string | default="0.3.25"
+      dictionaryUrl: string | default="https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
+      tierAccessLevel: string | default="private"
+      tierAccessLimit: integer | default=100
+      dbCreateEnabled: boolean | default=true
+      dashboardEnabled: boolean | default=false
+      acmCertArn: string | default=""
+
+      # â”€â”€ Gen3 Feature Flags â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      fenceEnabled: boolean | default=true
+      auditEnabled: boolean | default=true
+      hatcheryEnabled: boolean | default=false
+      manifestserviceEnabled: boolean | default=false
+      metadataEnabled: boolean | default=true
+      peregrinEnabled: boolean | default=true
+      sheepdogEnabled: boolean | default=true
+      guppyEnabled: boolean | default=false
+      portalEnabled: boolean | default=true
+      ssjdispatcherEnabled: boolean | default=false
+      wtsEnabled: boolean | default=true
+      requestorEnabled: boolean | default=false
+      awsEsProxyEnabled: boolean | default=true
+
+      # â”€â”€ Secrets Manager References â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+      postgresExternalSecret: string | default=""
+      fenceDbcredsSM: string | default=""
+      arboristDbcredsSM: string | default=""
+      auditDbcredsSM: string | default=""
+      indexdDbcredsSM: string | default=""
+      metadataDbcredsSM: string | default=""
+      peregrinDbcredsSM: string | default=""
+      sheepdogDbcredsSM: string | default=""
+      requestorDbcredsSM: string | default=""
+      wtsDbcredsSM: string | default=""
+      fenceConfigSM: string | default=""
+
       # ==================== EKS Access Configuration ====================
 
     status:
@@ -163,14 +233,39 @@ spec:
       eksAccessEntryARN: ${eksAccessEntry.status.?ackResourceMetadata.?arn.orValue("loading")}
       podIdentityAssociationID: ${podIdentityAssociation.status.?associationID.orValue("loading")}
 
-    #   # Cache Status (ElastiCache)
-    #   elastiCacheARN: ${replicationGroup.status.?ackResourceMetadata.?arn.orValue("loading")}
-    #   elastiCacheEndpoint: ${replicationGroup.status.?configurationEndpoint.?address.orValue("loading")}
-    #   elastiCachePort: ${replicationGroup.status.?configurationEndpoint.?port.orValue("loading")}
+      # Cache Status (ElastiCache)
+      elastiCacheARN: ${replicationGroup.status.?ackResourceMetadata.?arn.orValue("loading")}
+      elastiCacheEndpoint: ${replicationGroup.status.?configurationEndpoint.?address.orValue("loading")}
+      elastiCachePort: ${replicationGroup.status.?configurationEndpoint.?port.orValue("loading")}
 
-    #   # Search Status (OpenSearch)
-    #   openSearchDomainARN: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
-    #   openSearchEndpoint: ${openSearchDomain.status.?endpoint.orValue("loading")}
+      # Search Status (OpenSearch)
+      openSearchDomainARN: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
+      openSearchEndpoint: ${openSearchDomain.status.?endpoint.orValue("loading")}
+
+      # WAF Status
+      wafAclARN: ${wafWebAcl.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+      # IRSA Roles Status
+      oidcProviderARN: ${oidcProvider.status.?ackResourceMetadata.?arn.orValue("loading")}
+      fenceRoleARN: ${fenceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      auditRoleARN: ${auditRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      hatcheryRoleARN: ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      manifestserviceRoleARN: ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      externalSecretsRoleARN: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      awsEsProxyRoleARN: ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      ssjdispatcherRoleARN: ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      albControllerRoleARN: ${albControllerRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      s3CsiDriverRoleARN: ${s3CsiDriverRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      karpenterRoleARN: ${karpenterRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+      dashboardRoleARN: ${dashboardRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+      # SQS Status
+      auditQueueURL: ${auditQueue.status.?queueURL.orValue("loading")}
+      ssjdispatcherQueueURL: ${ssjdispatcherQueue.status.?queueURL.orValue("loading")}
+
+      # App Deployment Status
+      gen3AppHealthStatus: ${gen3App.status.?health.?status.orValue("loading")}
+      gen3AppSyncStatus: ${gen3App.status.?sync.?status.orValue("loading")}
 
   resources:
   # ====================================================================
@@ -1112,8 +1207,8 @@ spec:
     # Used by argocd-k8s-auth on the CSOC ArgoCD controller to authenticate
     # to the spoke EKS cluster via STS AssumeRole + EKS GetToken.
     # Trust policy:
-    #   - pods.eks.amazonaws.com  — enables EKS Pod Identity (spoke-side)
-    #   - *-argocd-role in CSOC   — enables STS AssumeRole from CSOC ArgoCD
+    #   - pods.eks.amazonaws.com  â€” enables EKS Pod Identity (spoke-side)
+    #   - *-argocd-role in CSOC   â€” enables STS AssumeRole from CSOC ArgoCD
     # The matching EKS AccessEntry (below) grants this role cluster admin.
     - id: argoCDSpokeRole
       readyWhen:
@@ -1314,7 +1409,7 @@ spec:
     # Labels and annotations on this secret are exposed by the ArgoCD cluster
     # generator as template parameters. The fleet-gen3 ApplicationSet reads
     # infra output annotations (gen3.io/*) to inject dynamic values (Aurora
-    # endpoint, VPC ID, etc.) into Helm parameters — no plugins required.
+    # endpoint, VPC ID, etc.) into Helm parameters â€” no plugins required.
     #
     # NAMING: The secret metadata.name uses <namespace>-cluster (e.g.
     # spoke1-cluster) while data.name uses the INSTANCE name (e.g. spoke1-dev)
@@ -1336,11 +1431,11 @@ spec:
             fleet_member: spoke
             environment: ${schema.spec.environment}
           annotations:
-            # ── Dependency: Wait for EKS + Aurora (KRO sequencing) ──
+            # â”€â”€ Dependency: Wait for EKS + Aurora (KRO sequencing) â”€â”€
             kro.run/eks-endpoint: ${eksCluster.status.?endpoint}
             kro.run/aurora-endpoint: ${auroraCluster.status.?endpoint}
             services.k8s.aws/owner-account-id: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
-            # ── Infra outputs exposed to fleet-gen3 ApplicationSet ──
+            # â”€â”€ Infra outputs exposed to fleet-gen3 ApplicationSet â”€â”€
             # Non-sensitive metadata only; passwords stay in infraOutputsSecret
             # and are consumed on the spoke cluster via ExternalSecrets.
             gen3.io/spoke-alias: ${schema.spec.namespace}
@@ -1569,21 +1664,55 @@ spec:
           cluster_role_arn: ${clusterRole.status.?ackResourceMetadata.?arn}
           node_role_arn: ${nodeRole.status.?ackResourceMetadata.?arn}
           argocd_spoke_role_arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn}
+          # Search (OpenSearch)
+          opensearch_endpoint: ${openSearchDomain.status.?endpoint}
+          opensearch_domain_arn: ${openSearchDomain.status.?ackResourceMetadata.?arn}
+          # Cache (ElastiCache)
+          elasticache_endpoint: ${replicationGroup.status.?configurationEndpoint.?address}
+          elasticache_port: ${replicationGroup.status.?configurationEndpoint.?port}
+          elasticache_arn: ${replicationGroup.status.?ackResourceMetadata.?arn}
+          # WAF
+          waf_acl_arn: ${wafWebAcl.status.?ackResourceMetadata.?arn}
+          # Additional S3
+          manifest_bucket_arn: ${manifestBucket.status.?ackResourceMetadata.?arn}
+          dashboard_bucket_arn: ${dashboardBucket.status.?ackResourceMetadata.?arn}
+          manifest_bucket_name: ${schema.spec.manifestBucketName}
+          dashboard_bucket_name: ${schema.spec.dashboardBucketName}
+          # SQS
+          audit_queue_url: ${auditQueue.status.?queueURL}
+          audit_queue_arn: ${auditQueue.status.?ackResourceMetadata.?arn}
+          ssjdispatcher_queue_url: ${ssjdispatcherQueue.status.?queueURL}
+          ssjdispatcher_queue_arn: ${ssjdispatcherQueue.status.?ackResourceMetadata.?arn}
+          # IRSA â€” OIDC
+          oidc_provider_arn: ${oidcProvider.status.?ackResourceMetadata.?arn}
+          # IRSA â€” Service Roles
+          fence_role_arn: ${fenceRole.status.?ackResourceMetadata.?arn}
+          audit_role_arn: ${auditRole.status.?ackResourceMetadata.?arn}
+          hatchery_role_arn: ${hatcheryRole.status.?ackResourceMetadata.?arn}
+          manifestservice_role_arn: ${manifestserviceRole.status.?ackResourceMetadata.?arn}
+          external_secrets_role_arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn}
+          aws_es_proxy_role_arn: ${awsEsProxyRole.status.?ackResourceMetadata.?arn}
+          ssjdispatcher_role_arn: ${ssjdispatcherRole.status.?ackResourceMetadata.?arn}
+          # IRSA â€” Cluster Roles
+          alb_controller_role_arn: ${albControllerRole.status.?ackResourceMetadata.?arn}
+          s3_csi_driver_role_arn: ${s3CsiDriverRole.status.?ackResourceMetadata.?arn}
+          karpenter_role_arn: ${karpenterRole.status.?ackResourceMetadata.?arn}
+          dashboard_role_arn: ${dashboardRole.status.?ackResourceMetadata.?arn}
           # Metadata
           environment: ${schema.spec.environment}
           region: ${schema.spec.region}
           name: ${schema.spec.name}
   # ====================================================================
-  # FENCE CONFIG — AWS Secrets Manager
+  # FENCE CONFIG â€” AWS Secrets Manager
   # ====================================================================
   # Fence-config is a YAML document containing OIDC provider settings,
   # S3 bucket references, and other fence configuration.  It is stored
   # as a single string value in AWS Secrets Manager so the ExternalSecrets
   # operator on the spoke cluster can pull it into a K8s Secret.
   #
-  # Flow:  K8s Secret (staging) → ACK SM Secret → AWS SM → ESO → spoke K8s Secret
+  # Flow:  K8s Secret (staging) â†’ ACK SM Secret â†’ AWS SM â†’ ESO â†’ spoke K8s Secret
   #
-  # OIDC client secrets are NOT stored here — they should be pre-populated
+  # OIDC client secrets are NOT stored here â€” they should be pre-populated
   # in AWS Secrets Manager as separate secrets and referenced from the
   # fence-config YAML.  This template provides the structural config only.
   # Populate real OIDC credentials in the SM secret after initial deployment.
@@ -1661,213 +1790,1325 @@ spec:
               value: Kro
             - key: Project
               value: ${schema.spec.project}
-  # # # ==================== CACHE: ElastiCache ====================
-    # #   # ==================== ElastiCache Security Group ====================
-    # #   - id: elastiCacheSecurityGroup
-    # #     readyWhen:
-    # #       - ${elastiCacheSecurityGroup.status.?id.orValue('null') != 'null'}
-    # #       - ${elastiCacheSecurityGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    # #     template:
-    # #       apiVersion: ec2.services.k8s.aws/v1alpha1
-    # #       kind: SecurityGroup
-    # #       metadata:
-    # #         name: ${schema.spec.name}-elasticache-sg
-    # #         namespace: ${schema.spec.namespace}
-    # #         annotations:
-    # #           services.k8s.aws/region: ${schema.spec.region}
-    # #           services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    # #           services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    # #       spec:
-    # #         name: ${schema.spec.name}-elasticache-sg
-    # #         description: Security group for ElastiCache Redis
-    # #         vpcID: ${vpc.status.?vpcID}
-    # #         ingressRules:
-    # #           - ipProtocol: tcp
-    # #             fromPort: 6379
-    # #             toPort: 6379
-    # #             ipRanges:
-    # #               - cidrIP: ${schema.spec.vpcCIDR}
-    # #         tags:
-    # #           - key: Name
-    # #             value: ${schema.spec.name}-elasticache-sg
-    # #           - key: Environment
-    # #             value: ${schema.spec.environment}
-    # #           - key: ManagedBy
-    # #             value: Kro
-    # #           - key: Project
-    # #             value: ${schema.spec.project}
-    # #   # ==================== ElastiCache Subnet Group ====================
-    # #   - id: cacheSubnetGroup
-    # #     readyWhen:
-    # #       - ${cacheSubnetGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    # #       - ${cacheSubnetGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    # #     template:
-    # #       apiVersion: elasticache.services.k8s.aws/v1alpha1
-    # #       kind: CacheSubnetGroup
-    # #       metadata:
-    # #         name: ${schema.spec.name}-cache-subnet-group
-    # #         namespace: ${schema.spec.namespace}
-    # #         annotations:
-    # #           services.k8s.aws/region: ${schema.spec.region}
-    # #           services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    # #           services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    # #       spec:
-    # #         cacheSubnetGroupName: ${schema.spec.name}-cache-subnet-group
-    # #         cacheSubnetGroupDescription: Subnet group for ${schema.spec.name} ElastiCache
-    # #         subnetIDs:
-    # #           - ${privatesubnet1.status.?subnetID}
-    # #           - ${privatesubnet2.status.?subnetID}
-    # #         tags:
-    # #           - key: Name
-    # #             value: ${schema.spec.name}-cache-subnet-group
-    # #           - key: Environment
-    # #             value: ${schema.spec.environment}
-    # #           - key: ManagedBy
-    # #             value: Kro
-    # #           - key: Project
-    # #             value: ${schema.spec.project}
-    # #   # ==================== ElastiCache Replication Group ====================
-    # #   - id: replicationGroup
-    # #     readyWhen:
-    # #       - ${replicationGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-    # #       - ${replicationGroup.status.?status.orValue('null') == 'available'}
-    # #       - ${replicationGroup.status.?configurationEndpoint.?address.orValue('null') != 'null'}
-    # #       - ${replicationGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    # #     template:
-    # #       apiVersion: elasticache.services.k8s.aws/v1alpha1
-    # #       kind: ReplicationGroup
-    # #       metadata:
-    # #         name: ${schema.spec.name}
-    # #         namespace: ${schema.spec.namespace}
-    # #         annotations:
-    # #           services.k8s.aws/region: ${schema.spec.region}
-    # #           services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    # #           services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    # #       spec:
-    # #         replicationGroupID: ${schema.spec.name}
-    # #         description: ${schema.spec.name} ElastiCache cluster
-    # #         engine: ${schema.spec.elastiCacheEngine}
-    # #         engineVersion: ${schema.spec.elastiCacheEngineVersion}
-    # #         cacheNodeType: ${schema.spec.elastiCacheNodeType}
-    # #         numNodeGroups: 1
-    # #         replicasPerNodeGroup: ${ schema.spec.elastiCacheNumCacheNodes - 1 }
-    # #         cacheSubnetGroupName: ${schema.spec.name}-cache-subnet-group
-    # #         securityGroupIDs:
-    # #           - ${elastiCacheSecurityGroup.status.?id}
-    # #         atRestEncryptionEnabled: true
-    # #         kmsKeyID: ${searchKey.status.?ackResourceMetadata.?arn}
-    # #         transitEncryptionEnabled: true
-    # #         authToken:
-    # #           namespace: ${schema.spec.namespace}
-    # #           name: ${schema.spec.elastiCacheAuthTokenSecretRef}
-    # #           key: token
-    # #         snapshotRetentionLimit: 7
-    # #         snapshotWindow: "03:00-05:00"
-    # #         automaticFailoverEnabled: true
-    # #         multiAZEnabled: true
-    # #         tags:
-    # #           - key: Name
-    # #             value: ${schema.spec.name}
-    # #           - key: Environment
-    # #             value: ${schema.spec.environment}
-    # #           - key: ManagedBy
-    # #             value: Kro
-    # #           - key: Project
-    # #             value: ${schema.spec.project}
-    # # # ==================== SEARCH: OpenSearch ====================
-    # #   # ==================== OpenSearch Security Group ====================
-    # #   - id: openSearchSecurityGroup
-    # #     readyWhen:
-    # #       - ${openSearchSecurityGroup.status.?id.orValue('null') != 'null'}
-    # #       - ${openSearchSecurityGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    # #     template:
-    # #       apiVersion: ec2.services.k8s.aws/v1alpha1
-    # #       kind: SecurityGroup
-    # #       metadata:
-    # #         name: ${schema.spec.name}-opensearch-sg
-    # #         namespace: ${schema.spec.namespace}
-    # #         annotations:
-    # #           services.k8s.aws/region: ${schema.spec.region}
-    # #           services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    # #           services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    # #       spec:
-    # #         name: ${schema.spec.name}-opensearch-sg
-    # #         description: Security group for OpenSearch
-    # #         vpcID: ${vpc.status.?vpcID}
-    # #         ingressRules:
-    # #           - ipProtocol: tcp
-    # #             fromPort: 443
-    # #             toPort: 443
-    # #             ipRanges:
-    # #               - cidrIP: ${schema.spec.vpcCIDR}
-    # #         tags:
-    # #           - key: Name
-    # #             value: ${schema.spec.name}-opensearch-sg
-    # #           - key: Environment
-    # #             value: ${schema.spec.environment}
-    # #           - key: ManagedBy
-    # #             value: Kro
-    # #           - key: Project
-    # #             value: ${schema.spec.project}
-    # #   # ==================== OpenSearch Domain ====================
-    # #   - id: openSearchDomain
-    # #     readyWhen:
-    # #       - ${openSearchDomain.status.?domainID.orValue('null') != 'null'}
-    # #       - ${openSearchDomain.status.?created.orValue(false) == true}
-    # #       - ${openSearchDomain.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-    # #     template:
-    # #       apiVersion: opensearchservice.services.k8s.aws/v1alpha1
-    # #       kind: Domain
-    # #       metadata:
-    # #         name: ${schema.spec.name}
-    # #         namespace: ${schema.spec.namespace}
-    # #         annotations:
-    # #           services.k8s.aws/region: ${schema.spec.region}
-    # #           services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-    # #           services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-    # #       spec:
-    # #         name: ${schema.spec.name}
-    # #         engineVersion: "OpenSearch_${schema.spec.openSearchVersion}"
-    # #         clusterConfig:
-    # #           instanceType: ${schema.spec.openSearchInstanceType}
-    # #           instanceCount: ${schema.spec.openSearchInstanceCount}
-    # #           dedicatedMasterEnabled: false
-    # #           zoneAwarenessEnabled: true
-    # #           zoneAwarenessConfig:
-    # #             availabilityZoneCount: 2
-    # #         ebsOptions:
-    # #           ebsEnabled: true
-    # #           volumeSize: ${schema.spec.openSearchVolumeSize}
-    # #           volumeType: ${schema.spec.openSearchVolumeType}
-    # #         vpcOptions:
-    # #           subnetIDs:
-    # #             - ${privatesubnet1.status.?subnetID}
-    # #             - ${privatesubnet2.status.?subnetID}
-    # #           securityGroupIDs:
-    # #             - ${openSearchSecurityGroup.status.?id}
-    # #         encryptionAtRestOptions:
-    # #           enabled: true
-    # #           kmsKeyID: ${searchKey.status.?ackResourceMetadata.?arn}
-    # #         nodeToNodeEncryptionOptions:
-    # #           enabled: true
-    # #         advancedSecurityOptions:
-    # #           enabled: true
-    # #           internalUserDatabaseEnabled: true
-    # #           masterUserOptions:
-    # #             masterUserName: ${schema.spec.openSearchMasterUsername}
-    # #             masterUserPassword:
-    # #               namespace: ${schema.spec.namespace}
-    # #               name: ${schema.spec.openSearchMasterPasswordSecretRef}
-    # #               key: password
-    # #         domainEndpointOptions:
-    # #           enforceHTTPS: true
-    # #           tlsSecurityPolicy: "Policy-Min-TLS-1-2-2019-07"
-    # #         tags:
-    # #           - key: Name
-    # #             value: ${schema.spec.name}
-    # #           - key: Environment
-    # #             value: ${schema.spec.environment}
-    # #           - key: ManagedBy
-    # #             value: Kro
-    # #           - key: Project
-    # #             value: ${schema.spec.project}
+  # ====================================================================
+  # CACHE: ElastiCache Redis
+  # ====================================================================
+    # ElastiCache Security Group
+    - id: elastiCacheSecurityGroup
+      readyWhen:
+        - ${elastiCacheSecurityGroup.status.?id.orValue('null') != 'null'}
+        - ${elastiCacheSecurityGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-elasticache-sg
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-elasticache-sg
+          description: Security group for ElastiCache Redis
+          vpcID: ${vpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 6379
+              toPort: 6379
+              userIDGroupPairs:
+                - groupID: ${eksSecurityGroup.status.?id}
+                  description: Allow EKS nodes to connect to ElastiCache
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-elasticache-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # ElastiCache Subnet Group
+    - id: cacheSubnetGroup
+      readyWhen:
+        - ${cacheSubnetGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${cacheSubnetGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: elasticache.services.k8s.aws/v1alpha1
+        kind: CacheSubnetGroup
+        metadata:
+          name: ${schema.spec.name}-cache-subnet-group
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          cacheSubnetGroupName: ${schema.spec.name}-cache-subnet-group
+          cacheSubnetGroupDescription: Subnet group for ${schema.spec.name} ElastiCache
+          subnetIDs:
+            - ${privatesubnet1.status.?subnetID}
+            - ${privatesubnet2.status.?subnetID}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-cache-subnet-group
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # ElastiCache Replication Group
+    - id: replicationGroup
+      readyWhen:
+        - ${replicationGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${replicationGroup.status.?status.orValue('null') == 'available'}
+        - ${replicationGroup.status.?configurationEndpoint.?address.orValue('null') != 'null'}
+        - ${replicationGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: elasticache.services.k8s.aws/v1alpha1
+        kind: ReplicationGroup
+        metadata:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          replicationGroupID: ${schema.spec.name}
+          description: ${schema.spec.name} ElastiCache cluster
+          engine: ${schema.spec.elastiCacheEngine}
+          engineVersion: ${schema.spec.elastiCacheEngineVersion}
+          cacheNodeType: ${schema.spec.elastiCacheNodeType}
+          numNodeGroups: 1
+          replicasPerNodeGroup: ${schema.spec.elastiCacheNumCacheNodes - 1}
+          cacheSubnetGroupName: ${schema.spec.name}-cache-subnet-group
+          securityGroupIDs:
+            - ${elastiCacheSecurityGroup.status.?id}
+          atRestEncryptionEnabled: true
+          kmsKeyID: ${searchKey.status.?ackResourceMetadata.?arn}
+          transitEncryptionEnabled: true
+          authToken:
+            namespace: ${schema.spec.namespace}
+            name: ${schema.spec.elastiCacheAuthTokenSecretRef}
+            key: token
+          snapshotRetentionLimit: 7
+          snapshotWindow: "03:00-05:00"
+          automaticFailoverEnabled: true
+          multiAZEnabled: true
+          tags:
+            - key: Name
+              value: ${schema.spec.name}
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+  # ====================================================================
+  # SEARCH: OpenSearch
+  # ====================================================================
+    # OpenSearch Security Group
+    - id: openSearchSecurityGroup
+      readyWhen:
+        - ${openSearchSecurityGroup.status.?id.orValue('null') != 'null'}
+        - ${openSearchSecurityGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-opensearch-sg
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-opensearch-sg
+          description: Security group for OpenSearch
+          vpcID: ${vpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 443
+              toPort: 443
+              userIDGroupPairs:
+                - groupID: ${eksSecurityGroup.status.?id}
+                  description: Allow EKS nodes to connect to OpenSearch
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-opensearch-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # OpenSearch Domain
+    - id: openSearchDomain
+      readyWhen:
+        - ${openSearchDomain.status.?domainID.orValue('null') != 'null'}
+        - ${openSearchDomain.status.?created.orValue(false) == true}
+        - ${openSearchDomain.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: opensearchservice.services.k8s.aws/v1alpha1
+        kind: Domain
+        metadata:
+          name: ${schema.spec.name}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}
+          engineVersion: "OpenSearch_${schema.spec.openSearchVersion}"
+          clusterConfig:
+            instanceType: ${schema.spec.openSearchInstanceType}
+            instanceCount: ${schema.spec.openSearchInstanceCount}
+            dedicatedMasterEnabled: false
+            zoneAwarenessEnabled: true
+            zoneAwarenessConfig:
+              availabilityZoneCount: 2
+          ebsOptions:
+            ebsEnabled: true
+            volumeSize: ${schema.spec.openSearchVolumeSize}
+            volumeType: ${schema.spec.openSearchVolumeType}
+          vpcOptions:
+            subnetIDs:
+              - ${privatesubnet1.status.?subnetID}
+              - ${privatesubnet2.status.?subnetID}
+            securityGroupIDs:
+              - ${openSearchSecurityGroup.status.?id}
+          encryptionAtRestOptions:
+            enabled: true
+            kmsKeyID: ${searchKey.status.?ackResourceMetadata.?arn}
+          nodeToNodeEncryptionOptions:
+            enabled: true
+          advancedSecurityOptions:
+            enabled: true
+            internalUserDatabaseEnabled: true
+            masterUserOptions:
+              masterUserName: ${schema.spec.openSearchMasterUsername}
+              masterUserPassword:
+                namespace: ${schema.spec.namespace}
+                name: ${schema.spec.openSearchMasterPasswordSecretRef}
+                key: password
+          domainEndpointOptions:
+            enforceHTTPS: true
+            tlsSecurityPolicy: "Policy-Min-TLS-1-2-2019-07"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+  # ====================================================================
+  # STORAGE: Additional S3 Buckets (Manifest + Dashboard)
+  # ====================================================================
+    # Manifest S3 Bucket
+    - id: manifestBucket
+      readyWhen:
+        - ${manifestBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${manifestBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-manifest-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.manifestBucketName}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${platformKey.status.?ackResourceMetadata.?arn}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${schema.spec.manifestBucketName}
+              - key: Environment
+                value: ${schema.spec.environment}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${schema.spec.project}
+              - key: BucketType
+                value: manifest
+    # Dashboard S3 Bucket
+    - id: dashboardBucket
+      readyWhen:
+        - ${dashboardBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${dashboardBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-dashboard-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.dashboardBucketName}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${platformKey.status.?ackResourceMetadata.?arn}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${schema.spec.dashboardBucketName}
+              - key: Environment
+                value: ${schema.spec.environment}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${schema.spec.project}
+              - key: BucketType
+                value: dashboard
+  # ====================================================================
+  # COMPUTE: EKS Managed Node Group + Add-ons
+  # ====================================================================
+    # EKS Managed Node Group
+    - id: eksNodeGroup
+      readyWhen:
+        - ${eksNodeGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksNodeGroup.status.?status.orValue('null') == 'ACTIVE'}
+        - ${eksNodeGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Nodegroup
+        metadata:
+          name: ${schema.spec.name}-nodegroup
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-nodegroup
+          clusterName: ${eksCluster.metadata.name}
+          nodeRole: ${nodeRole.status.?ackResourceMetadata.?arn}
+          subnets:
+            - ${privatesubnet1.status.?subnetID}
+            - ${privatesubnet2.status.?subnetID}
+          scalingConfig:
+            desiredSize: ${schema.spec.nodeDesiredSize}
+            minSize: ${schema.spec.nodeMinSize}
+            maxSize: ${schema.spec.nodeMaxSize}
+          instanceTypes: ${schema.spec.nodeInstanceTypes}
+          amiType: ${schema.spec.nodeAMIType}
+          diskSize: ${schema.spec.nodeDiskSize}
+          tags:
+            Name: ${schema.spec.name}-nodegroup
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+    # VPC CNI Add-on
+    - id: vpcCniAddon
+      readyWhen:
+        - ${vpcCniAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${vpcCniAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.name}-vpc-cni
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: vpc-cni
+          clusterName: ${eksCluster.metadata.name}
+          tags:
+            Name: ${schema.spec.name}-vpc-cni
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+    # CoreDNS Add-on
+    - id: coreDnsAddon
+      readyWhen:
+        - ${coreDnsAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${coreDnsAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.name}-coredns
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: coredns
+          clusterName: ${eksCluster.metadata.name}
+          tags:
+            Name: ${schema.spec.name}-coredns
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+    # kube-proxy Add-on
+    - id: kubeProxyAddon
+      readyWhen:
+        - ${kubeProxyAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${kubeProxyAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Addon
+        metadata:
+          name: ${schema.spec.name}-kube-proxy
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: kube-proxy
+          clusterName: ${eksCluster.metadata.name}
+          tags:
+            Name: ${schema.spec.name}-kube-proxy
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+  # ====================================================================
+  # IAM: OIDC Provider + IRSA Roles
+  # ====================================================================
+    # OIDC Provider for IRSA
+    - id: oidcProvider
+      readyWhen:
+        - ${oidcProvider.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${oidcProvider.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: OpenIDConnectProvider
+        metadata:
+          name: ${schema.spec.name}-eks-oidc
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          url: ${eksCluster.status.?identity.?oidc.?issuer}
+          clientIDs:
+            - sts.amazonaws.com
+          thumbprints:
+            - "9e99a48a9960b14926bb7f3b02e22da2b0ab7280"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-eks-oidc
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # Fence IRSA Role
+    - id: fenceRole
+      readyWhen:
+        - ${fenceRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${fenceRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-fence-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-fence-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:fence-sa"}}
+              }]
+            }
+          inlinePolicies:
+            fence-s3-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [{
+                  "Effect": "Allow",
+                  "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+                  "Resource": [
+                    "${dataBucket.status.?ackResourceMetadata.?arn.orValue('loading')}",
+                    "${dataBucket.status.?ackResourceMetadata.?arn.orValue('loading')}/*",
+                    "${uploadBucket.status.?ackResourceMetadata.?arn.orValue('loading')}",
+                    "${uploadBucket.status.?ackResourceMetadata.?arn.orValue('loading')}/*"
+                  ]
+                }]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-fence-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # Audit IRSA Role
+    - id: auditRole
+      readyWhen:
+        - ${auditRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${auditRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-audit-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-audit-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:audit-sa"}}
+              }]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-audit-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # Hatchery IRSA Role
+    - id: hatcheryRole
+      readyWhen:
+        - ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${hatcheryRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-hatchery-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-hatchery-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:hatchery-sa"}}
+              }]
+            }
+          inlinePolicies:
+            hatchery-ec2: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [{
+                  "Effect": "Allow",
+                  "Action": ["ec2:RunInstances", "ec2:TerminateInstances", "ec2:CreateTags", "ec2:DescribeInstances"],
+                  "Resource": "*"
+                }]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-hatchery-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # ManifestService IRSA Role
+    - id: manifestserviceRole
+      readyWhen:
+        - ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${manifestserviceRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-manifestservice-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-manifestservice-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:manifestservice-sa"}}
+              }]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-manifestservice-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # ExternalSecrets IRSA Role
+    - id: externalSecretsRole
+      readyWhen:
+        - ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${externalSecretsRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-external-secrets-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-external-secrets-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:external-secrets-sa"}}
+              }]
+            }
+          inlinePolicies:
+            secrets-read: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [{
+                  "Effect": "Allow",
+                  "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+                  "Resource": "arn:aws:secretsmanager:${schema.spec.region}:*:secret:${schema.spec.name}-*"
+                }]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-external-secrets-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # AWS ES Proxy IRSA Role (OpenSearch access)
+    - id: awsEsProxyRole
+      readyWhen:
+        - ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${awsEsProxyRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-aws-es-proxy-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-aws-es-proxy-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:aws-es-proxy-sa"}}
+              }]
+            }
+          inlinePolicies:
+            opensearch-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [{
+                  "Effect": "Allow",
+                  "Action": ["es:ESHttpGet", "es:ESHttpHead", "es:ESHttpPost", "es:ESHttpPut", "es:ESHttpDelete", "es:ESHttpPatch"],
+                  "Resource": "arn:aws:es:${schema.spec.region}:*:domain/${schema.spec.name}-*"
+                }]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-aws-es-proxy-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # SSJDispatcher IRSA Role
+    - id: ssjdispatcherRole
+      readyWhen:
+        - ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${ssjdispatcherRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-ssjdispatcher-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-ssjdispatcher-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:ssjdispatcher-sa"}}
+              }]
+            }
+          inlinePolicies:
+            ssjdispatcher-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"],
+                    "Resource": "arn:aws:sqs:${schema.spec.region}:*:${schema.spec.name}-*"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:PutObject"],
+                    "Resource": ["${dataBucket.status.?ackResourceMetadata.?arn.orValue('loading')}", "${dataBucket.status.?ackResourceMetadata.?arn.orValue('loading')}/*"]
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-ssjdispatcher-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # ALB Controller IRSA Role
+    - id: albControllerRole
+      readyWhen:
+        - ${albControllerRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${albControllerRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-alb-controller-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-alb-controller-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"}}
+              }]
+            }
+          inlinePolicies:
+            alb-controller-policy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {"Effect": "Allow", "Action": ["elasticloadbalancing:*"], "Resource": "*"},
+                  {"Effect": "Allow", "Action": ["ec2:Describe*", "ec2:CreateSecurityGroup", "ec2:AuthorizeSecurityGroupIngress", "ec2:RevokeSecurityGroupIngress", "ec2:DeleteSecurityGroup", "ec2:CreateTags", "ec2:DeleteTags"], "Resource": "*"},
+                  {"Effect": "Allow", "Action": ["acm:ListCertificates", "acm:DescribeCertificate", "acm:GetCertificate", "iam:CreateServiceLinkedRole", "wafv2:GetWebACL", "wafv2:GetWebACLForResource", "wafv2:AssociateWebACL", "wafv2:DisassociateWebACL"], "Resource": "*"}
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-alb-controller-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # S3 CSI Driver IRSA Role
+    - id: s3CsiDriverRole
+      readyWhen:
+        - ${s3CsiDriverRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${s3CsiDriverRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-s3-csi-driver-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-s3-csi-driver-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:kube-system:s3-csi-driver-sa"}}
+              }]
+            }
+          inlinePolicies:
+            s3-csi-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {"Effect": "Allow", "Action": ["s3:ListBucket"], "Resource": ["${dataBucket.status.?ackResourceMetadata.?arn.orValue('loading')}", "${uploadBucket.status.?ackResourceMetadata.?arn.orValue('loading')}"]},
+                  {"Effect": "Allow", "Action": ["s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload", "s3:DeleteObject"], "Resource": ["${dataBucket.status.?ackResourceMetadata.?arn.orValue('loading')}/*", "${uploadBucket.status.?ackResourceMetadata.?arn.orValue('loading')}/*"]}
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-s3-csi-driver-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # Karpenter Controller IRSA Role
+    - id: karpenterRole
+      readyWhen:
+        - ${karpenterRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${karpenterRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-karpenter-controller-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-karpenter-controller-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:kube-system:karpenter"}}
+              }]
+            }
+          inlinePolicies:
+            karpenter-controller: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {"Effect": "Allow", "Action": ["ec2:CreateFleet", "ec2:CreateLaunchTemplate", "ec2:CreateTags", "ec2:DeleteLaunchTemplate", "ec2:DescribeAvailabilityZones", "ec2:DescribeImages", "ec2:DescribeInstances", "ec2:DescribeInstanceTypeOfferings", "ec2:DescribeInstanceTypes", "ec2:DescribeLaunchTemplates", "ec2:DescribeSecurityGroups", "ec2:DescribeSubnets", "ec2:RunInstances", "ec2:TerminateInstances", "iam:PassRole", "ssm:GetParameter", "pricing:GetProducts", "eks:DescribeCluster"], "Resource": "*"},
+                  {"Effect": "Allow", "Action": ["iam:GetInstanceProfile", "iam:CreateInstanceProfile", "iam:TagInstanceProfile", "iam:AddRoleToInstanceProfile", "iam:RemoveRoleFromInstanceProfile", "iam:DeleteInstanceProfile"], "Resource": "*"},
+                  {"Effect": "Allow", "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueUrl", "sqs:GetQueueAttributes"], "Resource": "arn:aws:sqs:${schema.spec.region}:*:${schema.spec.name}-karpenter-*"}
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-karpenter-controller-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+    # Dashboard IRSA Role
+    - id: dashboardRole
+      readyWhen:
+        - ${dashboardRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${dashboardRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-dashboard-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-dashboard-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                "Action": "sts:AssumeRoleWithWebIdentity",
+                "Condition": {"StringEquals": {"${eksCluster.status.?identity.?oidc.?issuer.orValue('loading')}:sub": "system:serviceaccount:${schema.spec.namespace}:dashboard-sa"}}
+              }]
+            }
+          inlinePolicies:
+            dashboard-s3-read: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [{
+                  "Effect": "Allow",
+                  "Action": ["s3:GetObject", "s3:ListBucket"],
+                  "Resource": ["arn:aws:s3:::${schema.spec.dashboardBucketName}", "arn:aws:s3:::${schema.spec.dashboardBucketName}/*"]
+                }]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-dashboard-role
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+  # ====================================================================
+  # MESSAGING: SQS Queues
+  # ====================================================================
+    # Audit SQS Queue
+    - id: auditQueue
+      readyWhen:
+        - ${auditQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${auditQueue.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: sqs.services.k8s.aws/v1alpha1
+        kind: Queue
+        metadata:
+          name: ${schema.spec.name}-audit-queue
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          queueName: ${schema.spec.name}-audit-sqs
+          messageRetentionPeriod: "${schema.spec.sqsMessageRetention}"
+          visibilityTimeout: "${schema.spec.sqsVisibilityTimeout}"
+          sqsManagedSSEEnabled: "true"
+          tags:
+            Name: ${schema.spec.name}-audit-sqs
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+    # SSJDispatcher SQS Queue
+    - id: ssjdispatcherQueue
+      readyWhen:
+        - ${ssjdispatcherQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${ssjdispatcherQueue.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: sqs.services.k8s.aws/v1alpha1
+        kind: Queue
+        metadata:
+          name: ${schema.spec.name}-ssjdispatcher-queue
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          queueName: ${schema.spec.name}-ssjdispatcher-sqs
+          messageRetentionPeriod: "${schema.spec.sqsMessageRetention}"
+          visibilityTimeout: "${schema.spec.sqsVisibilityTimeout}"
+          sqsManagedSSEEnabled: "true"
+          tags:
+            Name: ${schema.spec.name}-ssjdispatcher-sqs
+            Environment: ${schema.spec.environment}
+            ManagedBy: Kro
+            Project: ${schema.spec.project}
+  # ====================================================================
+  # WAF: WAFv2 Web ACL
+  # ====================================================================
+    - id: wafWebAcl
+      readyWhen:
+        - ${wafWebAcl.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${wafWebAcl.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: wafv2.services.k8s.aws/v1alpha1
+        kind: WebACL
+        metadata:
+          name: ${schema.spec.name}-waf-acl
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-waf-acl
+          scope: ${schema.spec.wafScope}
+          defaultAction:
+            allow: {}
+          visibilityConfig:
+            cloudWatchMetricsEnabled: true
+            metricName: ${schema.spec.name}-waf-metrics
+            sampledRequestsEnabled: true
+          rules:
+            - name: aws-common-rules
+              priority: 1
+              overrideAction:
+                none: {}
+              statement:
+                managedRuleGroupStatement:
+                  vendorName: AWS
+                  name: AWSManagedRulesCommonRuleSet
+              visibilityConfig:
+                cloudWatchMetricsEnabled: true
+                metricName: ${schema.spec.name}-common-rules
+                sampledRequestsEnabled: true
+            - name: aws-bad-inputs
+              priority: 2
+              overrideAction:
+                none: {}
+              statement:
+                managedRuleGroupStatement:
+                  vendorName: AWS
+                  name: AWSManagedRulesKnownBadInputsRuleSet
+              visibilityConfig:
+                cloudWatchMetricsEnabled: true
+                metricName: ${schema.spec.name}-bad-inputs
+                sampledRequestsEnabled: true
+            - name: aws-sqli-rules
+              priority: 3
+              overrideAction:
+                none: {}
+              statement:
+                managedRuleGroupStatement:
+                  vendorName: AWS
+                  name: AWSManagedRulesSQLiRuleSet
+              visibilityConfig:
+                cloudWatchMetricsEnabled: true
+                metricName: ${schema.spec.name}-sqli-rules
+                sampledRequestsEnabled: true
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-waf-acl
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+  # ====================================================================
+  # CLUSTER RESOURCES: Spoke Prerequisite Deployments via ArgoCD
+  # ====================================================================
+    # External Secrets Operator â€” deployed from upstream Helm repo to spoke
+    - id: clusterResourcesApp
+      readyWhen:
+        - ${clusterResourcesApp.metadata.?name.orValue('null') != 'null'}
+        - ${clusterResourcesApp.status.?health.?status.orValue('Unknown') == 'Healthy'}
+        - ${clusterResourcesApp.status.?sync.?status.orValue('Unknown') == 'Synced'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-external-secrets
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: cluster-resources
+            gen3.io/spoke: ${schema.spec.name}
+          annotations:
+            argocd.argoproj.io/cascade: "orphan"
+        spec:
+          project: ${schema.spec.argoCDProject}
+          source:
+            repoURL: https://charts.external-secrets.io
+            chart: external-secrets
+            targetRevision: ${schema.spec.externalSecretsHelmVersion}
+            helm:
+              releaseName: external-secrets
+              values: |
+                installCRDs: true
+                serviceAccount:
+                  annotations:
+                    eks.amazonaws.com/role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn}
+          destination:
+            name: ${schema.spec.name}
+            namespace: external-secrets
+          syncPolicy:
+            automated:
+              selfHeal: true
+              allowEmpty: true
+              prune: false
+            retry:
+              limit: 100
+              backoff:
+                duration: "30s"
+                factor: 2
+                maxDuration: "5m"
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+    # AWS Load Balancer Controller â€” deployed to spoke for ALB ingress
+    - id: albControllerApp
+      readyWhen:
+        - ${albControllerApp.metadata.?name.orValue('null') != 'null'}
+        - ${albControllerApp.status.?health.?status.orValue('Unknown') == 'Healthy'}
+        - ${albControllerApp.status.?sync.?status.orValue('Unknown') == 'Synced'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-alb-controller
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: cluster-resources
+            gen3.io/spoke: ${schema.spec.name}
+          annotations:
+            argocd.argoproj.io/cascade: "orphan"
+        spec:
+          project: ${schema.spec.argoCDProject}
+          source:
+            repoURL: https://aws.github.io/eks-charts
+            chart: aws-load-balancer-controller
+            targetRevision: ${schema.spec.albControllerHelmVersion}
+            helm:
+              releaseName: aws-load-balancer-controller
+              values: |
+                clusterName: ${eksCluster.metadata.name}
+                serviceAccount:
+                  create: true
+                  name: aws-load-balancer-controller
+                  annotations:
+                    eks.amazonaws.com/role-arn: ${albControllerRole.status.?ackResourceMetadata.?arn}
+                region: ${schema.spec.region}
+                vpcId: ${vpc.status.?vpcID}
+          destination:
+            name: ${schema.spec.name}
+            namespace: kube-system
+          syncPolicy:
+            automated:
+              selfHeal: true
+              allowEmpty: true
+              prune: false
+            retry:
+              limit: 100
+              backoff:
+                duration: "30s"
+                factor: 2
+                maxDuration: "5m"
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+  # ====================================================================
+  # APPLICATION: Gen3 Helm Deployment via ArgoCD
+  # ====================================================================
+    - id: gen3App
+      readyWhen:
+        - ${gen3App.metadata.?name.orValue('null') != 'null'}
+        - ${gen3App.status.?health.?status.orValue('Unknown') == 'Healthy'}
+        - ${gen3App.status.?sync.?status.orValue('Unknown') == 'Synced'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-gen3-helm
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: application
+            gen3.io/spoke: ${schema.spec.name}
+          annotations:
+            argocd.argoproj.io/cascade: "orphan"
+        spec:
+          project: ${schema.spec.argoCDProject}
+          ignoreDifferences:
+            - group: ""
+              kind: Secret
+              jsonPointers:
+                - /data
+                - /stringData
+          source:
+            repoURL: ${schema.spec.gen3HelmRepoURL}
+            chart: ${schema.spec.gen3HelmChart}
+            targetRevision: ${schema.spec.gen3HelmTargetRevision}
+            helm:
+              releaseName: gen3
+              values: |
+                global:
+                  hostname: ${schema.spec.hostname}
+                  environment: ${schema.spec.environment}
+                  revproxyArn: ${schema.spec.acmCertArn}
+                  dev: false
+                  tierAccessLevel: ${schema.spec.tierAccessLevel}
+                  tierAccessLimit: ${string(schema.spec.tierAccessLimit)}
+                  publicDataSets: true
+                  frontendRoot: portal
+                  portalApp: gitops
+                  dataUploadBucket: ${schema.spec.uploadBucketName}
+                  dictionaryUrl: ${schema.spec.dictionaryUrl}
+                  aws:
+                    enabled: true
+                    region: ${schema.spec.region}
+                    wafv2:
+                      enabled: "${string(schema.spec.wafEnabled)}"
+                      wafAclArn: ${wafWebAcl.status.?ackResourceMetadata.?arn.orValue("")}
+                    secretStoreServiceAccount:
+                      enabled: "${string(schema.spec.externalSecretsEnabled)}"
+                      name: external-secrets-sa
+                      roleArn: ${externalSecretsRole.status.?ackResourceMetadata.?arn}
+                  postgres:
+                    dbCreate: "${string(schema.spec.dbCreateEnabled)}"
+                    externalSecret: ${schema.spec.postgresExternalSecret}
+                  externalSecrets:
+                    deploy: "${string(schema.spec.externalSecretsEnabled)}"
+                aws-es-proxy:
+                  enabled: "${string(schema.spec.awsEsProxyEnabled)}"
+                  esEndpoint: ${openSearchDomain.status.?endpoint}
+                ambassador:
+                  enabled: true
+                arborist:
+                  enabled: true
+                  externalSecrets:
+                    dbcreds: ${schema.spec.arboristDbcredsSM}
+                revproxy:
+                  enabled: true
+                  ingress:
+                    aws:
+                      group: ${schema.spec.name}
+                fence:
+                  enabled: "${string(schema.spec.fenceEnabled)}"
+                  serviceAccount:
+                    annotations:
+                      eks.amazonaws.com/role-arn: ${fenceRole.status.?ackResourceMetadata.?arn}
+                  externalSecrets:
+                    fenceJwtKeys: ""
+                    fenceConfig: ${schema.spec.fenceConfigSM}
+                    fenceGoogleAppCredsSecret: ""
+                    fenceGoogleStorageCredsSecret: ""
+                    createK8sJwtKeysSecret: true
+                    createK8sGoogleAppSecrets: true
+                    createK8sFenceConfigSecret: true
+                    dbcreds: ${schema.spec.fenceDbcredsSM}
+                indexd:
+                  enabled: "${string(schema.spec.indexdEnabled)}"
+                  defaultPrefix: ${schema.spec.indexdDefaultPrefix}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.indexdDbcredsSM}
+                    createK8sServiceCredsSecret: true
+                peregrine:
+                  enabled: "${string(schema.spec.peregrinEnabled)}"
+                  externalSecrets:
+                    dbcreds: ${schema.spec.peregrinDbcredsSM}
+                sheepdog:
+                  enabled: "${string(schema.spec.sheepdogEnabled)}"
+                  externalSecrets:
+                    dbcreds: ${schema.spec.sheepdogDbcredsSM}
+                metadata:
+                  enabled: "${string(schema.spec.metadataEnabled)}"
+                  externalSecrets:
+                    createK8sMetadataSecret: true
+                    dbcreds: ${schema.spec.metadataDbcredsSM}
+                audit:
+                  enabled: "${string(schema.spec.auditEnabled)}"
+                  serviceAccount:
+                    annotations:
+                      eks.amazonaws.com/role-arn: ${auditRole.status.?ackResourceMetadata.?arn}
+                  externalSecrets:
+                    dbcreds: ${schema.spec.auditDbcredsSM}
+                    createK8sAuditSecret: true
+                  server:
+                    pull_from_queue: "${string(schema.spec.auditEnabled)}"
+                    type: aws_sqs
+                    sqs:
+                      region: ${schema.spec.region}
+                      url: ${auditQueue.status.?queueURL}
+                hatchery:
+                  enabled: "${string(schema.spec.hatcheryEnabled)}"
+                  serviceAccount:
+                    annotations:
+                      eks.amazonaws.com/role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn}
+                manifestservice:
+                  enabled: "${string(schema.spec.manifestserviceEnabled)}"
+                  serviceAccount:
+                    annotations:
+                      eks.amazonaws.com/role-arn: ${manifestserviceRole.status.?ackResourceMetadata.?arn}
+                portal:
+                  enabled: "${string(schema.spec.portalEnabled)}"
+                requestor:
+                  enabled: "${string(schema.spec.requestorEnabled)}"
+                  externalSecrets:
+                    dbcreds: ${schema.spec.requestorDbcredsSM}
+                wts:
+                  enabled: "${string(schema.spec.wtsEnabled)}"
+                  externalSecrets:
+                    dbcreds: ${schema.spec.wtsDbcredsSM}
+                guppy:
+                  enabled: "${string(schema.spec.guppyEnabled)}"
+                ssjdispatcher:
+                  enabled: "${string(schema.spec.ssjdispatcherEnabled)}"
+                  ssjcreds:
+                    sqsUrl: ${ssjdispatcherQueue.status.?queueURL}
+                etl:
+                  esEndpoint: gen3-elasticsearch-master
+          destination:
+            name: ${schema.spec.name}
+            namespace: ${schema.spec.namespace}
+          syncPolicy:
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+

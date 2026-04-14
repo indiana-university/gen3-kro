@@ -1,0 +1,120 @@
+# ── AwsGen3Helm2 — Tier 5: Gen3 Application Deployment (~$0 pods) ────────────
+# Deploys the gen3 Helm chart via an ArgoCD Application on the spoke cluster.
+# Reads ALL 10 upstream bridges to construct the Helm values.
+#
+# RGD: awsgen3helm2-rg.yaml  |  Kind: AwsGen3Helm2
+#
+# PREREQUISITES:
+#   - ALL upstream tiers must be Ready and their bridges must exist:
+#     Foundation (spoke1-foundation-bridge), Storage (spoke1-storage-bridge),
+#     Database (spoke1-database-bridge), Search (spoke1-search-bridge),
+#     Compute (spoke1-compute-bridge), IAM (spoke1-iam-bridge),
+#     Messaging (spoke1-messaging-bridge), ACM (spoke1-acm-bridge),
+#     ClusterResources (spoke1-cluster-resources-bridge),
+#     Advanced (spoke1-advanced-bridge)
+#   - ArgoCD must be running in the CSOC cluster
+#   - The spoke cluster must be registered in ArgoCD (via ClusterResources1)
+#
+# SERVICE CONFIGURATION (stanfordaimi-matched):
+#   Enabled:  fence, audit, indexd, metadata, peregrine, sheepdog
+#   Disabled: portal, wts, awsEsProxy, hatchery, manifestservice, ssjdispatcher, guppy, requestor, dashboard
+#   DB: dbCreateEnabled=true (gen3-helm init containers create per-service DBs)
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Helm2
+metadata:
+  name: spoke1-gen3helm
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+
+  # ── ArgoCD configuration ──────────────────────────────────────────────────
+  argoCDNamespace: argocd
+  argoCDProject: default
+
+  # ── Gen3 Helm chart source ────────────────────────────────────────────────
+  gen3HelmRepoURL: https://helm.gen3.org
+  gen3HelmChart: gen3
+  gen3HelmTargetRevision: "0.3.25"
+
+  # ── Application identity ──────────────────────────────────────────────────
+  hostname: spoke1dev.rds-pla.net
+  dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
+
+  # ── Database configuration ────────────────────────────────────────────────
+  auroraMasterUsername: postgres
+  auroraDBName: gen3
+  dbCreateEnabled: true
+
+  # ── Bridge references (all in spoke1 namespace) ───────────────────────────
+  foundationBridgeName: spoke1-foundation-bridge
+  foundationNamespace: spoke1
+  computeBridgeName: spoke1-compute-bridge
+  computeNamespace: spoke1
+  databaseBridgeName: spoke1-database-bridge
+  databaseNamespace: spoke1
+  searchBridgeName: spoke1-search-bridge
+  searchNamespace: spoke1
+  iamBridgeName: spoke1-iam-bridge
+  iamNamespace: spoke1
+  messagingBridgeName: spoke1-messaging-bridge
+  messagingNamespace: spoke1
+  acmBridgeName: spoke1-acm-bridge
+  acmNamespace: spoke1
+  clusterResourcesBridgeName: spoke1-cluster-resources-bridge
+  clusterResourcesNamespace: spoke1
+  storageBridgeName: spoke1-storage-bridge
+  storageNamespace: spoke1
+  advancedBridgeName: spoke1-advanced-bridge
+  advancedNamespace: spoke1
+
+  # ── Service feature flags (stanfordaimi-like) ─────────────────────────────
+  fenceEnabled: true
+  auditEnabled: true
+  indexdEnabled: true
+  metadataEnabled: true
+  peregrinEnabled: true
+  sheepdogEnabled: true
+  portalEnabled: false
+  wtsEnabled: false
+  awsEsProxyEnabled: false
+
+  # Disabled services
+  hatcheryEnabled: false
+  manifestserviceEnabled: false
+  ssjdispatcherEnabled: false
+  guppyEnabled: false
+  requestorEnabled: false
+  dashboardEnabled: false
+
+  # ── Access tier ───────────────────────────────────────────────────────────
+  tierAccessLevel: private
+  tierAccessLimit: 100
+
+  # ── External Secrets (ESO per-service DB credentials from Secrets Manager) ─
+  externalSecretsEnabled: true
+  postgresExternalSecret: spoke1-aurora-master-credentials
+  fenceDbcredsSM: spoke1-fence-dbcreds
+  arboristDbcredsSM: spoke1-arborist-dbcreds
+  auditDbcredsSM: spoke1-audit-dbcreds
+  indexdDbcredsSM: spoke1-indexd-dbcreds
+  metadataDbcredsSM: spoke1-metadata-dbcreds
+  peregrinDbcredsSM: spoke1-peregrin-dbcreds
+  sheepdogDbcredsSM: spoke1-sheepdog-dbcreds
+  wtsDbcredsSM: spoke1-wts-dbcreds
+  # requestorDbcredsSM: ""   # requestor disabled
+  # fenceConfigSM: ""        # fence-config handled separately if needed
+
+  # ── Indexd prefix ─────────────────────────────────────────────────────────
+  indexdDefaultPrefix: "dg.XXXX/"
+
+  # ── Sync & Bridge ─────────────────────────────────────────────────────────
+  autoSync: false
+  gen3HelmBridgeName: spoke1-gen3helm-bridge

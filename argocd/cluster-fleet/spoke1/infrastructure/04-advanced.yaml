@@ -1,0 +1,38 @@
+# ── AwsGen3Advanced1 — Tier 7: Advanced Services (~$5–10/mo) ─────────────────
+# WAFv2 WebACL with AWS managed rule groups (OWASP, bad inputs, SQLi).
+# Provides advancedBridge to Helm2 for ALB WAF integration.
+#
+# RGD: awsgen3advanced1-rg.yaml  |  Kind: AwsGen3Advanced1
+#
+# PREREQUISITES:
+#   - ACK wafv2 controller must be running (EKS CSOC only — not in local Kind)
+#   - KRO controller and awsgen3advanced1-rg RGD must be registered
+#
+# NOTE: This is a standalone tier (no upstream dependencies).
+#       Must deploy before Helm2 (sync-wave "30") so advancedBridge exists.
+#       CloudFront is out of scope (no ACK controller available).
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Advanced1
+metadata:
+  name: spoke1-advanced
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
+
+  # ── WAF Configuration (disabled — stanfordaimi does not use WAF) ────────────
+  wafEnabled: false
+  wafScope: REGIONAL
+
+  # ── Bridge (creates advancedBridge for downstream tiers) ──────────────────
+  createBridgeSecret: true
+  advancedBridgeName: spoke1-advanced-bridge

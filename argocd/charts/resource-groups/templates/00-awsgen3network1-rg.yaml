@@ -1,53 +1,48 @@
-# AwsGen3Foundation1 — Tier 0: Foundation-Heavy (Modular RGD v1)
+# AwsGen3Network1 — Tier 0: Network (Modular RGD v1)
 #
-# Foundation-heavy architecture with feature flags. Absorbs ALL prep
+# Network-heavy architecture with feature flags. Absorbs ALL prep
 # infrastructure (SGs, IAM roles, DB subnets, KMS keys) behind
 # conditional resource groups controlled by databaseEnabled, computeEnabled,
 # and searchEnabled feature flags.
 #
-# Per Plan 02 Revision 4 (02-modular-rgd-design.md), this tier creates:
-#
-# ALWAYS (13 resources, ~$37/month):
+# ALWAYS (~$37/month):
 #   Networking: VPC, IGW, EIP, NAT Gateway, 2 route tables, 4 subnets
 #   Security:   2 KMS keys (logging + platform)
-#   Bridge:     1 foundationBridge ConfigMap (always present)
+#   Bridge:     1 networkBridge ConfigMap (always present)
 #
-#
-# CONDITIONAL — Database prep (includeWhen: databaseEnabled, 7 resources):
+# CONDITIONAL — Database prep (includeWhen: databaseEnabled):
 #   Networking: 2 DB subnets, 1 DB route table, 1 DB subnet group
 #   Security:   1 Aurora SG (port 5432), 1 KMS key (RDS policy)
 #   Bridge:     1 databasePrepBridge ConfigMap
 #
-# CONDITIONAL — Compute prep (includeWhen: computeEnabled, 4 resources):
+# CONDITIONAL — Compute prep (includeWhen: computeEnabled):
 #   IAM:        1 EKS cluster role (6 policies), 1 EKS node role (4 policies)
 #   Security:   1 EKS SG (ports 443+10250)
 #   Bridge:     1 computePrepBridge ConfigMap
 #
-# CONDITIONAL — Search prep (includeWhen: searchEnabled, 3 resources):
+# CONDITIONAL — Search prep (includeWhen: searchEnabled):
 #   Security:   1 KMS key (OpenSearch/ElastiCache policy), 1 OpenSearch SG (443)
 #   Bridge:     1 searchPrepBridge ConfigMap
 #
-# ACM / TLS resources have been extracted to AwsGen3Dns1 (separate RGD).
-# DNS1 produces the acmBridge ConfigMap independently.
+# ACM / TLS is handled by the AwsGen3Dns1 RGD (separate graph).
 #
-# Creates up to 4 bridge ConfigMaps: foundationBridge (always) +
+# Creates up to 4 bridge ConfigMaps: networkBridge (always) +
 # databasePrepBridge, computePrepBridge, searchPrepBridge (conditional).
 #
-# Downstream tiers (Database1, Compute1, Search1) are thin — they read
-# the per-capability prep bridges via externalRef.
-# ACM / TLS is handled by the AwsGen3Dns1 RGD (separate graph).
+# Downstream tiers (Database2, Compute2, Search1, Storage1, IAM1, Helm2,
+# Advanced1) read bridges via externalRef.
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: awsgen3foundation1
+  name: awsgen3network1
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsGen3Foundation1
+    kind: AwsGen3Network1
     spec:
       # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
@@ -78,18 +73,10 @@ spec:
       dbSubnetCIDRs: "[]string"
 
       # ── Bridge Name Overrides ─────────────────────────────────────
-      foundationBridgeName: string | default="foundation-bridge"
+      networkBridgeName: string | default="foundation-bridge"
       databasePrepBridgeName: string | default="database-prep-bridge"
       computePrepBridgeName: string | default="compute-prep-bridge"
       searchPrepBridgeName: string | default="search-prep-bridge"
-
-      # ── Deprecated (kept for CRD backwards-compat; moved to DNS1) ─
-      hostname: string | default=""
-      route53HostedZoneName: string | default=""
-      acmBridgeName: string | default=""
-
-      # ── Bridge ───────────────────────────────────────────────────
-      createBridgeSecret: boolean | default=true
 
     status:
       # Network
@@ -553,20 +540,18 @@ spec:
   # Downstream tiers read storageBridge for S3 ARNs.
   # ====================================================================
 
-    - id: foundationBridge
-      includeWhen:
-        - ${schema.spec.createBridgeSecret == true}
+    - id: networkBridge
       readyWhen:
-        - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
+        - ${networkBridge.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.foundationBridgeName}
+          name: ${schema.spec.networkBridgeName}
           namespace: ${schema.spec.namespace}
           labels:
             app.kubernetes.io/managed-by: kro
-            gen3.io/tier: foundation
+            gen3.io/tier: network
             gen3.io/bridge: "true"
         data:
           vpc-id: ${vpc.status.?vpcID}

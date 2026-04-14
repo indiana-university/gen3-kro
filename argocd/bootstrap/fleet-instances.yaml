@@ -2,22 +2,30 @@
 # fleet-instances — All KRO instance CRs for spoke clusters
 # ======================================================================
 # Applies ALL KRO Custom Resource YAMLs from four sub-directories of
-# cluster-fleet/<cluster>/ as a single ArgoCD Application per spoke:
+# the cluster's instance root path as a single ArgoCD Application per spoke.
 #
-#   infrastructure/     — ALL tiers 0-6 (Foundation → Helm) in numbered order
+# Cluster-type-aware instance root path (resolved from cluster Secret
+# annotation `fleet_instances_path`):
+#
+#   EKS CSOC   → fleet_instances_path not set → falls back to
+#                 cluster-fleet/{{.name}}   (e.g. cluster-fleet/spoke1)
+#   Kind CSOC  → fleet_instances_path: "local-kind/test"
+#
+# Under each instance root the four sub-directories are:
+#   infrastructure/     — ALL infra tiers in numbered order
 #   cluster-resources/  — (reserved, currently empty)
 #   applications/       — (reserved, currently empty)
-#   tests/              — KRO capability test instances (dev clusters)
+#   tests/              — KRO capability test instances (EKS) /
+#                         kro-tests/ (Kind — uses same fleet source slot)
 #
 # Matched by any cluster secret with enable_infra_instances: "true".
 #
 # Deployment ordering is enforced by:
 #   1. argocd.argoproj.io/sync-wave on each instance YAML file
-#   2. readyWhen bridge externalRefs in each RGD (e.g. Helm1 gates on
-#      clusterResourcesBridge produced by ClusterResources1)
+#   2. readyWhen bridge externalRefs in each RGD
 #
 # Repo coordinates (fleet_repo_url, fleet_repo_revision, fleet_repo_basepath)
-# are read from the cluster Secret annotations.
+# and fleet_instances_path are read from the cluster Secret annotations.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -46,25 +54,25 @@ spec:
       sources:
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/infrastructure/'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/infrastructure/'
         directory:
           recurse: false
           include: '*.yaml'
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/cluster-resources/'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/cluster-resources/'
         directory:
           recurse: false
           include: '*.yaml'
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/applications/'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/applications/'
         directory:
           recurse: false
           include: '*.yaml'
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/tests/'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/tests/'
         directory:
           recurse: false
           include: '*.yaml'

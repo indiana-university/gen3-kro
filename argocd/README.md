@@ -11,22 +11,22 @@ argocd/
 ├── bootstrap/                      # Entry-point ApplicationSets (Terraform-created bootstrap reads this)
 │   ├── csoc-addons.yaml            #   CSOC addon ApplicationSet (wave -20)
 │   ├── ack-multi-acct.yaml         #   ACK CARM multi-account ApplicationSet (wave 5)
-│   ├── fleet-infra-instances.yaml  #   KRO infrastructure instances (wave 30)
-│   ├── fleet-cluster-resources.yaml #  Spoke cluster-level infra (wave 40)
-│   └── fleet-gen3.yaml             #   Gen3 apps on spoke clusters (wave 50)
+│   └── fleet-instances.yaml        #   KRO infrastructure + app + test instances (wave 30)
 ├── addons/                         # Addon value files (merged via multi-source Helm)
-│   └── csoc/
-│       └── addons.yaml             #   CSOC addons: KRO, 17x ACK controllers, ESO
+│   └── addons.yaml                 #   Single file: EKS CSOC addons + Kind local addons
 ├── charts/                         # Helm charts consumed by ApplicationSets
 │   ├── application-sets/           #   Meta-chart: generates per-addon ApplicationSets
-│   ├── cluster-resources/          #   Umbrella chart: spoke cluster-level infra (external-secrets, cert-manager, etc.)
-│   ├── instances/                  #   KRO custom resource instance renderer
+│   ├── multi-acct/                 #   ACK CARM multi-account Helm chart
 │   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
-└── cluster-fleet/                  # Per-cluster override values (highest precedence)
-    └── spoke1/
-        ├── infrastructure/         #   KRO instance definitions (one YAML file per tier)
-        ├── cluster-resources/      #   Cluster-level resource values (1 per cluster)
-        └── <domain>/               #   Gen3 application values (1 per environment)
+├── cluster-fleet/                  # Per-cluster override values (highest precedence)
+│   ├── spoke1/
+│   │   ├── infrastructure/         #   KRO instance definitions (one YAML file per tier)
+│   │   ├── cluster-resources/      #   Cluster-level resource values (1 per cluster)
+│   │   ├── applications/           #   Gen3 application values (Helm2 instances)
+│   │   └── tests/                  #   KRO capability test instances
+│   └── _example/                   #   Template for new spoke directories
+└── local-kind/                     # Kind cluster instance definitions
+    └── test/                       #   Local test: infra, apps, cluster-resources, tests
 ```
 
 ## Reconciliation Chain
@@ -46,14 +46,8 @@ Terraform creates:
               ├── ack-multi-acct.yaml → ack-multi-acct AppSet (wave 5)
               │                         └── CARM namespaces + IAMRoleSelectors
               │
-              ├── fleet-infra-instances.yaml → fleet-infra-instances AppSet (wave 30)
-              │                                └── KRO instances
-              │
-              ├── fleet-cluster-resources.yaml → fleet-cluster-resources AppSet (wave 40)
-              │                                   └── Spoke cluster-level infra
-              │
-              └── fleet-gen3.yaml → fleet-gen3 AppSet (wave 50)
-                                    └── Gen3 apps on spoke clusters
+              └── fleet-instances.yaml → fleet-instances AppSet (wave 30)
+                                         └── KRO instances (infra + apps + tests)
 ```
 
 ## Sync Wave Ordering
@@ -66,32 +60,28 @@ Terraform creates:
 | 5 | ACK multi-account (CARM) | Namespace + IAMRoleSelector for each spoke |
 | 10 | KRO ResourceGraphDefinitions | CRDs must be registered before instances |
 | 15 | External Secrets Operator | Credential provider for workloads |
-| 30 | Fleet instances (KRO) | Infrastructure CRs depend on all controllers |
-| 40 | Fleet cluster-resources | Spoke cluster-level infra (external-secrets, cert-manager, etc.) |
-| 50 | Fleet apps | Gen3 services on spoke clusters |
+| 30 | Fleet instances (KRO) | Infrastructure, app, and test CRs depend on all controllers |
 
 ## Values Merge Priority (Last Wins)
 
 ### Addon Values
 1. `charts/application-sets/` defaults (lowest)
-2. `addons/csoc/addons.yaml`
+2. `addons/addons.yaml`
 3. `cluster-fleet/<cluster>/addons.yaml` **(highest — wins)**
 
 The merge uses multi-source Helm with ref-based value files:
 ```yaml
 sources:
-  - ref: addonsValues
+  - ref: values
     repoURL: '{{.metadata.annotations.addons_repo_url}}'
-    path: '{{.metadata.annotations.addons_repo_basepath}}addons/csoc/'
-  - ref: clusterValues
-    repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-    path: '{{.metadata.annotations.fleet_repo_basepath}}cluster-fleet/{{.name}}/'
+    targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
   - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-    chart: application-sets
+    path: '{{.metadata.annotations.addons_repo_basepath}}charts/{{.values.addonChart}}'
     helm:
+      ignoreMissingValueFiles: true
       valueFiles:
-        - $addonsValues/addons.yaml
-        - $clusterValues/addons.yaml
+        - $values/{{.metadata.annotations.addons_config_path}}
+        - $values/{{.metadata.annotations.addons_repo_basepath}}cluster-fleet/{{ .name }}/addons.yaml
 ```
 
 ## Cluster Generator & Label/Annotation Contract
@@ -143,22 +133,32 @@ addon-name:
 
 ### resource-groups
 
-Static KRO `ResourceGraphDefinition` YAML files. Files follow naming: `<provider><name>-rg.yaml`.
+Static KRO `ResourceGraphDefinition` YAML files. Files follow naming: `<tier>-<provider><name>-rg.yaml` (e.g., `00-awsgen3network1-rg.yaml`). Also contains KRO capability test RGDs (`krotest*-rg.yaml`).
 
-### cluster-resources
+### multi-acct
 
-Umbrella chart for cluster-level infrastructure on spoke clusters. Uses Helm
-dependencies (external-secrets, future: cert-manager, karpenter). Matches
-gen3-gitops's "cluster-level-resources" pattern — ONE per EKS cluster.
+ACK CARM multi-account Helm chart. Creates per-spoke namespaces and IAMRoleSelectors for cross-account resource management.
 
-## CSOC Addons (`addons/csoc/addons.yaml`)
+## CSOC Addons (`addons/addons.yaml`)
+
+The addons file contains both EKS CSOC and Kind local addons, distinguished by `cluster_type` selector (`eks` vs `kind`).
+
+### EKS CSOC Addons
 
 | Addon | Wave | Type | Purpose |
 |-------|------|------|---------|
 | `self-managed-kro` | -30 | Helm (OCI) | KRO controller — must be first |
-| `ack-*-controller` (17x) | 1 | Helm (OCI) | ACK: ec2, eks, iam, rds, s3, route53, etc. |
+| `ack-*-controller` (18x) | 1 | Helm (OCI) | ACK: acm, cloudtrail, cloudwatchlogs, ec2, efs, eks, elasticache, iam, kms, lambda, opensearchservice, rds, route53, s3, secretsmanager, sns, sqs, wafv2 |
 | `kro-eks-rgs` | 10 | manifest | KRO ResourceGraphDefinitions |
 | `external-secrets` | 15 | Helm | External Secrets Operator |
+
+### Kind Local Addons
+
+| Addon | Wave | Type | Purpose |
+|-------|------|------|---------|
+| `self-managed-kro-kind` | -30 | Helm | KRO controller |
+| `kro-csoc-rgs-kind` | 10 | manifest | KRO ResourceGraphDefinitions |
+| `ack-*-kind` (13x) | 1 | Helm (OCI) | ACK: acm, ec2, eks, elasticache, iam, kms, opensearchservice, rds, route53, s3, secretsmanager, sqs, wafv2 |
 
 ## Cluster Fleet (`cluster-fleet/<cluster>/`)
 
@@ -169,7 +169,10 @@ Each subdirectory must match a spoke alias defined in `spoke_account_ids` in `co
 | `addons.yaml` | Override addon values (empty `{}` = accept defaults) |
 | `infrastructure/` | KRO instance definitions (one standalone YAML file per tier) |
 | `cluster-resources/` | Cluster-level resource values (1 per cluster) |
-| `<domain>/` | Gen3 application values (1 per environment) |
+| `applications/` | Gen3 application values (Helm2 instances) |
+| `tests/` | KRO capability test instances |
+
+The `local-kind/test/` directory mirrors this structure for Kind clusters.
 
 ## Conventions
 
@@ -188,7 +191,7 @@ helm template argocd/charts/application-sets/
 helm template argocd/charts/resource-groups/
 
 # Validate with values
-helm template argocd/charts/application-sets/ -f argocd/addons/csoc/addons.yaml
+helm template argocd/charts/application-sets/ -f argocd/addons/addons.yaml
 
 # Validate KRO instance YAML files directly
 kubectl apply --dry-run=client -f argocd/cluster-fleet/spoke1/infrastructure/

@@ -1,0 +1,51 @@
+# ── AwsGen3Database2 — Tier 1: Thin Database (~$45–350/mo) ───────────────────
+# Reads databasePrepBridge (DB subnet group, Aurora SG, DB KMS key) from
+# Foundation. Creates: SecretStore + ExternalSecret (Aurora master password),
+# Aurora Serverless v2 Cluster + Instance(s) + databaseBridge ConfigMap.
+#
+# RGD: awsgen3database2-rg.yaml  |  Kind: AwsGen3Database2
+#
+# PREREQUISITES:
+#   - Tier 0 (spoke1-foundation) must be Ready with databaseEnabled: true
+#   - foundationBridge + databasePrepBridge ConfigMaps must exist in namespace spoke1
+#   - External Secrets Operator must be running on the CSOC cluster
+#   - Aurora master password must exist in AWS Secrets Manager
+#   - ACK controller 'rds' must be running
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Database2
+metadata:
+  name: spoke1-database
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
+
+  # ── Bridge references to Foundation's database prep ───────────────────────
+  databasePrepBridgeName: spoke1-database-prep-bridge
+  foundationNamespace: spoke1
+
+  # ── Aurora Serverless v2 configuration ────────────────────────────────────
+  auroraEngineVersion: "16.6"
+  auroraDBName: gen3
+  auroraMasterUsername: postgres
+  auroraMinCapacity: "0.5"
+  auroraMaxCapacity: "4"
+
+  # ── External Secrets Operator (Aurora master password) ────────────────────
+  auroraMasterPasswordSMName: spoke1_aurora-master-password
+  esoUseIRSA: false
+  esoAwsCredsSecretName: eso-aws-credentials
+  esoServiceAccountName: external-secrets-sa
+
+  # ── Bridge ────────────────────────────────────────────────────────────────
+  createBridgeSecret: true
+  databaseBridgeName: spoke1-database-bridge

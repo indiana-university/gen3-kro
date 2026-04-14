@@ -13,7 +13,7 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 │  │                    EKS Cluster ({csoc_alias}-csoc-cluster)       │  │
 │  │                                                               │  │
 │  │  ┌──────────┐  ┌──────────────┐  ┌────────────────────────┐  │  │
-│  │  │  ArgoCD  │  │ KRO          │  │ ACK Controllers (17x)  │  │  │
+│  │  │  ArgoCD  │  │ KRO          │  │ ACK Controllers (18x)  │  │  │
 │  │  │  Server  │→ │ Controller   │→ │ ec2, eks, iam, rds,    │  │  │
 │  │  │          │  │              │  │ s3, route53, ...        │  │  │
 │  │  └──────────┘  └──────────────┘  └───────────┬────────────┘  │  │
@@ -51,22 +51,36 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 ## Repository Structure
 
 ```
-├── argocd/                      # GitOps configuration
-│   ├── bootstrap/               #   Entry-point ApplicationSets (5 files)
-│   ├── addons/                  #   Addon values (CSOC)
-│   ├── charts/                  #   Helm charts consumed by ApplicationSets
-│   └── cluster-fleet/           #   Per-cluster overrides (spoke1)
-├── config/                      # User config files (gitignored except examples)
+├── .devcontainer/                   # VS Code DevContainer (EKS workflow)
+├── argocd/                          # GitOps configuration
+│   ├── bootstrap/                   #   Entry-point ApplicationSets (3 files)
+│   ├── addons/                      #   Addon values (EKS + Kind sections)
+│   │   └── addons.yaml              #   Single file: CSOC + Kind addons
+│   ├── charts/                      #   Helm charts consumed by ApplicationSets
+│   │   ├── application-sets/        #     Meta-chart: generates per-addon ApplicationSets
+│   │   ├── multi-acct/              #     ACK CARM multi-account chart
+│   │   └── resource-groups/         #     KRO ResourceGraphDefinition manifests
+│   ├── cluster-fleet/               #   Per-cluster overrides
+│   │   ├── spoke1/                  #     Spoke cluster (infra, apps, cluster-resources, tests)
+│   │   └── _example/               #     Template for new spokes
+│   └── local-kind/                  #   Kind cluster instance definitions
+│       └── test/                    #     Local test instances (infra, apps, tests)
+├── config/                          # User config files (gitignored except examples)
+├── docs/                            # Documentation, diagrams, design reports
+├── iam/                             # Per-spoke IAM inline policies
+├── merge-plan/                      # Branch-merge planning documents
+├── references/                      # Upstream reference repos (gen3-helm, kro, etc.)
+├── scripts/                         # Deployment and orchestration scripts
 ├── terraform/
-│   ├── env/aws/csoc-cluster/    # Root module (single entry point)
+│   ├── env/aws/csoc-cluster/        # Root module (single entry point)
 │   └── catalog/
-│       ├── modules/             #   csoc-cluster, aws-csoc, argocd-bootstrap, aws-spoke
-│       └── units/               #   Terragrunt unit wrappers (host-only)
-├── terragrunt/live/aws/         # Spoke IAM Terragrunt stack (host-only, iam-setup/)
-├── iam/                         # Per-spoke IAM inline policies
-├── scripts/                     # Deployment scripts
-├── docs/                        # Documentation and diagrams
-└── outputs/                     # Generated artifacts (gitignored)
+│       ├── modules/                 #   csoc-cluster, aws-csoc, argocd-bootstrap,
+│       │                            #   aws-spoke, developer-identity
+│       └── units/                   #   Terragrunt unit wrappers (aws-spoke, developer-identity)
+├── terragrunt/live/aws/             # Spoke IAM Terragrunt stack (host-only, iam-setup/)
+├── troubleshooters/                 # Diagnostic scripts (status-checker)
+├── outputs/                         # Generated artifacts (gitignored)
+└── third-party-licenses/            # Bundled license files
 ```
 
 See [docs/architecture.md](docs/architecture.md) for detailed architecture documentation with diagrams.
@@ -154,13 +168,13 @@ bash scripts/mfa-session.sh <MFA_CODE>
 ### 2. Create Cluster + Install Stack
 
 ```bash
-bash scripts/kind-local-test.sh create install
+bash scripts/kind-csoc.sh create install
 ```
 
 ### 3. Inject Credentials
 
 ```bash
-bash scripts/kind-local-test.sh inject-creds
+bash scripts/kind-csoc.sh inject-creds
 ```
 
 ### 4. Verify
