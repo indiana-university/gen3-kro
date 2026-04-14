@@ -53,6 +53,17 @@ mkdir -p "$LOG_DIR"
 LOG_FILE="${LOG_DIR}/mfa-session-$(date +%Y%m%d-%H%M%S).log"
 
 main() {
+# ─── Warn about env vars that shadow profile credentials ────────────────────
+# A stale AWS_SHARED_CREDENTIALS_FILE (e.g. from a devcontainer session) will
+# cause the source profile credentials to not be found, producing NoCredentials.
+if [[ -n "${AWS_SHARED_CREDENTIALS_FILE:-}" ]]; then
+  echo "WARNING: AWS_SHARED_CREDENTIALS_FILE is set to '${AWS_SHARED_CREDENTIALS_FILE}'" >&2
+  echo "  This will shadow your source profile credentials." >&2
+  echo "  Run: unset AWS_SHARED_CREDENTIALS_FILE" >&2
+  echo "  then re-run this script." >&2
+  exit 1
+fi
+
 # ─── Validate prerequisites ─────────────────────────────────────────────────
 # jq is required for parsing STS assume-role JSON response
 if ! command -v jq &>/dev/null; then
@@ -264,6 +275,7 @@ else
   echo ""
 
   # Read from default credentials (SOURCE_PROFILE) BEFORE switching files
+  # Use || true to prevent set -e from killing the script before we can print the error
   CREDS=$(aws sts assume-role \
     --role-arn "$ROLE_ARN" \
     --role-session-name "devcontainer-$(date +%s)" \
@@ -271,9 +283,9 @@ else
     --token-code "$MFA_CODE" \
     --duration-seconds "$DURATION" \
     --profile "$SOURCE_PROFILE" \
-    --output json 2>&1)
+    --output json 2>&1) || true
 
-  if [[ $? -ne 0 ]] || ! echo "$CREDS" | jq -e '.Credentials' &>/dev/null; then
+  if ! echo "$CREDS" | jq -e '.Credentials' &>/dev/null; then
     echo "ERROR: Failed to assume role." >&2
     echo "$CREDS" >&2
     exit 1

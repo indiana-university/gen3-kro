@@ -647,6 +647,7 @@ metadata:
     fleet_repo_url: "${GIT_REPO_URL}"
     fleet_repo_revision: "${GIT_REPO_REVISION}"
     fleet_repo_basepath: "${GIT_REPO_BASEPATH}"
+    fleet_instances_path: "local-kind/test"
     aws_region: "us-east-1"
     aws_account_id: "${aws_account_id}"
 type: Opaque
