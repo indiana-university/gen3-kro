@@ -28,7 +28,7 @@
 #   bash scripts/reports/kro-status-report.sh --section kro        # kro | ack | instances | argocd
 #   bash scripts/reports/kro-status-report.sh --instance <name>    # filter to one instance
 #   bash scripts/reports/kro-status-report.sh --json ./snap.json   # also emit JSON snapshot
-#   bash scripts/reports/kro-status-report.sh -t                   # append timestamp to filename
+#   bash scripts/reports/kro-status-report.sh -ts                  # append timestamp to filename
 #
 # Mirrors kind-csoc.sh script structure with inline logging helpers.
 ###############################################################################
@@ -55,7 +55,7 @@ while [[ $# -gt 0 ]]; do
     --instance)  FILTER_INSTANCE="$2"; shift 2 ;;
     --section)   FILTER_SECTION="$2";  shift 2 ;;
     --json)      JSON_OUT="$2";        shift 2 ;;
-    -t|-ts)      ADD_TIMESTAMP=1;      shift ;;
+    -ts)         ADD_TIMESTAMP=1;      shift ;;
     -h|--help)
       sed -n '4,23p' "$0" | sed -E 's/^#( |$)//'
       exit 0 ;;
