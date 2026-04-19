@@ -236,7 +236,7 @@ spec:
       # Cache Status (ElastiCache)
       elastiCacheARN: ${replicationGroup.status.?ackResourceMetadata.?arn.orValue("loading")}
       elastiCacheEndpoint: ${replicationGroup.status.?configurationEndpoint.?address.orValue("loading")}
-      elastiCachePort: ${replicationGroup.status.?configurationEndpoint.?port.orValue("loading")}
+      elastiCachePort: ${replicationGroup.status.?configurationEndpoint.?port.orValue(0)}
 
       # Search Status (OpenSearch)
       openSearchDomainARN: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
