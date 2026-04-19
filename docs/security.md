@@ -41,7 +41,7 @@ CSOC Account
 | Role | Trust | Purpose |
 |------|-------|---------|
 | `<spoke-alias>-spoke-role` | CSOC account root + ArnLike `*-csoc-role` | ACK cross-account resource management |
-| `<namespace>-argocd-spoke-role` | `pods.eks.amazonaws.com` + CSOC root with ArnLike `*-argocd-role` | ArgoCD controller authentication to spoke EKS; created by RGD |
+| `<namespace>-argocd-spoke-access` | CSOC account root | ArgoCD controller authentication to spoke EKS; created by RGD |
 
 No IAM users or long-lived access keys are used for cross-account operations. All credentials are short-lived session tokens obtained via `sts:AssumeRole`.
 
@@ -124,8 +124,8 @@ arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-csoc-role
    { "clusterName": "<spoke-name>", "roleARN": "<spoke-argocd-role-arn>" }
 
 4. argocd-k8s-auth calls sts:AssumeRole on the spoke ArgoCD role:
-   → arn:aws:iam::<SPOKE>:role/<namespace>-argocd-spoke-role
-   → Trust policy allows *-argocd-role from CSOC account
+   → arn:aws:iam::<SPOKE>:role/<namespace>-argocd-spoke-access
+   → Trust policy allows CSOC account root
 
 5. Using the assumed role credentials, argocd-k8s-auth generates an EKS token:
    → Presigned STS GetCallerIdentity URL wrapped in a bearer token

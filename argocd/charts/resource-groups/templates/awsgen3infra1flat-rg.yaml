@@ -1218,14 +1218,14 @@ spec:
         apiVersion: iam.services.k8s.aws/v1alpha1
         kind: Role
         metadata:
-          name: ${schema.spec.namespace}-argocd-spoke-role
+          name: ${schema.spec.namespace}-argocd-spoke-access
           namespace: ${schema.spec.namespace}
           annotations:
             services.k8s.aws/region: ${schema.spec.region}
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          name: ${schema.spec.namespace}-argocd-spoke-role
+          name: ${schema.spec.namespace}-argocd-spoke-access
           description: IAM role for ArgoCD application-controller on spoke ${schema.spec.namespace}
           assumeRolePolicyDocument: |
             {
@@ -1277,7 +1277,7 @@ spec:
               }
           tags:
             - key: Name
-              value: ${schema.spec.namespace}-argocd-spoke-role
+              value: ${schema.spec.namespace}-argocd-spoke-access
             - key: Environment
               value: ${schema.spec.environment}
             - key: ManagedBy

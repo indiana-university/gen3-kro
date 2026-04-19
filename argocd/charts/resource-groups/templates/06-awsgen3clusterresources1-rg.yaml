@@ -27,7 +27,7 @@
 #
 # Prerequisites:
 #   - Compute2 deployed with computeBridge
-#     (eks-cluster-endpoint, eks-cluster-ca, eks-cluster-name, argocd-spoke-role-arn)
+#     (eks-cluster-endpoint, eks-cluster-ca, eks-cluster-name, argocd-spoke-access-arn)
 #
 # Sync-wave ordering:
 #   Wave 30 instance (fleet-cluster-resource-instances AppSet)
@@ -143,7 +143,7 @@ spec:
             {
               "awsAuthConfig": {
                 "clusterName": "${computeBridge.data['eks-cluster-name']}",
-                "roleARN": "${computeBridge.data['argocd-spoke-role-arn']}"
+                "roleARN": "${computeBridge.data['argocd-spoke-access-arn']}"
               },
               "tlsClientConfig": {
                 "caData": "${computeBridge.data['eks-cluster-ca']}"

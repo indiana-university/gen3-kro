@@ -81,6 +81,14 @@ spec:
         metadata:
           name: ${schema.spec.namespace}
 
+    # ── ArgoCD Namespace (CSOC account ID for trust policy) ──────────
+    - id: argocdNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: argocd
+
     # ── Foundation Bridge (VPC, subnets, platform key) ───────────────
     - id: foundationBridge
       readyWhen:
@@ -297,7 +305,7 @@ spec:
               "Statement": [
                 {
                   "Effect": "Allow",
-                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
+                  "Principal": {"AWS": "arn:aws:iam::${argocdNamespace.metadata.annotations['csoc-account-id']}:root"},
                   "Action": "sts:AssumeRole"
                 }
               ]
@@ -365,4 +373,4 @@ spec:
           eks-cluster-name: ${schema.spec.name}-eks
           eks-cluster-ca: ${eksCluster.status.?certificateAuthority.?data.orValue("loading")}
           eks-oidc-issuer: ${eksCluster.status.?identity.?oidc.?issuer.orValue("loading")}
-          argocd-spoke-role-arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          argocd-spoke-access-arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
