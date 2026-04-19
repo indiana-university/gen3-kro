@@ -1669,7 +1669,7 @@ spec:
           opensearch_domain_arn: ${openSearchDomain.status.?ackResourceMetadata.?arn}
           # Cache (ElastiCache)
           elasticache_endpoint: ${replicationGroup.status.?configurationEndpoint.?address}
-          elasticache_port: ${replicationGroup.status.?configurationEndpoint.?port}
+          elasticache_port: ${string(replicationGroup.status.?configurationEndpoint.?port.orValue(0))}
           elasticache_arn: ${replicationGroup.status.?ackResourceMetadata.?arn}
           # WAF
           waf_acl_arn: ${wafWebAcl.status.?ackResourceMetadata.?arn}
