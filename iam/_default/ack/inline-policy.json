@@ -348,6 +348,7 @@
         "iam:CreateOpenIDConnectProvider",
         "iam:DeleteOpenIDConnectProvider",
         "iam:GetOpenIDConnectProvider",
+        "iam:ListOpenIDConnectProviderTags",
         "iam:UpdateOpenIDConnectProviderThumbprint",
         "iam:AddClientIDToOpenIDConnectProvider",
         "iam:RemoveClientIDFromOpenIDConnectProvider",
@@ -355,6 +356,38 @@
         "iam:UntagOpenIDConnectProvider"
       ],
       "Resource": "arn:aws:iam::*:oidc-provider/*"
+    },
+    {
+      "Sid": "ManageRoute53ForDNSAndACM",
+      "Effect": "Allow",
+      "Action": [
+        "route53:CreateHostedZone",
+        "route53:DeleteHostedZone",
+        "route53:GetHostedZone",
+        "route53:ListHostedZones",
+        "route53:ListHostedZonesByName",
+        "route53:UpdateHostedZoneComment",
+        "route53:ChangeTagsForResource",
+        "route53:ListTagsForResource",
+        "route53:ChangeResourceRecordSets",
+        "route53:ListResourceRecordSets",
+        "route53:GetChange"
+      ],
+      "Resource": "*"
+    },
+    {
+      "Sid": "ManageACMCertificates",
+      "Effect": "Allow",
+      "Action": [
+        "acm:RequestCertificate",
+        "acm:DeleteCertificate",
+        "acm:DescribeCertificate",
+        "acm:ListCertificates",
+        "acm:AddTagsToCertificate",
+        "acm:RemoveTagsFromCertificate",
+        "acm:ListTagsForCertificate"
+      ],
+      "Resource": "*"
     }
   ]
 }

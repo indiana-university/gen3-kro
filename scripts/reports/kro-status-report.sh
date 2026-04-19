@@ -22,24 +22,26 @@
 # Filename is derived from flags; existing files are overwritten unless -ts is used.
 #
 # Usage:
-#   bash scripts/kro-status-report.sh                      # → kro-status.ansi
-#   bash scripts/kro-status-report.sh --ns spoke1          # → kro-status-ns-spoke1.ansi
-#   bash scripts/kro-status-report.sh --section kro        # kro | ack | instances | argocd
-#   bash scripts/kro-status-report.sh --instance <name>    # filter to one instance
-#   bash scripts/kro-status-report.sh --json ./snap.json   # also emit JSON snapshot
-#   bash scripts/kro-status-report.sh -ts                  # append timestamp to filename
+#   bash scripts/reports/kro-status-report.sh                      # → kro-status.ansi
+#   bash scripts/reports/kro-status-report.sh --cluster spoke1     # → kro-status-cluster-spoke1.ansi
+#   bash scripts/reports/kro-status-report.sh --ns spoke1          # → kro-status-ns-spoke1.ansi
+#   bash scripts/reports/kro-status-report.sh --section kro        # kro | ack | instances | argocd
+#   bash scripts/reports/kro-status-report.sh --instance <name>    # filter to one instance
+#   bash scripts/reports/kro-status-report.sh --json ./snap.json   # also emit JSON snapshot
+#   bash scripts/reports/kro-status-report.sh -ts                  # append timestamp to filename
 #
 # Mirrors kind-csoc.sh script structure with inline logging helpers.
 ###############################################################################
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-REPO_DIR="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+REPO_DIR="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
 ADDONS_FILE="${REPO_DIR}/argocd/addons/addons.yaml"
 INFRA_DIR="${REPO_DIR}/argocd/cluster-fleet/local-aws-dev"
 
 # ── Argument Parsing ──────────────────────────────────────────────────────────
+FILTER_CLUSTER=""
 FILTER_NS=""
 FILTER_INSTANCE=""
 FILTER_SECTION=""   # kro | instances | ack | argocd | (empty = all)
@@ -48,21 +50,32 @@ ADD_TIMESTAMP=0
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
+    --cluster)   FILTER_CLUSTER="$2"; shift 2 ;;
     --ns)        FILTER_NS="$2";       shift 2 ;;
     --instance)  FILTER_INSTANCE="$2"; shift 2 ;;
     --section)   FILTER_SECTION="$2";  shift 2 ;;
     --json)      JSON_OUT="$2";        shift 2 ;;
     -ts)         ADD_TIMESTAMP=1;      shift ;;
     -h|--help)
-      sed -n '4,22p' "$0" | sed -E 's/^#( |$)//'
+      sed -n '4,23p' "$0" | sed -E 's/^#( |$)//'
       exit 0 ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
   esac
 done
 
+# ── Resolve INFRA_DIR from --cluster if provided ─────────────────────────────
+if [[ -n "${FILTER_CLUSTER}" ]]; then
+  INFRA_DIR="${REPO_DIR}/argocd/cluster-fleet/${FILTER_CLUSTER}"
+  if [[ ! -d "${INFRA_DIR}" ]]; then
+    echo "Error: cluster-fleet directory not found: ${INFRA_DIR}"
+    exit 1
+  fi
+fi
+
 # ── Compute output path from active flags ────────────────────────────────────
 _build_output_path() {
   local name="kro-status"
+  [[ -n "${FILTER_CLUSTER}" ]]   && name+="-cluster-${FILTER_CLUSTER}"
   [[ -n "${FILTER_SECTION}" ]]   && name+="-section-${FILTER_SECTION}"
   [[ -n "${FILTER_NS}" ]]        && name+="-ns-${FILTER_NS}"
   [[ -n "${FILTER_INSTANCE}" ]]  && name+="-instance-${FILTER_INSTANCE}"
@@ -203,27 +216,36 @@ ack_arn() {
   echo "${arn:-}" | sed 's/\(arn:[^:]*:[^:]*:[^:]*:\)[0-9]\{12\}/\1<account>/g'
 }
 
-# ── ACK resource types with human labels (ordered for display) ────────────────
-declare -a ACK_RESTYPES=(
-  "vpcs.ec2.services.k8s.aws|VPC"
-  "internetgateways.ec2.services.k8s.aws|InternetGateway"
-  "elasticipaddresses.ec2.services.k8s.aws|ElasticIPAddress"
-  "natgateways.ec2.services.k8s.aws|NatGateway"
-  "routetables.ec2.services.k8s.aws|RouteTable"
-  "subnets.ec2.services.k8s.aws|Subnet"
-  "securitygroups.ec2.services.k8s.aws|SecurityGroup"
-  "keys.kms.services.k8s.aws|KMS Key"
-  "buckets.s3.services.k8s.aws|S3 Bucket"
-  "queues.sqs.services.k8s.aws|SQS Queue"
-  "dbsubnetgroups.rds.services.k8s.aws|DBSubnetGroup"
-  "dbclusters.rds.services.k8s.aws|DBCluster"
-  "dbinstances.rds.services.k8s.aws|DBInstance"
-  "domains.opensearchservice.services.k8s.aws|OpenSearch Domain"
-  "roles.iam.services.k8s.aws|IAM Role"
-  "policies.iam.services.k8s.aws|IAM Policy"
-  "openidconnectproviders.iam.services.k8s.aws|OIDC Provider"
-  "secrets.secretsmanager.services.k8s.aws|SM Secret"
+# ── ACK resource types — discovered dynamically from live cluster CRDs ────────
+# Lazy-initialised on first call; result cached in _ACK_RESTYPES_CACHE.
+# Format per line: "plural.group|Human Label"
+_ACK_RESTYPES_CACHE=""
+_ensure_ack_restypes() {
+  [[ -n "${_ACK_RESTYPES_CACHE}" ]] && return
+  # NOTE: do NOT pipe kubectl output to 'python3 - << HEREDOC' — in bash the heredoc
+  # overrides the pipe for python3's stdin, causing kubectl to SIGPIPE under pipefail.
+  # Pass kubectl output via process substitution as sys.argv[1] instead.
+  _ACK_RESTYPES_CACHE=$(python3 - <(kubectl get crd -o json 2>/dev/null) << 'PYEOF'
+import sys, json, re
+try:
+    data = json.load(open(sys.argv[1]))
+except Exception:
+    sys.exit(0)
+results = []
+for item in data.get('items', []):
+    group = item.get('spec', {}).get('group', '')
+    if not group.endswith('.services.k8s.aws'):
+        continue
+    plural = item['metadata']['name']
+    kind   = item.get('spec', {}).get('names', {}).get('kind', '')
+    label  = re.sub(r'(?<=[a-z0-9])([A-Z])', r' \1', kind)
+    svc    = group.split('.')[0]
+    results.append((svc, plural, label))
+for svc, plural, label in sorted(results):
+    print(f"{plural}|{label}")
+PYEOF
 )
+}
 
 # ── Helper: print ACK resource table for a namespace ─────────────────────────
 # usage: report_ack_resources <namespace>
@@ -231,8 +253,8 @@ report_ack_resources() {
   local ns="$1"
   local any_found=0
 
-  for entry in "${ACK_RESTYPES[@]}"; do
-    IFS='|' read -r restype label <<< "${entry}"
+  _ensure_ack_restypes
+  while IFS='|' read -r restype label; do
     local items
     items=$(kget "${restype}" -n "${ns}" --no-headers 2>/dev/null) || continue
     [[ -z "${items}" ]] && continue
@@ -260,7 +282,7 @@ report_ack_resources() {
       printf "    ${clr}%s${_CLR_RST}  %-42s  synced=%-7s  ${_CLR_DIM}%s${_CLR_RST}\n" \
         "${icon}" "${resname}" "${synced}" "${arn}"
     done <<< "${items}"
-  done
+  done <<< "${_ACK_RESTYPES_CACHE}"
 
   if [[ "${any_found}" -eq 0 ]]; then
     echo -e "  ${_CLR_DIM}(no ACK resources found in namespace ${ns})${_CLR_RST}"
@@ -446,7 +468,7 @@ section_ack_controllers() {
 # ─────────────────────────────────────────────────────────────────────────────
 section_instances() {
   log_banner "SECTION 3 — KRO Instance Status"
-  log_info "Auto-discovering instances from cluster-fleet/local-aws-dev/{infrastructure,tests}/"
+  log_info "Auto-discovering instances from ${INFRA_DIR}/{infrastructure,tests}/"
 
   local entries
   readarray -t entries < <(discover_instances)

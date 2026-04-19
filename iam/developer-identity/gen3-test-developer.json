@@ -275,8 +275,44 @@
         ],
         "Resource": [
           "arn:aws:iam::${spoke1_account_id}:role/*-spoke-role",
-          "arn:aws:iam::${spoke2_account_id}:role/*-spoke-role"
+          "arn:aws:iam::${spoke1_account_id}:role/*-argocd-spoke-access",
+          "arn:aws:iam::${spoke2_account_id}:role/*-spoke-role",
+          "arn:aws:iam::${spoke2_account_id}:role/*-argocd-spoke-access"
         ]
+      },
+
+      {
+        "Sid": "Route53Management",
+        "Effect": "Allow",
+        "Action": [
+          "route53:CreateHostedZone",
+          "route53:DeleteHostedZone",
+          "route53:GetHostedZone",
+          "route53:ListHostedZones",
+          "route53:ListHostedZonesByName",
+          "route53:UpdateHostedZoneComment",
+          "route53:ChangeTagsForResource",
+          "route53:ListTagsForResource",
+          "route53:ChangeResourceRecordSets",
+          "route53:ListResourceRecordSets",
+          "route53:GetChange"
+        ],
+        "Resource": "*"
+      },
+
+      {
+        "Sid": "ACMManagement",
+        "Effect": "Allow",
+        "Action": [
+          "acm:RequestCertificate",
+          "acm:DeleteCertificate",
+          "acm:DescribeCertificate",
+          "acm:ListCertificates",
+          "acm:AddTagsToCertificate",
+          "acm:RemoveTagsFromCertificate",
+          "acm:ListTagsForCertificate"
+        ],
+        "Resource": "*"
       },
 
       {

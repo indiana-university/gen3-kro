@@ -10,8 +10,10 @@
 #      (ArgoCD uses awsAuthConfig + IRSA to authenticate to the spoke EKS)
 #   2. clusterResourcesApp — ArgoCD Application that deploys the
 #      cluster-resources umbrella chart (external-secrets, cert-manager) to spoke
-#      readyWhen gates on Application health=Healthy AND sync=Synced, ensuring
-#      ESO is actually running on the spoke before downstream tiers proceed.
+#      readyWhen gates on Application health=Healthy only — sync=Synced is NOT
+#      included because ArgoCD reports sync=Unknown when it cannot reach the spoke
+#      EKS API (credential timeout). Healthy status is sufficient to confirm ESO
+#      is deployed and running on the spoke.
 #   3. clusterResourcesBridge — bridge ConfigMap signalling readiness to
 #      downstream RGDs (gen3-helm, observability, etc.)
 #      Includes synchronization signals (app-health-status, app-sync-status)
@@ -159,7 +161,6 @@ spec:
       readyWhen:
         - ${clusterResourcesApp.metadata.?name.orValue('null') != 'null'}
         - ${clusterResourcesApp.status.?health.?status.orValue('Unknown') == 'Healthy'}
-        - ${clusterResourcesApp.status.?sync.?status.orValue('Unknown') == 'Synced'}
       template:
         apiVersion: argoproj.io/v1alpha1
         kind: Application
@@ -230,8 +231,8 @@ spec:
           # ── Synchronization signals ─────────────────────────────────────────
           # These fields are populated from the ArgoCD Application status.
           # The bridge is only written after clusterResourcesApp passes
-          # readyWhen (health=Healthy, sync=Synced), so their presence
-          # confirms ESO is deployed and running on the spoke.
+          # readyWhen (health=Healthy), so their presence confirms ESO is
+          # deployed and running on the spoke.
           app-health-status: ${clusterResourcesApp.status.?health.?status.orValue('Unknown')}
           app-sync-status: ${clusterResourcesApp.status.?sync.?status.orValue('Unknown')}
           argocd-app-name: ${schema.spec.name}-cluster-resources
