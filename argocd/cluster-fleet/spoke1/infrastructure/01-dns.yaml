@@ -11,7 +11,7 @@
 #   - Route53 hosted zone must already exist in AWS (adopted, not created)
 # ----------------------------------------------------------------------------
 apiVersion: kro.run/v1alpha1
-kind: AwsGen3Dns1
+kind: AwsGen3Dns2
 metadata:
   name: spoke1-dns
   namespace: spoke1
