@@ -1,35 +1,35 @@
-# ── AwsGen3Dns1 — Tier 0.5: DNS + TLS Certificate (~$0-1/mo) ─────────────────
-# Route53 HostedZone (adopted) + ACM Certificate (DNS validation).
-# Produces acmBridge ConfigMap consumed by Helm2 for revproxyArn.
-#
-# RGD: awsgen3dns1-rg.yaml  |  Kind: AwsGen3Dns1
-#
-# PREREQUISITES:
-#   - Namespace 'spoke1' must exist on the CSOC cluster
-#   - ACK controllers (route53, acm) must be running
-#   - KRO controller and awsgen3dns1-rg RGD must be registered
-#   - Route53 hosted zone must already exist in AWS (adopted, not created)
-# ----------------------------------------------------------------------------
-apiVersion: kro.run/v1alpha1
-kind: AwsGen3Dns2
-metadata:
-  name: spoke1-dns
-  namespace: spoke1
-  annotations:
-    argocd.argoproj.io/sync-wave: "16"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-spec:
-  name: spoke1
-  namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
-  adoptionPolicy: adopt-or-create
-  deletionPolicy: delete
+# # ── AwsGen3Dns1 — Tier 0.5: DNS + TLS Certificate (~$0-1/mo) ─────────────────
+# # Route53 HostedZone (adopted) + ACM Certificate (DNS validation).
+# # Produces acmBridge ConfigMap consumed by Helm2 for revproxyArn.
+# #
+# # RGD: awsgen3dns2-rg.yaml  |  Kind: AwsGen3Dns2
+# #
+# # PREREQUISITES:
+# #   - Namespace 'spoke1' must exist on the CSOC cluster
+# #   - ACK controllers (route53, acm) must be running
+# #   - KRO controller and awsgen3dns1-rg RGD must be registered
+# #   - Route53 hosted zone must already exist in AWS (adopted, not created)
+# # ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: AwsGen3Dns2
+# metadata:
+#   name: spoke1-dns
+#   namespace: spoke1
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "16"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+# spec:
+#   name: spoke1
+#   namespace: spoke1
+#   region: us-east-1
+#   environment: local
+#   project: gen3-kro
+#   adoptionPolicy: adopt-or-create
+#   deletionPolicy: delete
 
-  # ── DNS / TLS ─────────────────────────────────────────────────────────────
-  hostnamePrefix: spoke1dev
-  route53HostedZoneName: rds-pla.net
+#   # ── DNS / TLS ─────────────────────────────────────────────────────────────
+#   hostnamePrefix: spoke1dev
+#   route53HostedZoneName: rds-pla.net
 
-  # ── Bridge ────────────────────────────────────────────────────────────────
-  acmBridgeName: spoke1-acm-bridge
+#   # ── Bridge ────────────────────────────────────────────────────────────────
+#   acmBridgeName: spoke1-acm-bridge
