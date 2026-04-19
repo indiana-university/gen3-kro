@@ -1,196 +1,196 @@
-# # AwsGen3Dns2 — Tier 0.5: DNS + TLS Certificate (Modular RGD v2)
-# #
-# # Extracted from Foundation1 to isolate the Route53 HostedZone adoption
-# # and ACM certificate chain into a standalone graph. This avoids the
-# # ACK route53 controller bug blocking Foundation1 from reaching ACTIVE.
-# #
-# # ALWAYS (up to 4 resources):
-# #   DNS:     1 Route53 HostedZone (adopted by name — zone ID never in git)
-# #   TLS:     1 ACM Certificate (DNS validation)
-# #   DNS:     1 Route53 RecordSet (CNAME for ACM validation)
-# #   Bridge:  1 acmBridge ConfigMap (real cert ARN)
-# #
-# # PLACEHOLDER (when hostname or route53HostedZoneName is empty):
-# #   Bridge:  1 acmBridge ConfigMap (empty values)
-# #
-# # Downstream consumer: Helm2 reads acmBridge for revproxyArn.
+# AwsGen3Dns2 — Tier 0.5: DNS + TLS Certificate (Modular RGD v2)
+#
+# Extracted from Foundation1 to isolate the Route53 HostedZone adoption
+# and ACM certificate chain into a standalone graph. This avoids the
+# ACK route53 controller bug blocking Foundation1 from reaching ACTIVE.
+#
+# ALWAYS (up to 4 resources):
+#   DNS:     1 Route53 HostedZone (adopted by name — zone ID never in git)
+#   TLS:     1 ACM Certificate (DNS validation)
+#   DNS:     1 Route53 RecordSet (CNAME for ACM validation)
+#   Bridge:  1 acmBridge ConfigMap (real cert ARN)
+#
+# PLACEHOLDER (when hostname or route53HostedZoneName is empty):
+#   Bridge:  1 acmBridge ConfigMap (empty values)
+#
+# Downstream consumer: Helm2 reads acmBridge for revproxyArn.
 
-# apiVersion: kro.run/v1alpha1
-# kind: ResourceGraphDefinition
-# metadata:
-#   name: awsgen3dns2
-#   annotations:
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-#     argocd.argoproj.io/sync-wave: "0"
-# spec:
-#   schema:
-#     apiVersion: v1alpha1
-#     kind: AwsGen3Dns2
-#     spec:
-#       # ── Identity ──────────────────────────────────────────────────
-#       name: string | required=true
-#       namespace: string | default="default"
-#       region: string | default="us-east-1"
-#       environment: string | default="dev"
-#       project: string | default="gen3"
-#       adoptionPolicy: string | default="adopt-or-create"
-#       deletionPolicy: string | default="delete"
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3dns2
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Dns2
+    spec:
+      # ── Identity ──────────────────────────────────────────────────
+      name: string | required=true
+      namespace: string | default="default"
+      region: string | default="us-east-1"
+      environment: string | default="dev"
+      project: string | default="gen3"
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
 
-#       # ── DNS / TLS ────────────────────────────────────────────────
-#       hostnamePrefix: string | default=""
-#       route53HostedZoneName: string | default=""
+      # ── DNS / TLS ────────────────────────────────────────────────
+      hostnamePrefix: string | default=""
+      route53HostedZoneName: string | default=""
 
-#       # ── Bridge ───────────────────────────────────────────────────
-#       acmBridgeName: string | default="acm-bridge"
+      # ── Bridge ───────────────────────────────────────────────────
+      acmBridgeName: string | default="acm-bridge"
 
-#     status:
-#       hostedZoneID: ${hostedZone.status.?id.orValue("loading")}
-#       acmCertificateARN: ${acmCertificate.status.?ackResourceMetadata.?arn.orValue("loading")}
+    status:
+      hostedZoneID: ${hostedZone.status.?id.orValue("loading")}
+      acmCertificateARN: ${acmCertificate.status.?ackResourceMetadata.?arn.orValue("loading")}
 
-#   resources:
-#   # ====================================================================
-#   # Layer 0: Namespace Reference (reads owner-account-id annotation)
-#   # ====================================================================
+  resources:
+  # ====================================================================
+  # Layer 0: Namespace Reference (reads owner-account-id annotation)
+  # ====================================================================
 
-#     - id: spokeNamespace
-#       externalRef:
-#         apiVersion: v1
-#         kind: Namespace
-#         metadata:
-#           name: ${schema.spec.namespace}
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
 
-#   # ====================================================================
-#   # Route53 Hosted Zone Lookup (adopt existing zone by name)
-#   # ====================================================================
+  # ====================================================================
+  # Route53 Hosted Zone Lookup (adopt existing zone by name)
+  # ====================================================================
 
-#     - id: hostedZone
-#       includeWhen:
-#         - ${schema.spec.hostnamePrefix != ''}
-#         - ${schema.spec.route53HostedZoneName != ''}
-#       readyWhen:
-#         - ${hostedZone.status.?id.orValue('null') != 'null'}
-#         - ${hostedZone.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-#       template:
-#         apiVersion: route53.services.k8s.aws/v1alpha1
-#         kind: HostedZone
-#         metadata:
-#           name: ${schema.spec.name}-hosted-zone
-#           namespace: ${schema.spec.namespace}
-#           annotations:
-#             services.k8s.aws/region: ${schema.spec.region}
-#             services.k8s.aws/adoption-policy: adopt
-#             services.k8s.aws/deletion-policy: retain
-#         spec:
-#           name: ${schema.spec.route53HostedZoneName}
+    - id: hostedZone
+      includeWhen:
+        - ${schema.spec.hostnamePrefix != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
+      readyWhen:
+        - ${hostedZone.status.?id.orValue('null') != 'null'}
+        - ${hostedZone.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: route53.services.k8s.aws/v1alpha1
+        kind: HostedZone
+        metadata:
+          name: ${schema.spec.name}-hosted-zone
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: adopt
+            services.k8s.aws/deletion-policy: retain
+        spec:
+          name: ${schema.spec.route53HostedZoneName}
 
-#   # ====================================================================
-#   # ACM: Public TLS Certificate (DNS validation, auto-issued)
-#   # ====================================================================
+  # ====================================================================
+  # ACM: Public TLS Certificate (DNS validation, auto-issued)
+  # ====================================================================
 
-#     - id: acmCertificate
-#       includeWhen:
-#         - ${schema.spec.hostnamePrefix != ''}
-#         - ${schema.spec.route53HostedZoneName != ''}
-#       readyWhen:
-#         - ${acmCertificate.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-#         - ${acmCertificate.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-#         - ${acmCertificate.status.?domainValidations.orValue([]).size() > 0}
-#       template:
-#         apiVersion: acm.services.k8s.aws/v1alpha1
-#         kind: Certificate
-#         metadata:
-#           name: ${schema.spec.name}-acm-cert
-#           namespace: ${schema.spec.namespace}
-#           annotations:
-#             services.k8s.aws/region: ${schema.spec.region}
-#             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-#             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-#         spec:
-#           domainName: ${schema.spec.hostnamePrefix + '.' + schema.spec.route53HostedZoneName}
-#           tags:
-#             - key: Name
-#               value: ${schema.spec.name}-acm-cert
-#             - key: Environment
-#               value: ${schema.spec.environment}
-#             - key: ManagedBy
-#               value: Kro
-#             - key: Project
-#               value: ${schema.spec.project}
-#             - key: HostedZoneId
-#               value: ${hostedZone.status.?id.orValue('')}
+    - id: acmCertificate
+      includeWhen:
+        - ${schema.spec.hostnamePrefix != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
+      readyWhen:
+        - ${acmCertificate.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${acmCertificate.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${acmCertificate.status.?domainValidations.orValue([]).size() > 0}
+      template:
+        apiVersion: acm.services.k8s.aws/v1alpha1
+        kind: Certificate
+        metadata:
+          name: ${schema.spec.name}-acm-cert
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          domainName: ${schema.spec.hostnamePrefix + '.' + schema.spec.route53HostedZoneName}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-acm-cert
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+            - key: HostedZoneId
+              value: ${hostedZone.status.?id.orValue('')}
 
-#   # ====================================================================
-#   # Route53 DNS Validation CNAME (auto-validates the ACM cert)
-#   # ====================================================================
+  # ====================================================================
+  # Route53 DNS Validation CNAME (auto-validates the ACM cert)
+  # ====================================================================
 
-#     - id: dnsValidationRecord
-#       includeWhen:
-#         - ${schema.spec.hostnamePrefix != ''}
-#         - ${schema.spec.route53HostedZoneName != ''}
-#       readyWhen:
-#         - ${dnsValidationRecord.status.?status.orValue('null') != 'null'}
-#         - ${dnsValidationRecord.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-#       template:
-#         apiVersion: route53.services.k8s.aws/v1alpha1
-#         kind: RecordSet
-#         metadata:
-#           name: ${schema.spec.name}-acm-validation
-#           namespace: ${schema.spec.namespace}
-#           annotations:
-#             services.k8s.aws/region: ${schema.spec.region}
-#             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-#             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-#         spec:
-#           hostedZoneID: ${hostedZone.status.?id.orValue('')}
-#           name: ${acmCertificate.status.domainValidations[0].resourceRecord.name}
-#           recordType: CNAME
-#           ttl: 300
-#           resourceRecords:
-#             - value: ${acmCertificate.status.domainValidations[0].resourceRecord.value}
+    - id: dnsValidationRecord
+      includeWhen:
+        - ${schema.spec.hostnamePrefix != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
+      readyWhen:
+        - ${dnsValidationRecord.status.?status.orValue('null') != 'null'}
+        - ${dnsValidationRecord.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: route53.services.k8s.aws/v1alpha1
+        kind: RecordSet
+        metadata:
+          name: ${schema.spec.name}-acm-validation
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          hostedZoneID: ${hostedZone.status.?id.orValue('')}
+          name: ${acmCertificate.status.domainValidations[0].resourceRecord.name}
+          recordType: CNAME
+          ttl: 300
+          resourceRecords:
+            - value: ${acmCertificate.status.domainValidations[0].resourceRecord.value}
 
-#   # ====================================================================
-#   # ACM BRIDGE: Certificate Outputs (mutual exclusion pattern — Test 8)
-#   # ====================================================================
+  # ====================================================================
+  # ACM BRIDGE: Certificate Outputs (mutual exclusion pattern — Test 8)
+  # ====================================================================
 
-#     # ── ACM Bridge (when cert exists — real ARN) ─────────────────────
-#     - id: acmBridge
-#       includeWhen:
-#         - ${schema.spec.hostnamePrefix != ''}
-#         - ${schema.spec.route53HostedZoneName != ''}
-#       readyWhen:
-#         - ${acmBridge.metadata.?name.orValue('null') != 'null'}
-#       template:
-#         apiVersion: v1
-#         kind: ConfigMap
-#         metadata:
-#           name: ${schema.spec.acmBridgeName}
-#           namespace: ${schema.spec.namespace}
-#           labels:
-#             app.kubernetes.io/managed-by: kro
-#             gen3.io/tier: dns
-#             gen3.io/bridge: "true"
-#             gen3.io/purpose: acm
-#         data:
-#           acm-cert-arn: ${acmCertificate.status.?ackResourceMetadata.?arn}
-#           hostname: ${schema.spec.hostnamePrefix + '.' + schema.spec.route53HostedZoneName}
+    # ── ACM Bridge (when cert exists — real ARN) ─────────────────────
+    - id: acmBridge
+      includeWhen:
+        - ${schema.spec.hostnamePrefix != ''}
+        - ${schema.spec.route53HostedZoneName != ''}
+      readyWhen:
+        - ${acmBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.acmBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: dns
+            gen3.io/bridge: "true"
+            gen3.io/purpose: acm
+        data:
+          acm-cert-arn: ${acmCertificate.status.?ackResourceMetadata.?arn}
+          hostname: ${schema.spec.hostnamePrefix + '.' + schema.spec.route53HostedZoneName}
 
-#     # ── ACM Bridge Placeholder (when no cert — empty values) ─────────
-#     - id: acmBridgePlaceholder
-#       includeWhen:
-#         - ${schema.spec.hostnamePrefix == '' || schema.spec.route53HostedZoneName == ''}
-#       readyWhen:
-#         - ${acmBridgePlaceholder.metadata.?name.orValue('null') != 'null'}
-#       template:
-#         apiVersion: v1
-#         kind: ConfigMap
-#         metadata:
-#           name: ${schema.spec.acmBridgeName}
-#           namespace: ${schema.spec.namespace}
-#           labels:
-#             app.kubernetes.io/managed-by: kro
-#             gen3.io/tier: dns
-#             gen3.io/bridge: "true"
-#             gen3.io/purpose: acm
-#         data:
-#           acm-cert-arn: ""
-#           hostname: ""
+    # ── ACM Bridge Placeholder (when no cert — empty values) ─────────
+    - id: acmBridgePlaceholder
+      includeWhen:
+        - ${schema.spec.hostnamePrefix == '' || schema.spec.route53HostedZoneName == ''}
+      readyWhen:
+        - ${acmBridgePlaceholder.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.acmBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: dns
+            gen3.io/bridge: "true"
+            gen3.io/purpose: acm
+        data:
+          acm-cert-arn: ""
+          hostname: ""
