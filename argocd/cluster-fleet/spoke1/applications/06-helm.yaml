@@ -66,7 +66,7 @@ spec:
   iamNamespace: spoke1
   messagingBridgeName: spoke1-messaging-bridge
   messagingNamespace: spoke1
-  acmBridgeName: spoke1-acm-bridge
+  acmBridgeName: spoke1-dns-bridge
   acmNamespace: spoke1
   clusterResourcesBridgeName: spoke1-cluster-resources-bridge
   clusterResourcesNamespace: spoke1

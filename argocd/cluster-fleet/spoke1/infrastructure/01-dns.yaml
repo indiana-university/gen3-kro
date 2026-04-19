@@ -1,35 +1,37 @@
-# # ── AwsGen3Dns1 — Tier 0.5: DNS + TLS Certificate (~$0-1/mo) ─────────────────
-# # Route53 HostedZone (adopted) + ACM Certificate (DNS validation).
-# # Produces acmBridge ConfigMap consumed by Helm2 for revproxyArn.
-# #
-# # RGD: awsgen3dns2-rg.yaml  |  Kind: AwsGen3Dns2
-# #
-# # PREREQUISITES:
-# #   - Namespace 'spoke1' must exist on the CSOC cluster
-# #   - ACK controllers (route53, acm) must be running
-# #   - KRO controller and awsgen3dns1-rg RGD must be registered
-# #   - Route53 hosted zone must already exist in AWS (adopted, not created)
-# # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Dns2
-# metadata:
-#   name: spoke1-dns
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "16"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   region: us-east-1
-#   environment: local
-#   project: gen3-kro
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
+# ── AwsGen3Dns2 — Tier 0.5: DNS + TLS Certificate (~$0-1/mo) ─────────────────
+# ACM Certificate (DNS validation) + single dnsBridge ConfigMap.
+# Route53 hosted zone ID is read from namespace annotation
+# (gen3.io/route53-hosted-zone-id), injected by Terraform/multi-acct chart.
+# Set createHostedZone: true to have ACK create the zone instead.
+#
+# RGD: awsgen3dns2-rg.yaml  |  Kind: AwsGen3Dns2
+#
+# PREREQUISITES:
+#   - Namespace 'spoke1' must exist with gen3.io/route53-hosted-zone-id annotation
+#   - ACK controllers (route53, acm) must be running
+#   - KRO controller and awsgen3dns2-rg RGD must be registered
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Dns2
+metadata:
+  name: spoke1-dns
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: dev
+  project: gen3-kro
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
 
-#   # ── DNS / TLS ─────────────────────────────────────────────────────────────
-#   hostnamePrefix: spoke1dev
-#   route53HostedZoneName: rds-pla.net
+  # ── DNS / TLS ─────────────────────────────────────────────────────────────
+  # Zone ID comes from namespace annotation (gen3.io/route53-hosted-zone-id)
+  hostnamePrefix: spoke1dev
+  createHostedZone: false
 
-#   # ── Bridge ────────────────────────────────────────────────────────────────
-#   acmBridgeName: spoke1-acm-bridge
+  # ── Bridge ────────────────────────────────────────────────────────────────
+  dnsBridgeName: spoke1-dns-bridge
