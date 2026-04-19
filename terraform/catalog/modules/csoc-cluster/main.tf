@@ -13,6 +13,7 @@ module "aws_csoc" {
   # AWS
   aws_profile        = var.aws_profile
   spoke_account_ids  = var.spoke_account_ids
+  spoke_dns_config   = var.spoke_dns_config
 
   # Naming
   csoc_alias = var.csoc_alias
@@ -105,6 +106,7 @@ module "argocd_bootstrap" {
   argocd_cluster_annotations = module.aws_csoc.argocd_cluster_annotations_base
   ack_self_managed_role_arn  = module.aws_csoc.ack_csoc_role_arn
   spoke_account_ids          = module.aws_csoc.spoke_account_ids
+  spoke_dns_config           = module.aws_csoc.spoke_dns_config
 
   # Secrets Manager repos
   ssm_repo_secret_names = var.ssm_repo_secret_names

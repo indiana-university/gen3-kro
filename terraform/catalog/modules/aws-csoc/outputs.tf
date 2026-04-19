@@ -35,6 +35,11 @@ output "spoke_account_ids" {
   value       = local.spoke_account_ids
 }
 
+output "spoke_dns_config" {
+  description = "Spoke DNS config (hosted zone ID + name per spoke)"
+  value       = local.spoke_dns_config
+}
+
 # AWS Profile
 output "aws_profile" {
   description = "AWS profile used for CSOC cluster"

@@ -30,6 +30,7 @@ locals {
   # Account IDs - retrieved dynamically from AWS profiles
   csoc_account_id    = data.aws_caller_identity.current.account_id
   spoke_account_ids = var.spoke_account_ids
+  spoke_dns_config  = var.spoke_dns_config
 
   gitops_addons_org_name = var.gitops_addons_org_name != "" ? var.gitops_addons_org_name : var.git_org_name
   gitops_fleet_org_name  = var.gitops_fleet_org_name != "" ? var.gitops_fleet_org_name : var.git_org_name

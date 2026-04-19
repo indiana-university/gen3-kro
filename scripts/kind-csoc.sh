@@ -533,10 +533,14 @@ discover_spoke_namespaces() {
 ###############################################################################
 # HELPER: create_spoke_namespaces — Create spoke Namespaces with ACK annotation
 #
-# Creates all KRO instance namespaces with services.k8s.aws/owner-account-id,
+# Creates all KRO instance namespaces with services.k8s.aws/owner-account-id
+# and optional DNS annotations (gen3.io/route53-hosted-zone-id, gen3.io/route53-hosted-zone-name),
 # required by ACK controllers to route API calls to the correct AWS account.
 # Namespace list is discovered from fleet instance YAMLs (not hardcoded).
 # Called by stage_install (initial setup) and stage_inject_creds (cred renewal).
+#
+# DNS annotations are sourced from ROUTE53_HOSTED_ZONE_ID and ROUTE53_HOSTED_ZONE_NAME
+# environment variables. If not set, empty strings are used (RGD creates the zone).
 ###############################################################################
 create_spoke_namespaces() {
   local aws_account_id="$1"
@@ -557,6 +561,15 @@ create_spoke_namespaces() {
   ns_count=$(echo "$discovered_namespaces" | wc -l)
   log_info "Discovered ${ns_count} namespaces from fleet instance YAMLs"
 
+  # DNS config from environment (empty → RGD creates the hosted zone)
+  local hosted_zone_id="${ROUTE53_HOSTED_ZONE_ID:-}"
+  local hosted_zone_name="${ROUTE53_HOSTED_ZONE_NAME:-}"
+  if [[ -n "${hosted_zone_id}" ]]; then
+    log_info "DNS: hosted zone ID=${hosted_zone_id} name=${hosted_zone_name}"
+  else
+    log_info "DNS: no hosted zone configured — RGD will create if needed"
+  fi
+
   while IFS= read -r ns; do
     [[ -z "$ns" ]] && continue
     kubectl apply --context "$KIND_CONTEXT" -f - <<NSYAML
@@ -566,6 +579,8 @@ metadata:
   name: ${ns}
   annotations:
     services.k8s.aws/owner-account-id: "${aws_account_id}"
+    gen3.io/route53-hosted-zone-id: "${hosted_zone_id}"
+    gen3.io/route53-hosted-zone-name: "${hosted_zone_name}"
 NSYAML
     log_success "Namespace '${ns}' created/annotated with owner-account-id"
   done <<< "$discovered_namespaces"

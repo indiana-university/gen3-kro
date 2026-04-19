@@ -21,6 +21,15 @@ module "csoc_cluster" {
     for s in var.spokes : s.alias => s.provider.account_id
     if try(s.enabled, false)
   }
+  # Derive spoke_dns_config from spokes[].dns (hosted zone ID + name per spoke).
+  # Only includes spokes that are enabled and have dns config defined.
+  spoke_dns_config = {
+    for s in var.spokes : s.alias => {
+      hosted_zone_id   = try(s.dns.hosted_zone_id, "")
+      hosted_zone_name = try(s.dns.hosted_zone_name, "")
+    }
+    if try(s.enabled, false)
+  }
 
   # VPC
   vpc_cidr             = var.vpc_cidr

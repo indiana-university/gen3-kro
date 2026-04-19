@@ -24,6 +24,15 @@ variable "spoke_account_ids" {
   default     = {}
 }
 
+variable "spoke_dns_config" {
+  description = "Map of spoke alias to DNS config (hosted_zone_id, hosted_zone_name)"
+  type = map(object({
+    hosted_zone_id   = string
+    hosted_zone_name = string
+  }))
+  default = {}
+}
+
 variable "csoc_alias" {
   description = "Base alias for all CSOC resources. Derived names: cluster={csoc_alias}-csoc-cluster, vpc={csoc_alias}-csoc-vpc"
   type        = string

@@ -96,6 +96,10 @@
         "aws_profile": "<SPOKE1_AWS_PROFILE>",
         "region": "us-east-1",
         "account_id": "<SPOKE1_ACCOUNT_ID>"
+      },
+      "dns": {
+        "hosted_zone_id": "",
+        "hosted_zone_name": ""
       }
     },
     {
@@ -106,6 +110,10 @@
         "aws_profile": "<SPOKE2_AWS_PROFILE>",
         "region": "us-east-1",
         "account_id": "<SPOKE2_ACCOUNT_ID>"
+      },
+      "dns": {
+        "hosted_zone_id": "",
+        "hosted_zone_name": ""
       }
     }
   ],

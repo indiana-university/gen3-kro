@@ -82,6 +82,11 @@ locals {
     # fail when no spoke accounts are configured yet. Empty JSON → no namespaces.
     {
       fleet_spokes_json = length(var.spoke_account_ids) > 0 ? jsonencode(var.spoke_account_ids) : "{}"
+    },
+    # DNS config per spoke — hosted zone IDs and names for namespace annotations.
+    # Empty JSON → no DNS annotations on spoke namespaces.
+    {
+      fleet_dns_json = length(var.spoke_dns_config) > 0 ? jsonencode(var.spoke_dns_config) : "{}"
     }
   )
 
@@ -140,6 +145,9 @@ resource "kubernetes_secret_v1" "spoke_fleet" {
         # Explicitly empty so fleet-instances go template (missingkey=error) falls
         # back to cluster-fleet/{{.name}} instead of erroring on a missing map key.
         fleet_instances_path = ""
+        # DNS config per spoke — empty strings when not configured
+        spoke_hosted_zone_id   = try(var.spoke_dns_config[each.key].hosted_zone_id, "")
+        spoke_hosted_zone_name = try(var.spoke_dns_config[each.key].hosted_zone_name, "")
       }
     )
   }
