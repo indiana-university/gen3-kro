@@ -93,7 +93,7 @@ spec:
       argoCDNamespace: string | default="argocd"
 
       # ==================== Node Group Configuration ====================
-      nodeInstanceTypes: "[]string | default=['t3.large']"
+      nodeInstanceTypes: '[]string | default=["t3.large"]'
       nodeDesiredSize: integer | default=2
       nodeMinSize: integer | default=1
       nodeMaxSize: integer | default=4
