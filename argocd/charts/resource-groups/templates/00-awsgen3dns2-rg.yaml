@@ -1,4 +1,4 @@
-# AwsGen3Dns1 — Tier 0.5: DNS + TLS Certificate (Modular RGD v1)
+# AwsGen3Dns2 — Tier 0.5: DNS + TLS Certificate (Modular RGD v2)
 #
 # Extracted from Foundation1 to isolate the Route53 HostedZone adoption
 # and ACM certificate chain into a standalone graph. This avoids the
@@ -25,7 +25,7 @@ metadata:
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsGen3Dns1
+    kind: AwsGen3Dns2
     spec:
       # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
