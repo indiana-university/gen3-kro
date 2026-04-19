@@ -28,18 +28,26 @@ ok()      { echo -e "${GREEN}✓  $1${RESET}"; }
 
 # ── Argument parsing ───────────────────────────────────────────────────────
 if [[ $# -lt 1 ]]; then
-  echo "Usage: $0 <namespace> [--no-save]"
+  echo "Usage: $0 <namespace> [--no-save] [-t]"
   echo ""
   echo "Example: $0 spoke1"
   echo ""
   echo "Options:"
-  echo "  --no-save   Skip saving report to outputs/namespaced-reports/"
+  echo "  --no-save   Skip saving report to outputs/reports/"
+  echo "  -t          Append timestamp to output filename"
   exit 1
 fi
 
 NAMESPACE="$1"
 SAVE_REPORT=true
-[[ "${2:-}" == "--no-save" ]] && SAVE_REPORT=false
+ADD_TIMESTAMP=false
+shift
+for arg in "$@"; do
+  case "${arg}" in
+    --no-save) SAVE_REPORT=false ;;
+    -t)        ADD_TIMESTAMP=true ;;
+  esac
+done
 
 # Verify namespace exists
 if ! kubectl get namespace "$NAMESPACE" &>/dev/null; then
@@ -51,8 +59,12 @@ fi
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 RGD_DIR="${REPO_ROOT}/argocd/charts/resource-groups/templates"
-REPORT_DIR="$REPO_ROOT/outputs/namespaced-reports"
-REPORT_FILE="$REPORT_DIR/${NAMESPACE}-report.ansi"
+REPORT_DIR="$REPO_ROOT/outputs/reports"
+REPORT_FILENAME="${NAMESPACE}-report"
+if [[ "${ADD_TIMESTAMP}" == true ]]; then
+  REPORT_FILENAME="${REPORT_FILENAME}-$(date '+%Y%m%d-%H%M%S')"
+fi
+REPORT_FILE="$REPORT_DIR/${REPORT_FILENAME}.ansi"
 TIMESTAMP=$(date -u '+%Y-%m-%dT%H:%M:%SZ')
 
 if [[ "$SAVE_REPORT" == true ]]; then

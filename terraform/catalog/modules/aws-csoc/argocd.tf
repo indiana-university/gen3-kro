@@ -34,7 +34,7 @@ resource "aws_iam_role" "argocd_self_managed" {
 ###############################################################################
 
 # Allow the ArgoCD role to assume spoke ArgoCD roles created by the RGD.
-# Pattern mirrors ack_csoc_assume_spoke but scoped to *-argocd-spoke-role.
+# Pattern mirrors ack_csoc_assume_spoke but scoped to *-argocd-spoke-access.
 resource "aws_iam_role_policy" "argocd_assume_spoke" {
   count = local.argocd_self_managed && var.enable_argocd_self_managed && length(aws_iam_role.argocd_self_managed) > 0 ? 1 : 0
   name  = "${local.name}-argocd-assume-spoke"
@@ -50,7 +50,7 @@ resource "aws_iam_role_policy" "argocd_assume_spoke" {
           "sts:AssumeRole",
           "sts:TagSession"
         ]
-        Resource = "arn:aws:iam::*:role/*-argocd-spoke-role"
+        Resource = "arn:aws:iam::*:role/*-argocd-spoke-access"
       }
     ]
   })

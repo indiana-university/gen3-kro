@@ -608,7 +608,6 @@ fi
 ###############################################################################
 # STAGE: connect — kubeconfig + ArgoCD port-forward (no TF dependency)
 #
-# Runs inline. Does NOT depend on Terraform-generated connect-csoc.sh.
 # Safe to call on every container start — only acts when the cluster is
 # reachable.
 ###############################################################################
@@ -626,13 +625,12 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
   _credential_warning "before" "connect"
 
   CONFIG_FILE="${REPO_DIR}/config/shared.auto.tfvars.json"
+  CLUSTER_NAME=""
+  CLUSTER_REGION="${AWS_REGION:-us-east-1}"
+  CLUSTER_PROFILE="${AWS_PROFILE:-csoc}"
 
-  if [[ ! -f "$CONFIG_FILE" ]]; then
-    echo "  WARNING: config/shared.auto.tfvars.json not found — skipping connect."
-  elif ! command -v jq &>/dev/null; then
-    echo "  WARNING: jq not installed — skipping connect."
-  else
-    # Derive cluster_name from csoc_alias (new convention) or fall back to legacy cluster_name
+  if [[ -f "$CONFIG_FILE" ]] && command -v jq &>/dev/null; then
+    # Primary: derive from config file
     local CSOC_ALIAS
     CSOC_ALIAS="$(jq -r '.csoc_alias // empty' "$CONFIG_FILE")"
     if [[ -n "$CSOC_ALIAS" ]]; then
@@ -642,10 +640,21 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
     fi
     CLUSTER_REGION="$(jq -r '.region // "us-east-1"' "$CONFIG_FILE")"
     CLUSTER_PROFILE="${AWS_PROFILE:-$(jq -r '.aws_profile // "csoc"' "$CONFIG_FILE")}"
+  fi
 
-    if [[ -z "$CLUSTER_NAME" ]]; then
-      echo "  WARNING: csoc_alias not set in config — skipping connect."
+  # Fallback: auto-discover CSOC cluster via aws eks list-clusters
+  if [[ -z "$CLUSTER_NAME" ]]; then
+    echo "  config/shared.auto.tfvars.json not found or missing csoc_alias — trying EKS auto-discovery..."
+    CLUSTER_NAME=$(aws eks list-clusters --region "${CLUSTER_REGION}" --output text 2>/dev/null \
+      | tr '\t' '\n' | grep -v '^CLUSTERS$' | grep -E '\-csoc\-cluster$' | head -1 || true)
+    if [[ -n "$CLUSTER_NAME" ]]; then
+      echo "  ✓ Auto-discovered CSOC cluster: ${CLUSTER_NAME}"
     else
+      echo "  ✗ No *-csoc-cluster found via aws eks list-clusters — skipping connect."
+    fi
+  fi
+
+  if [[ -n "$CLUSTER_NAME" ]]; then
       echo "  Cluster: ${CLUSTER_NAME}  Region: ${CLUSTER_REGION}  Profile: ${CLUSTER_PROFILE}"
 
       # ── Update kubeconfig ─────────────────────────────────────────────
@@ -712,7 +721,6 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
       else
         echo "  Cluster not reachable — skipping ArgoCD setup (deploy first with: bash scripts/install.sh apply)"
       fi
-    fi
   fi
 
   _credential_warning "after" "connect"
