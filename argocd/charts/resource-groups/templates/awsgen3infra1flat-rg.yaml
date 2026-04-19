@@ -1460,11 +1460,11 @@ spec:
             {
               "awsAuthConfig": {
                 "clusterName": "${schema.spec.name}",
-                "roleARN": "${argoCDSpokeRole.status.?ackResourceMetadata.?arn}"
+                "roleARN": "${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('loading')}"
               },
               "tlsClientConfig": {
                 "insecure": false,
-                "caData": "${eksCluster.status.?certificateAuthority.?data}"
+                "caData": "${eksCluster.status.?certificateAuthority.?data.orValue('loading')}"
               }
             }
   # ====================================================================
@@ -1646,9 +1646,9 @@ spec:
           eks_cluster_arn: ${eksCluster.status.?ackResourceMetadata.?arn}
           # Network
           vpc_id: ${vpc.status.?vpcID}
-          private_subnet_ids: "${privatesubnet1.status.?subnetID},${privatesubnet2.status.?subnetID}"
-          db_subnet_ids: "${dbsubnet1.status.?subnetID},${dbsubnet2.status.?subnetID}"
-          public_subnet_ids: "${publicsubnet1.status.?subnetID},${publicsubnet2.status.?subnetID}"
+          private_subnet_ids: "${privatesubnet1.status.?subnetID.orValue('loading')},${privatesubnet2.status.?subnetID.orValue('loading')}"
+          db_subnet_ids: "${dbsubnet1.status.?subnetID.orValue('loading')},${dbsubnet2.status.?subnetID.orValue('loading')}"
+          public_subnet_ids: "${publicsubnet1.status.?subnetID.orValue('loading')},${publicsubnet2.status.?subnetID.orValue('loading')}"
           # S3
           logging_bucket_arn: ${loggingBucket.status.?ackResourceMetadata.?arn}
           data_bucket_arn: ${dataBucket.status.?ackResourceMetadata.?arn}
@@ -2883,7 +2883,7 @@ spec:
                 installCRDs: true
                 serviceAccount:
                   annotations:
-                    eks.amazonaws.com/role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn}
+                    eks.amazonaws.com/role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
           destination:
             name: ${schema.spec.name}
             namespace: external-secrets
@@ -2933,9 +2933,9 @@ spec:
                   create: true
                   name: aws-load-balancer-controller
                   annotations:
-                    eks.amazonaws.com/role-arn: ${albControllerRole.status.?ackResourceMetadata.?arn}
+                    eks.amazonaws.com/role-arn: ${albControllerRole.status.?ackResourceMetadata.?arn.orValue("loading")}
                 region: ${schema.spec.region}
-                vpcId: ${vpc.status.?vpcID}
+                vpcId: ${vpc.status.?vpcID.orValue("loading")}
           destination:
             name: ${schema.spec.name}
             namespace: kube-system
@@ -3009,7 +3009,7 @@ spec:
                     secretStoreServiceAccount:
                       enabled: "${string(schema.spec.externalSecretsEnabled)}"
                       name: external-secrets-sa
-                      roleArn: ${externalSecretsRole.status.?ackResourceMetadata.?arn}
+                      roleArn: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
                   postgres:
                     dbCreate: "${string(schema.spec.dbCreateEnabled)}"
                     externalSecret: ${schema.spec.postgresExternalSecret}
@@ -3017,7 +3017,7 @@ spec:
                     deploy: "${string(schema.spec.externalSecretsEnabled)}"
                 aws-es-proxy:
                   enabled: "${string(schema.spec.awsEsProxyEnabled)}"
-                  esEndpoint: ${openSearchDomain.status.?endpoint}
+                  esEndpoint: ${openSearchDomain.status.?endpoint.orValue("loading")}
                 ambassador:
                   enabled: true
                 arborist:
@@ -3033,7 +3033,7 @@ spec:
                   enabled: "${string(schema.spec.fenceEnabled)}"
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${fenceRole.status.?ackResourceMetadata.?arn}
+                      eks.amazonaws.com/role-arn: ${fenceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
                   externalSecrets:
                     fenceJwtKeys: ""
                     fenceConfig: ${schema.spec.fenceConfigSM}
@@ -3066,7 +3066,7 @@ spec:
                   enabled: "${string(schema.spec.auditEnabled)}"
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${auditRole.status.?ackResourceMetadata.?arn}
+                      eks.amazonaws.com/role-arn: ${auditRole.status.?ackResourceMetadata.?arn.orValue("loading")}
                   externalSecrets:
                     dbcreds: ${schema.spec.auditDbcredsSM}
                     createK8sAuditSecret: true
@@ -3075,17 +3075,17 @@ spec:
                     type: aws_sqs
                     sqs:
                       region: ${schema.spec.region}
-                      url: ${auditQueue.status.?queueURL}
+                      url: ${auditQueue.status.?queueURL.orValue("loading")}
                 hatchery:
                   enabled: "${string(schema.spec.hatcheryEnabled)}"
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn}
+                      eks.amazonaws.com/role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue("loading")}
                 manifestservice:
                   enabled: "${string(schema.spec.manifestserviceEnabled)}"
                   serviceAccount:
                     annotations:
-                      eks.amazonaws.com/role-arn: ${manifestserviceRole.status.?ackResourceMetadata.?arn}
+                      eks.amazonaws.com/role-arn: ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
                 portal:
                   enabled: "${string(schema.spec.portalEnabled)}"
                 requestor:
@@ -3101,7 +3101,7 @@ spec:
                 ssjdispatcher:
                   enabled: "${string(schema.spec.ssjdispatcherEnabled)}"
                   ssjcreds:
-                    sqsUrl: ${ssjdispatcherQueue.status.?queueURL}
+                    sqsUrl: ${ssjdispatcherQueue.status.?queueURL.orValue("loading")}
                 etl:
                   esEndpoint: gen3-elasticsearch-master
           destination:
