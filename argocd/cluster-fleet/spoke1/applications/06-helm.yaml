@@ -42,9 +42,9 @@ spec:
   # ── Gen3 Helm chart source ────────────────────────────────────────────────
   # Uses upstream uc-cdis/gen3-helm Git repo directly.
   # Defaults are correct (uc-cdis/gen3-helm.git / helm/gen3 / master)
-  # gen3HelmRepoURL: (default: https://github.com/uc-cdis/gen3-helm.git)
-  # gen3HelmPath: (default: helm/gen3)
-  # gen3HelmTargetRevision: (default: master)
+  gen3HelmRepoURL: https://github.com/uc-cdis/gen3-helm.git
+  gen3HelmPath: helm/gen3
+  gen3HelmTargetRevision: master
 
   # ── Bridge references (all in spoke1 namespace) ───────────────────────────
   foundationBridgeName: spoke1-foundation-bridge

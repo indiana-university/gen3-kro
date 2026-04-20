@@ -52,6 +52,9 @@ spec:
       # cluster-resources and gen3-helm resolve from upstream helm/
       # application paths in the same repository.
       gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
+      # Retained for backward-compatible schema updates. The template uses
+      # path-based sourcing, so this field is ignored by the rendered app.
+      gen3HelmChart: string | default="gen3"
       gen3HelmPath: string | default="helm/gen3"
       gen3HelmTargetRevision: string | default="master"
 
