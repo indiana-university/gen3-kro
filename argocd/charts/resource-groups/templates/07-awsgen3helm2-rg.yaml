@@ -48,10 +48,12 @@ spec:
       argoCDProject: string | default="default"
 
       # ── Gen3-Helm Source ─────────────────────────────────────────
-      gen3HelmRepoURL: string | default="https://helm.gen3.org"
-      gen3HelmChart: string | default="gen3"
+      # Use the canonical uc-cdis/gen3-helm Git repo directly so both
+      # cluster-resources and gen3-helm resolve from upstream helm/
+      # application paths in the same repository.
+      gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
       gen3HelmPath: string | default="helm/gen3"
-      gen3HelmTargetRevision: string | default="0.3.25"
+      gen3HelmTargetRevision: string | default="master"
 
       # ── Bridge References (ALL required for full deployment) ────
       foundationBridgeName: string | required=true
@@ -247,7 +249,7 @@ spec:
                 - /stringData
           source:
             repoURL: ${schema.spec.gen3HelmRepoURL}
-            chart: ${schema.spec.gen3HelmChart}
+            path: ${schema.spec.gen3HelmPath}
             targetRevision: ${schema.spec.gen3HelmTargetRevision}
             helm:
               releaseName: gen3
