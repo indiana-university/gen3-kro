@@ -1,76 +1,76 @@
-# ── AwsGen3Helm2 — Tier 5: Gen3 Application Deployment (~$0 pods) ────────────
-# Deploys the upstream uc-cdis/gen3-helm chart via an ArgoCD Application on the
-# spoke cluster. Reads ALL 10 upstream bridges to construct the Helm values.
-#
-# RGD: awsgen3helm2-rg.yaml  |  Kind: AwsGen3Helm2
-#
-# PREREQUISITES:
-#   - ALL upstream tiers must be Ready and their bridges must exist:
-#     Foundation (spoke1-foundation-bridge), Storage (spoke1-storage-bridge),
-#     Database (spoke1-database-bridge), Search (spoke1-search-bridge),
-#     Compute (spoke1-compute-bridge), IAM (spoke1-iam-bridge),
-#     Messaging (spoke1-messaging-bridge), ACM (spoke1-acm-bridge),
-#     ClusterResources (spoke1-cluster-resources-bridge),
-#     Advanced (spoke1-advanced-bridge)
-#   - ArgoCD must be running in the CSOC cluster
-#   - The spoke cluster must be registered in ArgoCD (via ClusterResources1)
-#
-# SERVICE CONFIGURATION (stanfordaimi-matched):
-#   Enabled:  fence, audit, indexd, metadata, peregrine, sheepdog
-#   Disabled: portal, wts, awsEsProxy, hatchery, manifestservice, ssjdispatcher, guppy, requestor, dashboard
-#   DB: dbCreateEnabled=true (gen3-helm init containers create per-service DBs)
-# ----------------------------------------------------------------------------
-apiVersion: kro.run/v1alpha1
-kind: AwsGen3Helm2
-metadata:
-  name: spoke1-gen3helm
-  namespace: spoke1
-  annotations:
-    argocd.argoproj.io/sync-wave: "30"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-spec:
-  name: spoke1
-  namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
+# # ── AwsGen3Helm2 — Tier 5: Gen3 Application Deployment (~$0 pods) ────────────
+# # Deploys the upstream uc-cdis/gen3-helm chart via an ArgoCD Application on the
+# # spoke cluster. Reads ALL 10 upstream bridges to construct the Helm values.
+# #
+# # RGD: awsgen3helm2-rg.yaml  |  Kind: AwsGen3Helm2
+# #
+# # PREREQUISITES:
+# #   - ALL upstream tiers must be Ready and their bridges must exist:
+# #     Foundation (spoke1-foundation-bridge), Storage (spoke1-storage-bridge),
+# #     Database (spoke1-database-bridge), Search (spoke1-search-bridge),
+# #     Compute (spoke1-compute-bridge), IAM (spoke1-iam-bridge),
+# #     Messaging (spoke1-messaging-bridge), ACM (spoke1-acm-bridge),
+# #     ClusterResources (spoke1-cluster-resources-bridge),
+# #     Advanced (spoke1-advanced-bridge)
+# #   - ArgoCD must be running in the CSOC cluster
+# #   - The spoke cluster must be registered in ArgoCD (via ClusterResources1)
+# #
+# # SERVICE CONFIGURATION (stanfordaimi-matched):
+# #   Enabled:  fence, audit, indexd, metadata, peregrine, sheepdog
+# #   Disabled: portal, wts, awsEsProxy, hatchery, manifestservice, ssjdispatcher, guppy, requestor, dashboard
+# #   DB: dbCreateEnabled=true (gen3-helm init containers create per-service DBs)
+# # ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: AwsGen3Helm2
+# metadata:
+#   name: spoke1-gen3helm
+#   namespace: spoke1
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "30"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+# spec:
+#   name: spoke1
+#   namespace: spoke1
+#   region: us-east-1
+#   environment: local
+#   project: gen3-kro
 
-  # ── ArgoCD configuration ──────────────────────────────────────────────────
-  argoCDNamespace: argocd
-  argoCDProject: default
+#   # ── ArgoCD configuration ──────────────────────────────────────────────────
+#   argoCDNamespace: argocd
+#   argoCDProject: default
 
-  # ── Gen3 Helm chart source ────────────────────────────────────────────────
-  # Uses upstream uc-cdis/gen3-helm Git repo directly.
-  # Defaults are correct (uc-cdis/gen3-helm.git / helm/gen3 / master)
-  gen3HelmRepoURL: https://github.com/uc-cdis/gen3-helm.git
-  gen3HelmPath: helm/gen3
-  gen3HelmTargetRevision: master
+#   # ── Gen3 Helm chart source ────────────────────────────────────────────────
+#   # Uses upstream uc-cdis/gen3-helm Git repo directly.
+#   # Defaults are correct (uc-cdis/gen3-helm.git / helm/gen3 / master)
+#   gen3HelmRepoURL: https://github.com/uc-cdis/gen3-helm.git
+#   gen3HelmPath: helm/gen3
+#   gen3HelmTargetRevision: master
 
-  # ── Bridge references (all in spoke1 namespace) ───────────────────────────
-  foundationBridgeName: spoke1-foundation-bridge
-  foundationNamespace: spoke1
-  computeBridgeName: spoke1-compute-bridge
-  computeNamespace: spoke1
-  databaseBridgeName: spoke1-database-bridge
-  databaseNamespace: spoke1
-  searchBridgeName: spoke1-search-bridge
-  searchNamespace: spoke1
-  iamBridgeName: spoke1-iam-bridge
-  iamNamespace: spoke1
-  messagingBridgeName: spoke1-messaging-bridge
-  messagingNamespace: spoke1
-  acmBridgeName: spoke1-dns-bridge
-  acmNamespace: spoke1
-  clusterResourcesBridgeName: spoke1-cluster-resources-bridge
-  clusterResourcesNamespace: spoke1
-  storageBridgeName: spoke1-storage-bridge
-  storageNamespace: spoke1
-  advancedBridgeName: spoke1-advanced-bridge
-  advancedNamespace: spoke1
+#   # ── Bridge references (all in spoke1 namespace) ───────────────────────────
+#   foundationBridgeName: spoke1-foundation-bridge
+#   foundationNamespace: spoke1
+#   computeBridgeName: spoke1-compute-bridge
+#   computeNamespace: spoke1
+#   databaseBridgeName: spoke1-database-bridge
+#   databaseNamespace: spoke1
+#   searchBridgeName: spoke1-search-bridge
+#   searchNamespace: spoke1
+#   iamBridgeName: spoke1-iam-bridge
+#   iamNamespace: spoke1
+#   messagingBridgeName: spoke1-messaging-bridge
+#   messagingNamespace: spoke1
+#   acmBridgeName: spoke1-dns-bridge
+#   acmNamespace: spoke1
+#   clusterResourcesBridgeName: spoke1-cluster-resources-bridge
+#   clusterResourcesNamespace: spoke1
+#   storageBridgeName: spoke1-storage-bridge
+#   storageNamespace: spoke1
+#   advancedBridgeName: spoke1-advanced-bridge
+#   advancedNamespace: spoke1
 
-  # ── Values ConfigMap (operator preferences for gen3 chart) ─────────────────
-  valuesConfigMapName: spoke1-gen3helm-values
+#   # ── Values ConfigMap (operator preferences for gen3 chart) ─────────────────
+#   valuesConfigMapName: spoke1-gen3helm-values
 
-  # ── Sync & Bridge ─────────────────────────────────────────────────────────
-  autoSync: false
-  gen3HelmBridgeName: spoke1-gen3helm-bridge
+#   # ── Sync & Bridge ─────────────────────────────────────────────────────────
+#   autoSync: false
+#   gen3HelmBridgeName: spoke1-gen3helm-bridge

@@ -1,61 +1,61 @@
-# ── AwsGen3ClusterResources1 — Tier 4.5: Spoke Cluster Registration (~$0) ────
-# Registers the spoke EKS cluster in the CSOC ArgoCD instance and deploys
-# the upstream uc-cdis/gen3-helm cluster-level-resources app-of-apps chart.
-# The parent Application targets the CSOC; child apps deploy workloads to
-# the spoke via destinationServer override (external-secrets, etc.).
-# Creates: ArgoCD Cluster Secret + ArgoCD Application + clusterResourcesBridge.
-#
-# RGD: awsgen3clusterresources1-rg.yaml  |  Kind: AwsGen3ClusterResources1
-#
-# PREREQUISITES:
-#   - Tier 3 (spoke1-compute) must be Ready (provides computeBridge with EKS endpoint)
-#   - ArgoCD must be running in the CSOC cluster
-#   - KRO controller and awsgen3clusterresources1-rg RGD must be registered
-# ----------------------------------------------------------------------------
-apiVersion: kro.run/v1alpha1
-kind: AwsGen3ClusterResources1
-metadata:
-  name: spoke1-cluster-resources
-  namespace: spoke1
-  annotations:
-    argocd.argoproj.io/sync-wave: "27"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-spec:
-  name: spoke1
-  namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
+# # ── AwsGen3ClusterResources1 — Tier 4.5: Spoke Cluster Registration (~$0) ────
+# # Registers the spoke EKS cluster in the CSOC ArgoCD instance and deploys
+# # the upstream uc-cdis/gen3-helm cluster-level-resources app-of-apps chart.
+# # The parent Application targets the CSOC; child apps deploy workloads to
+# # the spoke via destinationServer override (external-secrets, etc.).
+# # Creates: ArgoCD Cluster Secret + ArgoCD Application + clusterResourcesBridge.
+# #
+# # RGD: awsgen3clusterresources1-rg.yaml  |  Kind: AwsGen3ClusterResources1
+# #
+# # PREREQUISITES:
+# #   - Tier 3 (spoke1-compute) must be Ready (provides computeBridge with EKS endpoint)
+# #   - ArgoCD must be running in the CSOC cluster
+# #   - KRO controller and awsgen3clusterresources1-rg RGD must be registered
+# # ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: AwsGen3ClusterResources1
+# metadata:
+#   name: spoke1-cluster-resources
+#   namespace: spoke1
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "27"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+# spec:
+#   name: spoke1
+#   namespace: spoke1
+#   region: us-east-1
+#   environment: local
+#   project: gen3-kro
 
-  # ── ArgoCD configuration ──────────────────────────────────────────────────
-  argoCDNamespace: argocd
-  argoCDProject: default
+#   # ── ArgoCD configuration ──────────────────────────────────────────────────
+#   argoCDNamespace: argocd
+#   argoCDProject: default
 
-  # ── Bridge references ─────────────────────────────────────────────────────
-  computeBridgeName: spoke1-compute-bridge
-  computeNamespace: spoke1
+#   # ── Bridge references ─────────────────────────────────────────────────────
+#   computeBridgeName: spoke1-compute-bridge
+#   computeNamespace: spoke1
 
-  # ── Fleet repo (ArgoCD cluster Secret metadata) ───────────────────────────
-  fleetRepoURL: https://github.com/indiana-university/gen3-kro.git
-  fleetRepoRevision: main
-  fleetRepoBasepath: "argocd/"
+#   # ── Fleet repo (ArgoCD cluster Secret metadata) ───────────────────────────
+#   fleetRepoURL: https://github.com/indiana-university/gen3-kro.git
+#   fleetRepoRevision: main
+#   fleetRepoBasepath: "argocd/"
 
-  # ── Spoke alias (used in ArgoCD cluster naming) ───────────────────────────
-  spokeAlias: spoke1
+#   # ── Spoke alias (used in ArgoCD cluster naming) ───────────────────────────
+#   spokeAlias: spoke1
 
-  # ── Upstream gen3-helm chart (cluster-level-resources) ────────────────────
-  # Uses upstream uc-cdis/gen3-helm chart directly. The upstream chart
-  # already supports destinationServer for hub-spoke deployment.
-  # Defaults are correct (uc-cdis/gen3-helm.git / helm/cluster-level-resources / master)
-  # gen3HelmRepoURL: (default: https://github.com/uc-cdis/gen3-helm.git)
-  # gen3HelmChartPath: (default: helm/cluster-level-resources)
-  # gen3HelmTargetRevision: (default: master)
+#   # ── Upstream gen3-helm chart (cluster-level-resources) ────────────────────
+#   # Uses upstream uc-cdis/gen3-helm chart directly. The upstream chart
+#   # already supports destinationServer for hub-spoke deployment.
+#   # Defaults are correct (uc-cdis/gen3-helm.git / helm/cluster-level-resources / master)
+#   # gen3HelmRepoURL: (default: https://github.com/uc-cdis/gen3-helm.git)
+#   # gen3HelmChartPath: (default: helm/cluster-level-resources)
+#   # gen3HelmTargetRevision: (default: master)
 
-  # ── Values ConfigMap (operator preferences for chart sub-components) ─────
-  valuesConfigMapName: spoke1-cluster-resources-values
+#   # ── Values ConfigMap (operator preferences for chart sub-components) ─────
+#   valuesConfigMapName: spoke1-cluster-resources-values
 
-  # ── Sync & Bridge ───────────────────────────────────────────────────────
-  autoSync: false
+#   # ── Sync & Bridge ───────────────────────────────────────────────────────
+#   autoSync: false
 
-  # ── Bridge (creates clusterResourcesBridge for downstream tiers) ──────────
-  clusterResourcesBridgeName: spoke1-cluster-resources-bridge
+#   # ── Bridge (creates clusterResourcesBridge for downstream tiers) ──────────
+#   clusterResourcesBridgeName: spoke1-cluster-resources-bridge
