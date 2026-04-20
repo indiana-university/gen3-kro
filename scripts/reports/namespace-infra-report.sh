@@ -80,12 +80,14 @@ kcount() { kubectl get "$1" -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | t
 # Some graph templates may exist in git before their CRDs are registered.
 # Skip those cleanly instead of exiting under set -euo pipefail.
 kresource_exists() {
-  kubectl api-resources --namespaced=true -o name 2>/dev/null | grep -qx "$1"
+  kubectl get "$1" -n "$NAMESPACE" --ignore-not-found >/dev/null 2>&1
 }
 
 # ── Discovery: KRO tier kinds ─────────────────────────────────────────────
-# Reads RGD template files (source of truth: repo) for AwsGen3* schema kinds.
-# Outputs one lowercase CRD name per line, ordered by RGD filename prefix.
+# Reads RGD template files (source of truth: repo) for their registered
+# resource names.
+# Outputs one namespaced API resource name per line, ordered by RGD filename
+# prefix.
 discover_kro_tiers() {
   python3 - "${RGD_DIR}" << 'PYEOF'
 import sys, os, re
@@ -102,13 +104,14 @@ for fname in sorted(os.listdir(rgd_dir)):
         text = open(os.path.join(rgd_dir, fname)).read()
     except Exception:
         continue
-    # Find the schema kind — first 'kind: AwsGen3*' in the file
-    km = re.search(r'kind:\s+(AwsGen3\S+)', text)
-    if not km:
+    # ResourceGraphDefinition names match the generated CRD resource name.
+    name_matches = re.findall(r'^\s*name:\s*(awsgen3[^\s#]+)\s*$', text, re.MULTILINE)
+    resource_name = next((name for name in name_matches if name.startswith('awsgen3')), None)
+    if not resource_name:
         continue
-    results.append((order, fname, km.group(1).strip().lower()))
-for _, _, crd_name in sorted(results):
-    print(crd_name)
+    results.append((order, fname, resource_name))
+for _, _, resource_name in sorted(results):
+    print(resource_name)
 PYEOF
 }
 
@@ -420,17 +423,16 @@ report_kro_bridges() {
   note "Inter-RGD bridges — produced by each tier, consumed by downstream tiers"
   local bridge_list
   bridge_list=$(kubectl get configmaps -n "$NAMESPACE" --no-headers 2>/dev/null \
-    | grep -E '\-bridge$|\-bridge-' || echo "")
+    | awk '$1 ~ /-bridge($|-)/' || true)
 
   if [[ -n "$bridge_list" ]]; then
     printf "  %-42s %-6s %s\n" "NAME" "KEYS" "AGE"
-    while read -r cm_name _ cm_data cm_age _; do
+    while read -r cm_name _ cm_age; do
       local key_count
       key_count=$(kubectl get configmap "${cm_name}" -n "$NAMESPACE" -o json 2>/dev/null \
         | jq '.data | length // 0')
       printf "  %-42s %-6s %s\n" "${cm_name}" "${key_count}" "${cm_age}"
-    done < <(kubectl get configmaps -n "$NAMESPACE" --no-headers 2>/dev/null \
-      | grep -E '\-bridge$|\-bridge-')
+    done < <(printf '%s\n' "$bridge_list")
     echo ""
     ok "$(echo "$bridge_list" | wc -l | tr -d ' ') bridge ConfigMap(s) present"
   else

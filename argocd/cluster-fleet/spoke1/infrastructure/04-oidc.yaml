@@ -1,28 +1,28 @@
-# ── AwsGen3OIDC — Tier 4: EKS OIDC Provider (~$0) ───────────────────────────
-# Creates the IAM OIDC provider for the spoke EKS cluster and exports
-# oidcBridge for downstream IAM2 roles.
-#
-# RGD: awsgen3oidc-rg.yaml  |  Kind: AwsGen3OIDC
-# ----------------------------------------------------------------------------
-apiVersion: kro.run/v1alpha1
-kind: AwsGen3OIDC
-metadata:
-  name: spoke1-oidc
-  namespace: spoke1
-  annotations:
-    argocd.argoproj.io/sync-wave: "24"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-spec:
-  name: spoke1
-  namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
-  adoptionPolicy: adopt-or-create
-  deletionPolicy: delete
+# # ── AwsGen3OIDC — Tier 4: EKS OIDC Provider (~$0) ───────────────────────────
+# # Creates the IAM OIDC provider for the spoke EKS cluster and exports
+# # oidcBridge for downstream IAM2 roles.
+# #
+# # RGD: awsgen3oidc-rg.yaml  |  Kind: AwsGen3OIDC
+# # ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: AwsGen3OIDC
+# metadata:
+#   name: spoke1-oidc
+#   namespace: spoke1
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "24"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+# spec:
+#   name: spoke1
+#   namespace: spoke1
+#   region: us-east-1
+#   environment: local
+#   project: gen3-kro
+#   adoptionPolicy: adopt-or-create
+#   deletionPolicy: delete
 
-  computeBridgeName: spoke1-compute-bridge
-  computeNamespace: spoke1
+#   computeBridgeName: spoke1-compute-bridge
+#   computeNamespace: spoke1
 
-  createBridgeSecret: true
-  oidcBridgeName: spoke1-oidc-bridge
+#   createBridgeSecret: true
+#   oidcBridgeName: spoke1-oidc-bridge
