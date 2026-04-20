@@ -1,21 +1,19 @@
 # AwsGen3ClusterResources1 — Tier 4.5: Spoke Cluster Registration + Prerequisites
 #
-# Registers the spoke EKS cluster in CSOC ArgoCD and deploys the upstream
-# uc-cdis/gen3-helm "cluster-level-resources" app-of-apps chart to the spoke.
-# This is the Gen3 canonical chart for cluster-wide infrastructure: ALB
-# controller, Karpenter, external-secrets, cert-manager, metrics-server, etc.
-#
-# Ref: https://github.com/uc-cdis/gen3-helm/tree/master/helm/cluster-level-resources
+# Registers the spoke EKS cluster in CSOC ArgoCD and deploys cluster-wide
+# prerequisites (external-secrets, cert-manager) before Gen3 services arrive.
+# Must reconcile before AwsGen3Helm1 (Tier 5), which reads the
+# clusterResourcesBridge to gate on ESO being installed on the spoke.
 #
 # Creates three resources:
 #   1. argoCDClusterSecret — registers the spoke EKS cluster in CSOC ArgoCD
 #      (ArgoCD uses awsAuthConfig + IRSA to authenticate to the spoke EKS)
-#   2. clusterResourcesApp — ArgoCD Application that deploys the upstream
-#      cluster-level-resources chart to the spoke cluster
+#   2. clusterResourcesApp — ArgoCD Application that deploys the
+#      cluster-resources umbrella chart (external-secrets, cert-manager) to spoke
 #      readyWhen gates on Application health=Healthy only — sync=Synced is NOT
 #      included because ArgoCD reports sync=Unknown when it cannot reach the spoke
-#      EKS API (credential timeout). Healthy status is sufficient to confirm
-#      cluster prerequisites are deployed and running on the spoke.
+#      EKS API (credential timeout). Healthy status is sufficient to confirm ESO
+#      is deployed and running on the spoke.
 #   3. clusterResourcesBridge — bridge ConfigMap signalling readiness to
 #      downstream RGDs (gen3-helm, observability, etc.)
 #      Includes synchronization signals (app-health-status, app-sync-status)
@@ -63,7 +61,7 @@ spec:
       computeNamespace: string | required=true
 
       # ── Fleet / Git Configuration ─────────────────────────────────
-      # Source repo for the spoke ArgoCD cluster Secret fleet metadata.
+      # Source repo for the cluster-resources umbrella chart and per-spoke values.
       fleetRepoURL: string | default=""
       fleetRepoRevision: string | default="main"
       fleetRepoBasepath: string | default="argocd/"
@@ -72,17 +70,9 @@ spec:
       # discover per-spoke directories.
       spokeAlias: string | default=""
 
-      # ── Upstream gen3-helm chart (cluster-level-resources) ────────
-      # Points to uc-cdis/gen3-helm helm/cluster-level-resources app-of-apps.
-      gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
-      gen3HelmTargetRevision: string | default="master"
-
-      # ── Values ConfigMap ──────────────────────────────────────────
-      # ConfigMap with operator preferences for the cluster-level-resources
-      # chart (sub-chart enable flags, version overrides, etc.).
-      # The RGD reads this ConfigMap and merges its data keys into the
-      # ArgoCD Application helm.values alongside bridge-derived values.
-      valuesConfigMapName: string | required=true
+      # ── Cluster-Resources Feature Flags ───────────────────────────
+      externalSecretsEnabled: boolean | default=true
+      certManagerEnabled: boolean | default=false
 
       # ── Auto Sync ────────────────────────────────────────────────
       autoSync: boolean | default=false
@@ -116,16 +106,6 @@ spec:
         metadata:
           name: ${schema.spec.computeBridgeName}
           namespace: ${schema.spec.computeNamespace}
-
-    - id: clusterResourcesValues
-      readyWhen:
-        - ${clusterResourcesValues.metadata.?name.orValue('null') != 'null'}
-      externalRef:
-        apiVersion: v1
-        kind: ConfigMap
-        metadata:
-          name: ${schema.spec.valuesConfigMapName}
-          namespace: ${schema.spec.namespace}
 
   # ====================================================================
   # ArgoCD Cluster Secret (spoke EKS registration via IAM auth)
@@ -171,13 +151,11 @@ spec:
             }
 
   # ====================================================================
-  # ArgoCD Application: uc-cdis/gen3-helm cluster-level-resources → spoke
+  # ArgoCD Application: cluster-resources umbrella chart → spoke
   # ====================================================================
-  # Deploys the upstream Gen3 cluster-level-resources app-of-apps chart
-  # to the spoke cluster. This chart manages ALB controller, Karpenter,
-  # external-secrets, cert-manager, metrics-server, and other cluster
-  # prerequisites. Feature flags control which sub-apps are enabled.
-  # Ref: https://github.com/uc-cdis/gen3-helm/tree/master/helm/cluster-level-resources
+  # Deploys external-secrets (and optionally cert-manager) to the spoke
+  # cluster via the cluster-resources Helm umbrella chart. The chart lives
+  # in argocd/charts/cluster-resources/ in the fleet repo.
 
     - id: clusterResourcesApp
       readyWhen:
@@ -201,24 +179,19 @@ spec:
         spec:
           project: ${schema.spec.argoCDProject}
           source:
-            repoURL: ${schema.spec.gen3HelmRepoURL}
-            path: helm/cluster-level-resources
-            targetRevision: ${schema.spec.gen3HelmTargetRevision}
+            repoURL: ${schema.spec.fleetRepoURL}
+            path: ${schema.spec.fleetRepoBasepath}charts/cluster-resources/
+            targetRevision: ${schema.spec.fleetRepoRevision}
             helm:
-              releaseName: cluster-level-resources
-              values: ${clusterResourcesValues.data['values.yaml']}
-              parameters:
-                # ── Schema-derived ──────────────────────────────────────
-                - name: cluster
-                  value: ${schema.spec.name}
-                - name: project
-                  value: ${schema.spec.project}
-                # ── Compute Bridge ──────────────────────────────────────
-                - name: eksClusterEndpoint
-                  value: ${computeBridge.data['eks-cluster-endpoint']}
+              releaseName: cluster-resources
+              values: |
+                external-secrets:
+                  enabled: ${string(schema.spec.externalSecretsEnabled)}
+                cert-manager:
+                  enabled: ${string(schema.spec.certManagerEnabled)}
           destination:
             name: ${schema.spec.name}-spoke
-            namespace: argocd
+            namespace: cluster-resources
           syncPolicy:
             automated:
               selfHeal: true
