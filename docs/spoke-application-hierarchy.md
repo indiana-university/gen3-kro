@@ -50,10 +50,10 @@ argocd/
 
 ### 1. `spoke1-cluster-resources` — Cluster Infrastructure
 
-- **Created by**: `AwsGen3ClusterResources1` RGD (Tier 4.5)
-- **Source**: upstream `uc-cdis/gen3-helm` `helm/cluster-level-resources` app-of-apps chart
+- **Created by**: `fleet-cluster-resources` ApplicationSet
+- **Source**: `argocd/charts/cluster-resources/` umbrella chart + `cluster-fleet/spoke1/cluster-resources.yaml` values
 - **Destination**: spoke cluster directly (via ArgoCD cluster name)
-- **Purpose**: Deploys cluster-wide infrastructure prerequisites (external-secrets, cert-manager, ALB controller, Karpenter, metrics-server, etc.) via the Gen3 canonical cluster-level-resources chart
+- **Purpose**: Deploys cluster-wide infrastructure prerequisites (external-secrets operator, future: cert-manager, karpenter nodes, etc.)
 - **One per cluster**: Shared across all namespaces/environments on the spoke
 
 ### 2. `spoke1-gen3` — Gen3 Services

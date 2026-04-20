@@ -1,0 +1,16 @@
+apiVersion: v2
+name: cluster-resources
+description: Umbrella chart for spoke cluster-level prerequisites (external-secrets, cert-manager)
+type: application
+version: 0.1.0
+
+dependencies:
+  - name: external-secrets
+    version: "2.0.1"
+    repository: "https://charts.external-secrets.io"
+    condition: external-secrets.enabled
+
+  - name: cert-manager
+    version: "1.17.2"
+    repository: "https://charts.jetstack.io"
+    condition: cert-manager.enabled
