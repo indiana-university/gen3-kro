@@ -63,8 +63,11 @@ spec:
       spokeAlias: string | default=""
 
       # ── Upstream gen3-helm chart (cluster-level-resources) ────────
-      gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
-      gen3HelmTargetRevision: string | default="master"
+      # Uses our patched chart with configurable destinationServer for
+      # hub-spoke (CSOC→spoke) deployment. Defaults to gen3-kro repo.
+      gen3HelmRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
+      gen3HelmChartPath: string | default="argocd/charts/cluster-level-resources"
+      gen3HelmTargetRevision: string | default="main"
 
       # ── Values ConfigMap ──────────────────────────────────────────
       # ConfigMap with a "values.yaml" key containing the full nested
@@ -159,12 +162,13 @@ spec:
             }
 
   # ====================================================================
-  # ArgoCD Application: upstream cluster-level-resources → spoke
+  # ArgoCD Application: cluster-level-resources (app-of-apps) → spoke
   # ====================================================================
-  # Deploys the upstream Gen3 cluster-level-resources app-of-apps chart
-  # to the spoke cluster. Operator preferences come from the values
-  # ConfigMap; bridge-derived infrastructure values are injected via
-  # helm.parameters overrides.
+  # Deploys the cluster-level-resources app-of-apps chart. The parent
+  # Application targets the CSOC (in-cluster) so the rendered child
+  # ArgoCD Application CRs land where ArgoCD can process them.
+  # The child apps deploy their workloads to the spoke via the
+  # destinationServer helm.parameter override.
   #
   # Ref: https://github.com/uc-cdis/gen3-helm/tree/master/helm/cluster-level-resources
 
@@ -188,7 +192,7 @@ spec:
           project: ${schema.spec.argoCDProject}
           source:
             repoURL: ${schema.spec.gen3HelmRepoURL}
-            path: helm/cluster-level-resources
+            path: ${schema.spec.gen3HelmChartPath}
             targetRevision: ${schema.spec.gen3HelmTargetRevision}
             helm:
               releaseName: cluster-level-resources
@@ -202,9 +206,14 @@ spec:
                   value: ${schema.spec.project}
                 - name: eksClusterEndpoint
                   value: ${computeBridge.data['eks-cluster-endpoint']}
+                # Route child Application workloads to the spoke cluster
+                - name: destinationServer
+                  value: ${computeBridge.data['eks-cluster-endpoint']}
           destination:
-            name: ${schema.spec.name}-spoke
-            namespace: cluster-resources
+            # Parent deploys to CSOC (in-cluster) so child Application CRs
+            # land where ArgoCD can reconcile them.
+            server: https://kubernetes.default.svc
+            namespace: argocd
           syncPolicy:
             automated:
               selfHeal: true
