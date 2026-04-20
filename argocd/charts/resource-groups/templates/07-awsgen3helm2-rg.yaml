@@ -53,8 +53,6 @@ spec:
       gen3HelmPath: string | default="helm/gen3"
       gen3HelmTargetRevision: string | default="0.3.25"
 
-      # ── Hostname (needed in bridge + status, also used as parameter) ──
-
       # ── Bridge References (ALL required for full deployment) ────
       foundationBridgeName: string | required=true
       computeBridgeName: string | required=true
