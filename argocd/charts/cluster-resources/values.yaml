@@ -1,9 +1,0 @@
-# ── Feature Flags ─────────────────────────────────────────────────────────────
-# Passed from AwsGen3ClusterResources1 RGD via ArgoCD Application Helm values.
-# Each key corresponds to a dependency condition in Chart.yaml.
-
-external-secrets:
-  enabled: false
-
-cert-manager:
-  enabled: false

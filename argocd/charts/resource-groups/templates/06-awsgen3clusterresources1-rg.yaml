@@ -1,37 +1,33 @@
 # AwsGen3ClusterResources1 — Tier 4.5: Spoke Cluster Registration + Prerequisites
 #
-# Registers the spoke EKS cluster in CSOC ArgoCD and deploys cluster-wide
-# prerequisites (external-secrets, cert-manager) before Gen3 services arrive.
-# Must reconcile before AwsGen3Helm1 (Tier 5), which reads the
-# clusterResourcesBridge to gate on ESO being installed on the spoke.
+# Registers the spoke EKS cluster in CSOC ArgoCD and deploys the upstream
+# uc-cdis/gen3-helm "cluster-level-resources" app-of-apps chart to the spoke.
+# This is the Gen3 canonical chart for cluster-wide infrastructure: ALB
+# controller, Karpenter, external-secrets, cert-manager, metrics-server, etc.
+#
+# Ref: https://github.com/uc-cdis/gen3-helm/tree/master/helm/cluster-level-resources
+#
+# Values architecture (3-layer):
+#   1. ConfigMap values.yaml key  → helm.values  (operator preferences)
+#   2. Bridge data                → helm.parameters (infrastructure outputs)
+#   3. Schema spec                → helm.parameters (identity: cluster, project)
 #
 # Creates three resources:
 #   1. argoCDClusterSecret — registers the spoke EKS cluster in CSOC ArgoCD
-#      (ArgoCD uses awsAuthConfig + IRSA to authenticate to the spoke EKS)
-#   2. clusterResourcesApp — ArgoCD Application that deploys the
-#      cluster-resources umbrella chart (external-secrets, cert-manager) to spoke
-#      readyWhen gates on Application health=Healthy only — sync=Synced is NOT
-#      included because ArgoCD reports sync=Unknown when it cannot reach the spoke
-#      EKS API (credential timeout). Healthy status is sufficient to confirm ESO
-#      is deployed and running on the spoke.
-#   3. clusterResourcesBridge — bridge ConfigMap signalling readiness to
-#      downstream RGDs (gen3-helm, observability, etc.)
-#      Includes synchronization signals (app-health-status, app-sync-status)
-#      that confirm the spoke cluster-resources deployment is complete.
+#   2. clusterResourcesApp — ArgoCD Application deploying cluster-level-resources
+#   3. clusterResourcesBridge — bridge ConfigMap for downstream RGDs
 #
 # Deletion safety:
 #   clusterResourcesApp does NOT use resources-finalizer.argocd.argoproj.io.
 #   Spoke resources are orphaned on Application delete to prevent rollback
-#   hang when the spoke cluster is unreachable. Clean-up happens when the
-#   spoke EKS cluster itself is deleted (Compute2 teardown).
+#   hang when the spoke cluster is unreachable.
 #
 # Prerequisites:
 #   - Compute2 deployed with computeBridge
-#     (eks-cluster-endpoint, eks-cluster-ca, eks-cluster-name, argocd-spoke-access-arn)
+#   - Values ConfigMap applied (00-values.yaml)
 #
 # Sync-wave ordering:
-#   Wave 30 instance (fleet-cluster-resource-instances AppSet)
-#   — after fleet-infra-instances (wave 15-25) which applies infra bridges
+#   Wave 30 instance — after fleet-infra-instances (wave 15-25)
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
@@ -61,18 +57,20 @@ spec:
       computeNamespace: string | required=true
 
       # ── Fleet / Git Configuration ─────────────────────────────────
-      # Source repo for the cluster-resources umbrella chart and per-spoke values.
       fleetRepoURL: string | default=""
       fleetRepoRevision: string | default="main"
       fleetRepoBasepath: string | default="argocd/"
-      # spokeAlias — folder name under cluster-fleet/ (e.g. "local-aws-dev")
-      # Stored in the ArgoCD cluster Secret annotation so fleet AppSets can
-      # discover per-spoke directories.
       spokeAlias: string | default=""
 
-      # ── Cluster-Resources Feature Flags ───────────────────────────
-      externalSecretsEnabled: boolean | default=true
-      certManagerEnabled: boolean | default=false
+      # ── Upstream gen3-helm chart (cluster-level-resources) ────────
+      gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
+      gen3HelmTargetRevision: string | default="master"
+
+      # ── Values ConfigMap ──────────────────────────────────────────
+      # ConfigMap with a "values.yaml" key containing the full nested
+      # Helm values for cluster-level-resources (operator preferences).
+      # Bridge-derived values are injected via helm.parameters.
+      valuesConfigMapName: string | required=true
 
       # ── Auto Sync ────────────────────────────────────────────────
       autoSync: boolean | default=false
@@ -106,6 +104,16 @@ spec:
         metadata:
           name: ${schema.spec.computeBridgeName}
           namespace: ${schema.spec.computeNamespace}
+
+    - id: clusterResourcesValues
+      readyWhen:
+        - ${clusterResourcesValues.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.valuesConfigMapName}
+          namespace: ${schema.spec.namespace}
 
   # ====================================================================
   # ArgoCD Cluster Secret (spoke EKS registration via IAM auth)
@@ -151,11 +159,14 @@ spec:
             }
 
   # ====================================================================
-  # ArgoCD Application: cluster-resources umbrella chart → spoke
+  # ArgoCD Application: upstream cluster-level-resources → spoke
   # ====================================================================
-  # Deploys external-secrets (and optionally cert-manager) to the spoke
-  # cluster via the cluster-resources Helm umbrella chart. The chart lives
-  # in argocd/charts/cluster-resources/ in the fleet repo.
+  # Deploys the upstream Gen3 cluster-level-resources app-of-apps chart
+  # to the spoke cluster. Operator preferences come from the values
+  # ConfigMap; bridge-derived infrastructure values are injected via
+  # helm.parameters overrides.
+  #
+  # Ref: https://github.com/uc-cdis/gen3-helm/tree/master/helm/cluster-level-resources
 
     - id: clusterResourcesApp
       readyWhen:
@@ -172,23 +183,25 @@ spec:
             gen3.io/tier: cluster-resources
             gen3.io/spoke: ${schema.spec.name}
           annotations:
-            # Orphan spoke resources on Application delete to prevent rollback
-            # hang when the spoke cluster is unreachable. Resources on the spoke
-            # are cleaned up when the spoke EKS cluster itself is deleted.
             argocd.argoproj.io/cascade: "orphan"
         spec:
           project: ${schema.spec.argoCDProject}
           source:
-            repoURL: ${schema.spec.fleetRepoURL}
-            path: ${schema.spec.fleetRepoBasepath}charts/cluster-resources/
-            targetRevision: ${schema.spec.fleetRepoRevision}
+            repoURL: ${schema.spec.gen3HelmRepoURL}
+            path: helm/cluster-level-resources
+            targetRevision: ${schema.spec.gen3HelmTargetRevision}
             helm:
-              releaseName: cluster-resources
-              values: |
-                external-secrets:
-                  enabled: ${string(schema.spec.externalSecretsEnabled)}
-                cert-manager:
-                  enabled: ${string(schema.spec.certManagerEnabled)}
+              releaseName: cluster-level-resources
+              # Base values from operator ConfigMap (nested YAML string)
+              values: ${clusterResourcesValues.data['values.yaml']}
+              # Bridge + schema overrides (take precedence over values)
+              parameters:
+                - name: cluster
+                  value: ${schema.spec.name}
+                - name: project
+                  value: ${schema.spec.project}
+                - name: eksClusterEndpoint
+                  value: ${computeBridge.data['eks-cluster-endpoint']}
           destination:
             name: ${schema.spec.name}-spoke
             namespace: cluster-resources
