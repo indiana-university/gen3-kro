@@ -1,6 +1,7 @@
 # # ── AwsGen3ClusterResources1 — Tier 4.5: Spoke Cluster Registration (~$0) ────
 # # Registers the spoke EKS cluster in the CSOC ArgoCD instance and deploys
-# # the cluster-resources Helm chart (namespaces, RBAC, ExternalSecrets config).
+# # the upstream uc-cdis/gen3-helm cluster-level-resources app-of-apps chart
+# # (ALB controller, Karpenter, external-secrets, cert-manager, metrics-server).
 # # Creates: ArgoCD Cluster Secret + ArgoCD Application + clusterResourcesBridge.
 # #
 # # RGD: awsgen3clusterresources1-rg.yaml  |  Kind: AwsGen3ClusterResources1
@@ -33,7 +34,7 @@
 #   computeBridgeName: spoke1-compute-bridge
 #   computeNamespace: spoke1
 
-#   # ── Fleet repo (ArgoCD Application source for cluster-resources chart) ────
+#   # ── Fleet repo (ArgoCD cluster Secret metadata) ─────────────────────────
 #   fleetRepoURL: https://github.com/indiana-university/gen3-kro.git
 #   fleetRepoRevision: main
 #   fleetRepoBasepath: "argocd/"
@@ -41,9 +42,14 @@
 #   # ── Spoke alias (used in ArgoCD cluster naming) ───────────────────────────
 #   spokeAlias: spoke1
 
-#   # ── Feature flags ─────────────────────────────────────────────────────────
-#   externalSecretsEnabled: true
-#   certManagerEnabled: false
+#   # ── Upstream gen3-helm chart (cluster-level-resources) ────────────────────
+#   gen3HelmRepoURL: https://github.com/uc-cdis/gen3-helm.git
+#   gen3HelmTargetRevision: master
+
+#   # ── Values ConfigMap (operator preferences for chart sub-components) ─────
+#   valuesConfigMapName: spoke1-cluster-resources-values
+
+#   # ── Sync & Bridge ───────────────────────────────────────────────────────
 #   autoSync: false
 
 #   # ── Bridge (creates clusterResourcesBridge for downstream tiers) ──────────

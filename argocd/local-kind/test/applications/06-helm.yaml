@@ -44,15 +44,6 @@ spec:
   gen3HelmChart: gen3
   gen3HelmTargetRevision: "0.3.25"
 
-  # ── Application identity ──────────────────────────────────────────────────
-  hostname: spoke1dev.rds-pla.net
-  dictionaryUrl: "https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json"
-
-  # ── Database configuration ────────────────────────────────────────────────
-  auroraMasterUsername: postgres
-  auroraDBName: gen3
-  dbCreateEnabled: true
-
   # ── Bridge references (all in spoke1 namespace) ───────────────────────────
   foundationBridgeName: spoke1-foundation-bridge
   foundationNamespace: spoke1
@@ -75,45 +66,8 @@ spec:
   advancedBridgeName: spoke1-advanced-bridge
   advancedNamespace: spoke1
 
-  # ── Service feature flags (stanfordaimi-like) ─────────────────────────────
-  fenceEnabled: true
-  auditEnabled: true
-  indexdEnabled: true
-  metadataEnabled: true
-  peregrinEnabled: true
-  sheepdogEnabled: true
-  portalEnabled: false
-  wtsEnabled: false
-  awsEsProxyEnabled: false
-
-  # Disabled services
-  hatcheryEnabled: false
-  manifestserviceEnabled: false
-  ssjdispatcherEnabled: false
-  guppyEnabled: false
-  requestorEnabled: false
-  dashboardEnabled: false
-
-  # ── Access tier ───────────────────────────────────────────────────────────
-  tierAccessLevel: private
-  tierAccessLimit: 100
-
-  # ── External Secrets (ESO per-service DB credentials from Secrets Manager) ─
-  externalSecretsEnabled: true
-  postgresExternalSecret: spoke1-aurora-master-credentials
-  fenceDbcredsSM: spoke1-fence-dbcreds
-  arboristDbcredsSM: spoke1-arborist-dbcreds
-  auditDbcredsSM: spoke1-audit-dbcreds
-  indexdDbcredsSM: spoke1-indexd-dbcreds
-  metadataDbcredsSM: spoke1-metadata-dbcreds
-  peregrinDbcredsSM: spoke1-peregrin-dbcreds
-  sheepdogDbcredsSM: spoke1-sheepdog-dbcreds
-  wtsDbcredsSM: spoke1-wts-dbcreds
-  # requestorDbcredsSM: ""   # requestor disabled
-  # fenceConfigSM: ""        # fence-config handled separately if needed
-
-  # ── Indexd prefix ─────────────────────────────────────────────────────────
-  indexdDefaultPrefix: "dg.XXXX/"
+  # ── Values ConfigMap (operator preferences for gen3 chart) ─────────────────
+  valuesConfigMapName: spoke1-gen3helm-values
 
   # ── Sync & Bridge ─────────────────────────────────────────────────────────
   autoSync: false
