@@ -1,0 +1,10 @@
+# ── Test 9: Instance — nested values passthrough ─────────────────────────────
+apiVersion: kro.run/v1alpha1
+kind: KroNestedValuesTest
+metadata:
+  name: kro-nested-values
+  namespace: kro-test
+spec:
+  name: kro-nested-values
+  namespace: kro-test
+  valuesConfigMapName: test-nested-values-source

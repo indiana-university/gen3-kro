@@ -78,11 +78,8 @@ Known constraints of the current platform state. These are expected and will be 
 
 ### L2: Flat spoke deployment (apps + cluster-resources)
 
-- **Files**: `argocd/charts/cluster-resources/`, `argocd/bootstrap/fleet-cluster-resources.yaml`, `argocd/bootstrap/fleet-gen3.yaml`, `argocd/cluster-fleet/<spoke>/apps.yaml`, `argocd/cluster-fleet/<spoke>/cluster-resources.yaml`
-- **Status**: Spoke deployments use two flat ApplicationSets (no intermediate chart rendering Application CRDs):
-  - `fleet-cluster-resources` (wave 40) — deploys cluster-level infra (external-secrets umbrella chart) directly to the spoke.
-  - `fleet-gen3` (wave 50) — deploys gen3-helm umbrella chart directly to the spoke. Infrastructure outputs are injected via Helm parameters from argoCDClusterSecret annotations.
-- **Architecture**: Matches gen3-gitops pattern: cluster-level-resources = ONE per EKS cluster, gen3 app = ONE per namespace/environment. Two levels of hierarchy (ApplicationSet → Application), not three.
+- **Files**: `argocd/charts/resource-groups/templates/06-awsgen3clusterresources1-rg.yaml`, `argocd/bootstrap/fleet-cluster-resources.yaml`, `argocd/bootstrap/fleet-gen3.yaml`, `argocd/cluster-fleet/<spoke>/cluster-resources/05-cluster-resources.yaml`
+- **Status**: Spoke deployments use the upstream `uc-cdis/gen3-helm` `helm/cluster-level-resources` app-of-apps chart, deployed via the `AwsGen3ClusterResources1` RGD (Tier 4.5). The RGD creates an ArgoCD Application pointing directly at the upstream chart with inline Helm values for feature flags (external-secrets, cert-manager, ALB controller, metrics-server, etc.).
 
 ### L3: Diagram SVG exports not generated
 

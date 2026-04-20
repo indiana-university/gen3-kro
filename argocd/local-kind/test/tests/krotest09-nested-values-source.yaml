@@ -1,0 +1,107 @@
+# ── Test 9: Source ConfigMap with nested Helm values as a string ──────────────
+# This ConfigMap stores the entire cluster-level-resources Helm values
+# as a single multi-line YAML string under the key "values.yaml".
+#
+# Pattern from Su-informatics-lab gen3-gitops: operators maintain a
+# values.yaml file per environment. ArgoCD reads it via $values ref.
+# Here we test whether KRO can read and pass this string through.
+# ----------------------------------------------------------------------------
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: test-nested-values-source
+  namespace: kro-test
+  labels:
+    test-suite: kro-capabilities
+    test-name: nested-values
+data:
+  values.yaml: |
+    cluster: "ardac1prd"
+    accountNumber: "742378880825"
+
+    alb-controller:
+      enabled: true
+      configuration:
+        enabled: false
+
+    aws-s3-mountpoint:
+      enabled: true
+      configuration:
+        enabled: false
+
+    calico:
+      enabled: true
+      configuration:
+        enabled: false
+
+    cert-manager:
+      enabled: true
+
+    coreDNS:
+      enabled: true
+      configuration:
+        enabled: false
+
+    ebs-csi-driver:
+      enabled: true
+      configuration:
+        enabled: false
+
+    external-secrets:
+      enabled: true
+
+    fluentd:
+      enabled: true
+      configuration:
+        enabled: false
+
+    kube-state-metrics:
+      enabled: true
+      configuration:
+        enabled: false
+
+    grafana-alloy:
+      enabled: false
+      configuration:
+        enabled: false
+
+    karpenter:
+      enabled: true
+      targetRevision: "1.0.8"
+
+    karpenter-crds:
+      amiSelectorName: "amazon-eks-node-al2023-x86_64-standard-1.33-*"
+      amiOwner: "amazon"
+      enabled: false
+      selectorTag: ardac1prd
+      migration: true
+      default:
+        consolidationPolicy: "WhenEmptyOrUnderutilized"
+        consolidateAfter: "10m"
+        requirements:
+          - key: karpenter.sh/capacity-type
+            operator: In
+            values:
+              - spot
+          - key: kubernetes.io/arch
+            operator: In
+            values:
+              - amd64
+          - key: karpenter.k8s.aws/instance-category
+            operator: In
+            values:
+              - r
+              - c
+              - m
+              - t
+      jupyter:
+        consolidationPolicy: "WhenEmptyOrUnderutilized"
+        consolidateAfter: "10m"
+      workflow:
+        consolidationPolicy: "WhenEmptyOrUnderutilized"
+        consolidateAfter: "10m"
+
+    vpc-cni:
+      enabled: true
+      configuration:
+        enabled: false
