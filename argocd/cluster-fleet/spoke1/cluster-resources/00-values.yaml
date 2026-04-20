@@ -51,6 +51,9 @@ data:
         enabled: false
     external-secrets:
       enabled: true
+      targetRevision: "0.12.1"
+      configuration:
+        enabled: false
     fluentd:
       enabled: false
       configuration:
