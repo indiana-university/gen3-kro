@@ -77,6 +77,12 @@ fi
 # Count resources of a given type in namespace
 kcount() { kubectl get "$1" -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' '; }
 
+# Some graph templates may exist in git before their CRDs are registered.
+# Skip those cleanly instead of exiting under set -euo pipefail.
+kresource_exists() {
+  kubectl api-resources --namespaced=true -o name 2>/dev/null | grep -qx "$1"
+}
+
 # ── Discovery: KRO tier kinds ─────────────────────────────────────────────
 # Reads RGD template files (source of truth: repo) for AwsGen3* schema kinds.
 # Outputs one lowercase CRD name per line, ordered by RGD filename prefix.
@@ -213,6 +219,11 @@ report_rgd_resources() {
 
   local found_any=false
   for tier_crd in "${MODULAR_TIERS[@]}"; do
+    if ! kresource_exists "${tier_crd}"; then
+      note "  ${tier_crd}: (CRD not registered in cluster)"
+      echo ""
+      continue
+    fi
     local count
     count=$(kubectl get "${tier_crd}" -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$count" -gt 0 ]]; then
@@ -518,6 +529,10 @@ report_summary() {
   local -a _tier_list
   readarray -t _tier_list < <(discover_kro_tiers)
   for tier_crd in "${_tier_list[@]}"; do
+    if ! kresource_exists "${tier_crd}"; then
+      note "  ${tier_crd}: not registered"
+      continue
+    fi
     local count
     count=$(kubectl get "${tier_crd}" -n "$NAMESPACE" --no-headers 2>/dev/null | wc -l | tr -d ' ')
     if [[ "$count" -gt 0 ]]; then

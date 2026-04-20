@@ -1,0 +1,35 @@
+# ── AwsGen3ClusterResources1 — Tier 6: Spoke Cluster Registration (~$0) ─────
+# Registers the spoke EKS cluster in the CSOC ArgoCD instance and deploys
+# the upstream uc-cdis/gen3-helm cluster-level-resources app-of-apps chart.
+#
+# RGD: awsgen3clusterresources1-rg.yaml  |  Kind: AwsGen3ClusterResources1
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3ClusterResources1
+metadata:
+  name: spoke1-cluster-resources
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "27"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  region: us-east-1
+  environment: local
+  project: gen3-kro
+
+  argoCDNamespace: argocd
+  argoCDProject: default
+
+  computeBridgeName: spoke1-compute-bridge
+  computeNamespace: spoke1
+
+  fleetRepoURL: https://github.com/indiana-university/gen3-kro.git
+  fleetRepoRevision: main
+  fleetRepoBasepath: "argocd/"
+  spokeAlias: spoke1
+
+  valuesConfigMapName: spoke1-cluster-resources-values
+  autoSync: false
+  clusterResourcesBridgeName: spoke1-cluster-resources-bridge

@@ -281,7 +281,7 @@ spec:
                   value: ${iamBridge.data['external-secrets-role-arn']}
                 # ── Database (master endpoint + port) ────────────────
                 - name: global.postgres.master.host
-                  value: ${databaseBridge.data['aurora-endpoint']}
+                  value: ${databaseBridge.data['aurora-cluster-endpoint']}
                 - name: global.postgres.master.port
                   value: "5432"
                 # ── OpenSearch ───────────────────────────────────────
