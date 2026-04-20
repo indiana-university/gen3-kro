@@ -1,50 +1,50 @@
-# ── AwsGen3Compute2 — Tier 3: Thin Compute (~$350/mo) ────────────────────────
-# Reads computePrepBridge (EKS SG, Cluster Role ARN, Node Role ARN) and
-# foundationBridge (VPC ID, subnet IDs) from Foundation.
-# Creates: EKS Cluster + Managed Node Group + EKS Addons +
-# ArgoCD Spoke Access IAM Role + EKS Access Entry + computeBridge.
-#
-# RGD: awsgen3compute2-rg.yaml  |  Kind: AwsGen3Compute2
-#
-# PREREQUISITES:
-#   - Tier 0 (spoke1-foundation) must be Ready with computeEnabled: true
-#   - foundationBridge + computePrepBridge ConfigMaps must exist in namespace spoke1
-#   - ACK controllers 'eks' and 'iam' must be running
-# ----------------------------------------------------------------------------
-apiVersion: kro.run/v1alpha1
-kind: AwsGen3Compute2
-metadata:
-  name: spoke1-compute
-  namespace: spoke1
-  annotations:
-    argocd.argoproj.io/sync-wave: "20"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-spec:
-  name: spoke1
-  namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
-  adoptionPolicy: adopt-or-create
-  deletionPolicy: delete
+# # ── AwsGen3Compute2 — Tier 3: Thin Compute (~$350/mo) ────────────────────────
+# # Reads computePrepBridge (EKS SG, Cluster Role ARN, Node Role ARN) and
+# # foundationBridge (VPC ID, subnet IDs) from Foundation.
+# # Creates: EKS Cluster + Managed Node Group + EKS Addons +
+# # ArgoCD Spoke Access IAM Role + EKS Access Entry + computeBridge.
+# #
+# # RGD: awsgen3compute2-rg.yaml  |  Kind: AwsGen3Compute2
+# #
+# # PREREQUISITES:
+# #   - Tier 0 (spoke1-foundation) must be Ready with computeEnabled: true
+# #   - foundationBridge + computePrepBridge ConfigMaps must exist in namespace spoke1
+# #   - ACK controllers 'eks' and 'iam' must be running
+# # ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: AwsGen3Compute2
+# metadata:
+#   name: spoke1-compute
+#   namespace: spoke1
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "20"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+# spec:
+#   name: spoke1
+#   namespace: spoke1
+#   region: us-east-1
+#   environment: local
+#   project: gen3-kro
+#   adoptionPolicy: adopt-or-create
+#   deletionPolicy: delete
 
-  # ── Bridge references to Foundation's compute prep + foundation ───────────
-  computePrepBridgeName: spoke1-compute-prep-bridge
-  foundationBridgeName: spoke1-foundation-bridge
-  foundationNamespace: spoke1
+#   # ── Bridge references to Foundation's compute prep + foundation ───────────
+#   computePrepBridgeName: spoke1-compute-prep-bridge
+#   foundationBridgeName: spoke1-foundation-bridge
+#   foundationNamespace: spoke1
 
-  # ── EKS configuration ─────────────────────────────────────────────────────
-  kubernetesVersion: "1.31"
+#   # ── EKS configuration ─────────────────────────────────────────────────────
+#   kubernetesVersion: "1.31"
 
-  # ── Managed node group ────────────────────────────────────────────────────
-  nodeInstanceTypes:
-    - "t3.large"
-  nodeDesiredSize: 2
-  nodeMinSize: 1
-  nodeMaxSize: 4
-  nodeDiskSize: 20
-  nodeAMIType: AL2023_x86_64_STANDARD
+#   # ── Managed node group ────────────────────────────────────────────────────
+#   nodeInstanceTypes:
+#     - "t3.large"
+#   nodeDesiredSize: 2
+#   nodeMinSize: 1
+#   nodeMaxSize: 4
+#   nodeDiskSize: 20
+#   nodeAMIType: AL2023_x86_64_STANDARD
 
-  # ── Bridge ────────────────────────────────────────────────────────────────
-  createBridgeSecret: true
-  computeBridgeName: spoke1-compute-bridge
+#   # ── Bridge ────────────────────────────────────────────────────────────────
+#   createBridgeSecret: true
+#   computeBridgeName: spoke1-compute-bridge
