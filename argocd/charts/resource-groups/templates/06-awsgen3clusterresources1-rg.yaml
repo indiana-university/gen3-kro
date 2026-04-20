@@ -63,11 +63,12 @@ spec:
       spokeAlias: string | default=""
 
       # ── Upstream gen3-helm chart (cluster-level-resources) ────────
-      # Uses our patched chart with configurable destinationServer for
-      # hub-spoke (CSOC→spoke) deployment. Defaults to gen3-kro repo.
-      gen3HelmRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
-      gen3HelmChartPath: string | default="argocd/charts/cluster-level-resources"
-      gen3HelmTargetRevision: string | default="main"
+      # Uses the canonical uc-cdis/gen3-helm cluster-level-resources chart.
+      # The upstream chart already supports destinationServer for hub-spoke
+      # (CSOC→spoke) deployment — no chart fork needed.
+      gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
+      gen3HelmChartPath: string | default="helm/cluster-level-resources"
+      gen3HelmTargetRevision: string | default="master"
 
       # ── Values ConfigMap ──────────────────────────────────────────
       # ConfigMap with a "values.yaml" key containing the full nested
