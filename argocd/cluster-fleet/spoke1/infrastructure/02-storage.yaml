@@ -1,46 +1,46 @@
-# ── AwsGen3Storage1 — Tier 0.5: Storage (~$1–5/mo) ──────────────────────────
-# Dedicated S3 buckets for the Gen3 platform. Reads Foundation1's
-# foundationBridge for KMS key ARNs.
-#
-# RGD: awsgen3storage1-rg.yaml  |  Kind: AwsGen3Storage1
-#
-# PREREQUISITES:
-#   - Tier 0 (spoke1-foundation) must be Ready with foundationBridge created
-#   - ACK controller 's3' must be running
-#   - KRO controller and awsgen3storage1-rg RGD must be registered
-# ----------------------------------------------------------------------------
-apiVersion: kro.run/v1alpha1
-kind: AwsGen3Storage1
-metadata:
-  name: spoke1-storage
-  namespace: spoke1
-  annotations:
-    argocd.argoproj.io/sync-wave: "16"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-spec:
-  name: spoke1
-  namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
-  adoptionPolicy: adopt-or-create
-  deletionPolicy: delete
+# # ── AwsGen3Storage1 — Tier 0.5: Storage (~$1–5/mo) ──────────────────────────
+# # Dedicated S3 buckets for the Gen3 platform. Reads Foundation1's
+# # foundationBridge for KMS key ARNs.
+# #
+# # RGD: awsgen3storage1-rg.yaml  |  Kind: AwsGen3Storage1
+# #
+# # PREREQUISITES:
+# #   - Tier 0 (spoke1-foundation) must be Ready with foundationBridge created
+# #   - ACK controller 's3' must be running
+# #   - KRO controller and awsgen3storage1-rg RGD must be registered
+# # ----------------------------------------------------------------------------
+# apiVersion: kro.run/v1alpha1
+# kind: AwsGen3Storage1
+# metadata:
+#   name: spoke1-storage
+#   namespace: spoke1
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "16"
+#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+# spec:
+#   name: spoke1
+#   namespace: spoke1
+#   region: us-east-1
+#   environment: local
+#   project: gen3-kro
+#   adoptionPolicy: adopt-or-create
+#   deletionPolicy: delete
 
-  # ── Bridge references (Foundation1) ────────────────────────────────────────
-  foundationBridgeName: spoke1-foundation-bridge
-  foundationNamespace: spoke1
+#   # ── Bridge references (Foundation1) ────────────────────────────────────────
+#   foundationBridgeName: spoke1-foundation-bridge
+#   foundationNamespace: spoke1
 
-  # ── S3 Bucket Names (must be globally unique) ─────────────────────────────
-  loggingBucketName: gen3-spoke1-logging
-  dataBucketName: gen3-spoke1-data
-  uploadBucketName: gen3-spoke1-upload
+#   # ── S3 Bucket Names (must be globally unique) ─────────────────────────────
+#   loggingBucketName: gen3-spoke1-logging
+#   dataBucketName: gen3-spoke1-data
+#   uploadBucketName: gen3-spoke1-upload
 
-  # ── Conditional buckets ───────────────────────────────────────────────────
-  manifestserviceEnabled: false
-  manifestBucketName: ""
-  dashboardEnabled: false
-  dashboardBucketName: ""
+#   # ── Conditional buckets ───────────────────────────────────────────────────
+#   manifestserviceEnabled: false
+#   manifestBucketName: ""
+#   dashboardEnabled: false
+#   dashboardBucketName: ""
 
-  # ── Bridge ────────────────────────────────────────────────────────────────
-  createBridgeSecret: true
-  storageBridgeName: spoke1-storage-bridge
+#   # ── Bridge ────────────────────────────────────────────────────────────────
+#   createBridgeSecret: true
+#   storageBridgeName: spoke1-storage-bridge
