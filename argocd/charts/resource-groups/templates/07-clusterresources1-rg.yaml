@@ -23,7 +23,7 @@
 #   hang when the spoke cluster is unreachable.
 #
 # Prerequisites:
-#   - Compute2 deployed with computeBridge
+#   - Compute1 deployed with computeBridge
 #   - Values ConfigMap applied (00-values.yaml)
 #
 # Sync-wave ordering:
@@ -44,7 +44,6 @@ spec:
       # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | default="default"
-      region: string | default="us-east-1"
       environment: string | default="dev"
       project: string | default="gen3"
 
@@ -53,8 +52,7 @@ spec:
       argoCDProject: string | default="default"
 
       # ── Compute Bridge Reference ──────────────────────────────────
-      computeBridgeName: string | required=true
-      computeNamespace: string | required=true
+      computeBridgeName: string | default="compute-bridge"
 
       # ── Fleet / Git Configuration ─────────────────────────────────
       fleetRepoURL: string | default=""
@@ -74,10 +72,7 @@ spec:
       # ConfigMap with a "values.yaml" key containing the full nested
       # Helm values for cluster-level-resources (operator preferences).
       # Bridge-derived values are injected via helm.parameters.
-      valuesConfigMapName: string | required=true
-
-      # ── Auto Sync ────────────────────────────────────────────────
-      autoSync: boolean | default=false
+      valuesConfigMapName: string | default="cluster-resources-values"
       # ── Bridge Name Override ──────────────────────────────────────
       clusterResourcesBridgeName: string | default="cluster-resources-bridge"
     status:
@@ -107,7 +102,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.computeBridgeName}
-          namespace: ${schema.spec.computeNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: clusterResourcesValues
       readyWhen:
@@ -123,7 +118,7 @@ spec:
   # ArgoCD Cluster Secret (spoke EKS registration via IAM auth)
   # ====================================================================
   # Registers the spoke EKS cluster in CSOC ArgoCD. Uses awsAuthConfig
-  # with the ArgoCD spoke access IAM role created by Compute2.
+  # with the ArgoCD spoke access IAM role created by Compute1.
   # ArgoCD server STS-assumes this role to authenticate to the spoke EKS.
 
     - id: argoCDClusterSecret

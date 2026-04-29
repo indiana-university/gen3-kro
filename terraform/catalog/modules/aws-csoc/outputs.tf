@@ -35,11 +35,6 @@ output "spoke_account_ids" {
   value       = local.spoke_account_ids
 }
 
-output "spoke_dns_config" {
-  description = "Spoke DNS config (hosted zone ID + name per spoke)"
-  value       = local.spoke_dns_config
-}
-
 # AWS Profile
 output "aws_profile" {
   description = "AWS profile used for CSOC cluster"
@@ -60,9 +55,9 @@ output "ack_csoc_role_name" {
 output "argocd_namespace" {
   description = "ArgoCD namespace name (carries implicit dependency on namespace creation and ArgoCD install)"
   value = try(
-    helm_release.argocd[0].namespace,                    # wait for ArgoCD Helm install
-    kubernetes_namespace_v1.argocd[0].metadata[0].name,  # wait for namespace creation
-    var.argocd_namespace                                 # fallback to variable
+    helm_release.argocd[0].namespace,                   # wait for ArgoCD Helm install
+    kubernetes_namespace_v1.argocd[0].metadata[0].name, # wait for namespace creation
+    var.argocd_namespace                                # fallback to variable
   )
 }
 

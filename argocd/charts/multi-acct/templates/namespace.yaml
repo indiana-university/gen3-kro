@@ -5,18 +5,12 @@
     services.k8s.aws/owner-account-id          - target AWS account ID
     services.k8s.aws/owner-account-role-arn    - IAM role ARN to assume in that account
 
-  DNS annotations (optional, from fleet_dns_json):
-    gen3.io/route53-hosted-zone-id             - pre-existing Route53 hosted zone ID
-    gen3.io/route53-hosted-zone-name           - Route53 hosted zone domain name
-
   The role ARN follows the per-spoke naming convention:
     <spoke-alias>-spoke-role  (e.g., spoke1-spoke-role)
   Created by the aws-spoke Terraform module.
 */}}
 {{- $clusters := .Values.clustersJson | fromJson }}
-{{- $dnsConfig := .Values.dnsJson | fromJson }}
 {{- range $alias, $accountId := $clusters }}
-{{- $spokeDns := index $dnsConfig $alias | default dict }}
 ---
 apiVersion: v1
 kind: Namespace
@@ -28,9 +22,6 @@ metadata:
     services.k8s.aws/owner-account-id: {{ $accountId | quote }}
     # ACK CARM — the IAM role ACK assumes when reconciling resources in this namespace
     services.k8s.aws/owner-account-role-arn: {{ printf "arn:aws:iam::%s:role/%s-spoke-role" $accountId $alias | quote }}
-    # DNS — Route53 hosted zone config (empty strings when not configured)
-    gen3.io/route53-hosted-zone-id: {{ $spokeDns.hosted_zone_id | default "" | quote }}
-    gen3.io/route53-hosted-zone-name: {{ $spokeDns.hosted_zone_name | default "" | quote }}
   labels:
     app.kubernetes.io/managed-by: Helm
     gen3.io/spoke: {{ $alias | quote }}

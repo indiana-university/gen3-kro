@@ -1,13 +1,13 @@
-# # ── AwsGen3OIDC — Tier 4: EKS OIDC Provider (~$0) ───────────────────────────
+# # ── AwsGen3OIDC1 — Tier 4: EKS OIDC Provider (~$0) ───────────────────────────
 # # Creates the IAM OIDC provider for the spoke EKS cluster and exports
-# # oidcBridge for downstream IAM2 roles.
+# # oidcBridge for downstream AppIAM1 roles.
 # #
-# # RGD: awsgen3oidc-rg.yaml  |  Kind: AwsGen3OIDC
+# # RGD: awsgen3oidc1-rg.yaml  |  Kind: AwsGen3OIDC1
 # # ----------------------------------------------------------------------------
 # apiVersion: kro.run/v1alpha1
-# kind: AwsGen3OIDC
+# kind: AwsGen3OIDC1
 # metadata:
-#   name: spoke1-oidc
+#   name: oidc
 #   namespace: spoke1
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "24"
@@ -15,14 +15,5 @@
 # spec:
 #   name: spoke1
 #   namespace: spoke1
-#   region: us-east-1
-#   environment: local
-#   project: gen3-kro
 #   adoptionPolicy: adopt-or-create
 #   deletionPolicy: delete
-
-#   computeBridgeName: spoke1-compute-bridge
-#   computeNamespace: spoke1
-
-#   createBridgeSecret: true
-#   oidcBridgeName: spoke1-oidc-bridge

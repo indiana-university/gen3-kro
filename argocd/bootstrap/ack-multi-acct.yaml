@@ -36,7 +36,6 @@ spec:
           # (helm --set / --set-string both mis-parse JSON curly braces).
           values: |
             clustersJson: '{{.metadata.annotations.fleet_spokes_json}}'
-            dnsJson: '{{.metadata.annotations.fleet_dns_json}}'
             clusterName: '{{.metadata.annotations.aws_cluster_name}}'
       destination:
         namespace: argocd

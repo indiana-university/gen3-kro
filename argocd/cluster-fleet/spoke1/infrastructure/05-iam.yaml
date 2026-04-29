@@ -1,13 +1,13 @@
-# # ── AwsGen3IAM2 — Tier 5: Application IAM (~$5/mo) ───────────────────────────
+# # ── AwsGen3AppIAM1 — Tier 5: Application IAM (~$5/mo) ────────────────────────
 # # Reads oidcBridge and storageBridge from upstream tiers.
 # # Creates: 11 IAM Roles + iamBridge.
 # #
-# # RGD: awsgen3iam2-rg.yaml  |  Kind: AwsGen3IAM2
+# # RGD: 06-iam1-rg.yaml  |  Kind: AwsGen3AppIAM1
 # # ----------------------------------------------------------------------------
 # apiVersion: kro.run/v1alpha1
-# kind: AwsGen3IAM2
+# kind: AwsGen3AppIAM1
 # metadata:
-#   name: spoke1-iam
+#   name: iam
 #   namespace: spoke1
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "25"
@@ -15,16 +15,5 @@
 # spec:
 #   name: spoke1
 #   namespace: spoke1
-#   region: us-east-1
-#   environment: local
-#   project: gen3-kro
 #   adoptionPolicy: adopt-or-create
 #   deletionPolicy: delete
-
-#   oidcBridgeName: spoke1-oidc-bridge
-#   oidcNamespace: spoke1
-#   storageBridgeName: spoke1-storage-bridge
-#   storageNamespace: spoke1
-
-#   createBridgeSecret: true
-#   iamBridgeName: spoke1-iam-bridge

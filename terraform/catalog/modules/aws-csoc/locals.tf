@@ -28,9 +28,8 @@ locals {
   oidc_provider_id = replace(module.eks.cluster_oidc_issuer_url, "https://", "")
 
   # Account IDs - retrieved dynamically from AWS profiles
-  csoc_account_id    = data.aws_caller_identity.current.account_id
+  csoc_account_id   = data.aws_caller_identity.current.account_id
   spoke_account_ids = var.spoke_account_ids
-  spoke_dns_config  = var.spoke_dns_config
 
   gitops_addons_org_name = var.gitops_addons_org_name != "" ? var.gitops_addons_org_name : var.git_org_name
   gitops_fleet_org_name  = var.gitops_fleet_org_name != "" ? var.gitops_fleet_org_name : var.git_org_name
@@ -54,12 +53,12 @@ locals {
   # Labels used by ApplicationSet selectors only — do not add keys not referenced
   # in a selector matchLabels / matchExpressions block.
   addons = merge(
-    local.aws_addons,   # enable_external_secrets, enable_kro_csoc_rgs, enable_multi_acct
+    local.aws_addons, # enable_external_secrets, enable_kro_csoc_rgs, enable_multi_acct
     local.oss_addons,
-    { fleet_member        = local.fleet_member },
-    { environment         = local.environment },
+    { fleet_member = local.fleet_member },
+    { environment = local.environment },
     { ack_management_mode = var.ack_management_type }, # selector: self_managed / aws_managed
-    { cluster_type        = "eks" },                   # selector: eks / kind
+    { cluster_type = "eks" },                          # selector: eks / kind
   )
 
   # Annotations consumed by ArgoCD ApplicationSet templates via

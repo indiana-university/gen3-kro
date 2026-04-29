@@ -11,12 +11,11 @@ module "aws_csoc" {
   source = "../aws-csoc"
 
   # AWS
-  aws_profile        = var.aws_profile
-  spoke_account_ids  = var.spoke_account_ids
-  spoke_dns_config   = var.spoke_dns_config
+  aws_profile       = var.aws_profile
+  spoke_account_ids = var.spoke_account_ids
 
   # Naming
-  csoc_alias = var.csoc_alias
+  csoc_alias           = var.csoc_alias
   vpc_cidr             = var.vpc_cidr
   availability_zones   = var.availability_zones
   private_subnet_cidrs = var.private_subnet_cidrs
@@ -106,7 +105,6 @@ module "argocd_bootstrap" {
   argocd_cluster_annotations = module.aws_csoc.argocd_cluster_annotations_base
   ack_self_managed_role_arn  = module.aws_csoc.ack_csoc_role_arn
   spoke_account_ids          = module.aws_csoc.spoke_account_ids
-  spoke_dns_config           = module.aws_csoc.spoke_dns_config
 
   # Secrets Manager repos
   ssm_repo_secret_names = var.ssm_repo_secret_names

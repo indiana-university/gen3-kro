@@ -14,7 +14,7 @@
 # apiVersion: kro.run/v1alpha1
 # kind: AwsGen3ClusterResources1
 # metadata:
-#   name: spoke1-cluster-resources
+#   name: cluster-resources
 #   namespace: spoke1
 #   annotations:
 #     argocd.argoproj.io/sync-wave: "27"
@@ -22,17 +22,12 @@
 # spec:
 #   name: spoke1
 #   namespace: spoke1
-#   region: us-east-1
 #   environment: local
 #   project: gen3-kro
 
 #   # ── ArgoCD configuration ──────────────────────────────────────────────────
 #   argoCDNamespace: argocd
 #   argoCDProject: default
-
-#   # ── Bridge references ─────────────────────────────────────────────────────
-#   computeBridgeName: spoke1-compute-bridge
-#   computeNamespace: spoke1
 
 #   # ── Fleet repo (ArgoCD cluster Secret metadata) ─────────────────────────
 #   fleetRepoURL: https://github.com/indiana-university/gen3-kro.git
@@ -46,11 +41,3 @@
 #   gen3HelmRepoURL: https://github.com/uc-cdis/gen3-helm.git
 #   gen3HelmTargetRevision: master
 
-#   # ── Values ConfigMap (operator preferences for chart sub-components) ─────
-#   valuesConfigMapName: spoke1-cluster-resources-values
-
-#   # ── Sync & Bridge ───────────────────────────────────────────────────────
-#   autoSync: false
-
-#   # ── Bridge (creates clusterResourcesBridge for downstream tiers) ──────────
-#   clusterResourcesBridgeName: spoke1-cluster-resources-bridge

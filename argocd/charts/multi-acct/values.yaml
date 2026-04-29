@@ -4,11 +4,6 @@
 # Example: '{"spoke1":"1111111111111","spoke2":"2222222222222"}'
 clustersJson: "{}"
 
-# dnsJson: JSON-encoded map of spoke-alias → DNS config (hosted_zone_id, hosted_zone_name)
-# Injected from the CSOC cluster secret annotation fleet_dns_json.
-# Example: '{"spoke1":{"hosted_zone_id":"Z1234567890","hosted_zone_name":"example.com"}}'
-dnsJson: "{}"
-
 # Role naming convention:
 #   CSOC source role:  ${cluster_name}-csoc-role
 #   Spoke role:        ${spoke_alias}-spoke-role  (e.g., spoke1-spoke-role)

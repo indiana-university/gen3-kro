@@ -4,7 +4,8 @@
 # KMS/SGs. Feature flags control prep resource groups.
 # S3 buckets managed exclusively by Storage1 tier.
 # ACM / TLS handled by DNS1 tier (separate instance).
-# Creates up to 4 bridge ConfigMaps (networkBridge + conditional prep).
+# Creates a single networkBridge ConfigMap carrying the base network outputs
+# plus empty/default prep keys when a feature flag disables that prep slice.
 #
 # RGD: 00-awsgen3network1-rg.yaml  |  Kind: AwsGen3Network1
 #
@@ -17,7 +18,7 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsGen3Network1
 metadata:
-  name: spoke1-network
+  name: network
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "15"
@@ -25,39 +26,5 @@ metadata:
 spec:
   name: spoke1
   namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
   adoptionPolicy: adopt-or-create
   deletionPolicy: delete
-
-  # ── Network ──────────────────────────────────────────────────────────────
-  vpcCIDR: "10.1.0.0/16"
-  publicSubnetCIDRs:
-    - "10.1.240.0/24"
-    - "10.1.241.0/24"
-  privateSubnetCIDRs:
-    - "10.1.0.0/20"
-    - "10.1.16.0/20"
-  availabilityZones:
-    - "us-east-1a"
-    - "us-east-1b"
-
-  # ── KMS ───────────────────────────────────────────────────────────────────
-  kmsKeyDescription: spoke1 foundation encryption key
-
-  # ── Feature flags (control conditional resource groups) ───────────────────
-  databaseEnabled: true
-  computeEnabled: true
-  searchEnabled: true
-
-  # ── Database prep (only when databaseEnabled: true) ───────────────────────
-  dbSubnetCIDRs:
-    - "10.1.32.0/24"
-    - "10.1.33.0/24"
-
-  # ── Bridge ────────────────────────────────────────────────────────────────
-  networkBridgeName: spoke1-foundation-bridge
-  databasePrepBridgeName: spoke1-database-prep-bridge
-  computePrepBridgeName: spoke1-compute-prep-bridge
-  searchPrepBridgeName: spoke1-search-prep-bridge

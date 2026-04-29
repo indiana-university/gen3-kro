@@ -1,4 +1,4 @@
-# AwsGen3Helm2 — Tier 5: Gen3 Application Deployment (Modular RGD v2)
+# AwsGen3Helm1 — Tier 5: Gen3 Application Deployment (Modular RGD v1)
 #
 # Creates an ArgoCD Application CR that deploys the gen3-helm umbrella chart
 # onto the spoke EKS cluster (registered by AwsGen3ClusterResources1, Tier 4.5).
@@ -27,21 +27,20 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: awsgen3helm2
+  name: awsgen3helm1
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsGen3Helm2
+    kind: AwsGen3Helm1
     spec:
       # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | default="default"
       region: string | default="us-east-1"
       environment: string | default="dev"
-      project: string | default="gen3"
 
       # ── ArgoCD ───────────────────────────────────────────────────
       argoCDNamespace: string | default="argocd"
@@ -52,43 +51,27 @@ spec:
       # cluster-resources and gen3-helm resolve from upstream helm/
       # application paths in the same repository.
       gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
-      # Retained for backward-compatible schema updates. The template uses
-      # path-based sourcing, so this field is ignored by the rendered app.
-      gen3HelmChart: string | default="gen3"
       gen3HelmPath: string | default="helm/gen3"
       gen3HelmTargetRevision: string | default="master"
 
-      # ── Bridge References (ALL required for full deployment) ────
-      foundationBridgeName: string | required=true
-      computeBridgeName: string | required=true
-      databaseBridgeName: string | required=true
-      searchBridgeName: string | required=true
-      iamBridgeName: string | required=true
-      messagingBridgeName: string | required=true
-      acmBridgeName: string | required=true
-      clusterResourcesBridgeName: string | required=true
-      foundationNamespace: string | required=true
-      computeNamespace: string | required=true
-      databaseNamespace: string | required=true
-      searchNamespace: string | required=true
-      iamNamespace: string | required=true
-      messagingNamespace: string | required=true
-      acmNamespace: string | required=true
-      clusterResourcesNamespace: string | required=true
-      storageBridgeName: string | required=true
-      storageNamespace: string | required=true
-      advancedBridgeName: string | required=true
-      advancedNamespace: string | required=true
+      # ── Bridge References (canonical defaults for one stack per namespace) ────
+      foundationBridgeName: string | default="foundation-bridge"
+      computeBridgeName: string | default="compute-bridge"
+      databaseBridgeName: string | default="database-bridge"
+      searchBridgeName: string | default="search-bridge"
+      iamBridgeName: string | default="iam-bridge"
+      messagingBridgeName: string | default="messaging-bridge"
+      acmBridgeName: string | default="dns-bridge"
+      clusterResourcesBridgeName: string | default="cluster-resources-bridge"
+      storageBridgeName: string | default="storage-bridge"
+      advancedBridgeName: string | default="advanced-bridge"
 
       # ── Values ConfigMap ─────────────────────────────────────────
       # ConfigMap with a "values.yaml" key containing the full nested
       # gen3 Helm chart values (operator preferences: service enables,
       # ESO secret names, dictionary URL, tier access, etc.).
       # Bridge-derived infrastructure values override via helm.parameters.
-      valuesConfigMapName: string | required=true
-
-      # ── Auto Sync ───────────────────────────────────────────────
-      autoSync: boolean | default=false
+      valuesConfigMapName: string | default="gen3helm-values"
 
       # ── Bridge (output) ─────────────────────────────────────────
       gen3HelmBridgeName: string | default="gen3helm-bridge"
@@ -119,7 +102,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.foundationBridgeName}
-          namespace: ${schema.spec.foundationNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: computeBridge
       readyWhen:
@@ -129,7 +112,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.computeBridgeName}
-          namespace: ${schema.spec.computeNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: databaseBridge
       readyWhen:
@@ -139,7 +122,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.databaseBridgeName}
-          namespace: ${schema.spec.databaseNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: searchBridge
       readyWhen:
@@ -149,7 +132,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.searchBridgeName}
-          namespace: ${schema.spec.searchNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: iamBridge
       readyWhen:
@@ -159,7 +142,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.iamBridgeName}
-          namespace: ${schema.spec.iamNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: messagingBridge
       readyWhen:
@@ -169,7 +152,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.messagingBridgeName}
-          namespace: ${schema.spec.messagingNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: acmBridge
       readyWhen:
@@ -179,7 +162,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.acmBridgeName}
-          namespace: ${schema.spec.acmNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: clusterResourcesBridge
       readyWhen:
@@ -189,7 +172,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.clusterResourcesBridgeName}
-          namespace: ${schema.spec.clusterResourcesNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: storageBridge
       readyWhen:
@@ -199,7 +182,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.storageBridgeName}
-          namespace: ${schema.spec.storageNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: advancedBridge
       readyWhen:
@@ -209,7 +192,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.advancedBridgeName}
-          namespace: ${schema.spec.advancedNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: gen3Values
       readyWhen:

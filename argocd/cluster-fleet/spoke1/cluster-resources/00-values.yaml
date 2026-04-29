@@ -1,4 +1,4 @@
-# ── Spoke1 Cluster-Level-Resources Helm Values ──────────────────────────────
+# ── Cluster-Level-Resources Helm Values ─────────────────────────────────────
 # ConfigMap providing operator preferences for the upstream uc-cdis/gen3-helm
 # cluster-level-resources app-of-apps chart.
 #
@@ -17,7 +17,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: spoke1-cluster-resources-values
+  name: cluster-resources-values
   namespace: spoke1
   labels:
     app.kubernetes.io/managed-by: gen3-kro

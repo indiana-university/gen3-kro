@@ -1,10 +1,10 @@
 # AwsGen3OIDC — Tier 4: EKS OIDC Provider (Modular RGD v1)
 #
 # Creates the IAM OpenID Connect provider for the spoke EKS cluster and exports
-# an oidcBridge ConfigMap for downstream tiers such as AwsGen3IAM2.
+# an oidcBridge ConfigMap for downstream tiers such as AwsGen3AppIAM1.
 #
 # PREREQUISITES:
-#   1. Compute2 deployed with computeBridge (OIDC issuer)
+#   1. Compute1 deployed with computeBridge (OIDC issuer)
 #   2. ACK controller 'iam' must be running
 #
 # OUTPUT: oidcBridge ConfigMap with provider ARN, provider name, and issuer.
@@ -12,28 +12,25 @@
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
-  name: awsgen3oidc
+  name: awsgen3oidc1
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:
     apiVersion: v1alpha1
-    kind: AwsGen3OIDC
+    kind: AwsGen3OIDC1
     spec:
       name: string | required=true
       namespace: string | default="default"
-      region: string | default="us-east-1"
-      environment: string | default="dev"
-      project: string | default="gen3"
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
 
-      computeBridgeName: string | required=true
-      computeNamespace: string | required=true
+      infrastructureConfigMapName: string | default="infrastructure-values"
+
+      computeBridgeName: string | default="compute-bridge"
 
       oidcBridgeName: string | default="oidc-bridge"
-      createBridgeSecret: boolean | default=true
 
     status:
       ready: ${oidcBridge.metadata.?name.orValue("loading")}
@@ -46,6 +43,16 @@ spec:
         metadata:
           name: ${schema.spec.namespace}
 
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
     - id: computeBridge
       readyWhen:
         - ${computeBridge.metadata.?name.orValue('null') != 'null'}
@@ -54,7 +61,7 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.computeBridgeName}
-          namespace: ${schema.spec.computeNamespace}
+          namespace: ${schema.spec.namespace}
 
     - id: oidcProvider
       readyWhen:
@@ -67,7 +74,7 @@ spec:
           name: ${schema.spec.name}-eks-oidc
           namespace: ${schema.spec.namespace}
           annotations:
-            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
@@ -80,11 +87,11 @@ spec:
             - key: Name
               value: ${schema.spec.name}-eks-oidc
             - key: Environment
-              value: ${schema.spec.environment}
+              value: ${infrastructureConfig.data['aws-environment']}
             - key: ManagedBy
               value: Kro
             - key: Project
-              value: ${schema.spec.project}
+              value: ${infrastructureConfig.data['aws-project']}
 
     - id: oidcBridge
       readyWhen:

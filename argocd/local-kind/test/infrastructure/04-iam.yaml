@@ -14,7 +14,7 @@
 apiVersion: kro.run/v1alpha1
 kind: AwsGen3IAM1
 metadata:
-  name: spoke1-iam
+  name: iam
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "25"
@@ -22,20 +22,5 @@ metadata:
 spec:
   name: spoke1
   namespace: spoke1
-  region: us-east-1
-  environment: local
-  project: gen3-kro
   adoptionPolicy: adopt-or-create
   deletionPolicy: delete
-
-  # ── Bridge references (all in spoke1 namespace) ───────────────────────────
-  foundationBridgeName: spoke1-foundation-bridge
-  computeBridgeName: spoke1-compute-bridge
-  storageBridgeName: spoke1-storage-bridge
-  foundationNamespace: spoke1
-  computeNamespace: spoke1
-  storageNamespace: spoke1
-
-  # ── Bridge (creates iamBridge for downstream tiers) ───────────────────────
-  createBridgeSecret: true
-  iamBridgeName: spoke1-iam-bridge

@@ -1,9 +1,9 @@
 # AwsGen3Messaging1 — Tier 4: Message Queues (Modular RGD v1)
 #
-# SQS queues extracted from AwsGen3AppIAM2 into their own RGD.
+# SQS queues are managed separately in their own RGD.
 # Both queues are always created (SQS is free-tier). This ensures
 # the messagingBridge ConfigMap always contains ALL queue URL keys,
-# avoiding KRO Test 8 silent-drop issues where Helm2 references
+# avoiding KRO Test 8 silent-drop issues where Helm1 references
 # bridge keys that would otherwise be missing.
 #
 # PREREQUISITES:
@@ -29,20 +29,14 @@ spec:
       # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | default="default"
-      region: string | default="us-east-1"
-      environment: string | default="dev"
-      project: string | default="gen3"
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
 
-
-      # ── SQS Configuration ───────────────────────────────────────
-      sqsMessageRetention: string | default="345600"
-      sqsVisibilityTimeout: string | default="300"
+      # ── Shared Infrastructure Config ─────────────────────────────
+      infrastructureConfigMapName: string | default="infrastructure-values"
 
       # ── Bridge ───────────────────────────────────────────────────
       messagingBridgeName: string | default="messaging-bridge"
-      createBridgeSecret: boolean | default=true
 
     status:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
@@ -58,6 +52,16 @@ spec:
         kind: Namespace
         metadata:
           name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
 
   # ====================================================================
   # SQS QUEUES
@@ -75,19 +79,19 @@ spec:
           name: ${schema.spec.name}-audit-queue
           namespace: ${schema.spec.namespace}
           annotations:
-            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
           queueName: ${schema.spec.name}-audit-sqs
-          messageRetentionPeriod: "${schema.spec.sqsMessageRetention}"
-          visibilityTimeout: "${schema.spec.sqsVisibilityTimeout}"
+          messageRetentionPeriod: ${infrastructureConfig.data['messaging-sqs-message-retention']}
+          visibilityTimeout: ${infrastructureConfig.data['messaging-sqs-visibility-timeout']}
           sqsManagedSSEEnabled: "true"
           tags:
             Name: ${schema.spec.name}-audit-sqs
-            Environment: ${schema.spec.environment}
+            Environment: ${infrastructureConfig.data['aws-environment']}
             ManagedBy: Kro
-            Project: ${schema.spec.project}
+            Project: ${infrastructureConfig.data['aws-project']}
 
     # ── SSJDispatcher SQS Queue ──────────────────────────────────────
     - id: ssjdispatcherQueue
@@ -101,19 +105,19 @@ spec:
           name: ${schema.spec.name}-ssjdispatcher-queue
           namespace: ${schema.spec.namespace}
           annotations:
-            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
           queueName: ${schema.spec.name}-ssjdispatcher-sqs
-          messageRetentionPeriod: "${schema.spec.sqsMessageRetention}"
-          visibilityTimeout: "${schema.spec.sqsVisibilityTimeout}"
+          messageRetentionPeriod: ${infrastructureConfig.data['messaging-sqs-message-retention']}
+          visibilityTimeout: ${infrastructureConfig.data['messaging-sqs-visibility-timeout']}
           sqsManagedSSEEnabled: "true"
           tags:
             Name: ${schema.spec.name}-ssjdispatcher-sqs
-            Environment: ${schema.spec.environment}
+            Environment: ${infrastructureConfig.data['aws-environment']}
             ManagedBy: Kro
-            Project: ${schema.spec.project}
+            Project: ${infrastructureConfig.data['aws-project']}
 
   # ====================================================================
   # BRIDGE: Messaging Outputs ConfigMap (for downstream tiers)
@@ -122,8 +126,6 @@ spec:
   # This avoids KRO Test 8 silent-drop issues.
 
     - id: messagingBridge
-      includeWhen:
-        - ${schema.spec.createBridgeSecret == true}
       readyWhen:
         - ${messagingBridge.metadata.?name.orValue('null') != 'null'}
       template:

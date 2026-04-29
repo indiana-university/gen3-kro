@@ -377,7 +377,7 @@ After fleet sync (wave 30):
 
 ```bash
 # List KRO instances by kind (examples)
-kubectl get awsgen3foundation1,awsgen3compute2 -A
+kubectl get awsgen3foundation1,awsgen3compute1 -A
 
 # Or list all CR files for a spoke
 ls argocd/cluster-fleet/spoke1/infrastructure/

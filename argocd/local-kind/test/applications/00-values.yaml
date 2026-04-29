@@ -1,7 +1,7 @@
-# ── Spoke1 Gen3 Helm Values ──────────────────────────────────────────────────
+# ── Gen3 Helm Values ─────────────────────────────────────────────────────────
 # ConfigMap providing operator preferences for the gen3-helm gen3 umbrella chart.
 #
-# The AwsGen3Helm2 RGD reads this ConfigMap's "values.yaml" key (via externalRef)
+# The AwsGen3Helm1 RGD reads this ConfigMap's "values.yaml" key (via externalRef)
 # and passes it directly as ArgoCD Application helm.values. Bridge-derived
 # infrastructure data (IRSA role ARNs, endpoints, SQS URLs, S3 buckets, etc.)
 # is injected via helm.parameters overrides in the RGD.
@@ -10,8 +10,9 @@
 #   ConfigMap values.yaml  → helm.values   (operator preferences)
 #   Bridge data            → helm.parameters (infrastructure outputs)
 #
-# The "hostname" key is duplicated outside values.yaml so the RGD can
-# reference it for the gen3HelmBridge output and status fields.
+# The flat keys below are duplicated outside values.yaml so other RGDs can
+# reference them without parsing nested YAML. Today they drive the gen3Helm
+# bridge/status, DNS hostname, and storage's optional app-driven buckets.
 #
 # Ref: https://github.com/uc-cdis/gen3-helm/tree/master/helm/gen3
 # Ref: https://github.com/Su-informatics-lab/gen3-gitops/blob/main/ardac1prd/portal.ardac.org/values.yaml
@@ -19,7 +20,7 @@
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: spoke1-gen3helm-values
+  name: gen3helm-values
   namespace: spoke1
   labels:
     app.kubernetes.io/managed-by: gen3-kro
@@ -28,8 +29,10 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "25"
 data:
-  # ── Hostname (extracted for bridge/status reference) ──────────────────────
+  # ── Flat keys for other RGDs ──────────────────────────────────────────────
   hostname: "spoke1dev.rds-pla.net"
+  manifestservice-enabled: "false"
+  portal-enabled: "false"
 
   # ── Full Helm values (nested YAML string) ─────────────────────────────────
   values.yaml: |

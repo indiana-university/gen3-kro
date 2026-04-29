@@ -213,13 +213,13 @@ RGDs use versioned naming: modular tier graphs use
 |------|----------|-----|------|--------|------------|------|
 | 0 | Infra RGD | awsgen3foundation1 | AwsGen3Foundation1 | ✅ Built (31+ resources, S3 conditional) | — (standalone) | ~$37/mo |
 | 0.5 | Infra RGD | awsgen3storage1 | AwsGen3Storage1 | ✅ Built (5 S3 buckets) | foundationBridge | ~$1-5/mo |
-| 1 | Infra RGD | awsgen3database2 | AwsGen3Database2 | ✅ Built (thin + ESO) | databasePrepBridge | ~$45-350/mo |
+| 1 | Infra RGD | awsgen3database1 | AwsGen3Database1 | ✅ Built (thin + ESO) | databasePrepBridge | ~$45-350/mo |
 | 2 | Infra RGD | awsgen3search1 | AwsGen3Search1 | ✅ Built (OpenSearch + conditional Redis) | searchPrepBridge + foundationBridge | ~$30-200/mo |
-| 3 | Infra RGD | awsgen3compute2 | AwsGen3Compute2 | ✅ Built (Managed Nodegroups) | computePrepBridge + foundationBridge | ~$350/mo |
+| 3 | Infra RGD | awsgen3compute1 | AwsGen3Compute1 | ✅ Built (Managed Nodegroups) | computePrepBridge + foundationBridge | ~$350/mo |
 | 4 | Infra RGD | awsgen3iam1 | AwsGen3IAM1 | ✅ Built (11 IRSA roles) | Foundation + Compute + Storage bridges | ~$5/mo |
 | 4 | Infra RGD | awsgen3messaging1 | AwsGen3Messaging1 | ✅ Built (SQS queues) | — (standalone) | ~$1/mo |
 | 4.5 | Infra RGD | awsgen3clusterresources1 | AwsGen3ClusterResources1 | ✅ Built | computeBridge | ~$0 |
-| 5 | App RGD | awsgen3helm2 | AwsGen3Helm2 | ✅ Built | All upstream bridges | ~$0 (pods) |
+| 5 | App RGD | awsgen3helm1 | AwsGen3Helm1 | ✅ Built | All upstream bridges | ~$0 (pods) |
 | 7 | Infra RGD | awsgen3advanced1 | AwsGen3Advanced1 | ✅ Built (WAFv2 WebACL) | — (standalone) | ~$5-10/mo |
 
 Foundation1 absorbs ALL prep infrastructure (SGs, IAM roles, DB subnets, KMS keys)

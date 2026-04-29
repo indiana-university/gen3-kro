@@ -244,7 +244,7 @@ report_rgd_resources() {
 
   if [[ "$found_any" == false ]]; then
     warn "No modular RGD instances found in namespace '$NAMESPACE'"
-    note "  Expected kinds: AwsGen3Network1, AwsGen3Storage1, AwsGen3Database2, ..."
+    note "  Expected kinds: AwsGen3Network1, AwsGen3Storage1, AwsGen3Database1, ..."
     echo ""
   fi
 

@@ -105,7 +105,7 @@
 | E1a | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-foundation.yaml` | **ADD** | gen3-dev | AwsGen3Foundation1 instance |
 | E1b | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-database.yaml` | **ADD** | gen3-dev | AwsGen3Database1 instance |
 | E1c | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-search.yaml` | **ADD** | gen3-dev | AwsGen3Search1 instance |
-| E1d | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-compute.yaml` | **ADD** | gen3-dev | AwsGen3Compute2 instance |
+| E1d | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-compute.yaml` | **ADD** | gen3-dev | AwsGen3Compute1 instance |
 | E1e | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-appiam.yaml` | **ADD** | gen3-dev | AwsGen3AppIAM1 instance |
 | E1f | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-helm.yaml` | **ADD** | gen3-dev | AwsGen3Helm1 instance |
 | E1g | `argocd/cluster-fleet/local-aws-dev/infrastructure/spoke1-observability.yaml` | **ADD** | gen3-dev | AwsGen3Observability1 instance |
