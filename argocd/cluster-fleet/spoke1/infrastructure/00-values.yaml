@@ -49,7 +49,7 @@ data:
   search-redis-snapshot-retention-limit: "0"
   search-redis-auto-failover-enabled: "false"
   search-redis-transit-encryption-enabled: "true"
-  compute-kubernetes-version: "1.31"
+  compute-kubernetes-version: "1.35"
   compute-node-instance-types: t3.large
   compute-node-desired-size: "2"
   compute-node-min-size: "1"
