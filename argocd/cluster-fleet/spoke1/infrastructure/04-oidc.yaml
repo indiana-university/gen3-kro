@@ -1,19 +1,19 @@
-# # ── AwsGen3OIDC1 — Tier 4: EKS OIDC Provider (~$0) ───────────────────────────
-# # Creates the IAM OIDC provider for the spoke EKS cluster and exports
-# # oidcBridge for downstream AppIAM1 roles.
-# #
-# # RGD: awsgen3oidc1-rg.yaml  |  Kind: AwsGen3OIDC1
-# # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3OIDC1
-# metadata:
-#   name: oidc
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "24"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
+# ── AwsGen3OIDC1 — Tier 4: EKS OIDC Provider (~$0) ───────────────────────────
+# Creates the IAM OIDC provider for the spoke EKS cluster and exports
+# oidcBridge for downstream AppIAM1 roles.
+#
+# RGD: awsgen3oidc1-rg.yaml  |  Kind: AwsGen3OIDC1
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3OIDC1
+metadata:
+  name: oidc
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "24"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete

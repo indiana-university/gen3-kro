@@ -1,19 +1,19 @@
-# # ── AwsGen3AppIAM1 — Tier 5: Application IAM (~$5/mo) ────────────────────────
-# # Reads oidcBridge and storageBridge from upstream tiers.
-# # Creates: 11 IAM Roles + iamBridge.
-# #
-# # RGD: 06-iam1-rg.yaml  |  Kind: AwsGen3AppIAM1
-# # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3AppIAM1
-# metadata:
-#   name: iam
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "25"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
+# ── AwsGen3AppIAM1 — Tier 5: Application IAM (~$5/mo) ────────────────────────
+# Reads oidcBridge and storageBridge from upstream tiers.
+# Creates: 11 IAM Roles + iamBridge.
+#
+# RGD: 06-iam1-rg.yaml  |  Kind: AwsGen3AppIAM1
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3AppIAM1
+metadata:
+  name: iam
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete

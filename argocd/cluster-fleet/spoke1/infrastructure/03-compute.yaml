@@ -1,26 +1,26 @@
-# # ── AwsGen3Compute1 — Tier 3: Thin Compute (~$350/mo) ────────────────────────
-# # Reads the single networkBridge (EKS SG, Cluster Role ARN, Node Role
-# # ARN, VPC ID, subnet IDs) from Network.
-# # Creates: EKS Cluster + Managed Node Group + EKS Addons +
-# # ArgoCD Spoke Access IAM Role + EKS Access Entry + computeBridge.
-# #
-# # RGD: 04-compute1-rg.yaml  |  Kind: AwsGen3Compute1
-# #
-# # PREREQUISITES:
-# #   - Tier 0 (spoke1-network) must be Ready with computeEnabled: true
-# #   - networkBridge must exist in namespace spoke1
-# #   - ACK controllers 'eks' and 'iam' must be running
-# # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Compute1
-# metadata:
-#   name: compute
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "20"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
+# ── AwsGen3Compute1 — Tier 3: Thin Compute (~$350/mo) ────────────────────────
+# Reads the single networkBridge (EKS SG, Cluster Role ARN, Node Role
+# ARN, VPC ID, subnet IDs) from Network.
+# Creates: EKS Cluster + Managed Node Group + EKS Addons +
+# ArgoCD Spoke Access IAM Role + EKS Access Entry + computeBridge.
+#
+# RGD: 04-compute1-rg.yaml  |  Kind: AwsGen3Compute1
+#
+# PREREQUISITES:
+#   - Tier 0 (spoke1-network) must be Ready with computeEnabled: true
+#   - networkBridge must exist in namespace spoke1
+#   - ACK controllers 'eks' and 'iam' must be running
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Compute1
+metadata:
+  name: compute
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
