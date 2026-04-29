@@ -1,25 +1,25 @@
-# # ── AwsGen3Dns1 — Tier 0.5: DNS + TLS Certificate (~$0-1/mo) ─────────────────
-# # ACM Certificate (DNS validation) + single dnsBridge ConfigMap.
-# # Route53 hosted zone adoption is managed directly by the RGD using
-# # ACK adoption fields.
-# #
-# # RGD: 00-dns1-rg.yaml  |  Kind: AwsGen3Dns1
-# #
-# # PREREQUISITES:
-# #   - Route53 hosted zone must already exist in AWS for adoption
-# #   - ACK controllers (route53, acm) must be running
-# #   - KRO controller and awsgen3dns1 RGD must be registered
-# # ----------------------------------------------------------------------------
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Dns1
-# metadata:
-#   name: dns
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "16"
-#     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
-# spec:
-#   name: spoke1
-#   namespace: spoke1
-#   adoptionPolicy: adopt-or-create
-#   deletionPolicy: delete
+# ── AwsGen3Dns1 — Tier 0.5: DNS + TLS Certificate (~$0-1/mo) ─────────────────
+# ACM Certificate (DNS validation) + single dnsBridge ConfigMap.
+# Route53 hosted zone adoption is managed directly by the RGD using
+# ACK adoption fields.
+#
+# RGD: 00-dns1-rg.yaml  |  Kind: AwsGen3Dns1
+#
+# PREREQUISITES:
+#   - Route53 hosted zone must already exist in AWS for adoption
+#   - ACK controllers (route53, acm) must be running
+#   - KRO controller and awsgen3dns1 RGD must be registered
+# ----------------------------------------------------------------------------
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Dns1
+metadata:
+  name: dns
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  name: spoke1
+  namespace: spoke1
+  adoptionPolicy: adopt-or-create
+  deletionPolicy: delete
