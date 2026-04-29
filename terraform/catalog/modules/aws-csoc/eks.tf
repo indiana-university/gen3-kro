@@ -15,6 +15,9 @@ module "eks" {
 
   compute_config = var.cluster_compute_config
 
+  # Disable all EKS control plane logging to CloudWatch (default enables all 5 types)
+  enabled_log_types = []
+
   tags = local.tags
 }
 
