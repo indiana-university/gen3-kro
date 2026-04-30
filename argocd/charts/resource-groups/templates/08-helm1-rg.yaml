@@ -233,7 +233,7 @@ spec:
                 releaseName: gen3
                 # Base values from gitops repo ($values ref, lowest priority)
                 valueFiles:
-                  - $values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/fleet/' + schema.spec.namespace}/${acmBridge.data['hostname']}/values.yaml
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/fleet/' + schema.spec.namespace}/${acmBridge.data['hostname']}/values.yaml"
                 # Bridge + schema overrides (take precedence over valueFiles)
                 parameters:
                   # ── Global identity & environment ──────────────────

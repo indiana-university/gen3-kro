@@ -192,7 +192,7 @@ spec:
               helm:
                 releaseName: cluster-level-resources
                 valueFiles:
-                  - $values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/fleet/' + schema.spec.namespace}/cluster-level-resources/cluster-values.yaml
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/fleet/' + schema.spec.namespace}/cluster-level-resources/cluster-values.yaml"
                 parameters:
                   - name: cluster
                     value: ${schema.spec.name}
