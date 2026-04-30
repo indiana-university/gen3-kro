@@ -138,7 +138,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "30"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1   # only non-default field needed
 ```

@@ -24,7 +24,6 @@ kind: ResourceGraphDefinition
 metadata:
   name: awsgen3dns1
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:

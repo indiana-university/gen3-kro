@@ -23,7 +23,6 @@ kind: ResourceGraphDefinition
 metadata:
   name: kro-chained-orvalue-test
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:

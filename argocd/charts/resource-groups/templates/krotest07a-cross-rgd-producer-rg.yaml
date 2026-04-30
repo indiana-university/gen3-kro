@@ -25,7 +25,6 @@ kind: ResourceGraphDefinition
 metadata:
   name: krotest07a-cross-rgd-producer
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:

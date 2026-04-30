@@ -36,7 +36,6 @@ kind: ResourceGraphDefinition
 metadata:
   name: awsgen3network1
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:

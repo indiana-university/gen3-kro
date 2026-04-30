@@ -17,7 +17,6 @@ kind: ResourceGraphDefinition
 metadata:
   name: kro-foreach-test
   annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
     argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:

@@ -56,11 +56,10 @@ spec:
           allowEmpty: true
           prune: true
         retry:
-          limit: 100
+          limit: 5
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true
-          - SkipDryRunOnMissingResource=true
       ignoreDifferences:
         - kind: Namespace
           jsonPointers:

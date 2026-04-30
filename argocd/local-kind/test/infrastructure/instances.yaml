@@ -5,7 +5,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "16"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -17,7 +17,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "15"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -29,7 +29,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "16"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -41,7 +41,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "20"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -53,7 +53,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "20"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
   esoUseIRSA: true
@@ -66,7 +66,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "20"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -78,7 +78,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "25"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -90,7 +90,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "25"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -102,7 +102,7 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "24"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1
 
@@ -114,6 +114,6 @@ metadata:
   namespace: spoke1
   annotations:
     argocd.argoproj.io/sync-wave: "25"
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+    argocd.argoproj.io/sync-options: ServerSideApply=true
 spec:
   namespace: spoke1

@@ -42,7 +42,7 @@ argument-hint: 'Component name (e.g. "database2", "messaging2", "waf1")'
      namespace: spoke1
      annotations:
        argocd.argoproj.io/sync-wave: "30"
-       argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+       argocd.argoproj.io/sync-options: ServerSideApply=true
    spec:
      namespace: spoke1
    ```

@@ -46,7 +46,7 @@ spec:
           allowEmpty: true
           prune: true
         retry:
-          limit: 100
+          limit: 5
         syncOptions:
           - CreateNamespace=true
           - ServerSideApply=true

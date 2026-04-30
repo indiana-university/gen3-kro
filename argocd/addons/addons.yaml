@@ -11,8 +11,6 @@ syncPolicy:
       maxDuration: 10m
   syncOptions:
     - CreateNamespace=true
-    - ServerSideApply=true
-    - SkipDryRunOnMissingResource=true
 syncPolicyAppSet:
   preserveResourcesOnDeletion: false
 useSelectors: true
