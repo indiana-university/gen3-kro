@@ -252,9 +252,9 @@ spec:
                     value: ${storageBridge.data['upload-bucket-name']}
                   # ── Enable/disable derived from bucket name presence ─
                   - name: manifestservice.enabled
-                     value: "${storageBridge.data['manifest-bucket-name'] != '' ? 'true' : 'false'}"
+                    value: "${storageBridge.data['manifest-bucket-name'] != '' ? 'true' : 'false'}"
                   - name: portal.enabled
-                     value: "${storageBridge.data['dashboard-bucket-name'] != '' ? 'true' : 'false'}"
+                    value: "${storageBridge.data['dashboard-bucket-name'] != '' ? 'true' : 'false'}"
                   # ── WAF ────────────────────────────────────────────
                   - name: global.aws.wafv2.enabled
                     value: ${advancedBridge.data['waf-enabled']}
