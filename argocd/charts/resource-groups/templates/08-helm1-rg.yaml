@@ -37,7 +37,7 @@ spec:
     kind: AwsGen3Helm1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | default="gen3"
+      name: string | required=true
       namespace: string | required=true
       region: string | default="us-east-1"
       environment: string | default="dev"

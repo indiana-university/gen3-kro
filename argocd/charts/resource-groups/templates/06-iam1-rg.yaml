@@ -36,7 +36,7 @@ spec:
     kind: AwsGen3AppIAM1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | default="gen3"
+      name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"

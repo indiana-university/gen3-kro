@@ -42,7 +42,7 @@ spec:
     kind: AwsGen3ClusterResources1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | default="gen3"
+      name: string | required=true
       namespace: string | required=true
       environment: string | default="dev"
       project: string | default="gen3"
