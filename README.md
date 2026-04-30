@@ -54,17 +54,15 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 ├── .devcontainer/                   # VS Code DevContainer (EKS workflow)
 ├── argocd/                          # GitOps configuration
 │   ├── bootstrap/                   #   Entry-point ApplicationSets (3 files)
-│   ├── addons/                      #   Addon values (EKS + Kind sections)
-│   │   └── addons.yaml              #   Single file: CSOC + Kind addons
+│   ├── addons/                      #   Addon values (single combined file)
 │   ├── charts/                      #   Helm charts consumed by ApplicationSets
 │   │   ├── application-sets/        #     Meta-chart: generates per-addon ApplicationSets
 │   │   ├── multi-acct/              #     ACK CARM multi-account chart
 │   │   └── resource-groups/         #     KRO ResourceGraphDefinition manifests
-│   ├── cluster-fleet/               #   Per-cluster overrides
-│   │   ├── spoke1/                  #     Spoke cluster (infra, apps, cluster-resources, tests)
-│   │   └── _example/               #     Template for new spokes
+│   ├── fleet/                       #   EKS spoke KRO instance CRs
+│   │   └── spoke1/                  #     spoke1: infrastructure/, cluster-level-resources/, <hostname>/
 │   └── local-kind/                  #   Kind cluster instance definitions
-│       └── test/                    #     Local test instances (infra, apps, tests)
+│       └── test/                    #     Local: infrastructure/, cluster-resources/, applications/, tests/
 ├── config/                          # User config files (gitignored except examples)
 ├── docs/                            # Documentation, diagrams, design reports
 ├── iam/                             # Per-spoke IAM inline policies

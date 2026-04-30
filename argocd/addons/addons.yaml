@@ -21,7 +21,7 @@ repoURLGitRevision: '{{.metadata.annotations.addons_repo_revision}}'
 repoURLGitBasePath: '{{.metadata.annotations.addons_repo_basepath}}'
 valueFiles:
   - addons/addons
-  - cluster-fleet/{{.name}}/addons
+  - fleet/{{.name}}/addons
 
 ########################################
 # CSOC Addons

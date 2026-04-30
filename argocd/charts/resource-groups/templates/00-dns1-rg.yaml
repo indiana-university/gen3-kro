@@ -32,19 +32,18 @@ spec:
     kind: AwsGen3Dns1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | required=true
-      namespace: string | default="default"
+      name: string | default="gen3"
+      namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
       infrastructureConfigMapName: string | default="infrastructure-values"
-      applicationConfigMapName: string | default="gen3helm-values"
 
-      # ── Bridge ───────────────────────────────────────────────────
+      # ── Bridge ──────────────────────────────────────────
       dnsBridgeName: string | default="dns-bridge"
 
     status:
-      hostedZoneID: "${applicationConfig.data['hostname'] != '' ? hostedZone.status.?id.orValue('loading') : ''}"
-      acmCertificateARN: "${applicationConfig.data['hostname'] != '' ? acmCert.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
+      hostedZoneID: "${infrastructureConfig.data['hostname'] != '' ? hostedZone.status.?id.orValue('loading') : ''}"
+      acmCertificateARN: "${infrastructureConfig.data['hostname'] != '' ? acmCert.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
 
   resources:
   # ######################################################################
@@ -54,7 +53,7 @@ spec:
 
     - id: hostedZone
       includeWhen:
-        - ${applicationConfig.data['hostname'] != ''}
+        - ${infrastructureConfig.data['hostname'] != ''}
       readyWhen:
         - ${hostedZone.status.?id.orValue('null') != 'null'}
         - ${hostedZone.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -66,7 +65,7 @@ spec:
           namespace: ${schema.spec.namespace}
           annotations:
             services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/adoption-policy: adopt
             services.k8s.aws/adoption-fields: |
               {"name":"${infrastructureConfig.data['dns-hosted-zone-name']}"}
             services.k8s.aws/deletion-policy: retain
@@ -83,20 +82,10 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-    - id: applicationConfig
-      readyWhen:
-        - ${applicationConfig.metadata.?name.orValue('null') != 'null'}
-      externalRef:
-        apiVersion: v1
-        kind: ConfigMap
-        metadata:
-          name: ${schema.spec.applicationConfigMapName}
-          namespace: ${schema.spec.namespace}
-
-  # ── ACM Certificate ───────────────────────────────────────────────
+  # ── ACM Certificate ───────────────────────────────────────────────────
     - id: acmCert
       includeWhen:
-        - ${applicationConfig.data['hostname'] != ''}
+        - ${infrastructureConfig.data['hostname'] != ''}
       readyWhen:
         - ${acmCert.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
         - ${acmCert.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -112,7 +101,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          domainName: ${applicationConfig.data['hostname']}
+          domainName: ${infrastructureConfig.data['hostname']}
           tags:
             - key: Name
               value: ${schema.spec.name}-acm-cert
@@ -128,7 +117,7 @@ spec:
   # ── DNS Validation RecordSet ──────────────────────────────────────
     - id: dnsValidation
       includeWhen:
-        - ${applicationConfig.data['hostname'] != ''}
+        - ${infrastructureConfig.data['hostname'] != ''}
       readyWhen:
         - ${dnsValidation.status.?status.orValue('null') != 'null'}
         - ${dnsValidation.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -166,7 +155,7 @@ spec:
             gen3.io/bridge: "true"
             gen3.io/purpose: dns
         data:
-          hosted-zone-id: "${applicationConfig.data['hostname'] != '' ? hostedZone.status.?id.orValue('loading') : ''}"
-          hosted-zone-name: "${applicationConfig.data['hostname'] != '' ? infrastructureConfig.data['dns-hosted-zone-name'] : ''}"
-          acm-cert-arn: "${applicationConfig.data['hostname'] != '' ? acmCert.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
-          hostname: "${applicationConfig.data['hostname'] != '' ? applicationConfig.data['hostname'] : ''}"
+          hosted-zone-id: "${infrastructureConfig.data['hostname'] != '' ? hostedZone.status.?id.orValue('loading') : ''}"
+          hosted-zone-name: "${infrastructureConfig.data['hostname'] != '' ? infrastructureConfig.data['dns-hosted-zone-name'] : ''}"
+          acm-cert-arn: "${infrastructureConfig.data['hostname'] != '' ? acmCert.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
+          hostname: "${infrastructureConfig.data['hostname'] != '' ? infrastructureConfig.data['hostname'] : ''}"

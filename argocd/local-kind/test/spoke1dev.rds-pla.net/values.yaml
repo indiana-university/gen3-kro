@@ -1,0 +1,120 @@
+# ── Operator preferences for spoke1 / spoke1dev.rds-pla.net ──────────────────
+# Layer 1 of the 3-layer values architecture.
+# ARNs, endpoints, and bucket names are injected via helm.parameters from
+# KRO bridge ConfigMaps (Layer 2) and override any values here.
+# ---------------------------------------------------------------------------
+
+global:
+  aws:
+    enabled: true
+    # account, hatchery_role, secretStoreServiceAccount.roleArn,
+    # and wafv2.wafAclArn are injected by KRO bridge ConfigMaps.
+    secretStoreServiceAccount:
+      enabled: true
+      name: external-secrets
+    wafv2:
+      enabled: false
+  dev: true
+  externalSecrets:
+    deploy: true
+  postgres:
+    dbCreate: true
+    externalSecret: "spoke1-aurora-master-password"
+  environment: "spoke1"
+  hostname: "spoke1dev.rds-pla.net"
+  # revproxyArn injected by KRO acmBridge.dns-bridge (acm-certificate-arn)
+  dictionaryUrl: "https://dictionary.ardac.org/2.2.2/schema.json"
+  portalApp: gitops
+  publicDataSets: false
+  tierAccessLevel: "private"
+  tierAccessLimit: "100"
+  netPolicy:
+    enabled: false
+  dispatcherJobNum: "10"
+  frontendRoot: "portal"
+  ddEnabled: false
+
+ambassador:
+  enabled: true
+
+arborist:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-arborist-creds"
+
+argo-wrapper:
+  enabled: false
+
+audit:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-audit-creds"
+    createK8sAuditSecret: true
+
+aws-es-proxy:
+  enabled: true
+  # esEndpoint injected by KRO searchBridge (opensearch-endpoint)
+  externalSecrets:
+    awsCreds: "spoke1-default-aws-es-proxy-creds"
+
+dicom-server:
+  enabled: false
+
+dicom-viewer:
+  enabled: false
+
+fence:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-fence-creds"
+    createK8sFenceSecret: true
+    createK8sGoogleSecret: false
+
+guppy:
+  enabled: false
+
+hatchery:
+  enabled: false
+
+indexd:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-indexd-creds"
+    createK8sIndexdSecret: true
+
+manifestservice:
+  enabled: false
+
+metadata:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-metadata-creds"
+
+peregrine:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-peregrine-creds"
+
+pidgin:
+  enabled: false
+
+portal:
+  enabled: false
+
+requestor:
+  enabled: false
+
+revproxy:
+  enabled: true
+
+sheepdog:
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-sheepdog-creds"
+    createK8sSheepDogSecret: true
+
+ssjdispatcher:
+  enabled: false
+
+wts:
+  enabled: false

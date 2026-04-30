@@ -18,15 +18,13 @@ argocd/
 │   ├── application-sets/           #   Meta-chart: generates per-addon ApplicationSets
 │   ├── multi-acct/                 #   ACK CARM multi-account Helm chart
 │   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
-├── cluster-fleet/                  # Per-cluster override values (highest precedence)
-│   ├── spoke1/
-│   │   ├── infrastructure/         #   KRO instance definitions (one YAML file per tier)
-│   │   ├── cluster-resources/      #   Cluster-level resource values (1 per cluster)
-│   │   ├── applications/           #   Gen3 application values (Helm2 instances)
-│   │   └── tests/                  #   KRO capability test instances
-│   └── _example/                   #   Template for new spoke directories
+├── fleet/                          # EKS spoke KRO instance CRs (picked up by fleet-instances AppSet)
+│   └── spoke1/
+│       ├── infrastructure/         #   KRO instance definitions + infrastructure-values ConfigMap
+│       ├── cluster-level-resources/ #  AwsGen3Helm1 instance
+│       └── <hostname>/             #   AwsGen3ClusterResources1 instance + values.yaml
 └── local-kind/                     # Kind cluster instance definitions
-    └── test/                       #   Local test: infra, apps, cluster-resources, tests
+    └── test/                       #   Local: infrastructure/, cluster-resources/, applications/, tests/
 ```
 
 ## Reconciliation Chain
@@ -67,7 +65,7 @@ Terraform creates:
 ### Addon Values
 1. `charts/application-sets/` defaults (lowest)
 2. `addons/addons.yaml`
-3. `cluster-fleet/<cluster>/addons.yaml` **(highest — wins)**
+3. `fleet/<cluster>/addons.yaml` **(highest — wins)**
 
 The merge uses multi-source Helm with ref-based value files:
 ```yaml
@@ -81,7 +79,7 @@ sources:
       ignoreMissingValueFiles: true
       valueFiles:
         - $values/{{.metadata.annotations.addons_config_path}}
-        - $values/{{.metadata.annotations.addons_repo_basepath}}cluster-fleet/{{ .name }}/addons.yaml
+        - $values/{{.metadata.annotations.addons_repo_basepath}}fleet/{{ .name }}/addons.yaml
 ```
 
 ## Cluster Generator & Label/Annotation Contract
@@ -160,19 +158,17 @@ The addons file contains both EKS CSOC and Kind local addons, distinguished by `
 | `kro-csoc-rgs-kind` | 10 | manifest | KRO ResourceGraphDefinitions |
 | `ack-*-kind` (13x) | 1 | Helm (OCI) | ACK: acm, ec2, eks, elasticache, iam, kms, opensearchservice, rds, route53, s3, secretsmanager, sqs, wafv2 |
 
-## Cluster Fleet (`cluster-fleet/<cluster>/`)
+## Fleet (`fleet/<spoke>/`)
 
-Each subdirectory must match a spoke alias defined in `spoke_account_ids` in `config/shared.auto.tfvars.json`. Files:
+Each subdirectory is a spoke cluster whose name matches a spoke alias in `spoke_account_ids` in `config/shared.auto.tfvars.json`. Picked up recursively by `fleet-instances` ApplicationSet.
 
-| File/Dir | Purpose |
-|----------|---------|
-| `addons.yaml` | Override addon values (empty `{}` = accept defaults) |
-| `infrastructure/` | KRO instance definitions (one standalone YAML file per tier) |
-| `cluster-resources/` | Cluster-level resource values (1 per cluster) |
-| `applications/` | Gen3 application values (Helm2 instances) |
-| `tests/` | KRO capability test instances |
+| Path | Purpose |
+|------|---------|
+| `infrastructure/` | KRO instance definitions + `infrastucture-values` ConfigMap (wave 14) |
+| `cluster-level-resources/` | AwsGen3Helm1 instance |
+| `<hostname>/` | AwsGen3ClusterResources1 instance + `values.yaml` (gen3-helm operator preferences) |
 
-The `local-kind/test/` directory mirrors this structure for Kind clusters.
+The `local-kind/test/` directory mirrors this structure for Kind clusters, with additional `cluster-resources/`, `applications/`, and `tests/` subdirectories.
 
 ## Conventions
 
@@ -194,5 +190,5 @@ helm template argocd/charts/resource-groups/
 helm template argocd/charts/application-sets/ -f argocd/addons/addons.yaml
 
 # Validate KRO instance YAML files directly
-kubectl apply --dry-run=client -f argocd/cluster-fleet/spoke1/infrastructure/
+kubectl apply --dry-run=client -f argocd/fleet/spoke1/infrastructure/
 ```

@@ -32,8 +32,8 @@ spec:
     kind: AwsGen3Advanced1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | required=true
-      namespace: string | default="default"
+      name: string | default="gen3"
+      namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
 

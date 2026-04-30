@@ -1,28 +1,16 @@
 # ======================================================================
 # fleet-instances — All KRO instance CRs for spoke clusters
 # ======================================================================
-# Applies ALL KRO Custom Resource YAMLs from four sub-directories of
-# the cluster's instance root path as a single ArgoCD Application per spoke.
+# Recursively applies all *.yaml files under the cluster's instance root
+# (excluding values.yaml and cluster-values.yaml) as a single ArgoCD
+# Application per spoke.
 #
-# Cluster-type-aware instance root path (resolved from cluster Secret
-# annotation `fleet_instances_path`):
+# Instance root path (from cluster Secret annotation `fleet_instances_path`):
+#   EKS CSOC  — not set → defaults to fleet/{{.name}}  (e.g. fleet/spoke1)
+#   Kind CSOC — fleet_instances_path: "local-kind/test"
 #
-#   EKS CSOC   → fleet_instances_path not set → falls back to
-#                 cluster-fleet/{{.name}}   (e.g. cluster-fleet/spoke1)
-#   Kind CSOC  → fleet_instances_path: "local-kind/test"
-#
-# Under each instance root the four sub-directories are:
-#   infrastructure/     — ALL infra tiers in numbered order
-#   cluster-resources/  — (reserved, currently empty)
-#   applications/       — (reserved, currently empty)
-#   tests/              — KRO capability test instances (EKS) /
-#                         kro-tests/ (Kind — uses same fleet source slot)
-#
-# Matched by any cluster secret with enable_infra_instances: "true".
-#
-# Deployment ordering is enforced by:
-#   1. argocd.argoproj.io/sync-wave on each instance YAML file
-#   2. readyWhen bridge externalRefs in each RGD
+# Matched by cluster secrets with enable_infra_instances: "true".
+# Deployment ordering: argocd sync-wave + RGD readyWhen bridge externalRefs.
 #
 # Repo coordinates (fleet_repo_url, fleet_repo_revision, fleet_repo_basepath)
 # and fleet_instances_path are read from the cluster Secret annotations.
@@ -54,28 +42,11 @@ spec:
       sources:
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/infrastructure/'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}fleet/{{.name}}{{end}}'
         directory:
-          recurse: false
+          recurse: true
           include: '*.yaml'
-      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/cluster-resources/'
-        directory:
-          recurse: false
-          include: '*.yaml'
-      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/applications/'
-        directory:
-          recurse: false
-          include: '*.yaml'
-      - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
-        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}cluster-fleet/{{.name}}{{end}}/tests/'
-        directory:
-          recurse: false
-          include: '*.yaml'
+          exclude: '{values.yaml,cluster-values.yaml}'
       destination:
         namespace: argocd
         name: '{{.name}}'

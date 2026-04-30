@@ -18,7 +18,7 @@
 # Bridge name pattern: {spec.name}-crossrgd-bridge
 #
 # Deployed via ArgoCD — instances defined in:
-#   argocd/cluster-fleet/local-aws-dev/tests/krotest07a-cross-rgd-producer.yaml
+#   argocd/local-kind/test/tests/krotest07a-cross-rgd-producer.yaml
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition

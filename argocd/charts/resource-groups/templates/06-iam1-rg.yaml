@@ -36,8 +36,8 @@ spec:
     kind: AwsGen3AppIAM1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | required=true
-      namespace: string | default="default"
+      name: string | default="gen3"
+      namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
 
@@ -159,6 +159,14 @@ spec:
                       "${storageBridge.data['data-bucket-arn']}/*",
                       "${storageBridge.data['upload-bucket-arn']}",
                       "${storageBridge.data['upload-bucket-arn']}/*"
+                    ]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:ListBucket"],
+                    "Resource": [
+                      "${storageBridge.data['users-bucket-arn']}",
+                      "${storageBridge.data['users-bucket-arn']}/*"
                     ]
                   }
                 ]

@@ -155,7 +155,7 @@ bash scripts/kind-local-test.sh destroy                 # Tear everything down
 
 After `install`, ArgoCD manages all subsequent changes via GitOps:
 - Push a change to `argocd/charts/resource-groups/templates/` → RGD updates
-- Push a change to `argocd/cluster-fleet/local-aws-dev/` → instance updates
+- Push a change to `argocd/local-kind/test/` → instance updates
 - ArgoCD polls every ~3 minutes (or use `argocd app sync <name>` for immediate)
 
 ---
@@ -171,13 +171,13 @@ After `install`, ArgoCD manages all subsequent changes via GitOps:
 
 ### Add a Production Instance
 
-1. Create `argocd/cluster-fleet/local-aws-dev/infrastructure/<name>.yaml`
+1. Create `argocd/local-kind/test/infrastructure/<name>.yaml`
 2. Commit and push
 3. ArgoCD syncs `kro-local-instances` automatically (wave 30)
 
 ### Add a Test Instance
 
-1. Create `argocd/cluster-fleet/local-aws-dev/tests/<name>.yaml`
+1. Create `argocd/local-kind/test/tests/<name>.yaml`
 2. Commit and push
 3. ArgoCD syncs `kro-local-instances` automatically
 

@@ -39,12 +39,12 @@
 #      Wave  10: KRO ResourceGraphDefinitions
 #      Wave  30: KRO instances (from fleet-instances, when uncommented)
 #
-# Deployment sequence (all ArgoCD-managed after bootstrap):
-#   Wave 15: Foundation1       — VPC, subnets, S3, KMS, IAM, ACM
-#   Wave 20: Compute2/Database1/Search1  — EKS, Aurora, OpenSearch
-#   Wave 25: AppIAM1           — OIDC, IRSA roles, SQS
-#   Wave 30: ClusterResources1 — Spoke EKS registration + ESO
-#   Wave 35: Helm1             — gen3-helm Application to spoke
+# KRO instance sync-wave ordering:
+#   Wave 14: infrastructure-values ConfigMap
+#   Wave 15: Network1  / Wave 16: DNS1, Storage1
+#   Wave 20: Compute1, Database1, Search1
+#   Wave 24: OIDC1  / Wave 25: AppIAM1, Advanced1, Messaging1
+#   Wave 27: ClusterResources1  / Wave 30: Helm1
 #
 # AWS Credentials:
 #   ACK controllers use REAL AWS APIs (no LocalStack).
@@ -53,11 +53,11 @@
 #   Run `scripts/mfa-session.sh <MFA_CODE>` on HOST to refresh.
 #   install stage auto-injects creds; run $0 inject-creds to refresh later
 #
-# Fleet instance directory:
-#   argocd/cluster-fleet/local-aws-dev/
-#     infrastructure/     — Tiers 0-4 (Foundation, Compute, Database, Search, AppIAM)
-#     cluster-resources/  — Tier 4.5 (ClusterResources1)
-#     applications/       — Tier 5+ (Helm1)
+# Fleet instance directory (local Kind):
+#   argocd/local-kind/test/
+#     infrastructure/     — infra tiers (Network, DNS, Storage, Compute, Database, Search, AppIAM)
+#     cluster-resources/  — ClusterResources1
+#     applications/       — Helm1
 #     tests/              — KRO capability test instances
 ###############################################################################
 set -euo pipefail
@@ -113,7 +113,7 @@ GIT_REPO_BASEPATH="argocd/"
 # This script discovers them dynamically — no hardcoded list.
 ACK_NAMESPACE="ack"
 ADDONS_YAML="${REPO_DIR}/argocd/addons/addons.yaml"
-FLEET_DIR="${REPO_DIR}/argocd/cluster-fleet/local-aws-dev"
+FLEET_DIR="${REPO_DIR}/argocd/local-kind/test"
 
 # AWS credential state (set by validate_credentials)
 CRED_TIER="tier4"
@@ -500,11 +500,10 @@ YAML
 ###############################################################################
 # HELPER: discover_spoke_namespaces — Extract namespaces from fleet instance YAMLs
 #
-# Scans cluster-fleet/local-aws-dev/{infrastructure,cluster-resources,applications,tests}/*.yaml
+# Scans local-kind/test/{infrastructure,cluster-resources,applications,tests}/*.yaml
 # for metadata.namespace values. Handles both active and commented-out instances
 # so namespaces are pre-created before instances are uncommented.
-# This is the ONLY place namespace lists are derived — the YAML files in
-# cluster-fleet/ are the single source of truth.
+# YAML files in local-kind/test/ are the single source of truth.
 ###############################################################################
 discover_spoke_namespaces() {
   local namespaces=()

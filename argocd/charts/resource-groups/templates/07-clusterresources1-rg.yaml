@@ -42,8 +42,8 @@ spec:
     kind: AwsGen3ClusterResources1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | required=true
-      namespace: string | default="default"
+      name: string | default="gen3"
+      namespace: string | required=true
       environment: string | default="dev"
       project: string | default="gen3"
 
@@ -54,25 +54,28 @@ spec:
       # ── Compute Bridge Reference ──────────────────────────────────
       computeBridgeName: string | default="compute-bridge"
 
-      # ── Fleet / Git Configuration ─────────────────────────────────
-      fleetRepoURL: string | default=""
-      fleetRepoRevision: string | default="main"
-      fleetRepoBasepath: string | default="argocd/"
-      spokeAlias: string | default=""
-
-      # ── Upstream gen3-helm chart (cluster-level-resources) ────────
+      # ── Upstream gen3-helm chart (cluster-level-resources) ──────────────
       # Uses the canonical uc-cdis/gen3-helm cluster-level-resources chart.
       # The upstream chart already supports destinationServer for hub-spoke
       # (CSOC→spoke) deployment — no chart fork needed.
-      gen3HelmRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
-      gen3HelmChartPath: string | default="helm/cluster-level-resources"
-      gen3HelmTargetRevision: string | default="master"
+      helmChartRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
+      helmChartPath: string | default="helm/cluster-level-resources"
+      helmChartTargetRevision: string | default="master"
 
-      # ── Values ConfigMap ──────────────────────────────────────────
-      # ConfigMap with a "values.yaml" key containing the full nested
-      # Helm values for cluster-level-resources (operator preferences).
-      # Bridge-derived values are injected via helm.parameters.
-      valuesConfigMapName: string | default="cluster-resources-values"
+      # ── GitOps Values Source ────────────────────────────────────────
+      # The gitops repo (default: gen3-kro itself) provides cluster-values.yaml
+      # via a $values ref. Resolved path:
+      #   {valuesBasePath}/cluster-level-resources/cluster-values.yaml
+      # valuesBasePath defaults to argocd/fleet/{namespace} (EKS layout).
+      # Set valuesBasePath to override for alternative layouts (e.g.
+      # argocd/local-kind/test for Kind, which has no namespace subdir).
+      valuesRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
+      valuesRevision: string | default="main"
+      valuesBasePath: string | default=""
+
+      # ── Bridge References ─────────────────────────────────────────
+      iamBridgeName: string | default="iam-bridge"
+
       # ── Bridge Name Override ──────────────────────────────────────
       clusterResourcesBridgeName: string | default="cluster-resources-bridge"
     status:
@@ -104,14 +107,14 @@ spec:
           name: ${schema.spec.computeBridgeName}
           namespace: ${schema.spec.namespace}
 
-    - id: clusterResourcesValues
+    - id: iamBridge
       readyWhen:
-        - ${clusterResourcesValues.metadata.?name.orValue('null') != 'null'}
+        - ${iamBridge.metadata.?name.orValue('null') != 'null'}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.valuesConfigMapName}
+          name: ${schema.spec.iamBridgeName}
           namespace: ${schema.spec.namespace}
 
   # ====================================================================
@@ -137,11 +140,6 @@ spec:
             gen3.io/spoke: ${schema.spec.name}
             fleet_member: spoke
             environment: ${schema.spec.environment}
-          annotations:
-            fleet_repo_url: ${schema.spec.fleetRepoURL}
-            fleet_repo_revision: ${schema.spec.fleetRepoRevision}
-            fleet_repo_basepath: ${schema.spec.fleetRepoBasepath}
-            gen3.io/spoke-alias: ${schema.spec.spokeAlias}
         type: Opaque
         stringData:
           name: ${schema.spec.name}-spoke
@@ -186,30 +184,42 @@ spec:
             argocd.argoproj.io/cascade: "orphan"
         spec:
           project: ${schema.spec.argoCDProject}
-          source:
-            repoURL: ${schema.spec.gen3HelmRepoURL}
-            path: ${schema.spec.gen3HelmChartPath}
-            targetRevision: ${schema.spec.gen3HelmTargetRevision}
-            helm:
-              releaseName: cluster-level-resources
-              # Base values from operator ConfigMap (nested YAML string)
-              values: ${clusterResourcesValues.data['values.yaml']}
-              # Bridge + schema overrides (take precedence over values)
-              parameters:
-                - name: cluster
-                  value: ${schema.spec.name}
-                - name: project
-                  value: ${schema.spec.project}
-                - name: eksClusterEndpoint
-                  value: ${computeBridge.data['eks-cluster-endpoint']}
-                # Route child Application workloads to the spoke cluster
-                - name: destinationServer
-                  value: ${computeBridge.data['eks-cluster-endpoint']}
+          sources:
+            # ── Source 1: cluster-level-resources chart ───────────
+            - repoURL: ${schema.spec.helmChartRepoURL}
+              path: ${schema.spec.helmChartPath}
+              targetRevision: ${schema.spec.helmChartTargetRevision}
+              helm:
+                releaseName: cluster-level-resources
+                valueFiles:
+                  - $values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/fleet/' + schema.spec.namespace}/cluster-level-resources/cluster-values.yaml
+                parameters:
+                  - name: cluster
+                    value: ${schema.spec.name}
+                  - name: project
+                    value: ${schema.spec.project}
+                  - name: eksClusterEndpoint
+                    value: ${computeBridge.data['eks-cluster-endpoint']}
+                  # AWS account ID — used by the chart to construct addon IAM role ARNs
+                  - name: accountNumber
+                    value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                  # ── IRSA: cluster-level roles ────────────────────
+                  - name: alb-controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${iamBridge.data['alb-controller-role-arn']}
+                  - name: karpenter.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${iamBridge.data['karpenter-role-arn']}
+                  - name: aws-s3-mountpoint.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${iamBridge.data['s3-csi-driver-role-arn']}
+            # ── Source 2: gitops values ($values ref) ─────────────
+            - repoURL: ${schema.spec.valuesRepoURL}
+              targetRevision: ${schema.spec.valuesRevision}
+              ref: values
           destination:
-            # Parent deploys to CSOC (in-cluster) so child Application CRs
-            # land where ArgoCD can reconcile them.
-            server: https://kubernetes.default.svc
-            namespace: argocd
+            # Deploy chart (Application CRs) to the spoke cluster's ArgoCD namespace.
+            # The chart's child Applications use https://kubernetes.default.svc which
+            # resolves to the spoke itself when ArgoCD runs on the spoke.
+            name: ${schema.spec.name}-spoke
+            namespace: ${schema.spec.argoCDNamespace}
           syncPolicy:
             automated:
               selfHeal: true

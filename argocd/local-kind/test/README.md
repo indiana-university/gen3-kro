@@ -1,9 +1,18 @@
-# KRO Capability Test Instances
-#
-# Place KRO test instance YAMLs here. ArgoCD's fleet-instances ApplicationSet
-# reads this directory as a source (sync-wave 30).
-#
-# Tests 1-5: pure K8s (no AWS needed, ConfigMap-based)
-# Tests 6-8: real AWS (ACK EC2, require valid credentials)
-#
-# See argocd/charts/resource-groups/templates/krotest*-rg.yaml for RGDs.
+# Local Kind Test Instances
+
+KRO instance YAML files for the local Kind CSOC cluster. Managed by the
+`fleet-instances` ApplicationSet via `fleet_instances_path: "local-kind/test"`.
+
+## Layout
+
+```
+test/
+├── infrastructure/     # Production infra-tier instances (real AWS): Network, DNS, Storage,
+│                       #   Compute, Database, Search, AppIAM, Advanced, Messaging
+├── cluster-resources/  # ClusterResources1 instance (spoke EKS registration)
+├── applications/       # Helm1 instance (gen3-helm deployment)
+└── tests/              # KRO capability test instances (Tests 1-9)
+```
+
+Infrastructure and test instances are commented out by default — uncomment to activate.
+See `scripts/kind-csoc.sh` for credential injection and cluster management.

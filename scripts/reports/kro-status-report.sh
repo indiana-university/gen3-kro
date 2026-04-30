@@ -12,11 +12,8 @@
 #   5. ArgoCD Application health
 #
 # Fleet instance directory layout:
-#   argocd/cluster-fleet/local-aws-dev/
-#     infrastructure/     — Tiers 0-4 (Foundation, Compute, Database, Search, AppIAM)
-#     cluster-resources/  — Tier 4.5 (ClusterResources1) [not yet scanned]
-#     applications/       — Tier 5+ (Helm1) [not yet scanned]
-#     tests/              — KRO capability test instances
+#   argocd/local-kind/test/   (local Kind default)
+#   argocd/fleet/<cluster>/   (EKS spoke; use --cluster <name>)
 #
 # Output is always written to outputs/reports/<name>.ansi (ANSI colours preserved).
 # Filename is derived from flags; existing files are overwritten unless -ts is used.
@@ -38,7 +35,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
 ADDONS_FILE="${REPO_DIR}/argocd/addons/addons.yaml"
-INFRA_DIR="${REPO_DIR}/argocd/cluster-fleet/local-aws-dev"
+INFRA_DIR="${REPO_DIR}/argocd/local-kind/test"
 
 # ── Argument Parsing ──────────────────────────────────────────────────────────
 FILTER_CLUSTER=""
@@ -65,9 +62,9 @@ done
 
 # ── Resolve INFRA_DIR from --cluster if provided ─────────────────────────────
 if [[ -n "${FILTER_CLUSTER}" ]]; then
-  INFRA_DIR="${REPO_DIR}/argocd/cluster-fleet/${FILTER_CLUSTER}"
+  INFRA_DIR="${REPO_DIR}/argocd/fleet/${FILTER_CLUSTER}"
   if [[ ! -d "${INFRA_DIR}" ]]; then
-    echo "Error: cluster-fleet directory not found: ${INFRA_DIR}"
+    echo "Error: fleet directory not found: ${INFRA_DIR}"
     exit 1
   fi
 fi

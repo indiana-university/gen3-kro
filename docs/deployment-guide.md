@@ -380,7 +380,7 @@ After fleet sync (wave 30):
 kubectl get awsgen3foundation1,awsgen3compute1 -A
 
 # Or list all CR files for a spoke
-ls argocd/cluster-fleet/spoke1/infrastructure/
+ls argocd/fleet/spoke1/infrastructure/
 
 # Check instance status
 kubectl describe vpc spoke1-vpc -n spoke1
@@ -441,7 +441,7 @@ argocd app get fleet --show-operation
 
 1. Add spoke config to `config/shared.auto.tfvars.json` under `spokes` array
 2. Create `iam/<new-spoke-alias>/ack/inline-policy.json` (or rely on `_default`)
-3. Add cluster fleet files in `argocd/cluster-fleet/<new-cluster>/`
+3. Add fleet files in `argocd/fleet/<new-cluster>/`
 4. Run Phase 1 on HOST: `cd terragrunt/live/aws/iam-setup && terragrunt stack run apply`
 5. Run Phase 2: `bash scripts/install.sh apply`
 
@@ -452,13 +452,13 @@ Edit the appropriate values file:
 | Scope | File to Edit |
 |-------|-------------|
 | All CSOC addons | `argocd/addons/csoc/addons.yaml` |
-| Single cluster | `argocd/cluster-fleet/<cluster>/addons.yaml` |
+| Single cluster | `argocd/fleet/<cluster>/` |
 
 Push to git — ArgoCD will reconcile automatically.
 
 ### KRO Instance Changes
 
-Edit the relevant tier YAML in `argocd/cluster-fleet/<cluster>/infrastructure/` and push. ArgoCD will reconcile the KRO instance, which will cascade to ACK resources.
+Edit the relevant tier YAML in `argocd/fleet/<cluster>/infrastructure/instances.yaml` and push. ArgoCD will reconcile the KRO instance, which will cascade to ACK resources.
 
 ### Rotating Git Credentials
 
@@ -488,7 +488,7 @@ bash scripts/mfa-session.sh --no-mfa            # Option B: admin static creds
 ### Step 1: Delete KRO Instances
 
 ```bash
-kubectl delete -f argocd/cluster-fleet/spoke1/infrastructure/
+kubectl delete -f argocd/fleet/spoke1/infrastructure/
 # Wait for ACK to delete spoke resources (VPCs, EKS clusters, RDS...)
 kubectl get vpc,cluster -A   # verify gone
 ```

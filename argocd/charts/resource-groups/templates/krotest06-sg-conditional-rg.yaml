@@ -28,7 +28,7 @@
 #   ConfigMap:        1 summary (real ACK status IDs for downstream reference)
 #
 # Deployed via ArgoCD — instances defined in:
-#   argocd/cluster-fleet/local-aws-dev/tests/krotest06-sg-conditional.yaml
+#   argocd/local-kind/test/tests/krotest06-sg-conditional.yaml
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition

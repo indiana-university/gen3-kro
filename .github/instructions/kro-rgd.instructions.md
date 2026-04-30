@@ -1,10 +1,9 @@
 ---
+description: 'KRO ResourceGraphDefinition conventions, CEL patterns, and ACK resource rules for gen3-kro'
 applyTo: "argocd/charts/resource-groups/**,**/*-rg.yaml"
 ---
 
 # KRO ResourceGraphDefinition Conventions
-
-These rules apply when creating or editing RGD YAML files.
 
 ## Schema Declaration
 
@@ -18,13 +17,13 @@ spec:
   items: "[]string | required=true"    # array types need quotes
 ```
 
-## Status Propagation
-
-Use optional chaining with `.orValue()` to avoid nil panics:
+Standard fields every RGD should expose:
 ```yaml
-status:
-  someField: ${resource.status.?nested.?field.orValue("loading")}
-  someArn: ${resource.status.?ackResourceMetadata.?arn.orValue("loading")}
+region: string | default="us-east-1"
+adoptionPolicy: string | default="adopt-or-create"
+deletionPolicy: string | default="delete"
+namespace: string | required=true
+name: string | default="gen3"
 ```
 
 ## ACK Resources — readyWhen
@@ -46,7 +45,7 @@ readyWhen:
 
 ## ACK Resources — Required Annotations
 
-Every ACK resource template must include these annotations:
+Every ACK resource template must include:
 ```yaml
 metadata:
   annotations:
@@ -55,25 +54,32 @@ metadata:
     services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
 ```
 
-The schema should expose corresponding fields with defaults:
+## Status Propagation
+
+Use optional chaining with `.orValue()` to avoid nil panics:
 ```yaml
-region: string | default="us-east-1"
-adoptionPolicy: string | default="adopt-or-create"
-deletionPolicy: string | default="delete"
+status:
+  someField: ${resource.status.?nested.?field.orValue("loading")}
+  someArn: ${resource.status.?ackResourceMetadata.?arn.orValue("loading")}
 ```
 
 ## includeWhen (Conditional Resources)
 
-Use `includeWhen` for optional resources:
 ```yaml
 - id: someResource
   includeWhen:
     - ${schema.spec.someFeatureEnabled == true}
 ```
 
-**Caution:** KRO silently drops any expression that references an excluded resource —
-even with optional chaining + orValue. If a resource references another via `includeWhen`,
-ensure all references only co-included resources. See Test 8 findings.
+**Critical:** KRO silently drops any expression referencing an excluded resource,
+even with optional chaining + `orValue`. Use the Test 8 dual-resource pattern
+for any value that must exist whether or not the conditional resource is included:
+create two resources with opposite `includeWhen` conditions, both writing to the
+same output key.
+
+**Test 6 finding:** KRO cannot add conditional entries within a single array
+(e.g., `ingressRules`). Use Pattern A — multiple separate ACK resources, one per
+tier, each with its own `includeWhen`.
 
 ## Resource Dependency Chain
 
@@ -84,76 +90,70 @@ field in a child template to create an implicit dependency:
 namespace: ${namespace.metadata.name}
 ```
 
-## Versioned Naming Convention
+## Cross-RGD Bridge Pattern (Test 7)
 
-RGDs use versioned naming: monolithic = `AwsGen3<Component><Version>Flat`,
-modular = `AwsGen3<Component><Version>` (no Flat suffix).
-
-- metadata.name: lowercase, no hyphens (e.g., `awsgen3network1`)
-- Kind: CamelCase (e.g., `AwsGen3Network1`)
-- Filename: `<lowercase>-rg.yaml` (e.g., `awsgen3network1-rg.yaml`)
-
-The version number enables creating v2, v3 graphs alongside existing ones.
-
-## Cross-Tier Bridge Pattern
-
-Modular RGDs communicate via bridge ConfigMaps (not Secrets). Active graphs
-expose exactly one public bridge ConfigMap per RGD.
-
-When a public bridge needs values from conditional resources, keep one public
-bridge and gate the bridge value with the same feature flag that controls the
-resource. Avoid chained `.orValue()` fallbacks across `includeWhen` boundaries.
-
+Share values between RGDs via a ConfigMap (bridge) and an `externalRef`:
 ```yaml
-# Single public bridge
-- id: advancedBridge
+# Producer: write bridge ConfigMap
+- id: foundationBridge
   template:
     apiVersion: v1
     kind: ConfigMap
     metadata:
-      name: ${schema.spec.advancedBridgeName}
+      name: foundation-bridge
       namespace: ${schema.spec.namespace}
     data:
-      waf-acl-arn: "${infrastructureConfig.data['advanced-waf-enabled'] == 'true' ? wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
-```
+      vpcId: ${vpc.status.?vpcID.orValue("")}
+      vpcArn: ${vpc.status.?ackResourceMetadata.?arn.orValue("")}
 
-```yaml
-# Consumer: reads the canonical bridge name in its own namespace
-foundationBridgeName: string | default="foundation-bridge"
-
-- id: foundationBridge
-  externalRef:
-    apiVersion: v1
-    kind: ConfigMap
-    metadata:
-      name: ${schema.spec.foundationBridgeName}
+# Consumer: read via externalRef
+- id: foundationData
+  template:
+    apiVersion: kro.run/v1alpha1
+    kind: externalRef
+    spec:
+      apiVersion: v1
+      kind: ConfigMap
+      name: foundation-bridge
       namespace: ${schema.spec.namespace}
 ```
 
-Bridge key naming: kebab-case (`vpc-id`, `nat-gateway-id`, `platform-key-arn`).
-Access in templates: `${foundationBridge.data['vpc-id']}` (bracket notation for
-hyphenated keys).
+## Versioned Naming Convention
 
-## RGD Update Behavior (Test-Verified)
+| Element | Pattern | Example |
+|---------|---------|---------|
+| `metadata.name` | lowercase, no hyphens | `awsgen3foundation1` |
+| `kind` | CamelCase | `AwsGen3Foundation1` |
+| filename | `<lowercase>-rg.yaml` | `awsgen3foundation1-rg.yaml` |
 
-### Non-Breaking Changes (fully automatic)
+Never rename an existing RGD — create a versioned successor (v2, v3) instead.
 
-Adding resources, adding schema fields with defaults, modifying templates,
-or removing resources are all non-breaking. KRO reconciles all instances
-automatically (~15s after ArgoCD syncs). No manual intervention needed.
+## Instance Conventions
 
-Default values propagate instantly to existing instances without instance
-YAML changes.
+```yaml
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Foundation1
+metadata:
+  name: gen3
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true,ServerSideApply=true
+spec:
+  namespace: spoke1   # only non-default field needed
+```
 
-### Breaking Changes (blocked by KRO)
+Schema must declare `name` with default and `namespace` as required.
 
-Removing or renaming schema spec/status fields triggers:
-`cannot update CRD: breaking changes detected: Property X was removed`
+## AWS Account ID Injection
 
-The RGD goes **Inactive**. Instances continue running but their finalizer
-(`kro.run/finalizer`) blocks deletion.
+The account ID is never stored in git. It flows:
+1. `aws sts get-caller-identity` → ArgoCD cluster Secret `aws_account_id` annotation
+2. ApplicationSet cluster generator → template variable
+3. Instances Helm chart → `helm.parameters` value (`awsAccountId`)
+4. Spoke namespace annotation → `services.k8s.aws/owner-account-id`
 
-**Recovery:** patch finalizers → delete instances → delete CRD → KRO
-recreates CRD (~10s) → ArgoCD re-syncs instances.
-
-**Best practice:** Never remove fields. Version the RGD (v2) instead.
+RGDs read it via:
+```yaml
+${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+```

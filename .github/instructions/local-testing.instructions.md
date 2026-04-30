@@ -1,111 +1,81 @@
 ---
-applyTo: "scripts/kind-local-test.sh,scripts/kind-config.yaml,argocd/cluster-fleet/local-aws-dev/**,config/**"
+description: 'Local CSOC Kind cluster conventions, ArgoCD-managed test workflow, and debugging procedures'
+applyTo: "scripts/kind-local-test.sh,scripts/kind-config.yaml,argocd/local-kind/**,config/**"
 ---
 
-# Local CSOC Testing Instructions
-
-These rules apply when editing Kind cluster scripts, ArgoCD instance manifests,
-or local configuration files.
+# Local CSOC Testing
 
 ## Kind Cluster Conventions
 
 - Cluster name: `gen3-local` (context: `kind-gen3-local`)
 - Config: `scripts/kind-config.yaml` — single control-plane, NodePort mappings
-- Port 30080 → ArgoCD UI
-- Kind runs on the **host** (not inside a container). This workflow does not
-  use `devcontainer.json`. The local CSOC is entirely host-side.
-- Kubeconfig: `~/.kube/config` (default, or set `KUBECONFIG` explicitly)
+  - Port 30080 → ArgoCD UI
+- Kind runs on the **host** (not inside a container)
+- Kubeconfig: `~/.kube/config` (or set `KUBECONFIG` explicitly)
 
 ## ArgoCD-Managed Test Workflow
 
-Tests are **not** applied manually with `kubectl apply`. All KRO capability
-tests are deployed through ArgoCD via two charts:
+Tests are never applied manually with `kubectl apply`. All KRO capability
+tests are deployed through ArgoCD.
 
-### 1. Register a new RGD (test or production)
-Add it to `argocd/charts/resource-groups/templates/` (any `.yaml` file).
+### Add a new RGD (test or production)
+Place it in `argocd/charts/resource-groups/templates/` (any `.yaml` file).
 ArgoCD Application `kro-local-rgs` (sync-wave 10) picks it up on the next push.
 
-### 2. Add a test instance
-Create a standalone YAML file in `argocd/cluster-fleet/local-aws-dev/tests/`
-(for non-AWS tests) or `infrastructure/` (for real-AWS tests).
-ArgoCD Application `kro-local-instances` (directory source, sync-wave 30) picks
-it up automatically on the next push.
+### Add a test instance
+- Non-AWS tests: `argocd/local-kind/test/tests/`
+- Real-AWS tests: `argocd/local-kind/test/infrastructure/`
 
-### 3. Push and observe
+ArgoCD Application `kro-local-instances` (sync-wave 30) picks it up automatically.
+
+### Push and observe
 ```bash
 git add argocd/charts/resource-groups/templates/<new-rg>.yaml
-git add argocd/cluster-fleet/local-aws-dev/tests/<new-instance>.yaml
+git add argocd/local-kind/test/tests/<new-instance>.yaml
 git commit -m "test: add KRO capability test N"
 git push
 
-# Watch ArgoCD sync
-kubectl get application -n argocd
-
-# Watch instance come up
+kubectl get application -n argocd -w
 kubectl get <kind-lowercase> -n <namespace> -w
 ```
 
-### 4. Verify instance results
+### Verify results
 ```bash
-# Check KRO instance status
+# KRO instance status
 kubectl get <kind-lowercase> <name> -n <namespace> -o yaml
 
-# Tests 1–5 (ConfigMap-based)
+# Tests 1-5 (ConfigMap-based)
 kubectl get configmaps -n <namespace> -l test-name=<label>
 
-# Tests 6–7 (Real ACK EC2)
+# Tests 6-7 (Real ACK EC2)
 kubectl get vpc,securitygroup,routetable,internetgateway -n <namespace>
-kubectl get configmaps -n <namespace>   # bridge / summary ConfigMaps
+kubectl get configmaps -n <namespace>
 ```
 
-### 5. Cleanup
-Delete the YAML file from `tests/` (or `infrastructure/`) → push → ArgoCD deletes
-child resources. Remove the RGD from `resource-groups/templates/` → push →
-ArgoCD deletes the CRD.
-
-## KRO Capability Tests (ArgoCD-managed)
-
-| # | Kind | RGD file | Instance key(s) | Resources | AWS? |
-|---|------|----------|-----------------|-----------|------|
-| 1 | `KroForEachTest` | `krotest01-foreach-rg.yaml` | `kro-foreach-basic`, `kro-foreach-cartesian` | ConfigMaps | No |
-| 2 | `KroIncludeWhenTest` | `krotest02-includewhen-rg.yaml` | `kro-includewhen-minimal`, `kro-includewhen-full` | ConfigMaps | No |
-| 3 | `KroBridgeProducer` | `krotest03-bridge-producer-rg.yaml` | `kro-bridge-producer` | ConfigMaps + Secret | No |
-| 4 | `KroBridgeConsumer` | `krotest04-bridge-consumer-rg.yaml` | `kro-bridge-consumer` | ConfigMaps | No |
-| 5 | `KroCELTest` | `krotest05-cel-expressions-rg.yaml` | `kro-cel-dev`, `kro-cel-prod` | ConfigMaps | No |
-| 6 | `KroTest06SgConditional` | `krotest06-sg-conditional-rg.yaml` | `kro-sg-base-only`, `kro-sg-all-features` | ACK EC2 | Yes |
-| 7a | `KroTest07Producer` | `krotest07a-cross-rgd-producer-rg.yaml` | `kro-crossrgd-producer` | ACK EC2 | Yes |
-| 7b | `KroTest07Consumer` | `krotest07b-cross-rgd-consumer-rg.yaml` | `kro-crossrgd-consumer` | ACK EC2 | Yes |
-| 8 | `KroChainedOrValueTest` | `krotest08-chained-orvalue-rg.yaml` | `kro-chained-orvalue-*` | ConfigMaps | No |
-
-Instance sync-wave ordering: Tests 1–5 use wave 15; Test 4 bridge consumer and
-Test 7b cross-RGD consumer use wave 20 (must wait for producers' bridge resources
-to exist before trying externalRef).
-
-## ACK Credentials (Real AWS)
-
-ACK controllers talk directly to **real AWS APIs** (no LocalStack).
-Credentials are MFA-assumed-role, written by `mfa-session.sh` on the host.
-
-Because Kind has no OIDC provider (no IRSA), credentials are injected
-as a K8s Secret (`ack-aws-credentials`) in the `ack` namespace.
-
-After renewing credentials on the host, run:
-```bash
-bash scripts/kind-local-test.sh inject-creds
-```
-
-Tests 6, 7, and 8 (when using real AWS) require valid credentials.
-Tests 1–5 are pure K8s (no AWS needed).
-
-## Cluster Lifecycle
+## Credentials Workflow
 
 ```bash
-# Full cluster bootstrap (first time)
-bash scripts/kind-local-test.sh create install
+# 1. Renew MFA credentials
+bash scripts/mfa-session.sh
 
-# Renew credentials only
+# 2. Inject into cluster
 bash scripts/kind-local-test.sh inject-creds
 
-# Teardown
-bash scripts/kind-local-test.sh delete
+# 3. Verify ACK controllers are reconnected
+kubectl get pods -n ack
 ```
+
+## Full Lifecycle Commands
+
+```bash
+bash scripts/kind-local-test.sh create     # Create Kind cluster
+bash scripts/kind-local-test.sh install    # Install ArgoCD + all addons
+bash scripts/kind-local-test.sh inject-creds  # Inject AWS credentials
+bash scripts/kind-local-test.sh delete     # Tear down cluster
+```
+
+## AWS Account ID Injection
+
+The account ID is never in git. `kind-local-test.sh install` calls
+`aws sts get-caller-identity` and writes the result as an annotation on the
+ArgoCD cluster Secret. All downstream templates read it from there.

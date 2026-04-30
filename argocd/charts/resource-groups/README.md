@@ -5,34 +5,25 @@ KRO RGDs for the gen3-kro CSOC EKS cluster. Deployed by ArgoCD via
 
 ## Naming
 
-- Monolithic: `AwsGen3<Component><Version>Flat` (e.g. `AwsGen3Infra1Flat`)
-- Modular: `AwsGen3<Component><Version>` (e.g. `AwsGen3Foundation1`)
+- Modular: `AwsGen3<Component><Version>` (e.g. `AwsGen3Network1`)
 - Filename: `<lowercase>-rg.yaml`, metadata.name: lowercase no hyphens
 
 ## RGDs
 
-### Monolithic (reference only)
-
-| RGD | Kind | Resources | Status |
-|-----|------|-----------|--------|
-| `awsgen3infra1flat` | AwsGen3Infra1Flat | 31+ | Reference — spoke1 uses this |
-
-### Modular (Current Bridge Contracts)
-
-| Tier | RGD | Kind | Bridge Contract | Cost |
-|------|-----|------|-----------------|------|
-| 0 | `awsgen3network1` | AwsGen3Network1 | Produces one `networkBridge` | ~$37/mo |
-| 0.5 | `awsgen3dns1` | AwsGen3Dns1 | Produces one `dnsBridge` | Route53 + ACM |
-| 0.5 | `awsgen3storage1` | AwsGen3Storage1 | Reads `networkBridge`, produces `storageBridge` | ~$1-5/mo |
-| 1 | `awsgen3database1` | AwsGen3Database1 | Reads `networkBridge`, produces `databaseBridge` | ~$45-350/mo |
-| 2 | `awsgen3search1` | AwsGen3Search1 | Reads `networkBridge`, produces `searchBridge` | ~$30-200/mo |
-| 3 | `awsgen3compute1` | AwsGen3Compute1 | Reads `networkBridge`, produces `computeBridge` | ~$350/mo |
-| 4 | `awsgen3messaging1` | AwsGen3Messaging1 | Produces `messagingBridge` | ~$1/mo |
-| 4 | `awsgen3oidc1` | AwsGen3OIDC1 | Reads `computeBridge`, produces `oidcBridge` | ~$0 |
-| 4.5 | `awsgen3clusterresources1` | AwsGen3ClusterResources1 | Reads `computeBridge`, produces `clusterResourcesBridge` | ~$0 |
-| 5 | `awsgen3appiam1` | AwsGen3AppIAM1 | Reads `oidcBridge` + `storageBridge`, produces `iamBridge` | ~$5/mo |
-| 5 | `awsgen3helm1` | AwsGen3Helm1 | Reads all upstream bridges | ~$0 (pods) |
-| 7 | `awsgen3advanced1` | AwsGen3Advanced1 | Produces `advancedBridge` | ~$5-10/mo |
+| Tier | RGD | Kind | Bridge Contract |
+|------|-----|------|-----------------|
+| 0 | `awsgen3network1` | AwsGen3Network1 | Produces `networkBridge` |
+| 0.5 | `awsgen3dns1` | AwsGen3Dns1 | Produces `dnsBridge` |
+| 0.5 | `awsgen3storage1` | AwsGen3Storage1 | Reads `networkBridge`, produces `storageBridge` |
+| 1 | `awsgen3database1` | AwsGen3Database1 | Reads `networkBridge`, produces `databaseBridge` |
+| 2 | `awsgen3search1` | AwsGen3Search1 | Reads `networkBridge`, produces `searchBridge` |
+| 3 | `awsgen3compute1` | AwsGen3Compute1 | Reads `networkBridge`, produces `computeBridge` |
+| 4 | `awsgen3messaging1` | AwsGen3Messaging1 | Produces `messagingBridge` |
+| 4 | `awsgen3oidc1` | AwsGen3OIDC1 | Reads `computeBridge`, produces `oidcBridge` |
+| 4.5 | `awsgen3clusterresources1` | AwsGen3ClusterResources1 | Reads `computeBridge`, produces `clusterResourcesBridge` |
+| 5 | `awsgen3appiam1` | AwsGen3AppIAM1 | Reads `oidcBridge` + `storageBridge`, produces `iamBridge` |
+| 5 | `awsgen3helm1` | AwsGen3Helm1 | Reads all upstream bridges |
+| 7 | `awsgen3advanced1` | AwsGen3Advanced1 | Produces `advancedBridge` |
 
 `AwsGen3Network1` owns the single upstream network bridge for the feature-flagged
 prep slices (database, compute, search). Optional bridge keys are emitted with

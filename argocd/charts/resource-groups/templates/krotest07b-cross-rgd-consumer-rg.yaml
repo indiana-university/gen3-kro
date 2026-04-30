@@ -17,7 +17,7 @@
 #   Foundation SG ID → bridge ConfigMap → Network/DB tier SG ingressRule
 #
 # Deployed via ArgoCD — instances defined in:
-#   argocd/cluster-fleet/local-aws-dev/tests/krotest07b-cross-rgd-consumer.yaml
+#   argocd/local-kind/test/tests/krotest07b-cross-rgd-consumer.yaml
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition

@@ -2,6 +2,17 @@
 
 > Auto-loaded for **every** Copilot interaction in this workspace.
 
+## Copilot Customizations in This Repo
+
+| File type | Location | Purpose |
+|-----------|----------|---------|
+| Always-on instructions | `.github/copilot-instructions.md` | This file — project identity, tech stack, RGD inventory |
+| Context instructions | `.github/instructions/*.instructions.md` | Auto-loaded per glob: argocd, kro-rgd, scripts, dockerfile, local-testing, terraform, security |
+| Slash commands | `.github/prompts/*.prompt.md` | `/new-rgd`, `/debug-kro`, `/spoke-onboard`, `/security-audit`, `/kro-test` |
+| Agent skills | `.github/skills/*/SKILL.md` | Auto-invoked by description: git-commit, kro-rgd-debug, kro-status-report, gen3-security-scan |
+| Custom agents | `.github/agents/*.agent.md` | KRO RGD Author, Gen3 Platform SRE, IaC Reviewer |
+| Lifecycle hooks | `.github/hooks/` | secrets-scanner (sessionEnd), tool-guardian (preToolUse) |
+
 ## Project Identity
 
 gen3-kro is an **EKS Cluster Management Platform** — a CSOC (Central Security
@@ -74,21 +85,27 @@ gen3-kro/
 ├── .devcontainer/           # EKS workflow: VS Code DevContainer
 ├── .github/
 │   ├── copilot-instructions.md      # This file (always-on)
-│   └── instructions/                # Targeted instruction files (per glob)
+│   ├── instructions/                # Context-specific instruction files
+│   ├── prompts/                     # Slash-command prompt files
+│   ├── agents/                      # Custom agent definitions
+│   └── hooks/                       # Lifecycle hooks (secrets, guard)
 ├── argocd/
 │   ├── addons/
-│   │   ├── csoc/            # EKS CSOC addon values
-│   │   └── local/           # Local CSOC addon definitions
+│   │   └── addons.yaml              # All addon definitions (EKS + local, filtered by cluster_type)
 │   ├── bootstrap/           # Entry-point ApplicationSets (EKS + local)
 │   ├── charts/
 │   │   ├── application-sets/  # Meta-chart: creates per-addon ApplicationSets
 │   │   ├── instances/         # Helm chart for KRO CR instances
 │   │   └── resource-groups/
 │   │       └── templates/     # RGD YAML files (modular + capability tests)
-│   └── cluster-fleet/
-│       ├── spoke1/            # EKS spoke cluster overrides
-│       └── local-aws-dev/     # Local CSOC per-cluster directories
-│           ├── infrastructure/  # Production KRO CR instances
+│   ├── fleet/               # EKS spoke KRO instance CRs (fleet-instances ApplicationSet)
+│   │   └── spoke1/
+│   │       ├── infrastructure/    # instances.yaml + infrastucture-values.yaml
+│   │       ├── cluster-level-resources/  # app.yaml + cluster-values.yaml
+│   │       └── {hostname}/        # app.yaml + values.yaml
+│   └── local-kind/          # Local Kind cluster KRO instances
+│       └── test/
+│           ├── infrastructure/  # Production KRO CR instances (real AWS)
 │           └── tests/           # KRO capability test instances
 ├── config/                  # User config (gitignored except examples)
 ├── docs/                    # Documentation, diagrams, design reports
@@ -255,7 +272,7 @@ via gen3-helm init containers.
 
 All KRO feature-validation tests live in `argocd/charts/resource-groups/templates/`
 and are ArgoCD-managed — no manual `kubectl apply`. Instances are declared in
-`argocd/cluster-fleet/local-aws-dev/tests/`.
+`argocd/local-kind/test/tests/`.
 
 | # | Kind | RGD file | Instance key(s) | Resources | AWS? |
 |---|------|----------|-----------------|-----------|------|

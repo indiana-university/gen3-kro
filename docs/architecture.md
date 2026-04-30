@@ -80,10 +80,8 @@ Phase 3 — ArgoCD (Automatic GitOps)
   Bootstrap AppSet reads argocd/bootstrap/
     → csoc-addons AppSet (wave -20)
     → ack-multi-acct AppSet (wave 5)
-    → fleet-infra-instances AppSet (wave 30)
-    → fleet-cluster-resources AppSet (wave 40)
-    → fleet-gen3 AppSet (wave 50)
-  Sync waves enforce: KRO → ACK → RGDs → ESO → CARM → Instances → Cluster Resources → Gen3
+    → fleet-instances AppSet (wave 30)  [picks up argocd/fleet/{spoke}/**]
+  Sync waves enforce: KRO → ACK → RGDs → Infra Instances → ClusterResources → Gen3
 ```
 
 ### Why Two Phases?
@@ -167,17 +165,13 @@ helm_release.bootstrap
         │   └── ack-multi-acct ApplicationSet (wave 5)
         │       └── ACK CARM namespaces + IAMRoleSelectors
         │
-        ├── fleet-infra-instances.yaml
-        │   └── fleet-infra-instances ApplicationSet (fleet_member: fleet-spoke-infra)
-        │       └── KRO Instances (VPC, EKS, RDS...)    (wave 30)
-        │
-        ├── fleet-cluster-resources.yaml
-        │   └── fleet-cluster-resources ApplicationSet (fleet_member: spoke)
-        │       └── Spoke cluster-level infra           (wave 40)
-        │
-        └── fleet-gen3.yaml
-            └── fleet-gen3 ApplicationSet (fleet_member: spoke)
-                └── Gen3 apps on spoke clusters          (wave 50)
+        └── fleet-instances.yaml
+            └── fleet-instances ApplicationSet (recurse: argocd/fleet/{spoke}/**)
+                ├── infra KRO instances                  (waves 15-25)
+                ├── AwsGen3ClusterResources1 instance     (wave 27)
+                └── AwsGen3Helm1 instance                (wave 30)
+                    ClusterResources1 creates ArgoCD Application → spoke cluster
+                    Helm1 creates ArgoCD Application → spoke cluster
 ```
 
 ### Bootstrap Directory → ApplicationSet Mapping
@@ -186,16 +180,14 @@ helm_release.bootstrap
 |------------------------------|--------------------------|----------|
 | `csoc-addons.yaml` | `csoc-addons` | -20 |
 | `ack-multi-acct.yaml` | `ack-multi-acct` | 5 |
-| `fleet-infra-instances.yaml` | `fleet-infra-instances` | 30 |
-| `fleet-cluster-resources.yaml` | `fleet-cluster-resources` | 40 |
-| `fleet-gen3.yaml` | `fleet-gen3` | 50 |
+| `fleet-instances.yaml` | `fleet-instances` | 30 |
 
 ### Values Merge Priority (last wins, maps deep-merged)
 
 ```
 1. Helm chart defaults         (argocd/charts/<chart>/values.yaml)
 2. CSOC addons                 (argocd/addons/csoc/addons.yaml)
-3. Cluster-fleet overrides     (argocd/cluster-fleet/<cluster>/)  ← WINS
+3. Fleet instance overrides    (argocd/fleet/<spoke>/)  ← WINS
 ```
 
 ---
@@ -312,21 +304,24 @@ eks-cluster-mgmt/
 │   ├── bootstrap/
 │   │   ├── csoc-addons.yaml             #   CSOC addon ApplicationSet (wave -20)
 │   │   ├── ack-multi-acct.yaml          #   ACK CARM multi-account (wave 5)
-│   │   ├── fleet-infra-instances.yaml   #   KRO infrastructure instances (wave 30)
-│   │   ├── fleet-cluster-resources.yaml #   Spoke cluster-level infra (wave 40)
-│   │   └── fleet-gen3.yaml              #   Gen3 apps on spoke clusters (wave 50)
+│   │   └── fleet-instances.yaml         #   KRO instance CRs ApplicationSet (wave 30)
 │   ├── addons/
-│   │   └── csoc/addons.yaml             #   CSOC addon values (KRO, ACK, ESO)
+│   │   └── addons.yaml                  #   CSOC + Kind addon values (KRO, ACK)
 │   ├── charts/
 │   │   ├── application-sets/            #   Meta-chart: generates child ApplicationSets
 │   │   ├── multi-acct/                  #   ACK CARM namespace + IAMRoleSelector chart
-│   │   ├── resource-groups/             #   KRO RGD manifests chart
-│   │   └── cluster-resources/           #   Umbrella chart: spoke cluster-level infra
-│   └── cluster-fleet/
-│       └── spoke1/                  #   Per-cluster infra + resource overrides
-            ├── infrastructure/
-            ├── cluster-resources/
-│           └── apps.yaml
+│   │   └── resource-groups/             #   KRO RGD manifests chart
+│   ├── fleet/
+│   │   └── spoke1/                      #   Per-spoke KRO instance CRs
+│   │       ├── infrastructure/          #   Infra tier instances + values ConfigMap
+│   │       ├── cluster-level-resources/ #   ClusterResources1 instance + values
+│   │       └── {hostname}/              #   Helm1 instance + values
+│   └── local-kind/
+│       └── test/                        #   Local Kind KRO instances
+│           ├── infrastructure/          #   Real-AWS infra instances
+│           ├── tests/                   #   Capability test instances
+│           ├── cluster-resources/
+│           └── applications/
 │
 ├── terraform/
 │   ├── env/aws/csoc-cluster/             # Root module (single entry point)

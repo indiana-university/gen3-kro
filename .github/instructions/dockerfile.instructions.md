@@ -1,10 +1,9 @@
 ---
+description: 'Dockerfile and DevContainer conventions for the EKS CSOC workflow'
 applyTo: "Dockerfile,.devcontainer/**"
 ---
 
-# Dockerfile & DevContainer Instructions
-
-These rules apply when editing the container image or DevContainer config.
+# Dockerfile & DevContainer
 
 ## Scope
 
@@ -14,11 +13,11 @@ Do **not** add Kind or local CSOC tooling to the Dockerfile or devcontainer.json
 
 ## Base Image
 
-Ubuntu 24.04 via `mcr.microsoft.com/devcontainers/base:ubuntu-24.04`.
+`mcr.microsoft.com/devcontainers/base:ubuntu-24.04`
 
 ## Tool Version Pinning
 
-All tool versions are pinned as `ARG` directives for reproducibility:
+All tool versions are pinned as `ARG` directives:
 
 | Tool | ARG Name | Version |
 |------|----------|---------|
@@ -30,10 +29,9 @@ All tool versions are pinned as `ARG` directives for reproducibility:
 | yq | `YQ_VERSION` | 4.44.3 |
 | uv | `UV_VERSION` | 0.10.2 |
 
-When bumping versions, update the corresponding ARG and verify downstream
-compatibility.
+When bumping a version, update only the `ARG` value and verify downstream compatibility.
 
-## What's Included vs Not Included
+## What Is and Is Not Included
 
 | Included | Not Included |
 |----------|-------------|
@@ -50,37 +48,7 @@ compatibility.
 
 ## Mount Conventions
 
-The DevContainer mounts:
-- `~/.aws/eks-devcontainer` → `/home/vscode/.aws` (read-write) — MFA-assumed-role credentials
+- `~/.aws/eks-devcontainer` → `/home/vscode/.aws` (read-write) — MFA credentials
 
 Do **not** mount `~/.kube` — EKS kubeconfig is fetched by `container-init.sh`
 via `aws eks update-kubeconfig` at container start.
-
-## Environment Variables
-
-| Variable | Purpose |
-|----------|---------|
-| `AWS_PROFILE` | `csoc` — MFA-assumed-role profile |
-| `KUBE_EDITOR` | `code --wait` |
-
-## DevContainer Entrypoint
-
-`container-init.sh` runs automatically when the container starts. It:
-1. Validates AWS credentials
-2. Fetches CSOC kubeconfig via `aws eks update-kubeconfig`
-3. Sets up any required port-forwards
-
-When modifying `container-init.sh`, keep it idempotent — it runs on every
-container start.
-
-## Copilot Instruction Files
-
-`devcontainer.json` includes:
-```json
-"chat.instructionsFilesLocations": {
-  ".github/instructions": true
-}
-```
-
-This allows per-glob instruction files in `.github/instructions/` to load
-automatically when editing matching files in VS Code.

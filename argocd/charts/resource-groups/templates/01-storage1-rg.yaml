@@ -39,14 +39,14 @@ spec:
     kind: AwsGen3Storage1
     spec:
       # ── Identity ──────────────────────────────────────────────────
-      name: string | required=true
-      namespace: string | default="default"
+      name: string | default="gen3"
+      namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
 
       # ── Shared Infrastructure Config ─────────────────────────────
       infrastructureConfigMapName: string | default="infrastructure-values"
-      applicationConfigMapName: string | default="gen3helm-values"
+
 
       # ── Bridge References (from Network1) ────────────────────────
       foundationBridgeName: string | default="foundation-bridge"
@@ -82,16 +82,6 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-    # ── Application Values (operator toggles for optional buckets) ──
-    - id: applicationConfig
-      readyWhen:
-        - ${applicationConfig.metadata.?name.orValue('null') != 'null'}
-      externalRef:
-        apiVersion: v1
-        kind: ConfigMap
-        metadata:
-          name: ${schema.spec.applicationConfigMapName}
-          namespace: ${schema.spec.namespace}
 
     # ── Network Bridge (KMS key ARNs for bucket encryption) ─────────
     - id: foundationBridge
@@ -237,7 +227,6 @@ spec:
     # ── Manifest Bucket (conditional — ManifestService file lists) ───
     - id: manifestBucket
       includeWhen:
-        - ${applicationConfig.data['manifestservice-enabled'] == 'true'}
         - ${infrastructureConfig.data['storage-manifest-bucket-name'] != ''}
       readyWhen:
         - ${manifestBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -279,10 +268,9 @@ spec:
               - key: BucketType
                 value: manifest
 
-    # ── Dashboard Bucket (conditional — portal static assets) ────────
+    # ── Dashboard Bucket (conditional — portal static assets) ────────────
     - id: dashboardBucket
       includeWhen:
-        - ${applicationConfig.data['portal-enabled'] == 'true'}
         - ${infrastructureConfig.data['storage-dashboard-bucket-name'] != ''}
       readyWhen:
         - ${dashboardBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -324,6 +312,50 @@ spec:
               - key: BucketType
                 value: dashboard
 
+    # ── Users Bucket (fence usersync user.yaml — always created) ───────────
+    - id: usersBucket
+      includeWhen:
+        - ${infrastructureConfig.data['storage-usersync-bucket-name'] != ''}
+      readyWhen:
+        - ${usersBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${usersBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: s3.services.k8s.aws/v1alpha1
+        kind: Bucket
+        metadata:
+          name: ${schema.spec.name}-users-bucket
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${infrastructureConfig.data['storage-usersync-bucket-name']}
+          versioning:
+            status: "Enabled"
+          encryption:
+            rules:
+              - applyServerSideEncryptionByDefault:
+                  sseAlgorithm: "aws:kms"
+                  kmsMasterKeyID: ${foundationBridge.data['platform-key-arn']}
+          publicAccessBlock:
+            blockPublicACLs: true
+            blockPublicPolicy: true
+            ignorePublicACLs: true
+            restrictPublicBuckets: true
+          tagging:
+            tagSet:
+              - key: Name
+                value: ${infrastructureConfig.data['storage-usersync-bucket-name']}
+              - key: Environment
+                value: ${infrastructureConfig.data['aws-environment']}
+              - key: ManagedBy
+                value: Kro
+              - key: Project
+                value: ${infrastructureConfig.data['aws-project']}
+              - key: BucketType
+                value: usersync
+
   # ====================================================================
   # BRIDGE: Storage Outputs ConfigMap (for downstream tiers)
   # ====================================================================
@@ -354,3 +386,5 @@ spec:
           upload-bucket-name: ${infrastructureConfig.data['storage-upload-bucket-name']}
           manifest-bucket-name: ${infrastructureConfig.data['storage-manifest-bucket-name']}
           dashboard-bucket-name: ${infrastructureConfig.data['storage-dashboard-bucket-name']}
+          users-bucket-arn: ${usersBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          users-bucket-name: ${infrastructureConfig.data['storage-usersync-bucket-name']}
