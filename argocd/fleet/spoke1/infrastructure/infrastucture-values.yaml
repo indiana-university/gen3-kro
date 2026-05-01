@@ -1,81 +1,81 @@
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: infrastructure-values
-  namespace: spoke1
-  labels:
-    app.kubernetes.io/managed-by: gen3-kro
-    gen3.io/tier: infrastructure
-    gen3.io/config-type: values
-  annotations:
-    argocd.argoproj.io/sync-wave: "14"
-data:
-  aws-region: us-east-1
-  aws-environment: dev
-  aws-project: gen3-kro
-  # ── Application hostname (read by DNS1 RGD) ──────────────────────────────
-  hostname: "spoke1dev.rds-pla.net"
-  dns-hosted-zone-name: rds-pla.net
-  # Zone ID path required by ACK Route53 adoption ("name" alone is rejected)
-  dns-hosted-zone-id: "/hostedzone/Z095986738M5ANBGDR7OG"
+# apiVersion: v1
+# kind: ConfigMap
+# metadata:
+#   name: infrastructure-values
+#   namespace: spoke1
+#   labels:
+#     app.kubernetes.io/managed-by: gen3-kro
+#     gen3.io/tier: infrastructure
+#     gen3.io/config-type: values
+#   annotations:
+#     argocd.argoproj.io/sync-wave: "14"
+# data:
+#   aws-region: us-east-1
+#   aws-environment: dev
+#   aws-project: gen3-kro
+#   # ── Application hostname (read by DNS1 RGD) ──────────────────────────────
+#   hostname: "spoke1dev.rds-pla.net"
+#   dns-hosted-zone-name: rds-pla.net
+#   # Zone ID path required by ACK Route53 adoption ("name" alone is rejected)
+#   dns-hosted-zone-id: "/hostedzone/Z095986738M5ANBGDR7OG"
 
-  # ── Network configuration ───────────────────────────────────────────────
-  network-vpc-cidr: 10.1.0.0/16
-  network-public-subnet-cidrs: 10.1.240.0/24,10.1.241.0/24
-  network-private-subnet-cidrs: 10.1.0.0/20,10.1.16.0/20
-  network-availability-zones: us-east-1a,us-east-1b
-  network-kms-key-description: spoke1 foundation encryption key
-  network-database-enabled: "true"
-  network-compute-enabled: "true"
-  network-search-enabled: "true"
-  network-db-subnet-cidrs: 10.1.32.0/24,10.1.33.0/24
+#   # ── Network configuration ───────────────────────────────────────────────
+#   network-vpc-cidr: 10.1.0.0/16
+#   network-public-subnet-cidrs: 10.1.240.0/24,10.1.241.0/24
+#   network-private-subnet-cidrs: 10.1.0.0/20,10.1.16.0/20
+#   network-availability-zones: us-east-1a,us-east-1b
+#   network-kms-key-description: spoke1 foundation encryption key
+#   network-database-enabled: "true"
+#   network-compute-enabled: "true"
+#   network-search-enabled: "true"
+#   network-db-subnet-cidrs: 10.1.32.0/24,10.1.33.0/24
 
-  # ── Storage configuration ───────────────────────────────────────────────
-  storage-logging-bucket-name: gen3-spoke1-logging
-  storage-data-bucket-name: gen3-spoke1-data
-  storage-upload-bucket-name: gen3-spoke1-upload
-  storage-manifest-bucket-name: ""
-  storage-dashboard-bucket-name: ""
-  storage-usersync-bucket-name: gen3-spoke1-usersync
+#   # ── Storage configuration ───────────────────────────────────────────────
+#   storage-logging-bucket-name: gen3-spoke1-logging
+#   storage-data-bucket-name: gen3-spoke1-data
+#   storage-upload-bucket-name: gen3-spoke1-upload
+#   storage-manifest-bucket-name: ""
+#   storage-dashboard-bucket-name: ""
+#   storage-usersync-bucket-name: gen3-spoke1-usersync
 
-  # ── Database configuration ───────────────────────────────────────────────
-  database-aurora-engine-version: "16.6"
-  database-aurora-db-name: gen3
-  database-aurora-master-username: postgres
-  database-aurora-min-capacity: "0.5"
-  database-aurora-max-capacity: "4"
-  database-aurora-master-password-sm-name: spoke1-aurora-master-password
-  database-enable-read-replica: "false"
+#   # ── Database configuration ───────────────────────────────────────────────
+#   database-aurora-engine-version: "16.6"
+#   database-aurora-db-name: gen3
+#   database-aurora-master-username: postgres
+#   database-aurora-min-capacity: "0.5"
+#   database-aurora-max-capacity: "4"
+#   database-aurora-master-password-sm-name: spoke1-aurora-master-password
+#   database-enable-read-replica: "false"
 
-  # ── Search configuration ─────────────────────────────────────────────────
-  search-opensearch-version: OpenSearch_2.11
-  search-opensearch-instance-type: t3.small.search
-  search-opensearch-instance-count: "1"
-  search-opensearch-volume-size: "10"
-  search-opensearch-master-enabled: "false"
-  search-redis-enabled: "false"
-  search-redis-node-type: cache.t3.small
-  search-redis-engine-version: "7.0"
-  search-redis-replicas-per-node-group: "0"
-  search-redis-num-node-groups: "1"
-  search-redis-port: "6379"
-  search-redis-snapshot-retention-limit: "0"
-  search-redis-auto-failover-enabled: "false"
-  search-redis-transit-encryption-enabled: "true"
+#   # ── Search configuration ─────────────────────────────────────────────────
+#   search-opensearch-version: OpenSearch_2.11
+#   search-opensearch-instance-type: t3.small.search
+#   search-opensearch-instance-count: "1"
+#   search-opensearch-volume-size: "10"
+#   search-opensearch-master-enabled: "false"
+#   search-redis-enabled: "false"
+#   search-redis-node-type: cache.t3.small
+#   search-redis-engine-version: "7.0"
+#   search-redis-replicas-per-node-group: "0"
+#   search-redis-num-node-groups: "1"
+#   search-redis-port: "6379"
+#   search-redis-snapshot-retention-limit: "0"
+#   search-redis-auto-failover-enabled: "false"
+#   search-redis-transit-encryption-enabled: "true"
 
-  # ── Compute configuration ───────────────────────────────────────────────
-  compute-kubernetes-version: "1.35"
-  compute-node-instance-types: t3.large
-  compute-node-desired-size: "2"
-  compute-node-min-size: "1"
-  compute-node-max-size: "4"
-  compute-node-disk-size: "20"
-  compute-node-ami-type: AL2023_x86_64_STANDARD
+#   # ── Compute configuration ───────────────────────────────────────────────
+#   compute-kubernetes-version: "1.35"
+#   compute-node-instance-types: t3.large
+#   compute-node-desired-size: "2"
+#   compute-node-min-size: "1"
+#   compute-node-max-size: "4"
+#   compute-node-disk-size: "20"
+#   compute-node-ami-type: AL2023_x86_64_STANDARD
 
-  # ── Messaging configuration ─────────────────────────────────────────────
-  messaging-sqs-message-retention: "345600"
-  messaging-sqs-visibility-timeout: "300"
+#   # ── Messaging configuration ─────────────────────────────────────────────
+#   messaging-sqs-message-retention: "345600"
+#   messaging-sqs-visibility-timeout: "300"
 
-  # ── Advanced services configuration ───────────────────────────────────
-  advanced-waf-enabled: "false"
-  advanced-waf-scope: REGIONAL
+#   # ── Advanced services configuration ───────────────────────────────────
+#   advanced-waf-enabled: "false"
+#   advanced-waf-scope: REGIONAL
