@@ -16,6 +16,8 @@ data:
   # ── Application hostname (read by DNS1 RGD) ──────────────────────────────
   hostname: "spoke1dev.rds-pla.net"
   dns-hosted-zone-name: rds-pla.net
+  # Zone ID path required by ACK Route53 adoption ("name" alone is rejected)
+  dns-hosted-zone-id: "/hostedzone/Z095986738M5ANBGDR7OG"
 
   # ── Network configuration ───────────────────────────────────────────────
   network-vpc-cidr: 10.1.0.0/16

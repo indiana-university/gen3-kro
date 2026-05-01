@@ -1042,6 +1042,15 @@ spec:
     - id: networkBridge
       readyWhen:
         - ${networkBridge.metadata.?name.orValue('null') != 'null'}
+      # KNOWN LIMITATION (Test 8 pattern): This bridge references conditional nodes
+      # (dbSubnet1, dbSubnet2, auroraSg, eksSecurityGroup, searchKey, etc.) via
+      # ternary expressions. KRO silently drops this entire ConfigMap if any
+      # referenced node is excluded (i.e., if network-database-enabled,
+      # network-compute-enabled, or network-search-enabled is false).
+      # Currently all three flags are required=true in production.
+      # Fix requires splitting into sub-bridges: databasePrepBridge,
+      # computePrepBridge, searchPrepBridge — each conditional — plus an
+      # always-present networkBridge with only unconditional fields.
       template:
         apiVersion: v1
         kind: ConfigMap

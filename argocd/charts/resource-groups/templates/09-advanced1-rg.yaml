@@ -146,9 +146,16 @@ spec:
   # ====================================================================
   # BRIDGE: Advanced Outputs ConfigMap (for downstream tiers)
   # ====================================================================
-  # WAF values are gated inline so this RGD still produces exactly one bridge.
+  # DUAL-BRIDGE PATTERN (Test 8): KRO silently drops any resource whose
+  # template references an excluded (includeWhen=false) node — even through
+  # optional chaining. Two opposite-includeWhen resources write to the same
+  # ConfigMap name so the bridge always exists regardless of WAF state.
 
-    - id: advancedBridge
+    - id: advancedBridgeWithWaf
+      includeWhen:
+        - ${infrastructureConfig.data['advanced-waf-enabled'] == 'true'}
+      readyWhen:
+        - ${advancedBridgeWithWaf.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap
@@ -160,5 +167,24 @@ spec:
             gen3.io/tier: advanced
             gen3.io/bridge: "true"
         data:
-          waf-acl-arn: "${infrastructureConfig.data['advanced-waf-enabled'] == 'true' ? wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
-          waf-enabled: "${infrastructureConfig.data['advanced-waf-enabled'] == 'true' ? 'true' : 'false'}"
+          waf-acl-arn: ${wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading')}
+          waf-enabled: "true"
+
+    - id: advancedBridgeNoWaf
+      includeWhen:
+        - ${infrastructureConfig.data['advanced-waf-enabled'] != 'true'}
+      readyWhen:
+        - ${advancedBridgeNoWaf.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.advancedBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: advanced
+            gen3.io/bridge: "true"
+        data:
+          waf-acl-arn: ""
+          waf-enabled: "false"

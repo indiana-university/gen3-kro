@@ -65,8 +65,11 @@ spec:
           annotations:
             services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
             services.k8s.aws/adoption-policy: adopt
+            # ACK Route53 HostedZone adoption requires "id" (the zone ID path),
+            # NOT "name". Using "name" causes: error="required field missing: id"
+            # on every reconcile loop. Confirmed by test krotest-route53-adoption.
             services.k8s.aws/adoption-fields: |
-              {"name":"${infrastructureConfig.data['dns-hosted-zone-name']}"}
+              {"id":"${infrastructureConfig.data['dns-hosted-zone-id']}"}
             services.k8s.aws/deletion-policy: retain
         spec:
           name: ${infrastructureConfig.data['dns-hosted-zone-name']}
@@ -139,9 +142,16 @@ spec:
             - value: ${acmCert.status.domainValidations[0].resourceRecord.value}
 
   # ── DNS Bridge ────────────────────────────────────────────────────
-    - id: dnsBridge
+  # DUAL-BRIDGE PATTERN (Test 8): The bridge references hostedZone and acmCert
+  # which are conditional (includeWhen: hostname != ''). If hostname is empty,
+  # both nodes are excluded and KRO silently drops any resource referencing them.
+  # Two opposite-includeWhen resources write to the same ConfigMap name so the
+  # bridge always exists regardless of hostname configuration.
+    - id: dnsBridgeWithHostname
+      includeWhen:
+        - ${infrastructureConfig.data['hostname'] != ''}
       readyWhen:
-        - ${dnsBridge.metadata.?name.orValue('null') != 'null'}
+        - ${dnsBridgeWithHostname.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap
@@ -154,7 +164,29 @@ spec:
             gen3.io/bridge: "true"
             gen3.io/purpose: dns
         data:
-          hosted-zone-id: "${infrastructureConfig.data['hostname'] != '' ? hostedZone.status.?id.orValue('loading') : ''}"
-          hosted-zone-name: "${infrastructureConfig.data['hostname'] != '' ? infrastructureConfig.data['dns-hosted-zone-name'] : ''}"
-          acm-cert-arn: "${infrastructureConfig.data['hostname'] != '' ? acmCert.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
-          hostname: "${infrastructureConfig.data['hostname'] != '' ? infrastructureConfig.data['hostname'] : ''}"
+          hosted-zone-id: ${hostedZone.status.?id.orValue('loading')}
+          hosted-zone-name: ${infrastructureConfig.data['dns-hosted-zone-name']}
+          acm-cert-arn: ${acmCert.status.?ackResourceMetadata.?arn.orValue('loading')}
+          hostname: ${infrastructureConfig.data['hostname']}
+
+    - id: dnsBridgeNoHostname
+      includeWhen:
+        - ${infrastructureConfig.data['hostname'] == ''}
+      readyWhen:
+        - ${dnsBridgeNoHostname.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.dnsBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: dns
+            gen3.io/bridge: "true"
+            gen3.io/purpose: dns
+        data:
+          hosted-zone-id: ""
+          hosted-zone-name: ""
+          acm-cert-arn: ""
+          hostname: ""
