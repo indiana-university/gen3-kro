@@ -225,7 +225,7 @@ spec:
               allowEmpty: true
               prune: false
             retry:
-              limit: 100
+              limit: 5
               backoff:
                 duration: "30s"
                 factor: 2
@@ -233,6 +233,11 @@ spec:
             syncOptions:
               - CreateNamespace=true
               - ServerSideApply=true
+              # Karpenter EC2NodeClass/NodePool CRDs are installed by karpenter-crds
+              # Application (a child of this chart). On first deploy they don't exist yet;
+              # skip dry-run so the parent chart applies successfully and lets ArgoCD on
+              # the spoke process karpenter-crds first, then retry the node resources.
+              - SkipDryRunOnMissingResource=true
 
   # ====================================================================
   # BRIDGE: Cluster Resources Outputs ConfigMap
