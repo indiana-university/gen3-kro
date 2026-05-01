@@ -39,7 +39,6 @@ spec:
       name: string | required=true
       namespace: string | required=true
       region: string | default="us-east-1"
-      environment: string | default="dev"
 
       # ── ArgoCD ───────────────────────────────────────────────────
       argoCDNamespace: string | default="argocd"
@@ -237,7 +236,7 @@ spec:
                 parameters:
                   # ── Global identity & environment ──────────────────
                   - name: global.environment
-                    value: ${schema.spec.environment}
+                    value: ${schema.spec.namespace}
                   - name: global.aws.region
                     value: ${schema.spec.region}
                   # ── Hostname (from DNS bridge) ─────────────────────

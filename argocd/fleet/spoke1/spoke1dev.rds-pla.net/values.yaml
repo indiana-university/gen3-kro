@@ -14,7 +14,7 @@ global:
       name: external-secrets
     wafv2:
       enabled: false
-  dev: true
+  dev: false
   externalSecrets:
     deploy: true
   postgres:

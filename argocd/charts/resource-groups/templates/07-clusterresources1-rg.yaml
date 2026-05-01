@@ -43,7 +43,6 @@ spec:
       # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
-      environment: string | default="dev"
       project: string | default="gen3"
 
       # ── ArgoCD ───────────────────────────────────────────────────
@@ -138,7 +137,7 @@ spec:
             gen3.io/tier: cluster-resources
             gen3.io/spoke: ${schema.spec.name}
             fleet_member: spoke
-            environment: ${schema.spec.environment}
+            environment: ${schema.spec.namespace}
         type: Opaque
         stringData:
           name: ${schema.spec.name}-spoke
