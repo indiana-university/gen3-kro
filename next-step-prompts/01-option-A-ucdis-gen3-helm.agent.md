@@ -1,17 +1,18 @@
 ---
-title: "Option A — ArgoCD bootstrap in spoke via ACK + uc-cdis/gen3-helm"
+title: "Option A — Spoke-owned Application CRs via spoke ArgoCD"
 source_repo: "https://github.com/uc-cdis/gen3-helm"
-intent: "Ensure ArgoCD is installed into each spoke EKS cluster so it can receive and reconcile Application CRs from CSOC. Use uc-cdis/gen3-helm as the upstream chart source. Fork uc-cdis/gen3-helm, add ArgoCD support, and open a PR. In gen3-kro, extend the ClusterResources1 RGD to bootstrap spoke ArgoCD via a CSOC Application."
+intent: "Ensure ArgoCD is installed into each spoke EKS cluster so the relevant cluster-level resource Application CRs can live in the spoke and be reconciled there. Use uc-cdis/gen3-helm as the upstream chart source. Fork uc-cdis/gen3-helm, add ArgoCD support, and open a PR. In gen3-kro, extend the ClusterResources1 flow to bootstrap spoke ArgoCD before spoke-owned Application CRs are expected to reconcile."
 ---
 
 Goal
 ----
-- Install ArgoCD into each spoke EKS cluster as part of the KRO provisioning graph so the spoke can accept and reconcile Application CRs delivered by CSOC.
+- Install ArgoCD into each spoke EKS cluster as part of the KRO provisioning graph so cluster-level resource `Application` CRs can live in the spoke and be reconciled by spoke ArgoCD.
 - Contribute ArgoCD installation support to `uc-cdis/gen3-helm` (upstream fork + PR). `uc-cdis/gen3-helm` is a third-party upstream — changes go through a fork and PR process.
 
 Assumptions
 -----------
 - The spoke EKS cluster is already registered in CSOC ArgoCD via the `argoCDClusterSecret` created by ClusterResources1.
+- In this option, workloads still run in the spoke cluster, but the key difference is that the relevant `Application` CRs are expected to exist in the spoke rather than the hub.
 - IRSA or equivalent credentials are available for ACK controllers (EKS, IAM) on CSOC.
 - You have a GitHub account to fork `uc-cdis/gen3-helm` and open a PR.
 
@@ -28,6 +29,7 @@ High-level checklist (ordered)
    - Set `destination.server` to the spoke cluster endpoint (from `computeBridge['eks-cluster-endpoint']`).
    - Inject IRSA role ARN (from `iamBridge['argocd-irsa-arn']` or equivalent) as a helm parameter for the ArgoCD serviceAccount annotation.
    - Add `readyWhen` conditions: Application health is Healthy, sync status is Synced.
+   - Document explicitly in the RGD comments that Option A means spoke-owned `Application` CRs reconciled by spoke ArgoCD, not a different workload target.
 4. Add a capability test instance under `argocd/local-kind/test/tests/` that validates the ArgoCD bootstrap Application in a Kind environment.
 5. Commit gen3-kro changes on branch `feature/argocd-bootstrap-kro` and open a PR referencing the `uc-cdis/gen3-helm` PR.
 
@@ -68,4 +70,4 @@ Notes
 -----
 - Keep the ArgoCD subchart disabled by default (`argocd.enabled: false`) so existing `cluster-level-resources` deployments are unaffected.
 - Per-spoke ArgoCD values (IRSA ARN, namespace, ingress settings) should be overridable via `cluster-values.yaml` in the gitops repo.
-- This option is viable as an interim fallback while Option B chart changes go through upstream review.
+- In Option A, both Gen3 and cluster resources still land in the spoke cluster. The operational difference is that spoke ArgoCD owns the reconciliation of the spoke-side `Application` CRs.

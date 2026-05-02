@@ -50,31 +50,31 @@ All infrastructure tiers are active. The Gen3 application deployment (Helm1 and 
 
 ### Decision Required: Cluster Add-ons Deployment Mode
 
-Before Gen3 ClusterResources1 can be deployed, a decision is needed on how cluster-level add-ons (load balancer controller, node autoscaler, external secrets, cert-manager) are installed on the spoke. The Gen3 `cluster-level-resources` Helm chart currently assumes it runs inside the spoke cluster. Our CSOC architecture runs outside it, which requires a choice between two approaches.
+Before Gen3 ClusterResources1 can be deployed, a decision is needed on how cluster-level add-ons (load balancer controller, node autoscaler, external secrets, cert-manager) are managed for the spoke. In both options below, the intended Kubernetes workloads still run in the spoke cluster. The difference is where the ArgoCD `Application` CRs live and which ArgoCD controller reconciles them.
 
 ---
 
-**Option A — ArgoCD on every spoke**
+**Option A — Spoke-owned Application CRs**
 
-Each spoke EKS cluster runs its own lightweight ArgoCD instance. The CSOC pushes add-on definitions to the spoke, and the spoke's own ArgoCD reconciles them locally.
+Each spoke EKS cluster runs its own lightweight ArgoCD instance. CSOC bootstraps or enables that spoke ArgoCD, and the relevant cluster-level resource `Application` CRs live in the spoke and are reconciled there locally.
 
 *Advantages*
 - No changes required to the Gen3 Helm charts. This is the deployment model Gen3/UC-CDIS designed, tests, and documents.
 - Each spoke is operationally self-contained. If the CSOC management cluster is unreachable, the spoke continues to self-heal its own add-ons.
-- Karpenter node configuration resources and any other raw manifests in the chart work without modification, since they are applied locally by the spoke ArgoCD.
+- Karpenter node configuration resources and other raw manifests fit naturally because spoke ArgoCD is the controller reconciling the spoke-side Application flow.
 - Fully compatible with future UC-CDIS upstream chart updates — no divergence to maintain.
 
 *Disadvantages*
 - Every spoke requires its own ArgoCD installation to install, upgrade, and secure. At ten spokes, that is ten additional control-plane components to manage.
 - Two layers of GitOps to monitor: CSOC ArgoCD for infrastructure, spoke ArgoCD for add-ons. Incidents may require accessing both.
 - ArgoCD on each spoke needs its own IAM credentials to pull from ECR and call AWS APIs (~200 MB RAM overhead per spoke, plus IAM setup).
-- The spoke ArgoCD must be bootstrapped before the CSOC can deliver any add-ons — a manual first step that cannot currently be automated by the existing graphs without additional design work.
+- The spoke ArgoCD must be bootstrapped before the spoke-owned `Application` CRs can reconcile.
 
 ---
 
-**Option B — CSOC-only, no spoke ArgoCD**
+**Option B — Hub-owned Application CRs**
 
-The CSOC ArgoCD manages add-on deployment directly to each spoke. The Gen3 `cluster-level-resources` chart is modified to accept a configurable destination cluster rather than assuming local deployment. The change is small and backward-compatible — the default value preserves existing behaviour for teams running the chart locally.
+The hub ArgoCD keeps ownership of the `Application` CRs and manages the spoke remotely. The Gen3 `cluster-level-resources` chart is modified to accept a configurable destination cluster so hub-owned child Applications can target the spoke. The workloads still land in the spoke cluster.
 
 *Advantages*
 - A single ArgoCD governs the entire fleet. Add-on versions, configurations, and rollouts are managed from one place across all spokes simultaneously.
@@ -83,7 +83,7 @@ The CSOC ArgoCD manages add-on deployment directly to each spoke. The Gen3 `clus
 - The chart modification is a candidate for contribution back to the UC-CDIS gen3-helm repository. Because the change uses a defaulted value, it is fully backward-compatible — existing deployments are unaffected and no migration is required.
 
 *Disadvantages*
-- Requires a chart change across 21 templates in `cluster-level-resources`, plus additional work for a small number of Karpenter node configuration files that render raw manifests rather than ArgoCD Application objects. These need to be wrapped or handled separately.
+- Requires a chart change across Application templates in `cluster-level-resources`, plus additional care for Karpenter node configuration files that render raw manifests rather than ArgoCD Application objects.
 - The chart changes must be validated and submitted to the Chicago team for review before they can be considered part of the upstream Gen3 release. Until accepted, Indiana University maintains a fork or patch.
 - If the CSOC ArgoCD is unavailable, spoke add-ons will drift without self-healing until it recovers.
 
