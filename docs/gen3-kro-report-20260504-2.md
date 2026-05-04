@@ -1,58 +1,78 @@
-# gen3-kro — To Do
+# gen3-kro - Follow-up Report
 
-**Companion to:** gen3-kro-report-20260504.md
-**Audience:** Alan Walsh
+**Date:** 2026-05-04  
+**Scope:** ArgoCD topology, `cluster-level-resources`, and next implementation steps  
+**Branch:** `main` — HEAD `c7fe271` (gen3-kro), `6bb5247` (gen3-build)
 
-Items are grouped by which deployment path they belong to. Complete the "Immediate" section first regardless of the option chosen.
+## Summary
 
----
+Two corrections were necessary:
 
+1. `fleet-instances` applies the spoke KRO instance CRs to the spoke cluster, not to CSOC.
+2. Amazon EKS managed ArgoCD is an EKS capability, not an ACK `Addon` CR.
 
----
+Those two facts make Option A the implemented path and eliminated the need for a separate RGD.
 
-## Option A — Spoke-owned Application CRs
+## What is implemented (committed)
 
-The goal here is to bootstrap a lightweight ArgoCD instance on the spoke EKS cluster so that the relevant cluster-level resource `Application` CRs can live in the spoke and be reconciled there. The existing `addons.yaml` ApplicationSet mechanism already knows how to deploy Helm charts to registered clusters via label selectors. ArgoCD itself can be delivered the same way rather than as a manual `helm install`.
+### gen3-kro
 
-- [ ] Add an `argo-cd` addon entry to `addons.yaml` with a selector targeting `fleet_member: spoke`. This causes CSOC ArgoCD to install ArgoCD on any registered spoke cluster automatically, using the same wave and sync pattern as every other addon. The spoke cluster Secret created by ClusterResources1 already carries the `fleet_member: spoke` label — no label change needed.
-- [ ] Confirm that the `argo-cd` Helm chart version and values (namespace, server mode, IRSA or service account credentials for the spoke ArgoCD) are defined in `cluster-values.yaml` or a dedicated values file so each spoke can differ if needed.
-- [ ] Verify the CSOC ArgoCD `default` project allows the spoke cluster as a destination. If the project has a destination allowlist, add the spoke API endpoint.
-- [ ] Verify CoreDNS inline values use the correct service IP for the spoke cluster's service CIDR. The chart hardcodes `10.100.0.10` — confirm this matches the spoke before the first ClusterResources1 sync or override it in `cluster-values.yaml`.
-- [ ] Verify CSOC ArgoCD has OCI Helm registry support enabled. The Karpenter CRDs chart sources from `public.ecr.aws/karpenter` — this requires ArgoCD 2.10+ or the `--enable-helm-oci-repositories` flag.
-- [ ] Once the spoke ArgoCD is healthy, confirm ClusterResources1 transitions to Healthy and the `cluster-resources-bridge` updates. This unblocks Helm1.
+- **`AwsGen3ClusterResources1`** ([`07-clusterresources1-rg.yaml`](../argocd/charts/resource-groups/templates/07-clusterresources1-rg.yaml)) updated with:
+  - `argocdTargetClusterName: string | default=""` schema field — allows overriding the ArgoCD cluster registration name when the spoke is pre-registered under a specific name (e.g. EKS-managed ArgoCD capability).
+  - All four cluster-name references (`argoCDClusterSecret.metadata.name`, `stringData.name`, `destination.name`, bridge `argocd-cluster-name` and `argocd-cluster-secret`) made conditional: use `argocdTargetClusterName` when set, fall back to `${name}-spoke` when empty.
+  - No separate `AwsGen3ClusterResources2` was created — the single RGD handles both CSOC-ArgoCD and EKS-managed ArgoCD topologies via the override field.
 
----
+- **`argocd/fleet/spoke1/cluster-level-resources/app.yaml`** ([link](../argocd/fleet/spoke1/cluster-level-resources/app.yaml)):
+  - `kind: AwsGen3ClusterResources1`
+  - `helmChartRepoURL: "https://github.com/jayadeyemi/Gen3-build.git"`
+  - `helmChartPath: "helm/cluster-level-resources"`
+  - `helmChartTargetRevision: "main"`
 
-## Option B — Hub-owned Application CRs
+- **`argocd/fleet/spoke1/cluster-level-resources/cluster-values.yaml`** ([link](../argocd/fleet/spoke1/cluster-level-resources/cluster-values.yaml)):
+  - `karpenter-crds.default.enabled: true` — explicit, because chart default is now `false`
+  - `karpenter-crds.jupyter.enabled: false` — explicit disable
+  - `karpenter-crds.workflow.enabled: false` — explicit disable
+  - Comments added explaining spoke-owned vs hub-owned mode behavior
 
-Two coordinated changes are needed: one to the `cluster-level-resources` gen3-helm chart, and one to the ClusterResources1 RGD. In this option the child `Application` CRs stay in the hub, but the managed Kubernetes workloads still land in the spoke. The chart change is the upstream contribution candidate.
+- **[`AwsGen3Helm1`](../argocd/charts/resource-groups/templates/08-helm1-rg.yaml)** unchanged — correctly reads `argocd-cluster-name` from `cluster-resources-bridge`.
 
-**gen3-helm `cluster-level-resources` chart changes:**
-- [ ] Add `destinationServer: "https://kubernetes.default.svc"` to `values.yaml`. This is the backward-compatible default — existing deployments that run the chart inside the spoke cluster are unaffected.
-- [ ] Replace the hardcoded `https://kubernetes.default.svc` destination string in all 21 Application templates with `{{ .Values.destinationServer }}`. The change is mechanical — every template has one occurrence.
-- [ ] Decide how the 5 Karpenter node configuration templates (`karpenter-config-resources-default`, `-gpu`, `-jupyter`, `-secondary`, `-workflow`) should be represented when the child `Application` CRs are hub-owned. These files currently render raw `EC2NodeClass` and `NodePool` objects rather than Application CRs, so they need explicit handling under Option B.
-- [ ] Validate the modified chart with a local `helm template` render against the spoke1 values before pushing.
-- [ ] Open a pull request to UC-CDIS gen3-helm with the changes. The backward-compatible default means this is a non-breaking contribution.
+### gen3-build (`jayadeyemi/Gen3-build`, branch `main`)
 
-**ClusterResources1 RGD changes (`07-clusterresources1-rg.yaml`):**
-- [ ] Change the `gen3-cluster-resources` Application destination from the spoke cluster (`name: gen3-spoke`) to the CSOC cluster itself (`server: https://kubernetes.default.svc`, namespace `argocd`). With this change, hub ArgoCD renders the cluster-level-resources chart and owns the resulting child Application CRs, routing each one to the spoke via `destinationServer`.
-- [ ] Inject `destinationServer` as a Helm parameter in the ClusterResources1 RGD, populated from `computeBridge['eks-cluster-endpoint']`. This is what causes each child Application CR to target the spoke.
+- **`helm/cluster-level-resources/values.yaml`**:
+  - All Karpenter node profile enables (`default`, `jupyter`, `workflow`, `secondary`, `gpu`) default to `false`. Profiles only render when explicitly enabled in instance values.
+  - `destinationServer: ""` added — empty string is backward-compatible (spoke-owned). Set to spoke endpoint for hub-owned mode.
+  - `karpenterNodeConfigChart: {repoURL, targetRevision, path}` block added — required only when `destinationServer` is set.
 
-**Shared verification with Option A:**
-- [ ] Verify the CSOC ArgoCD `default` project allows the spoke cluster as a destination.
-- [ ] Verify CoreDNS service IP matches the spoke cluster CIDR.
-- [ ] Verify OCI Helm registry support for Karpenter CRDs.
+- **`helm/karpenter-node-configs/values.yaml`**: `default.enabled: false` (was `true`).
 
----
+- **`helm/cluster-level-resources/templates/karpenter-config-resources-{default,jupyter,workflow,secondary,gpu}.yaml`**: Each template branches on `destinationServer` — when set, renders an ArgoCD `Application` CR pointing to `karpenter-node-configs`; when empty, renders raw `EC2NodeClass` + `NodePool` objects directly.
 
-## Other To Dos (independent of option choice)
+- **`helm/cluster-level-resources/templates/_karpenter-node-config.tpl`**: New helper that renders the Application CR (hub-owned path). Requires `karpenterNodeConfigChart.repoURL`, `.targetRevision`, `.path`.
 
-These items apply once either option's ClusterResources1 is resolved and the gen3 chart is syncing.
+- **`helm/cluster-level-resources/templates/kube-state-metrics.yaml`**: Hardcoded `https://kubernetes.default.svc` replaced with `{{ .Values.destinationServer | default "https://kubernetes.default.svc" | quote }}`.
 
-- [ ] **`gen3-gen3-helm` is OutOfSync/Missing** — The application targets the spoke cluster (`gen3-spoke`) in the `gen3` namespace. Health is `Missing` because the reconciliation path for the spoke-targeting `Application` CRs is not fully in place yet. This resolves once either the spoke owns and reconciles those Application CRs (Option A) or the hub owns and reconciles them against the spoke (Option B).
-- [ ] **First-sync database job** — On the first gen3 chart sync, a database creation job runs that creates per-service credentials in Secrets Manager. Monitor this job to completion. If it fails (e.g., master password not found), seven services will stay down until it is re-triggered manually.
-- [ ] **Fence OIDC credentials** — Fence will start but users cannot log in until OIDC client credentials are added to Secrets Manager and an ExternalSecret is configured to pull them. This is a post-launch step and does not block the initial deployment.
+## Option A (active)
 
----
+`Application` CRs for `cluster-level-resources` live in the spoke and are reconciled by the EKS-managed ArgoCD capability there. The capability is created outside KRO via Terraform `aws_eks_capability`. The `AwsGen3ClusterResources1` instance (`app.yaml`) is applied to the spoke by `fleet-instances`; the resulting Application CR therefore lands in the spoke `argocd` namespace.
 
-*Updated: 2026-05-04 | Branch: main*
+## Option B (chart-ready, KRO path not implemented)
+
+The chart changes are in place. Option B requires the KRO instance to run on CSOC (not the spoke) so that the `Application` CRs land in CSOC ArgoCD. That requires a separate CSOC-side producer path and is not implemented in this session.
+
+## Pending items (non-live)
+
+| ID | Item | File | Priority |
+|----|------|------|----------|
+| P1 | `argocdTargetClusterName` not set in `app.yaml` — needed when EKS pre-registers the spoke under a name other than `gen3-spoke`. Verify the registration name from the EKS capability and add the override if it differs. | `argocd/fleet/spoke1/cluster-level-resources/app.yaml` | Before first deploy |
+| P2 | `cluster-values.yaml` has no `coreDNS.configuration.coreDnsServiceIP` override. The chart default may not match the spoke cluster's service CIDR. Confirm the correct IP and add it before first sync. | `argocd/fleet/spoke1/cluster-level-resources/cluster-values.yaml` | Before first deploy |
+| P3 | `pending.md` P2 — Spoke2 KRO instance not created. Spoke1 pattern can be replicated once spoke2 infrastructure is ready. | `argocd/fleet/` | Low |
+| P4 | `pending.md` P1 — Self-heal policy audit. Not all ArgoCD Applications have `automated.selfHeal: true`. Review which should require manual approval. | `argocd/bootstrap/*.yaml`, ApplicationSet templates | Medium |
+| P5 | gen3-build file permission drift — all modified template files show mode `100644→100755`. No content changed. A normalizing commit (`git add --chmod=-x`) cleans this up. | `gen3-build/helm/` templates | Cosmetic |
+
+## Live checks (excluded per scope)
+
+- Verify EKS ArgoCD capability is enabled for spoke1 before wave 27
+- Verify spoke ArgoCD project allows the registered spoke cluster name
+- Validate `AwsGen3ClusterResources1` transitions to Healthy after first sync
+- Monitor first-sync DB job and Fence OIDC credential injection
+
