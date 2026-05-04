@@ -10,10 +10,15 @@
 # Resources:
 #   - eksCluster: EKS cluster with 4 subnets (public + private)
 #   - eksNodeGroup: Managed node group on private subnets
-#   - vpcCniAddon, coreDnsAddon, kubeProxyAddon: Essential EKS add-ons
 #   - argoCDSpokeRole: IAM role for CSOC ArgoCD to authenticate to spoke EKS
 #   - argoCDAccessEntry: EKS access entry granting ArgoCD role cluster admin
 #   - computeBridge: ConfigMap with EKS outputs for downstream tiers
+#
+# NOTE: vpc-cni, coredns, and kube-proxy are NOT managed here.
+# EKS provisions them as default addons on cluster creation.
+# The cluster-level-resources Helm chart (AwsGen3ClusterResources1)
+# replaces/manages them via Helm (vpc-cni, coreDNS) and DaemonSet
+# (kube-proxy). ACK Addon CRs would conflict with that ownership.
 #
 # PREREQUISITES:
 #   1. Network1 deployed with computeEnabled=true (publishes compute prep keys on networkBridge)
@@ -185,79 +190,6 @@ spec:
             Environment: ${infrastructureConfig.data['aws-environment']}
             ManagedBy: Kro
             Project: ${infrastructureConfig.data['aws-project']}
-
-  # ====================================================================
-  # EKS ADDONS: Essential cluster add-ons
-  # ====================================================================
-
-    # ── VPC CNI Add-on ───────────────────────────────────────────────
-    - id: vpcCniAddon
-      readyWhen:
-        - ${vpcCniAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${vpcCniAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: eks.services.k8s.aws/v1alpha1
-        kind: Addon
-        metadata:
-          name: ${schema.spec.name}-vpc-cni
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          name: vpc-cni
-          clusterName: ${eksCluster.spec.name}
-          tags:
-            Name: ${schema.spec.name}-vpc-cni
-            Environment: ${infrastructureConfig.data['aws-environment']}
-            ManagedBy: Kro
-
-    # ── CoreDNS Add-on ───────────────────────────────────────────────
-    - id: coreDnsAddon
-      readyWhen:
-        - ${coreDnsAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${coreDnsAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: eks.services.k8s.aws/v1alpha1
-        kind: Addon
-        metadata:
-          name: ${schema.spec.name}-coredns
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          name: coredns
-          clusterName: ${eksCluster.spec.name}
-          tags:
-            Name: ${schema.spec.name}-coredns
-            Environment: ${infrastructureConfig.data['aws-environment']}
-            ManagedBy: Kro
-
-    # ── kube-proxy Add-on ────────────────────────────────────────────
-    - id: kubeProxyAddon
-      readyWhen:
-        - ${kubeProxyAddon.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${kubeProxyAddon.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-      template:
-        apiVersion: eks.services.k8s.aws/v1alpha1
-        kind: Addon
-        metadata:
-          name: ${schema.spec.name}-kube-proxy
-          namespace: ${schema.spec.namespace}
-          annotations:
-            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-        spec:
-          name: kube-proxy
-          clusterName: ${eksCluster.spec.name}
-          tags:
-            Name: ${schema.spec.name}-kube-proxy
-            Environment: ${infrastructureConfig.data['aws-environment']}
-            ManagedBy: Kro
 
   # ====================================================================
   # ARGOCD ACCESS: IAM Role + EKS Access Entry for CSOC ArgoCD

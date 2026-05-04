@@ -6,6 +6,12 @@ alb-controller:
   configuration:
     enabled: false
 
+# vpc-cni replaces EKS default addon; managed via aws-vpc-cni Helm chart
+vpc-cni:
+  enabled: true
+  configuration:
+    enabled: false
+
 aws-s3-mountpoint:
   enabled: true
   configuration:
@@ -46,6 +52,10 @@ kube-state-metrics:
   enabled: true
   configuration:
     enabled: false
+
+# kube-proxy replaces EKS default addon; managed as DaemonSet directly
+kube-proxy:
+  enabled: true
 
 grafana-alloy:
   enabled: false
