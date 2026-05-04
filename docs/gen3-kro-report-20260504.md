@@ -1,7 +1,7 @@
 # gen3-kro - Follow-up Report
 
-**Date:** 2026-05-04  
-**Scope:** ArgoCD topology, `cluster-level-resources`, and next implementation steps  
+**Date:** 2026-05-04
+**Scope:** ArgoCD topology, `cluster-level-resources`, and next implementation steps
 **Branch:** `main` — HEAD `c7fe271` (gen3-kro), `6bb5247` (gen3-build)
 
 ## Summary
@@ -65,9 +65,7 @@ The chart changes are in place. Option B requires the KRO instance to run on CSO
 |----|------|------|----------|
 | P1 | `argocdTargetClusterName` not set in `app.yaml` — needed when EKS pre-registers the spoke under a name other than `gen3-spoke`. Verify the registration name from the EKS capability and add the override if it differs. | `argocd/fleet/spoke1/cluster-level-resources/app.yaml` | Before first deploy |
 | P2 | `cluster-values.yaml` has no `coreDNS.configuration.coreDnsServiceIP` override. The chart default may not match the spoke cluster's service CIDR. Confirm the correct IP and add it before first sync. | `argocd/fleet/spoke1/cluster-level-resources/cluster-values.yaml` | Before first deploy |
-| P3 | `pending.md` P2 — Spoke2 KRO instance not created. Spoke1 pattern can be replicated once spoke2 infrastructure is ready. | `argocd/fleet/` | Low |
 | P4 | `pending.md` P1 — Self-heal policy audit. Not all ArgoCD Applications have `automated.selfHeal: true`. Review which should require manual approval. | `argocd/bootstrap/*.yaml`, ApplicationSet templates | Medium |
-| P5 | gen3-build file permission drift — all modified template files show mode `100644→100755`. No content changed. A normalizing commit (`git add --chmod=-x`) cleans this up. | `gen3-build/helm/` templates | Cosmetic |
 
 ## Live checks (excluded per scope)
 
