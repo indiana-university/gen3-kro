@@ -20,7 +20,8 @@ KRO RGDs for the gen3-kro CSOC EKS cluster. Deployed by ArgoCD via
 | 3 | `awsgen3compute1` | AwsGen3Compute1 | Reads `networkBridge`, produces `computeBridge` |
 | 4 | `awsgen3messaging1` | AwsGen3Messaging1 | Produces `messagingBridge` |
 | 4 | `awsgen3oidc1` | AwsGen3OIDC1 | Reads `computeBridge`, produces `oidcBridge` |
-| 4.5 | `awsgen3clusterresources1` | AwsGen3ClusterResources1 | Reads `computeBridge`, produces `clusterResourcesBridge` |
+| 4.5 | `awsgen3clusterresources1` | AwsGen3ClusterResources1 | Legacy/local path; reads `computeBridge`, produces `clusterResourcesBridge` |
+| 4.5 | `awsgen3clusterresources2` | AwsGen3ClusterResources2 | EKS ArgoCD capability path; reads `computeBridge`, produces `clusterResourcesBridge` |
 | 5 | `awsgen3appiam1` | AwsGen3AppIAM1 | Reads `oidcBridge` + `storageBridge`, produces `iamBridge` |
 | 5 | `awsgen3helm1` | AwsGen3Helm1 | Reads all upstream bridges |
 | 7 | `awsgen3advanced1` | AwsGen3Advanced1 | Produces `advancedBridge` |

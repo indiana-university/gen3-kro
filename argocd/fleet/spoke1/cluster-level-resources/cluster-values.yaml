@@ -55,7 +55,12 @@ karpenter-crds:
   enabled: true
   selectorTag: spoke1
   migration: false
+  # Spoke-owned mode (destinationServer not set): each enabled profile renders raw
+  # EC2NodeClass + NodePool objects directly into the spoke cluster.
+  # Hub-owned mode (destinationServer set): each enabled profile renders an
+  # ArgoCD Application CR that deploys karpenter-node-configs chart to the spoke.
   default:
+    enabled: true   # explicit: renders default EC2NodeClass + NodePool
     consolidationPolicy: "WhenEmptyOrUnderutilized"
     consolidateAfter: "10m"
     requirements:
@@ -74,3 +79,7 @@ karpenter-crds:
           - m
           - c
           - r
+  jupyter:
+    enabled: false  # set to true to add jupyter node pool
+  workflow:
+    enabled: false  # set to true to add workflow node pool

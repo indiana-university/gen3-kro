@@ -21,8 +21,8 @@ argocd/
 ├── fleet/                          # EKS spoke KRO instance CRs (picked up by fleet-instances AppSet)
 │   └── spoke1/
 │       ├── infrastructure/         #   KRO instance definitions + infrastructure-values ConfigMap
-│       ├── cluster-level-resources/ #  AwsGen3Helm1 instance
-│       └── <hostname>/             #   AwsGen3ClusterResources1 instance + values.yaml
+│       ├── cluster-level-resources/ #   AwsGen3ClusterResources2 instance + cluster-values.yaml
+│       └── <hostname>/             #   AwsGen3Helm1 instance + values.yaml
 └── local-kind/                     # Kind cluster instance definitions
     └── test/                       #   Local: infrastructure/, cluster-resources/, applications/, tests/
 ```
@@ -165,8 +165,8 @@ Each subdirectory is a spoke cluster whose name matches a spoke alias in `spoke_
 | Path | Purpose |
 |------|---------|
 | `infrastructure/` | KRO instance definitions + `infrastucture-values` ConfigMap (wave 14) |
-| `cluster-level-resources/` | AwsGen3Helm1 instance |
-| `<hostname>/` | AwsGen3ClusterResources1 instance + `values.yaml` (gen3-helm operator preferences) |
+| `cluster-level-resources/` | AwsGen3ClusterResources2 instance + `cluster-values.yaml` |
+| `<hostname>/` | AwsGen3Helm1 instance + `values.yaml` (gen3-helm operator preferences) |
 
 The `local-kind/test/` directory mirrors this structure for Kind clusters, with additional `cluster-resources/`, `applications/`, and `tests/` subdirectories.
 

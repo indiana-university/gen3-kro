@@ -122,13 +122,13 @@
         <mxCell id="l3" parent="legend_bg" style="rounded=1;whiteSpace=wrap;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=9;fontStyle=1;labelBorderColor=none;fontColor=#000000;" value="3⃣ cluster-fleet/⟨cluster⟩/addons.yaml ✓ WINS" vertex="1">
           <mxGeometry height="50" width="170" x="15" y="120" as="geometry" />
         </mxCell>
-        <mxCell id="spoke_addons_bg" parent="1" style="swimlane;startSize=25;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" value="Spoke Addons Track (wave 20)" vertex="1">
+        <mxCell id="spoke_addons_bg" parent="1" style="swimlane;startSize=25;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=11;fontStyle=1;" value="Spoke Capability Track" vertex="1">
           <mxGeometry height="120" width="430" x="790" y="130" as="geometry" />
         </mxCell>
-        <mxCell id="spoke_appset" parent="spoke_addons_bg" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;labelBorderColor=none;fontColor=#000000;" value="spoke-addons ApplicationSet&#xa;(fleet_member: spoke)" vertex="1">
+        <mxCell id="spoke_appset" parent="spoke_addons_bg" style="rounded=1;whiteSpace=wrap;fillColor=#dae8fc;strokeColor=#6c8ebf;fontSize=10;labelBorderColor=none;fontColor=#000000;" value="spoke ArgoCD capability&#xa;(version2 RGD / EKS capability)" vertex="1">
           <mxGeometry height="60" width="180" x="20" y="45" as="geometry" />
         </mxCell>
-        <mxCell id="spoke_eso" parent="spoke_addons_bg" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;labelBorderColor=none;fontColor=#000000;" value="external-secrets&#xa;(per spoke)" vertex="1">
+        <mxCell id="spoke_eso" parent="spoke_addons_bg" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;labelBorderColor=none;fontColor=#000000;" value="spoke-owned child apps&#xa;(ESO, ALB, Karpenter, etc.)" vertex="1">
           <mxGeometry height="60" width="150" x="260" y="45" as="geometry" />
         </mxCell>
         <mxCell id="e_spoke1" edge="1" parent="spoke_addons_bg" source="spoke_appset" style="endArrow=block;endFill=1;" target="spoke_eso" value="">

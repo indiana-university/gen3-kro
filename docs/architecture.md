@@ -1,4 +1,4 @@
-# Architecture
+﻿# Architecture
 
 Detailed architecture documentation for the EKS Cluster Management Platform.
 
@@ -25,25 +25,25 @@ The platform uses a CSOC (Cybersecurity Operations Center) EKS cluster as the ce
 
 ```
 CSOC Account
-└── EKS Cluster ({csoc_alias}-csoc-cluster)
-    ├── ArgoCD               — GitOps controller (git → cluster)
-    ├── KRO                  — Composes ACK resources into single custom resources
-    ├── ACK Controllers x17  — Provisions AWS resources via K8s CRDs
-    ├── ResourceGraphDefs    — KRO schema templates (VPC + EKS + RDS bundles)
-    └── External Secrets     — Syncs Secrets Manager → K8s secrets
+â””â”€â”€ EKS Cluster ({csoc_alias}-csoc-cluster)
+    â”œâ”€â”€ ArgoCD               â€” GitOps controller (git â†’ cluster)
+    â”œâ”€â”€ KRO                  â€” Composes ACK resources into single custom resources
+    â”œâ”€â”€ ACK Controllers x17  â€” Provisions AWS resources via K8s CRDs
+    â”œâ”€â”€ ResourceGraphDefs    â€” KRO schema templates (VPC + EKS + RDS bundles)
+    â””â”€â”€ External Secrets     â€” Syncs Secrets Manager â†’ K8s secrets
 
 Cross-account (STS AssumeRole)
-├── Spoke Account 1  → VPC, EKS, RDS, S3 (managed by ACK)
-└── Spoke Account 2  → VPC, EKS, RDS, S3 (managed by ACK)
+â”œâ”€â”€ Spoke Account 1  â†’ VPC, EKS, RDS, S3 (managed by ACK)
+â””â”€â”€ Spoke Account 2  â†’ VPC, EKS, RDS, S3 (managed by ACK)
 ```
 
 ### Component Roles
 
 | Component | Purpose |
 |-----------|---------|
-| **ArgoCD** | GitOps controller — reconciles git repo state to cluster |
-| **KRO** | Kubernetes Resource Orchestrator — composes multiple ACK resources into a single CRD instance |
-| **ACK** | AWS Controllers for Kubernetes — manages AWS resources as K8s custom resources |
+| **ArgoCD** | GitOps controller â€” reconciles git repo state to cluster |
+| **KRO** | Kubernetes Resource Orchestrator â€” composes multiple ACK resources into a single CRD instance |
+| **ACK** | AWS Controllers for Kubernetes â€” manages AWS resources as K8s custom resources |
 | **ResourceGraphDefinitions** | KRO CRD schemas defining infrastructure templates (e.g., VPC + EKS + RDS) |
 | **External Secrets** | Syncs credentials from AWS Secrets Manager into K8s secrets |
 
@@ -56,39 +56,39 @@ Cross-account (STS AssumeRole)
 Deployment is split across two execution contexts to solve the circular dependency between spoke IAM roles and the CSOC EKS cluster.
 
 ```
-Phase 1 — HOST (Terragrunt)
-  mfa-session.sh → ~/.aws/credentials [csoc]
+Phase 1 â€” HOST (Terragrunt)
+  mfa-session.sh â†’ ~/.aws/credentials [csoc]
   terragrunt stack run apply
-    └── aws_spoke_spoke1, aws_spoke_spoke2
-          → Create ACK workload roles with account-root trust
+    â””â”€â”€ aws_spoke_spoke1, aws_spoke_spoke2
+          â†’ Create ACK workload roles with account-root trust
 
-Phase 2 — CONTAINER / WSL (Terraform)
+Phase 2 â€” CONTAINER / WSL (Terraform)
   bash scripts/install.sh apply
-    → config/shared.auto.tfvars.json (single source of truth)
-    → module.aws_csoc
-        ├── VPC + EKS cluster
-        ├── OIDC Provider
-        ├── ACK source IAM role (OIDC-trusted)
-        └── ArgoCD Helm install
-    → module.argocd_bootstrap
-        ├── ArgoCD cluster secret (labels + annotations)
-        ├── Git repo credentials secret
-        ├── Bootstrap ApplicationSet (Helm release)
-        └── connect-csoc.sh (local_file output)
+    â†’ config/shared.auto.tfvars.json (single source of truth)
+    â†’ module.aws_csoc
+        â”œâ”€â”€ VPC + EKS cluster
+        â”œâ”€â”€ OIDC Provider
+        â”œâ”€â”€ ACK source IAM role (OIDC-trusted)
+        â””â”€â”€ ArgoCD Helm install
+    â†’ module.argocd_bootstrap
+        â”œâ”€â”€ ArgoCD cluster secret (labels + annotations)
+        â”œâ”€â”€ Git repo credentials secret
+        â”œâ”€â”€ Bootstrap ApplicationSet (Helm release)
+        â””â”€â”€ connect-csoc.sh (local_file output)
 
-Phase 3 — ArgoCD (Automatic GitOps)
+Phase 3 â€” ArgoCD (Automatic GitOps)
   Bootstrap AppSet reads argocd/bootstrap/
-    → csoc-addons AppSet (wave -20)
-    → ack-multi-acct AppSet (wave 5)
-    → fleet-instances AppSet (wave 30)  [picks up argocd/fleet/{spoke}/**]
-  Sync waves enforce: KRO → ACK → RGDs → Infra Instances → ClusterResources → Gen3
+    â†’ csoc-addons AppSet (wave -20)
+    â†’ ack-multi-acct AppSet (wave 5)
+    â†’ fleet-instances AppSet (wave 30)  [picks up argocd/fleet/{spoke}/**]
+  Sync waves enforce: KRO â†’ ACK â†’ RGDs â†’ Infra Instances â†’ ClusterResources â†’ Gen3
 ```
 
 ### Why Two Phases?
 
 Spoke workload roles must trust the CSOC ACK source role, but that role requires an EKS OIDC provider that doesn't exist until the cluster is created. The solution:
 
-1. **Phase 1** creates spoke roles with **account-root trust** (`arn:aws:iam::<CSOC>:root`) — the account principal always exists
+1. **Phase 1** creates spoke roles with **account-root trust** (`arn:aws:iam::<CSOC>:root`) â€” the account principal always exists
 2. **Phase 2** creates the EKS cluster and ACK source role
 3. The ACK source role satisfies the `ArnLike` condition on spoke roles at assume-time (evaluated dynamically at each `sts:AssumeRole` call)
 
@@ -99,33 +99,33 @@ Spoke workload roles must trust the CSOC ACK source role, but that role requires
 **Diagram:** [docs/diagrams/module-hierarchy.drawio](diagrams/module-hierarchy.drawio)
 
 ```
-terraform/env/aws/csoc-cluster/      ← Single entry point (root module)
-└── module "csoc_cluster"
-    └── terraform/catalog/modules/csoc-cluster/   ← Composite wrapper
-        ├── module "aws_csoc"
-        │   └── terraform/catalog/modules/aws-csoc/
-        │       ├── vpc.tf                         EKS-optimized VPC
-        │       ├── eks.tf                         EKS cluster + OIDC
-        │       ├── ack-iam.tf                     ACK source IAM role
-        │       ├── argocd.tf                      ArgoCD Helm release
-        │       └── external-secrets.tf            Pod identity for ESO
-        │
-        └── module "argocd_bootstrap"              (depends on aws_csoc outputs)
-            └── terraform/catalog/modules/argocd-bootstrap/
-                ├── cluster-secret.tf              ArgoCD cluster secret
-                ├── git-secret.tf                  Git repo credentials
-                ├── bootstrap.tf                   Bootstrap ApplicationSet
-                └── outputs.tf                     connect-csoc.sh script
+terraform/env/aws/csoc-cluster/      â† Single entry point (root module)
+â””â”€â”€ module "csoc_cluster"
+    â””â”€â”€ terraform/catalog/modules/csoc-cluster/   â† Composite wrapper
+        â”œâ”€â”€ module "aws_csoc"
+        â”‚   â””â”€â”€ terraform/catalog/modules/aws-csoc/
+        â”‚       â”œâ”€â”€ vpc.tf                         EKS-optimized VPC
+        â”‚       â”œâ”€â”€ eks.tf                         EKS cluster + OIDC
+        â”‚       â”œâ”€â”€ ack-iam.tf                     ACK source IAM role
+        â”‚       â”œâ”€â”€ argocd.tf                      ArgoCD Helm release
+        â”‚       â””â”€â”€ external-secrets.tf            Pod identity for ESO
+        â”‚
+        â””â”€â”€ module "argocd_bootstrap"              (depends on aws_csoc outputs)
+            â””â”€â”€ terraform/catalog/modules/argocd-bootstrap/
+                â”œâ”€â”€ cluster-secret.tf              ArgoCD cluster secret
+                â”œâ”€â”€ git-secret.tf                  Git repo credentials
+                â”œâ”€â”€ bootstrap.tf                   Bootstrap ApplicationSet
+                â””â”€â”€ outputs.tf                     connect-csoc.sh script
 
-terraform/catalog/units/aws-spoke/   ← Terragrunt unit wrappers (HOST only)
-terragrunt/live/aws/csoc-cluster/    ← Spoke stack (aws_spoke_spoke1, aws_spoke_spoke2)
+terraform/catalog/units/aws-spoke/   â† Terragrunt unit wrappers (HOST only)
+terragrunt/live/aws/csoc-cluster/    â† Spoke stack (aws_spoke_spoke1, aws_spoke_spoke2)
 ```
 
 ### Module Responsibilities
 
 | Module | Runs In | Creates |
 |--------|---------|---------|
-| `csoc-cluster` | Container | Thin composite wrapper — calls `aws-csoc` + `argocd-bootstrap` |
+| `csoc-cluster` | Container | Thin composite wrapper â€” calls `aws-csoc` + `argocd-bootstrap` |
 | `aws-csoc` | Container | VPC, EKS, OIDC, ACK source IAM role, ArgoCD Helm, External Secrets pod identity |
 | `argocd-bootstrap` | Container | ArgoCD cluster secret, git repo secret, bootstrap ApplicationSet Helm release, `connect-csoc.sh` |
 | `aws-spoke` | Host | Per-spoke ACK workload IAM roles with account-root + ArnLike trust |
@@ -133,14 +133,14 @@ terragrunt/live/aws/csoc-cluster/    ← Spoke stack (aws_spoke_spoke1, aws_spok
 ### Dependency Chain
 
 ```
-aws-csoc outputs → argocd-bootstrap inputs
-  cluster_endpoint          → kubernetes provider
-  cluster_certificate_authority_data → kubernetes provider
-  argocd_namespace          → helm_release.bootstrap namespace
-  ack_role_arn              → cluster secret annotation
+aws-csoc outputs â†’ argocd-bootstrap inputs
+  cluster_endpoint          â†’ kubernetes provider
+  cluster_certificate_authority_data â†’ kubernetes provider
+  argocd_namespace          â†’ helm_release.bootstrap namespace
+  ack_role_arn              â†’ cluster secret annotation
 ```
 
-Terraform resolves this implicitly via data references — `argocd-bootstrap` cannot plan/apply until `aws-csoc` has real output values.
+Terraform resolves this implicitly via data references â€” `argocd-bootstrap` cannot plan/apply until `aws-csoc` has real output values.
 
 ---
 
@@ -152,29 +152,29 @@ After Terraform creates the bootstrap ApplicationSet, ArgoCD takes over and reco
 
 ```
 helm_release.bootstrap
-└── Bootstrap ApplicationSet (reads argocd/bootstrap/)
-    └── bootstrap Application
-        ├── csoc-addons.yaml
-        │   └── csoc-addons ApplicationSet (fleet_member: control-plane)
-        │       ├── self-managed-kro Application        (wave -30)
-        │       ├── ack-ec2/eks/iam/rds/... x17         (wave 1)
-        │       ├── kro-eks-rgs Application             (wave 10)
-        │       └── external-secrets Application        (wave 15)
-        │
-        ├── ack-multi-acct.yaml
-        │   └── ack-multi-acct ApplicationSet (wave 5)
-        │       └── ACK CARM namespaces + IAMRoleSelectors
-        │
-        └── fleet-instances.yaml
-            └── fleet-instances ApplicationSet (recurse: argocd/fleet/{spoke}/**)
-                ├── infra KRO instances                  (waves 15-25)
-                ├── AwsGen3ClusterResources1 instance     (wave 27)
-                └── AwsGen3Helm1 instance                (wave 30)
-                    ClusterResources1 creates ArgoCD Application → spoke cluster
-                    Helm1 creates ArgoCD Application → spoke cluster
+â””â”€â”€ Bootstrap ApplicationSet (reads argocd/bootstrap/)
+    â””â”€â”€ bootstrap Application
+        â”œâ”€â”€ csoc-addons.yaml
+        â”‚   â””â”€â”€ csoc-addons ApplicationSet (fleet_member: control-plane)
+        â”‚       â”œâ”€â”€ self-managed-kro Application        (wave -30)
+        â”‚       â”œâ”€â”€ ack-ec2/eks/iam/rds/... x17         (wave 1)
+        â”‚       â”œâ”€â”€ kro-eks-rgs Application             (wave 10)
+        â”‚       â””â”€â”€ external-secrets Application        (wave 15)
+        â”‚
+        â”œâ”€â”€ ack-multi-acct.yaml
+        â”‚   â””â”€â”€ ack-multi-acct ApplicationSet (wave 5)
+        â”‚       â””â”€â”€ ACK CARM namespaces + IAMRoleSelectors
+        â”‚
+        â””â”€â”€ fleet-instances.yaml
+            â””â”€â”€ fleet-instances ApplicationSet (recurse: argocd/fleet/{spoke}/**)
+                â”œâ”€â”€ infra KRO instances                  (waves 15-25)
+                â”œâ”€â”€ AwsGen3ClusterResources2 instance     (wave 27)
+                â””â”€â”€ AwsGen3Helm1 instance                (wave 30)
+                    ClusterResources1 creates ArgoCD Application â†’ spoke cluster
+                    Helm1 creates ArgoCD Application â†’ spoke cluster
 ```
 
-### Bootstrap Directory → ApplicationSet Mapping
+### Bootstrap Directory â†’ ApplicationSet Mapping
 
 | File in `argocd/bootstrap/` | ApplicationSet(s) Created | Sync Wave |
 |------------------------------|--------------------------|----------|
@@ -187,7 +187,7 @@ helm_release.bootstrap
 ```
 1. Helm chart defaults         (argocd/charts/<chart>/values.yaml)
 2. CSOC addons                 (argocd/addons/csoc/addons.yaml)
-3. Fleet instance overrides    (argocd/fleet/<spoke>/)  ← WINS
+3. Fleet instance overrides    (argocd/fleet/<spoke>/)  â† WINS
 ```
 
 ---
@@ -199,16 +199,16 @@ helm_release.bootstrap
 ```
 CSOC Account
   EKS OIDC Provider
-    ─① IRSA trust─→  ACK Source Role
+    â”€â‘  IRSA trustâ”€â†’  ACK Source Role
                       ({csoc_alias}-csoc-role)
-                         ↑
-  ACK Controller Pods ──② assume via OIDC
+                         â†‘
+  ACK Controller Pods â”€â”€â‘¡ assume via OIDC
 
-                      ─③ sts:AssumeRole──→  Spoke1 Workload Role
-                         ArnLike=*-csoc-role       → manages AWS resources
+                      â”€â‘¢ sts:AssumeRoleâ”€â”€â†’  Spoke1 Workload Role
+                         ArnLike=*-csoc-role       â†’ manages AWS resources
 
-                      ─③ sts:AssumeRole──→  Spoke2 Workload Role
-                                             → manages AWS resources
+                      â”€â‘¢ sts:AssumeRoleâ”€â”€â†’  Spoke2 Workload Role
+                                             â†’ manages AWS resources
 ```
 
 ### Trust Policy Pattern (Spoke Side)
@@ -222,16 +222,16 @@ CSOC Account
 }
 ```
 
-- **Account-root principal** — always valid, even before the ACK source role ARN exists
-- **ArnLike condition** — restricts to roles matching the `*-csoc-role` naming pattern (evaluated at assume-time)
-- No ExternalId — ACK does not pass it during `sts:AssumeRole`
+- **Account-root principal** â€” always valid, even before the ACK source role ARN exists
+- **ArnLike condition** â€” restricts to roles matching the `*-csoc-role` naming pattern (evaluated at assume-time)
+- No ExternalId â€” ACK does not pass it during `sts:AssumeRole`
 
 ### IAM Policy Files
 
 ```
 iam/
-├── _default/ack/inline-policy.json    # Fallback — used for any spoke without its own policy
-└── spoke2/ack/inline-policy.json      # Spoke2-specific permissions
+â”œâ”€â”€ _default/ack/inline-policy.json    # Fallback â€” used for any spoke without its own policy
+â””â”€â”€ spoke2/ack/inline-policy.json      # Spoke2-specific permissions
 ```
 
 The `aws-spoke` module reads these files at plan time via `file()`. Spokes without a custom `iam/<alias>/ack/` directory automatically fall back to `_default`.
@@ -240,25 +240,25 @@ The `aws-spoke` module reads these files at plan time via `file()`. Spokes witho
 
 ## Data Flow
 
-### shared.auto.tfvars.json → Running Infrastructure
+### shared.auto.tfvars.json â†’ Running Infrastructure
 
 ```
 config/shared.auto.tfvars.json (gitignored, single source of truth)
-  └─► scripts/install.sh
-        ├── jq parsing (extracts backend config)
-        └── symlinks into terraform workdir
-              └─► terraform/env/aws/csoc-cluster/ (root module)
-                    ├── module.aws_csoc
-                    │     ├── spoke_account_ids → ACK source role trust
-                    │     ├── csoc_alias, region → EKS naming + config
-                    │     └── outputs ──────────────────────────────┐
-                    └── module.argocd_bootstrap ◄────────────────────┘
-                          ├── kubernetes_secret (cluster)
-                          │     ├── labels    →  ApplicationSet cluster generator
-                          │     └── annotations → Go template variables
-                          ├── kubernetes_secret (git repo)
-                          └── helm_release (bootstrap ApplicationSet)
-                                └─► ArgoCD reconciles git → cluster state
+  â””â”€â–º scripts/install.sh
+        â”œâ”€â”€ jq parsing (extracts backend config)
+        â””â”€â”€ symlinks into terraform workdir
+              â””â”€â–º terraform/env/aws/csoc-cluster/ (root module)
+                    â”œâ”€â”€ module.aws_csoc
+                    â”‚     â”œâ”€â”€ spoke_account_ids â†’ ACK source role trust
+                    â”‚     â”œâ”€â”€ csoc_alias, region â†’ EKS naming + config
+                    â”‚     â””â”€â”€ outputs â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”
+                    â””â”€â”€ module.argocd_bootstrap â—„â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”˜
+                          â”œâ”€â”€ kubernetes_secret (cluster)
+                          â”‚     â”œâ”€â”€ labels    â†’  ApplicationSet cluster generator
+                          â”‚     â””â”€â”€ annotations â†’ Go template variables
+                          â”œâ”€â”€ kubernetes_secret (git repo)
+                          â””â”€â”€ helm_release (bootstrap ApplicationSet)
+                                â””â”€â–º ArgoCD reconciles git â†’ cluster state
 ```
 
 ### Key Data Handoffs
@@ -266,7 +266,7 @@ config/shared.auto.tfvars.json (gitignored, single source of truth)
 | From | To | Data | Mechanism |
 |------|----|------|-----------|
 | `shared.auto.tfvars.json` | Terraform | All module variables | Auto-loaded (symlinked into workdir by install.sh) |
-| `shared.auto.tfvars.json` | Terraform | State bucket, key, region | Extracted by install.sh → `-backend-config` at init |
+| `shared.auto.tfvars.json` | Terraform | State bucket, key, region | Extracted by install.sh â†’ `-backend-config` at init |
 | `aws-csoc` | `argocd-bootstrap` | Endpoint, CA, argocd namespace, ACK role ARN | Terraform module output references |
 | Terraform | ArgoCD | Labels, annotations, spoke account IDs | Kubernetes cluster secret |
 | ArgoCD | ApplicationSets | Cluster metadata | Cluster generator `matchLabels` + Go templates |
@@ -280,12 +280,12 @@ Sync waves enforce a deterministic deployment order. Resources in lower waves mu
 
 | Wave | Resource | Depends On | Why This Order |
 |------|----------|------------|----------------|
-| -30 | KRO controller | — | Must be present before any KRO CRDs are applied |
+| -30 | KRO controller | â€” | Must be present before any KRO CRDs are applied |
 | -20 | CSOC addons ApplicationSet | KRO running | AppSet itself is a CRD-backed resource |
 | 1 | ACK controllers (17 services) | KRO | CRD registration must precede ACK instance creation |
 | 5 | ACK multi-account (CARM) | ACK controllers | CARM namespaces and IAMRoleSelectors require ACK CRDs |
 | 10 | KRO ResourceGraphDefinitions | KRO, ACK | RGDs reference ACK CRDs; CRDs must exist |
-| 15 | External Secrets Operator | — | Independent; can start anytime after cluster exists |
+| 15 | External Secrets Operator | â€” | Independent; can start anytime after cluster exists |
 | 30 | Fleet KRO instances | ACK, RGDs, ESO | KRO instances expand into ACK resources using RGDs |
 | 40 | Fleet cluster-resources | KRO instances healthy | Cluster-level infra (external-secrets, cert-manager) on spoke |
 | 50 | Fleet Gen3 apps | Fleet cluster-resources | Gen3 services on spoke clusters |
@@ -296,77 +296,77 @@ Sync waves enforce a deterministic deployment order. Resources in lower waves mu
 
 ```
 eks-cluster-mgmt/
-├── README.md                            # Project overview + quick start
-├── Dockerfile                           # Dev container base image
-│
-├── argocd/
-│   ├── README.md                        #   ArgoCD layer documentation
-│   ├── bootstrap/
-│   │   ├── csoc-addons.yaml             #   CSOC addon ApplicationSet (wave -20)
-│   │   ├── ack-multi-acct.yaml          #   ACK CARM multi-account (wave 5)
-│   │   └── fleet-instances.yaml         #   KRO instance CRs ApplicationSet (wave 30)
-│   ├── addons/
-│   │   └── addons.yaml                  #   CSOC + Kind addon values (KRO, ACK)
-│   ├── charts/
-│   │   ├── application-sets/            #   Meta-chart: generates child ApplicationSets
-│   │   ├── multi-acct/                  #   ACK CARM namespace + IAMRoleSelector chart
-│   │   └── resource-groups/             #   KRO RGD manifests chart
-│   ├── fleet/
-│   │   └── spoke1/                      #   Per-spoke KRO instance CRs
-│   │       ├── infrastructure/          #   Infra tier instances + values ConfigMap
-│   │       ├── cluster-level-resources/ #   ClusterResources1 instance + values
-│   │       └── {hostname}/              #   Helm1 instance + values
-│   └── local-kind/
-│       └── test/                        #   Local Kind KRO instances
-│           ├── infrastructure/          #   Real-AWS infra instances
-│           ├── tests/                   #   Capability test instances
-│           ├── cluster-resources/
-│           └── applications/
-│
-├── terraform/
-│   ├── env/aws/csoc-cluster/             # Root module (single entry point)
-│   │   ├── main.tf                      #   Module invocation
-│   │   ├── variables.tf
-│   │   ├── outputs.tf
-│   │   ├── provider.tf
-│   │   └── backend.tf
-│   └── catalog/
-│       ├── modules/
-│       │   ├── csoc-cluster/            #   Composite (aws-csoc + argocd-bootstrap)
-│       │   ├── aws-csoc/                #   EKS, VPC, ACK IAM, ArgoCD Helm
-│       │   ├── argocd-bootstrap/        #   Cluster secret, git secret, bootstrap AppSet
-│       │   ├── aws-spoke/               #   Spoke workload IAM roles (HOST only)
-│       │   └── developer-identity/      #   Developer IAM resources
-│       └── units/                       #   Terragrunt unit wrappers
-│
-├── terragrunt/live/aws/iam-setup/    # Spoke IAM Terragrunt stack
-│
-├── iam/
-│   ├── _default/ack/inline-policy.json  # Default ACK permissions (fallback for all spokes)
-│   ├── _default/argocd/inline-policy.json # ArgoCD spoke role permissions (reference)
-│   └── spoke2/ack/inline-policy.json    # Spoke2-specific permissions (override when needed)
-│
-├── scripts/
-│   ├── install.sh                       #   Terraform orchestrator (init/plan/apply)
-│   ├── destroy.sh                       #   Full teardown
-│   ├── mfa-session.sh                   #   Host MFA credential setup
-│   └── container-init.sh               #   Container environment setup
-│
-├── docs/
-│   ├── architecture.md                  #   This file
-│   ├── deployment-guide.md              #   Step-by-step deployment procedures
-│   ├── security.md                      #   Security model and IAM details
-│   └── diagrams/                        #   Draw.io diagram source files
-│       ├── platform-overview.drawio
-│       ├── deployment-phases.drawio
-│       ├── argocd-reconciliation.drawio
-│       ├── cross-account-trust.drawio
-│       └── module-hierarchy.drawio
-│
-└── outputs/                             # Generated artifacts (gitignored)
-    ├── logs/                            #   Terraform plan/apply logs
-    ├── connect-csoc.sh                  #   Cluster connection script
-    └── argocd-password.txt             #   ArgoCD admin password
+â”œâ”€â”€ README.md                            # Project overview + quick start
+â”œâ”€â”€ Dockerfile                           # Dev container base image
+â”‚
+â”œâ”€â”€ argocd/
+â”‚   â”œâ”€â”€ README.md                        #   ArgoCD layer documentation
+â”‚   â”œâ”€â”€ bootstrap/
+â”‚   â”‚   â”œâ”€â”€ csoc-addons.yaml             #   CSOC addon ApplicationSet (wave -20)
+â”‚   â”‚   â”œâ”€â”€ ack-multi-acct.yaml          #   ACK CARM multi-account (wave 5)
+â”‚   â”‚   â””â”€â”€ fleet-instances.yaml         #   KRO instance CRs ApplicationSet (wave 30)
+â”‚   â”œâ”€â”€ addons/
+â”‚   â”‚   â””â”€â”€ addons.yaml                  #   CSOC + Kind addon values (KRO, ACK)
+â”‚   â”œâ”€â”€ charts/
+â”‚   â”‚   â”œâ”€â”€ application-sets/            #   Meta-chart: generates child ApplicationSets
+â”‚   â”‚   â”œâ”€â”€ multi-acct/                  #   ACK CARM namespace + IAMRoleSelector chart
+â”‚   â”‚   â””â”€â”€ resource-groups/             #   KRO RGD manifests chart
+â”‚   â”œâ”€â”€ fleet/
+â”‚   â”‚   â””â”€â”€ spoke1/                      #   Per-spoke KRO instance CRs
+â”‚   â”‚       â”œâ”€â”€ infrastructure/          #   Infra tier instances + values ConfigMap
+â”‚   â”‚       â”œâ”€â”€ cluster-level-resources/ #   ClusterResources2 instance + cluster-values
+â”‚   â”‚       â””â”€â”€ {hostname}/              #   Helm1 instance + values
+â”‚   â””â”€â”€ local-kind/
+â”‚       â””â”€â”€ test/                        #   Local Kind KRO instances
+â”‚           â”œâ”€â”€ infrastructure/          #   Real-AWS infra instances
+â”‚           â”œâ”€â”€ tests/                   #   Capability test instances
+â”‚           â”œâ”€â”€ cluster-resources/
+â”‚           â””â”€â”€ applications/
+â”‚
+â”œâ”€â”€ terraform/
+â”‚   â”œâ”€â”€ env/aws/csoc-cluster/             # Root module (single entry point)
+â”‚   â”‚   â”œâ”€â”€ main.tf                      #   Module invocation
+â”‚   â”‚   â”œâ”€â”€ variables.tf
+â”‚   â”‚   â”œâ”€â”€ outputs.tf
+â”‚   â”‚   â”œâ”€â”€ provider.tf
+â”‚   â”‚   â””â”€â”€ backend.tf
+â”‚   â””â”€â”€ catalog/
+â”‚       â”œâ”€â”€ modules/
+â”‚       â”‚   â”œâ”€â”€ csoc-cluster/            #   Composite (aws-csoc + argocd-bootstrap)
+â”‚       â”‚   â”œâ”€â”€ aws-csoc/                #   EKS, VPC, ACK IAM, ArgoCD Helm
+â”‚       â”‚   â”œâ”€â”€ argocd-bootstrap/        #   Cluster secret, git secret, bootstrap AppSet
+â”‚       â”‚   â”œâ”€â”€ aws-spoke/               #   Spoke workload IAM roles (HOST only)
+â”‚       â”‚   â””â”€â”€ developer-identity/      #   Developer IAM resources
+â”‚       â””â”€â”€ units/                       #   Terragrunt unit wrappers
+â”‚
+â”œâ”€â”€ terragrunt/live/aws/iam-setup/    # Spoke IAM Terragrunt stack
+â”‚
+â”œâ”€â”€ iam/
+â”‚   â”œâ”€â”€ _default/ack/inline-policy.json  # Default ACK permissions (fallback for all spokes)
+â”‚   â”œâ”€â”€ _default/argocd/inline-policy.json # ArgoCD spoke role permissions (reference)
+â”‚   â””â”€â”€ spoke2/ack/inline-policy.json    # Spoke2-specific permissions (override when needed)
+â”‚
+â”œâ”€â”€ scripts/
+â”‚   â”œâ”€â”€ install.sh                       #   Terraform orchestrator (init/plan/apply)
+â”‚   â”œâ”€â”€ destroy.sh                       #   Full teardown
+â”‚   â”œâ”€â”€ mfa-session.sh                   #   Host MFA credential setup
+â”‚   â””â”€â”€ container-init.sh               #   Container environment setup
+â”‚
+â”œâ”€â”€ docs/
+â”‚   â”œâ”€â”€ architecture.md                  #   This file
+â”‚   â”œâ”€â”€ deployment-guide.md              #   Step-by-step deployment procedures
+â”‚   â”œâ”€â”€ security.md                      #   Security model and IAM details
+â”‚   â””â”€â”€ diagrams/                        #   Draw.io diagram source files
+â”‚       â”œâ”€â”€ platform-overview.drawio
+â”‚       â”œâ”€â”€ deployment-phases.drawio
+â”‚       â”œâ”€â”€ argocd-reconciliation.drawio
+â”‚       â”œâ”€â”€ cross-account-trust.drawio
+â”‚       â””â”€â”€ module-hierarchy.drawio
+â”‚
+â””â”€â”€ outputs/                             # Generated artifacts (gitignored)
+    â”œâ”€â”€ logs/                            #   Terraform plan/apply logs
+    â”œâ”€â”€ connect-csoc.sh                  #   Cluster connection script
+    â””â”€â”€ argocd-password.txt             #   ArgoCD admin password
 ```
 
 ---
@@ -379,14 +379,14 @@ developer's laptop without a DevContainer.
 
 ```
 Developer's Laptop (host)
-└── Kind cluster (gen3-local)
-    ├── ArgoCD               — GitOps controller (git → cluster)
-    ├── KRO                  — Composes ACK resources into single custom resources
-    ├── ACK Controllers x9   — Provisions AWS resources via K8s CRDs
-    └── ResourceGraphDefs    — Same RGDs as EKS CSOC
+â””â”€â”€ Kind cluster (gen3-local)
+    â”œâ”€â”€ ArgoCD               â€” GitOps controller (git â†’ cluster)
+    â”œâ”€â”€ KRO                  â€” Composes ACK resources into single custom resources
+    â”œâ”€â”€ ACK Controllers x9   â€” Provisions AWS resources via K8s CRDs
+    â””â”€â”€ ResourceGraphDefs    â€” Same RGDs as EKS CSOC
 
 via K8s Secret (ack-aws-credentials)
-└── Real AWS account  → VPC, SGs, EKS, RDS, S3 (managed by ACK)
+â””â”€â”€ Real AWS account  â†’ VPC, SGs, EKS, RDS, S3 (managed by ACK)
 ```
 
 ### Key Differences from EKS CSOC
@@ -404,14 +404,14 @@ via K8s Secret (ack-aws-credentials)
 
 ```
 scripts/kind-local-test.sh create install
-    │
-    ├── kind create cluster --config scripts/kind-config.yaml
-    ├── helm install argocd (only direct Helm install)
-    ├── kubectl apply bootstrap ApplicationSets
-    │
-    └── ArgoCD reconciles:
+    â”‚
+    â”œâ”€â”€ kind create cluster --config scripts/kind-config.yaml
+    â”œâ”€â”€ helm install argocd (only direct Helm install)
+    â”œâ”€â”€ kubectl apply bootstrap ApplicationSets
+    â”‚
+    â””â”€â”€ ArgoCD reconciles:
          Wave -30: KRO controller
-         Wave   1: ACK controllers (→ real AWS: ec2, eks, iam, kms, rds, s3, …)
+         Wave   1: ACK controllers (â†’ real AWS: ec2, eks, iam, kms, rds, s3, â€¦)
          Wave  10: ResourceGraphDefinitions
          Wave  30: KRO instances
 ```
@@ -420,11 +420,12 @@ scripts/kind-local-test.sh create install
 
 ```
 Developer runs: bash scripts/mfa-session.sh <MFA_CODE>
-    → Writes ~/.aws/credentials [csoc] with STS session token
+    â†’ Writes ~/.aws/credentials [csoc] with STS session token
 
 bash scripts/kind-local-test.sh inject-creds
-    → kubectl create secret ack-aws-credentials (in ack-system)
-    → ACK controllers pick up credentials on next reconcile
+    â†’ kubectl create secret ack-aws-credentials (in ack-system)
+    â†’ ACK controllers pick up credentials on next reconcile
 ```
 
 See [docs/local-csoc-guide.md](local-csoc-guide.md) for the full step-by-step guide.
+

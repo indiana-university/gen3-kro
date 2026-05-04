@@ -1,76 +1,41 @@
 ---
-title: "Option B — Hub-owned Application CRs via jayadeyemi/gen3-build"
-source_repo: "https://github.com/jayadeyemi/gen3-build"
-intent: "Modify the cluster-level-resources chart so the child Application CRs can live in the hub while still managing workloads in the spoke through `destinationServer`. Update gen3-kro RGDs to inject `destinationServer` from the compute bridge. Work directly in jayadeyemi/gen3-build (no fork needed — this is the source repo)."
+title: "Option B - Chart work implemented, control-plane refactor still required"
+source_repo: "https://github.com/jayadeyemi/Gen3-build"
+intent: "Capture what was completed for the future hub-owned path and what is still structurally required in gen3-kro."
 ---
 
-Goal
-----
-- Allow hub ArgoCD to own and reconcile the child `Application` CRs for `cluster-level-resources` while still applying the managed workloads into the spoke cluster via `destinationServer`.
-- `jayadeyemi/gen3-build` **is** the working source repo — work directly on a branch there and open a PR.
+Completed in `gen3-build`
+-------------------------
+- Added `destinationServer` to [values.yaml](../../gen3-build/helm/cluster-level-resources/values.yaml).
+- Patched the remaining hardcoded child app destinations in `helm/cluster-level-resources/templates/`.
+- Added [helm/karpenter-node-configs](../../gen3-build/helm/karpenter-node-configs/) so Karpenter node-config resources can render as child `Application` CRs in a future hub-owned mode.
+- Preserved backward compatibility for the existing in-spoke path.
 
-What was already done (references/gen3-build in this workspace)
----------------------------------------------------------------
-The following changes have been made to `references/gen3-build/helm/cluster-level-resources` and should be replicated to the working branch in `jayadeyemi/gen3-build`:
+Why Option B is not finished in `gen3-kro`
+------------------------------------------
+- `fleet-instances` applies the producing KRO instance CRs into the spoke cluster.
+- Because of that, [07-clusterresources1-rg.yaml](../argocd/charts/resource-groups/templates/07-clusterresources1-rg.yaml) and [07-clusterresources2-rg.yaml](../argocd/charts/resource-groups/templates/07-clusterresources2-rg.yaml) both create their parent `Application` CRs in the spoke.
+- Changing only `spec.destination` on that parent Application does not move ownership to CSOC. It only changes where that spoke-owned parent Application tries to deploy its rendered resources.
+- The bridge inputs used by the RGD also live on the spoke, so a real hub-owned producer cannot just be moved by a one-line destination patch.
 
-1. **`values.yaml`** — added `destinationServer: ""` with a comment block explaining its purpose and the CSOC-managed use-case.
-2. **20 Application templates** — replaced the hardcoded `server: "https://kubernetes.default.svc"` destination with `server: {{ .Values.destinationServer | default "https://kubernetes.default.svc" | quote }}` in all templates that render ArgoCD Application CRs, so hub-owned child Applications can target the spoke.
-3. **5 karpenter-config-resources-*.yaml templates** — wrapped with an `if/else` block:
-   - When `karpenter.configuration.enabled=true`: renders an ArgoCD Application CR sourcing from the configuration repo, targeting `destinationServer`.
-   - When `karpenter.configuration.enabled=false` (legacy/inline): keeps the existing inline EC2NodeClass + NodePool rendering for backward compatibility.
+What a real Option B still needs
+--------------------------------
+1. A CSOC-side producer path for the parent `cluster-level-resources` Application.
+2. Access to the same bridge inputs from CSOC, either by:
+   - replicating bridge data into CSOC, or
+   - replacing bridge reads with another CSOC-visible source of truth.
+3. A decision on whether `AwsGen3Helm1` also remains spoke-owned or is refactored into the same CSOC-side producer model.
 
-Remaining work in jayadeyemi/gen3-build
----------------------------------------
-1. Apply the above changes to a feature branch (`feature/destinationServer`) in `jayadeyemi/gen3-build`.
-2. Run `helm lint ./helm/cluster-level-resources` to confirm no template syntax errors.
-3. Run `helm template test ./helm/cluster-level-resources | grep -A2 "destination:"` to verify all Application CRs now use `destinationServer`.
-4. Open a PR in `jayadeyemi/gen3-build` with a clear description referencing the gen3-kro report.
-
-Remaining work in this repository (gen3-kro)
----------------------------------------------
-5. Modify `argocd/charts/resource-groups/templates/07-clusterresources1-rg.yaml` (ClusterResources1 RGD):
-   - Add `helmChartRepoURL` / `helmChartPath` overrides to point at `jayadeyemi/gen3-build` (path: `helm/cluster-level-resources`).
-   - Inject `destinationServer` as a helm parameter set from `${computeBridge.data['eks-cluster-endpoint']}`.
-   - Change the `gen3-cluster-resources` Application destination to CSOC (server: `https://kubernetes.default.svc`, namespace: `argocd`) so hub ArgoCD renders the chart and owns the child `Application` CRs.
-6. Add/update local-kind tests to validate the flow in a dev environment.
-7. Commit changes on branch `feature/destinationServer-clusterresources` and open a PR.
-
-Acceptance criteria
--------------------
-- `jayadeyemi/gen3-build` PR passes `helm lint` and `helm template` validation; all Application CRs include `destinationServer`.
-- Karpenter node-config templates render Application CRs (not raw EC2NodeClass/NodePool) when `karpenter.configuration.enabled=true`.
-- `gen3-kro` ClusterResources1 RGD passes `destinationServer` from `computeBridge['eks-cluster-endpoint']` to the chart.
-- The resulting workloads still land in the spoke cluster. The hub only owns the `Application` CRs and reconciliation path.
-
-Helpful commands
----------------
+Validation already completed
+----------------------------
 ```bash
-# Clone jayadeyemi/gen3-build and create feature branch
-git clone https://github.com/jayadeyemi/gen3-build.git
-cd gen3-build
-git checkout -b feature/destinationServer
-
-# Apply the same diff from references/gen3-build in gen3-kro (or copy manually)
-# Then validate:
 helm lint ./helm/cluster-level-resources
-helm template test ./helm/cluster-level-resources | grep -A2 "destination:"
-
-# Commit
-git add helm/cluster-level-resources/
-git commit -m "feat(cluster-level-resources): add destinationServer for CSOC-managed spoke deployment"
-git push --set-upstream origin feature/destinationServer
-
-# In gen3-kro
-cd /workspaces/gen3-kro
-git checkout -b feature/destinationServer-clusterresources
-# edit argocd/charts/resource-groups/templates/07-clusterresources1-rg.yaml
-git add argocd/charts/resource-groups/templates/07-clusterresources1-rg.yaml
-git commit -m "feat(rgd): inject destinationServer from computeBridge into ClusterResources1"
-git push --set-upstream origin feature/destinationServer-clusterresources
+helm lint ./helm/karpenter-node-configs
+helm template test ./helm/cluster-level-resources \
+  -f ../gen3-kro/argocd/fleet/spoke1/cluster-level-resources/cluster-values.yaml
 ```
 
-Notes
------
-- `destinationServer` defaults to empty string in values.yaml; chart templates fall back to `"https://kubernetes.default.svc"` via the `| default` pipe, preserving backward compatibility for existing in-cluster deployments.
-- In Option B, the architectural difference from Option A is where the `Application` CRs live and which ArgoCD controller reconciles them. It is not a change in workload destination.
-- For CSOC-managed karpenter node configs (Option B), `karpenter.configuration.enabled=true` is required. The gitops configuration repo must contain `{cluster}/karpenter-node-configs/{type}/` directories with the EC2NodeClass and NodePool manifests.
+Conclusion
+----------
+- The chart-side prerequisites for Option B are in place.
+- The remaining work is no longer a `gen3-build` templating task; it is a `gen3-kro` control-plane ownership redesign.

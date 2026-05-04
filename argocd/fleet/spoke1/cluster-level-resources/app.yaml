@@ -9,3 +9,6 @@ metadata:
 spec:
   name: gen3
   namespace: spoke1
+  helmChartRepoURL: "https://github.com/jayadeyemi/Gen3-build.git"
+  helmChartPath: "helm/cluster-level-resources"
+  helmChartTargetRevision: "main"

@@ -48,6 +48,10 @@ spec:
       # ── ArgoCD ───────────────────────────────────────────────────
       argoCDNamespace: string | default="argocd"
       argoCDProject: string | default="default"
+      # Override the ArgoCD cluster registration name. Defaults to
+      # "${name}-spoke". Set this when the spoke is pre-registered
+      # under a different name (e.g. EKS-managed ArgoCD capability).
+      argocdTargetClusterName: string | default=""
 
       # ── Compute Bridge Reference ──────────────────────────────────
       computeBridgeName: string | default="compute-bridge"
@@ -129,7 +133,7 @@ spec:
         apiVersion: v1
         kind: Secret
         metadata:
-          name: ${schema.spec.name}-spoke-cluster
+          name: "${(schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke') + '-cluster'}"
           namespace: ${schema.spec.argoCDNamespace}
           labels:
             argocd.argoproj.io/secret-type: cluster
@@ -140,7 +144,7 @@ spec:
             environment: ${schema.spec.namespace}
         type: Opaque
         stringData:
-          name: ${schema.spec.name}-spoke
+          name: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
           server: ${computeBridge.data['eks-cluster-endpoint']}
           config: |
             {
@@ -216,7 +220,7 @@ spec:
             # Deploy chart (Application CRs) to the spoke cluster's ArgoCD namespace.
             # The chart's child Applications use https://kubernetes.default.svc which
             # resolves to the spoke itself when ArgoCD runs on the spoke.
-            name: ${schema.spec.name}-spoke
+            name: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
             namespace: ${schema.spec.argoCDNamespace}
           syncPolicy:
             automated:
@@ -257,8 +261,8 @@ spec:
             gen3.io/bridge: "true"
         data:
           # ── ArgoCD spoke registration (used by Helm1 destination.name) ──────
-          argocd-cluster-name: ${schema.spec.name}-spoke
-          argocd-cluster-secret: ${schema.spec.name}-spoke-cluster
+          argocd-cluster-name: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
+          argocd-cluster-secret: "${(schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke') + '-cluster'}"
           # ── Synchronization signals ─────────────────────────────────────────
           # These fields are populated from the ArgoCD Application status.
           # The bridge is only written after clusterResourcesApp passes

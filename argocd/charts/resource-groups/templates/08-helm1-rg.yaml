@@ -1,7 +1,7 @@
 # AwsGen3Helm1 — Tier 5: Gen3 Application Deployment (Modular RGD v1)
 #
 # Creates an ArgoCD Application CR that deploys the gen3-helm umbrella chart
-# onto the spoke EKS cluster (registered by AwsGen3ClusterResources1, Tier 4.5).
+# onto the spoke EKS cluster (registered by AwsGen3ClusterResources1/2, Tier 4.5).
 #
 # Values architecture (3-layer):
 #   1. ConfigMap values.yaml key  → helm.values  (operator preferences)
@@ -299,6 +299,8 @@ spec:
               targetRevision: ${schema.spec.valuesRevision}
               ref: values
           destination:
+            # The EKS managed Argo CD capability expects a registered
+            # destination.name rather than relying on kubernetes.default.svc.
             name: ${clusterResourcesBridge.data['argocd-cluster-name']}
             namespace: ${schema.spec.name}
           syncPolicy:
