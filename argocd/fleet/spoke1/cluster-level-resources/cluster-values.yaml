@@ -23,6 +23,11 @@ coreDNS:
   enabled: true
   configuration:
     enabled: false
+    # EKS default service CIDR when VPC CIDR is 10.x.x.x (non-overlapping) is
+    # 172.20.0.0/16, making the DNS service IP 172.20.0.10.
+    # Verify with: kubectl get svc kube-dns -n kube-system -o jsonpath='{.spec.clusterIP}'
+    # on the spoke cluster before enabling configuration.
+    coreDnsServiceIP: "172.20.0.10"
 
 ebs-csi-driver:
   enabled: true
