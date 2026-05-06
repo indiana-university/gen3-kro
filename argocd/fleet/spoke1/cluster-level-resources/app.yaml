@@ -9,11 +9,6 @@ metadata:
 spec:
   name: gen3
   namespace: spoke1
-  # argocdTargetClusterName: verified that "gen3-spoke" (the default) does not
-  # conflict with any existing ArgoCD cluster registration. Leave empty unless
-  # the EKS-managed ArgoCD capability pre-registers the spoke under a name that
-  # conflicts (check: kubectl get secret -n argocd -l argocd.argoproj.io/secret-type=cluster
-  # on the spoke cluster — if "gen3-spoke" already exists, set the override here).
   helmChartRepoURL: "https://github.com/jayadeyemi/Gen3-build.git"
   helmChartPath: "helm/cluster-level-resources"
   helmChartTargetRevision: "main"

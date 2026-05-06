@@ -1,30 +1,4 @@
 # AwsGen3Database1 — Tier 1: Database (Modular RGD v1)
-#
-# Database tier using External Secrets Operator (ESO) for the Aurora master
-# password. The password is pre-created in AWS Secrets Manager and pulled
-# into K8s via an ExternalSecret resource.
-#
-# Per Plan 02 Revision 4, this tier creates ONLY:
-#   ESO:        1 SecretStore (conditional: secretRef or IRSA mode)
-#               1 ExternalSecret (aurora-master-password → K8s Secret)
-#   Database:   1 Aurora PostgreSQL Serverless v2 cluster + 1 writer instance
-#   Optional:   1 read replica instance (enableReadReplica=true)
-#   Bridge:     1 databaseBridge ConfigMap with Aurora endpoints
-#
-# PREREQUISITES:
-#   1. Network1 deployed with databaseEnabled=true (publishes DB prep keys on networkBridge)
-#   2. External Secrets Operator installed on CSOC cluster (via addons.yaml)
-#   3. Aurora master password secret exists in AWS Secrets Manager:
-#        aws secretsmanager create-secret \
-#          --name "<auroraMasterPasswordSMName>" \
-#          --secret-string '{"password":"<your-secure-password>"}' \
-#          --region us-east-1
-#   4. ESO credentials: K8s Secret for secretRef mode (local Kind) or
-#      IRSA ServiceAccount for jwt mode (EKS CSOC)
-#
-# CROSS-TIER: Reads the single networkBridge ConfigMap via externalRef
-# (DB subnet group, Aurora SG, database KMS key from Network1).
-
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -36,25 +10,13 @@ spec:
     apiVersion: v1alpha1
     kind: AwsGen3Database1
     spec:
-      # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
-
-      # ── Shared Infrastructure Config ─────────────────────────────
       infrastructureConfigMapName: string | default="infrastructure-values"
-
-      # ── Bridge References (from Network1) ────────────────────────
       foundationBridgeName: string | default="foundation-bridge"
-
-      # ── External Secrets (Aurora master password from AWS SM) ────
-      # ESO auth: false = secretRef (local Kind), true = IRSA jwt (EKS)
-      esoUseIRSA: boolean | default=false
-      # For secretRef mode: K8s Secret with keys "access-key" + "secret-access-key"
       esoAwsCredsSecretName: string | default="eso-aws-credentials"
-
-      # ── Options ──────────────────────────────────────────────────
       databaseBridgeName: string | default="database-bridge"
 
     status:
@@ -65,11 +27,7 @@ spec:
       auroraInstanceARN: ${auroraInstance1.status.?ackResourceMetadata.?arn.orValue("loading")}
 
   resources:
-  # ====================================================================
-  # Layer 0: External References
-  # ====================================================================
 
-    # ── Namespace (for account ID) ───────────────────────────────────
     - id: spokeNamespace
       externalRef:
         apiVersion: v1
@@ -87,7 +45,6 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-    # ── Network Bridge (DB prep outputs from Network1) ───────────────
     - id: foundationBridge
       readyWhen:
         - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
@@ -98,16 +55,11 @@ spec:
           name: ${schema.spec.foundationBridgeName}
           namespace: ${schema.spec.namespace}
 
-  # ====================================================================
-  # ESO: SecretStore + ExternalSecret for Aurora master password
-  # ====================================================================
-  # Two conditional SecretStores (KRO Test 8 pattern): same K8s name,
-  # opposite includeWhen. Only one is created based on esoUseIRSA flag.
+  # Test 8: two opposite-includeWhen SecretStores — selected by database-eso-use-irsa
 
-    # ── SecretStore: secretRef mode (local Kind — no IRSA) ───────────
     - id: secretStoreLocal
       includeWhen:
-        - ${schema.spec.esoUseIRSA == false}
+        - ${infrastructureConfig.data['database-eso-use-irsa'] != 'true'}
       readyWhen:
         - ${secretStoreLocal.metadata.?name.orValue('null') != 'null'}
       template:
@@ -133,12 +85,10 @@ spec:
                     name: ${schema.spec.esoAwsCredsSecretName}
                     key: secret-access-key
 
-    # ── SecretStore: Pod Identity mode (EKS CSOC) ───────────────────────
-    # EKS CSOC uses EKS Pod Identity for ESO — no explicit auth needed.
-    # ESO controller uses ambient credentials from Pod Identity association.
+    # EKS Pod Identity — no explicit credentials needed
     - id: secretStoreIRSA
       includeWhen:
-        - ${schema.spec.esoUseIRSA == true}
+        - ${infrastructureConfig.data['database-eso-use-irsa'] == 'true'}
       readyWhen:
         - ${secretStoreIRSA.metadata.?name.orValue('null') != 'null'}
       template:
@@ -157,9 +107,7 @@ spec:
               region: ${infrastructureConfig.data['aws-region']}
               # No auth — ESO uses EKS Pod Identity ambient credentials
 
-    # ── ExternalSecret: Aurora master password ───────────────────────
-    # Pulls from AWS SM → creates K8s Secret "aurora-master-password"
-    # with key "password". ACK DBCluster references this for masterUserPassword.
+    # AWS SM → K8s Secret "aurora-master-password"; referenced by ACK DBCluster masterUserPassword
     - id: auroraMasterPasswordES
       readyWhen:
         - ${auroraMasterPasswordES.status.?conditions.orValue([]).exists(c, c.type == "Ready" && c.status == "True")}
@@ -186,11 +134,6 @@ spec:
                 key: ${infrastructureConfig.data['database-aurora-master-password-sm-name']}
                 property: password
 
-  # ====================================================================
-  # DATABASE: Aurora PostgreSQL Serverless v2
-  # ====================================================================
-
-    # ── Aurora Cluster ───────────────────────────────────────────────
     - id: auroraCluster
       readyWhen:
         - ${auroraCluster.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -213,9 +156,7 @@ spec:
           databaseName: ${infrastructureConfig.data['database-aurora-db-name']}
           port: 5432
           masterUsername: ${infrastructureConfig.data['database-aurora-master-username']}
-          # References K8s Secret created by auroraMasterPasswordES ExternalSecret.
-          # CEL ref to auroraMasterPasswordES.metadata.name creates KRO dependency
-          # ensuring the ES is Ready before Aurora cluster is created.
+          # CEL ref ensures auroraMasterPasswordES is Ready before Aurora cluster is created
           masterUserPassword:
             name: ${auroraMasterPasswordES.metadata.name}
             namespace: ${schema.spec.namespace}
@@ -241,7 +182,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── Aurora Writer Instance ───────────────────────────────────────
     - id: auroraInstance1
       readyWhen:
         - ${auroraInstance1.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -272,7 +212,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── Aurora Read Replica (optional) ───────────────────────────────
     - id: auroraInstance2
       includeWhen:
         - ${infrastructureConfig.data['database-enable-read-replica'] == 'true'}
@@ -304,10 +243,6 @@ spec:
               value: Kro
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
-
-  # ====================================================================
-  # BRIDGE: Database Outputs ConfigMap (for downstream tiers)
-  # ====================================================================
 
     - id: databaseBridge
       readyWhen:

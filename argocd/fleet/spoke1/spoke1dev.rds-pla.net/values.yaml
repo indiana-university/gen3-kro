@@ -7,6 +7,7 @@
 global:
   aws:
     enabled: true
+    scheme: internet-facing  # required by revproxy ingress_aws.yaml template
     # account, hatchery_role, secretStoreServiceAccount.roleArn,
     # and wafv2.wafAclArn are injected by KRO bridge ConfigMaps.
     secretStoreServiceAccount:
@@ -17,6 +18,7 @@ global:
   dev: false
   externalSecrets:
     deploy: true
+    clusterSecretStoreRef: "gen3-secret-store"  # ClusterSecretStore created by Database1 RGD
   postgres:
     dbCreate: true
     externalSecret: "spoke1-aurora-master-password"
@@ -52,10 +54,7 @@ audit:
     createK8sAuditSecret: true
 
 aws-es-proxy:
-  enabled: true
-  # esEndpoint injected by KRO searchBridge (opensearch-endpoint)
-  externalSecrets:
-    awsCreds: "spoke1-default-aws-es-proxy-creds"
+  enabled: false  # enable when Search1 (OpenSearch) is deployed and guppy/etl are enabled
 
 dicom-server:
   enabled: false
@@ -63,12 +62,33 @@ dicom-server:
 dicom-viewer:
   enabled: false
 
+etl:
+  enabled: false  # requires OpenSearch + data dictionary ETL setup; enable when Search1 is configured
+
 fence:
   enabled: true
+  resources:
+    requests:
+      memory: "105Mi"
+      cpu: "15m"
+  replicaCount: 2
+
   externalSecrets:
     dbcreds: "spoke1-default-fence-creds"
-    createK8sFenceSecret: true
-    createK8sGoogleSecret: false
+    createK8sFenceConfigSecret: true    # keep fence-config K8s Secret even with ESO enabled
+    createK8sJwtKeysSecret: true        # keep fence-jwt-keys K8s Secret even with ESO enabled
+    createK8sGoogleAppSecrets: false
+
+  USER_YAML: |
+    {}
+
+  usersync:
+    usersync: true
+    schedule: "*/30 * * * *"
+    syncFromDbgap: false
+    userYamlS3Path: "s3://gen3-users/sepoke1-users/user.yaml"
+    slack_webhook: ""
+    slack_send_dbgap: false
 
 guppy:
   enabled: false
@@ -80,7 +100,7 @@ indexd:
   enabled: true
   externalSecrets:
     dbcreds: "spoke1-default-indexd-creds"
-    createK8sIndexdSecret: true
+    createK8sServiceCredsSecret: true  # keep indexd service creds K8s Secret with ESO enabled
 
 manifestservice:
   enabled: false
@@ -111,10 +131,13 @@ sheepdog:
   enabled: true
   externalSecrets:
     dbcreds: "spoke1-default-sheepdog-creds"
-    createK8sSheepDogSecret: true
 
 ssjdispatcher:
   enabled: false
 
 wts:
-  enabled: false
+  enabled: true
+  externalSecrets:
+    dbcreds: "spoke1-default-wts-creds"
+    wtsG3auto: "spoke1-default-wts-g3auto"
+    wtsOidcClient: "spoke1-default-wts-oidc-client"

@@ -11,6 +11,7 @@ syncPolicy:
       maxDuration: 10m
   syncOptions:
     - CreateNamespace=true
+    - ServerSideApply=true
 syncPolicyAppSet:
   preserveResourcesOnDeletion: false
 useSelectors: true
@@ -92,23 +93,6 @@ external-secrets:
   valuesObject:
     serviceAccount:
       name: "external-secrets-sa"
-  # external-secrets CRDs carry large schema annotations that exceed ArgoCD's
-  # 262144-byte metadata limit. ServerSideApply bypasses the last-applied-config
-  # annotation (which is the source of the bloat) and lets the API server merge.
-  syncPolicy:
-    automated:
-      selfHeal: true
-      allowEmpty: true
-      prune: true
-    retry:
-      limit: -1
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 10m
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
 ########################################
 # Self-Managed ACK Controllers
 # Activated by annotation: ack_management_mode=self_managed
@@ -744,20 +728,6 @@ external-secrets-kind:
   valuesObject:
     serviceAccount:
       name: "external-secrets-sa"
-  syncPolicy:
-    automated:
-      selfHeal: true
-      allowEmpty: true
-      prune: true
-    retry:
-      limit: -1
-      backoff:
-        duration: 5s
-        factor: 2
-        maxDuration: 10m
-    syncOptions:
-      - CreateNamespace=true
-      - ServerSideApply=true
 
 ########################################
 # Kind ACK Controllers (wave 1)

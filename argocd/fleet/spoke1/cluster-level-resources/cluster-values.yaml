@@ -2,46 +2,16 @@ cluster: "spoke1"
 # accountNumber is injected at runtime via ArgoCD cluster Secret annotation
 
 alb-controller:
-  enabled: true
-  configuration:
-    enabled: false
-
-# vpc-cni replaces EKS default addon; managed via aws-vpc-cni Helm chart
-vpc-cni:
-  enabled: true
   configuration:
     enabled: false
 
 aws-s3-mountpoint:
-  enabled: true
   configuration:
     enabled: false
 
 calico:
-  enabled: true
   configuration:
     enabled: false
-
-cert-manager:
-  enabled: true
-
-coreDNS:
-  enabled: true
-  configuration:
-    enabled: false
-    # EKS default service CIDR when VPC CIDR is 10.x.x.x (non-overlapping) is
-    # 172.20.0.0/16, making the DNS service IP 172.20.0.10.
-    # Verify with: kubectl get svc kube-dns -n kube-system -o jsonpath='{.spec.clusterIP}'
-    # on the spoke cluster before enabling configuration.
-    coreDnsServiceIP: "172.20.0.10"
-
-ebs-csi-driver:
-  enabled: true
-  configuration:
-    enabled: false
-
-external-secrets:
-  enabled: true
 
 fluentd:
   enabled: false
@@ -49,52 +19,22 @@ fluentd:
     enabled: false
 
 kube-state-metrics:
-  enabled: true
   configuration:
     enabled: false
-
-# kube-proxy replaces EKS default addon; managed as DaemonSet directly
-kube-proxy:
-  enabled: true
 
 grafana-alloy:
   enabled: false
   configuration:
     enabled: false
-
 karpenter:
-  enabled: true
   targetRevision: "1.0.8"
 
 karpenter-crds:
-  enabled: true
   selectorTag: spoke1
   migration: false
-  # Spoke-owned mode (destinationServer not set): each enabled profile renders raw
-  # EC2NodeClass + NodePool objects directly into the spoke cluster.
-  # Hub-owned mode (destinationServer set): each enabled profile renders an
-  # ArgoCD Application CR that deploys karpenter-node-configs chart to the spoke.
   default:
-    enabled: true   # explicit: renders default EC2NodeClass + NodePool
-    consolidationPolicy: "WhenEmptyOrUnderutilized"
-    consolidateAfter: "10m"
-    requirements:
-      - key: karpenter.sh/capacity-type
-        operator: In
-        values:
-          - spot
-          - on-demand
-      - key: kubernetes.io/arch
-        operator: In
-        values:
-          - amd64
-      - key: karpenter.k8s.aws/instance-category
-        operator: In
-        values:
-          - m
-          - c
-          - r
+    enabled: false
   jupyter:
-    enabled: false  # set to true to add jupyter node pool
+    enabled: false
   workflow:
-    enabled: false  # set to true to add workflow node pool
+    enabled: false

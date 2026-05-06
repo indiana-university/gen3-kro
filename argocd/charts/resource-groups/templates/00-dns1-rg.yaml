@@ -1,24 +1,4 @@
 # AwsGen3Dns1 — Tier 0.5: DNS + TLS Certificate (Modular RGD v1)
-#
-# Manages a Route53 hosted zone via ACK resource adoption and creates
-# an ACM certificate plus DNS validation record for a spoke hostname.
-# Produces a single dnsBridge ConfigMap consumed by Helm1 (acmBridgeName).
-#
-# Hosted zone adoption uses the ACK adoption-fields annotation with the hosted
-# zone name. The instance no longer provides a Route53 hosted zone ID.
-# ACK adopts the zone when it already exists and will create it if the
-# adopt-or-create policy is used and the zone does not exist.
-#
-# Hosted zone path (application hostname is non-empty):
-#   hostedZone (ACK Route53 adopt-or-create) → acmCert (ACM) → dnsValidation (Route53 RecordSet)
-#   └── dnsBridge ConfigMap: {hosted-zone-id, hosted-zone-name, acm-cert-arn, hostname}
-#
-# Placeholder path (application hostname is empty):
-#   dnsBridge ConfigMap: all keys empty
-#
-# Downstream consumer: Helm1 reads dnsBridge via acmBridgeName instance spec field.
-# Bridge keys: hosted-zone-id, hosted-zone-name, acm-cert-arn, hostname
-
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -30,14 +10,11 @@ spec:
     apiVersion: v1alpha1
     kind: AwsGen3Dns1
     spec:
-      # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
       infrastructureConfigMapName: string | default="infrastructure-values"
-
-      # ── Bridge ──────────────────────────────────────────
       dnsBridgeName: string | default="dns-bridge"
 
     status:
@@ -45,11 +22,7 @@ spec:
       acmCertificateARN: "${infrastructureConfig.data['hostname'] != '' ? acmCert.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
 
   resources:
-  # ######################################################################
   # Hosted Zone + ACM Certificate + DNS Validation
-  # All resources share the same includeWhen (Test 8 co-inclusion pattern).
-  # ######################################################################
-
     - id: hostedZone
       includeWhen:
         - ${infrastructureConfig.data['hostname'] != ''}
@@ -65,9 +38,7 @@ spec:
           annotations:
             services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
             services.k8s.aws/adoption-policy: adopt
-            # ACK Route53 HostedZone adoption requires "id" (the zone ID path),
-            # NOT "name". Using "name" causes: error="required field missing: id"
-            # on every reconcile loop. Confirmed by test krotest-route53-adoption.
+            # ACK Route53: use "id" (zone ID path), NOT "name" — causes "required field missing: id"
             services.k8s.aws/adoption-fields: |
               {"id":"${infrastructureConfig.data['dns-hosted-zone-id']}"}
             services.k8s.aws/deletion-policy: retain
@@ -84,7 +55,6 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-  # ── ACM Certificate ───────────────────────────────────────────────────
     - id: acmCert
       includeWhen:
         - ${infrastructureConfig.data['hostname'] != ''}
@@ -116,7 +86,6 @@ spec:
             - key: HostedZoneId
               value: ${hostedZone.status.?id.orValue("loading")}
 
-  # ── DNS Validation RecordSet ──────────────────────────────────────
     - id: dnsValidation
       includeWhen:
         - ${infrastructureConfig.data['hostname'] != ''}
@@ -141,12 +110,7 @@ spec:
           resourceRecords:
             - value: ${acmCert.status.domainValidations[0].resourceRecord.value}
 
-  # ── DNS Bridge ────────────────────────────────────────────────────
-  # DUAL-BRIDGE PATTERN (Test 8): The bridge references hostedZone and acmCert
-  # which are conditional (includeWhen: hostname != ''). If hostname is empty,
-  # both nodes are excluded and KRO silently drops any resource referencing them.
-  # Two opposite-includeWhen resources write to the same ConfigMap name so the
-  # bridge always exists regardless of hostname configuration.
+  # Dual-bridge: always-present bridge regardless of hostname flag
     - id: dnsBridgeWithHostname
       includeWhen:
         - ${infrastructureConfig.data['hostname'] != ''}

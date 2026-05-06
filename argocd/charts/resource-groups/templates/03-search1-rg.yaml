@@ -1,3 +1,4 @@
+# AwsGen3Search1 — Tier 2: Search + Cache
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -5,56 +6,24 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "0"
 spec:
-  # ─────────────────────────────────────────────────────────────────────
-  # AwsGen3Search1 — Tier 2: Search + Cache
-  #
-  # Creates an OpenSearch domain using prep resources from Network1.
-  # Optionally creates an ElastiCache Redis replication group for caching.
-  # Network1 must have search prep enabled in infrastructure values so the
-  # single networkBridge exposes the search prep keys.
-  # ACK opensearchservice controller must be installed.
-  # ACK elasticache controller required when infrastructure values enable Redis.
-  #
-  # Resources:
-  #   externalRef:  spokeNamespace, networkBridge
-  #   always:       openSearchDomain
-  #   conditional:  redisSg, cacheSubnetGroup, redisReplicationGroup (Redis enabled in infrastructure values)
-  #   always:       searchBridge
-  # ─────────────────────────────────────────────────────────────────────
-
   schema:
     apiVersion: v1alpha1
     kind: AwsGen3Search1
     spec:
-      # ── Identity ──
       name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
-
-      # ── Shared Infrastructure Config ──
       infrastructureConfigMapName: string | default="infrastructure-values"
-
-      # ── Bridge references (from Network1) ──
       foundationBridgeName: string | default="foundation-bridge"
-
-      # ── Bridge Name Override ──
       searchBridgeName: string | default="search-bridge"
 
     status:
       openSearchEndpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
       openSearchDomainARN: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
 
-  # ═══════════════════════════════════════════════════════════════════════
-  # RESOURCES
-  # ═══════════════════════════════════════════════════════════════════════
   resources:
 
-    # ─────────────────────────────────────────────────────────────────────
-    # External References
-    # ─────────────────────────────────────────────────────────────────────
-
-    # ── spokeNamespace (externalRef) ──
     - id: spokeNamespace
       externalRef:
         apiVersion: v1
@@ -72,7 +41,6 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-    # ── foundationBridge (externalRef — base + search prep outputs) ─
     - id: foundationBridge
       externalRef:
         apiVersion: v1
@@ -81,9 +49,7 @@ spec:
           name: ${schema.spec.foundationBridgeName}
           namespace: ${schema.spec.namespace}
 
-    # ─────────────────────────────────────────────────────────────────────
     # OpenSearch Domain
-    # ─────────────────────────────────────────────────────────────────────
 
     - id: openSearchDomain
       readyWhen:
@@ -134,11 +100,8 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ─────────────────────────────────────────────────────────────────────
     # Redis / ElastiCache (conditional — requires redisEnabled=true)
-    # ─────────────────────────────────────────────────────────────────────
 
-    # ── Redis Security Group ──
     - id: redisSg
       includeWhen:
         - ${infrastructureConfig.data['search-redis-enabled'] == 'true'}
@@ -176,7 +139,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── Cache Subnet Group ──
     - id: cacheSubnetGroup
       includeWhen:
         - ${infrastructureConfig.data['search-redis-enabled'] == 'true'}
@@ -199,7 +161,6 @@ spec:
             - ${foundationBridge.data['private-subnet-1-id']}
             - ${foundationBridge.data['private-subnet-2-id']}
 
-    # ── Redis Replication Group ──
     - id: redisReplicationGroup
       includeWhen:
         - ${infrastructureConfig.data['search-redis-enabled'] == 'true'}
@@ -243,12 +204,7 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ─────────────────────────────────────────────────────────────────────
-    # Search Bridge ConfigMap
-    # Redis runtime details are not exported here because no downstream
-    # consumer reads them today, and keeping them would require extra helper
-    # ConfigMaps even though this graph already has a single public bridge.
-    # ─────────────────────────────────────────────────────────────────────
+    # Search bridge — Redis endpoints omitted (no downstream consumers)
 
     - id: searchBridge
       template:

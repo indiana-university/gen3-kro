@@ -46,7 +46,7 @@ data:
   database-aurora-max-capacity: "4"
   database-aurora-master-password-sm-name: spoke1-aurora-master-password
   database-enable-read-replica: "false"
-
+  database-eso-use-irsa: "true" # "false"=secretRef(local), "true"=IRSA/PodIdentity(EKS)
   # ── Search configuration ─────────────────────────────────────────────────
   search-opensearch-version: OpenSearch_2.11
   search-opensearch-instance-type: t3.small.search
@@ -65,12 +65,8 @@ data:
 
   # ── Compute configuration ───────────────────────────────────────────────
   compute-kubernetes-version: "1.35"
-  compute-node-instance-types: t3.large
-  compute-node-desired-size: "2"
-  compute-node-min-size: "1"
-  compute-node-max-size: "4"
-  compute-node-disk-size: "20"
-  compute-node-ami-type: AL2023_x86_64_STANDARD
+  compute-auto-mode-enabled: "true" # "true"=EKS Auto Mode (disables nodegroup), "false"=managed node group
+  compute-auto-mode-node-pools: "general-purpose,system" # comma-separated EKS Auto Mode built-in pools
 
   # ── Messaging configuration ─────────────────────────────────────────────
   messaging-sqs-message-retention: "345600"
@@ -79,3 +75,16 @@ data:
   # ── Advanced services configuration ───────────────────────────────────
   advanced-waf-enabled: "false"
   advanced-waf-scope: REGIONAL
+  # ── Cluster Resources ──────────────────────────────────────────────────
+  cluster-management-topology: "csoc-managed-argocd" # "csoc-managed-argocd" | "spoke-managed-argocd"
+  cluster-project: "gen3"
+  cluster-alb-scheme: "internet-facing" # "internet-facing" | "internal"
+
+  # Cluster-level add-on toggles: injected as Helm parameters (override cluster-values.yaml)
+  cluster-resources-alb-controller-enabled: "true"
+  cluster-resources-external-secrets-enabled: "true"
+  cluster-resources-cert-manager-enabled: "true"
+  cluster-resources-aws-s3-mountpoint-enabled: "true"
+  cluster-resources-calico-enabled: "true"
+  cluster-resources-kube-state-metrics-enabled: "true"
+  cluster-resources-external-dns-enabled: "true"

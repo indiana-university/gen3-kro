@@ -1,31 +1,4 @@
 # AwsGen3Storage1 — Tier 0.5: Storage (Modular RGD v1)
-#
-# Dedicated S3 bucket tier. Creates all Gen3 S3 buckets with KMS encryption
-# using keys from the consolidated Network bridge.
-#
-# Buckets (from gen3-gitops/gen3-terraform production patterns):
-#   ALWAYS:
-#     - loggingBucket:   ALB access logs, CloudTrail, VPC Flow Logs
-#     - dataBucket:      Core data files for Fence (DATA_UPLOAD_BUCKET)
-#     - uploadBucket:    User data uploads (CORS-enabled pattern)
-#   CONDITIONAL:
-#     - manifestBucket:  Manifest service file lists (manifestserviceEnabled)
-#     - dashboardBucket: Portal static assets and dashboard config (dashboardEnabled)
-#
-# All buckets use:
-#   - KMS encryption (logging key for logs, platform key for app buckets)
-#   - Public access blocked (all 4 flags)
-#   - Versioning enabled
-#
-# PREREQUISITES:
-#   1. Network1 deployed with networkBridge (provides KMS key ARNs)
-#   2. ACK s3 controller must be running
-#
-# CROSS-TIER: Reads networkBridge (KMS key ARNs) via externalRef.
-# OUTPUT: storageBridge ConfigMap with all bucket ARNs for downstream tiers.
-#
-# COST: ~$1-5/month (S3 storage costs depend on volume).
-
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -37,20 +10,12 @@ spec:
     apiVersion: v1alpha1
     kind: AwsGen3Storage1
     spec:
-      # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
-
-      # ── Shared Infrastructure Config ─────────────────────────────
       infrastructureConfigMapName: string | default="infrastructure-values"
-
-
-      # ── Bridge References (from Network1) ────────────────────────
       foundationBridgeName: string | default="foundation-bridge"
-
-      # ── Bridge ───────────────────────────────────────────────────
       storageBridgeName: string | default="storage-bridge"
 
     status:
@@ -59,11 +24,7 @@ spec:
       uploadBucketARN: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
 
   resources:
-  # ====================================================================
-  # Layer 0: External References
-  # ====================================================================
 
-    # ── Namespace ────────────────────────────────────────────────────
     - id: spokeNamespace
       externalRef:
         apiVersion: v1
@@ -81,8 +42,6 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-
-    # ── Network Bridge (KMS key ARNs for bucket encryption) ─────────
     - id: foundationBridge
       readyWhen:
         - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
@@ -93,11 +52,8 @@ spec:
           name: ${schema.spec.foundationBridgeName}
           namespace: ${schema.spec.namespace}
 
-  # ====================================================================
   # STORAGE: S3 Buckets (KMS-encrypted)
-  # ====================================================================
 
-    # ── Logging Bucket (ALB logs, CloudTrail, VPC Flow Logs) ─────────
     - id: loggingBucket
       readyWhen:
         - ${loggingBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -139,7 +95,6 @@ spec:
               - key: BucketType
                 value: logging
 
-    # ── Data Bucket (core data files for Fence) ──────────────────────
     - id: dataBucket
       readyWhen:
         - ${dataBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -181,7 +136,6 @@ spec:
               - key: BucketType
                 value: data
 
-    # ── Upload Bucket (user data uploads) ────────────────────────────
     - id: uploadBucket
       readyWhen:
         - ${uploadBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -223,7 +177,6 @@ spec:
               - key: BucketType
                 value: upload
 
-    # ── Manifest Bucket (conditional — ManifestService file lists) ───
     - id: manifestBucket
       includeWhen:
         - ${infrastructureConfig.data['storage-manifest-bucket-name'] != ''}
@@ -267,7 +220,6 @@ spec:
               - key: BucketType
                 value: manifest
 
-    # ── Dashboard Bucket (conditional — portal static assets) ────────────
     - id: dashboardBucket
       includeWhen:
         - ${infrastructureConfig.data['storage-dashboard-bucket-name'] != ''}
@@ -311,7 +263,6 @@ spec:
               - key: BucketType
                 value: dashboard
 
-    # ── Users Bucket (fence usersync user.yaml — always created) ───────────
     - id: usersBucket
       includeWhen:
         - ${infrastructureConfig.data['storage-usersync-bucket-name'] != ''}
@@ -355,14 +306,8 @@ spec:
               - key: BucketType
                 value: usersync
 
-  # ====================================================================
-  # BRIDGE: Storage Outputs ConfigMap (for downstream tiers)
-  # ====================================================================
-  # NOTE: Conditional bucket ARNs (manifest, dashboard) use Test 8
-  # dual-bridge pattern — separate bridges for each combination to avoid
-  # KRO silently dropping excluded resource references.
+  # Dual-bridge: conditional bucket ARNs (manifest, dashboard) — separate bridges per combo
 
-    # ── Storage Bridge (always — core bucket ARNs) ───────────────────
     - id: storageBridge
       readyWhen:
         - ${storageBridge.metadata.?name.orValue('null') != 'null'}

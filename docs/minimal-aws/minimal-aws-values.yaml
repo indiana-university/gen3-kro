@@ -1,0 +1,341 @@
+# minimal-aws-values.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+# Override values for the gen3 umbrella chart targeting a minimal AWS production
+# deployment. Apply on top of the default gen3/values.yaml:
+#
+#   helm upgrade --install gen3 references/gen3-build/helm/gen3 \
+#     -f minimal-aws-values.yaml \
+#     -n <spoke-namespace>
+#
+# SECURITY NOTE: Replace every placeholder (<...>) with actual values at
+# runtime — never commit real ARNs, account IDs, endpoints, or passwords.
+# Use AWS Secrets Manager + ExternalSecrets for all credentials.
+#
+# This file is grounded in:
+#   references/gen3-build/helm/gen3/values.yaml
+#   references/gen3-build/helm/*/values.yaml
+#   argocd/charts/resource-groups/templates/08-helm1-rg.yaml
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ─── Global ──────────────────────────────────────────────────────────────────
+global:
+  # AWS production: disable local bitnami postgres/elasticsearch
+  dev: false
+
+  aws:
+    enabled: true
+    region: <aws-region>            # e.g. us-east-1 — injected by Helm1 RGD
+    scheme: internet-facing         # ALB scheme; use internal for private deployment
+
+    # WAFv2 integration (from Advanced1 RGD advancedBridge)
+    wafv2:
+      enabled: true
+      wafAclArn: <arn:aws:wafv2:REGION:ACCOUNT_ID:regional/webacl/NAME/ID>  # from advanced-bridge
+
+    # ExternalSecrets service-account authentication to Secrets Manager
+    secretStoreServiceAccount:
+      enabled: true
+      name: external-secrets-sa
+      roleArn: <arn:aws:iam::ACCOUNT_ID:role/SPOKE-external-secrets-role>  # from iam-bridge
+
+  # ── Cluster identity ───────────────────────────────────────────────────────
+  hostname: example.org             # FQDN — injected by Helm1 RGD from acm-bridge
+  environment: example              # Maps to spoke namespace; used for ALB group.name
+  clusterName: example-eks          # EKS cluster name
+
+  # ── ACM certificate ────────────────────────────────────────────────────────
+  # ARN is injected by Helm1 RGD from acm-bridge; include here for standalone use
+  revproxyArn: <arn:aws:acm:REGION:ACCOUNT_ID:certificate/CERT_ID>
+
+  # ── Data dictionary ────────────────────────────────────────────────────────
+  dictionaryUrl: https://s3.amazonaws.com/dictionary-artifacts/datadictionary/develop/schema.json
+  portalApp: gitops
+  frontendRoot: portal
+  publicDataSets: true
+  tierAccessLevel: private
+  tierAccessLimit: "1000"
+
+  # ── Data upload bucket ─────────────────────────────────────────────────────
+  # Injected by Helm1 RGD from storage-bridge upload-bucket-name
+  dataUploadBucket: <upload-bucket-name>
+
+  # ── Aurora PostgreSQL master credentials ───────────────────────────────────
+  # Helm1 RGD injects host from database-bridge aurora-cluster-endpoint.
+  # Password is read from Secrets Manager via ExternalSecrets (pushSecret pattern).
+  postgres:
+    dbCreate: true                  # Enable per-service db-create init jobs
+    externalSecret: ""              # Leave empty; use externalSecrets.deploy instead
+    master:
+      host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+      username: postgres
+      password: <from-secrets-manager>  # Only needed if externalSecrets.deploy=false
+      port: "5432"
+
+  # ── ExternalSecrets (recommended for production) ───────────────────────────
+  # When deploy=true the helm chart creates ExternalSecret CRs instead of local
+  # K8s Secrets. Requires ExternalSecrets Operator + ClusterSecretStore/SecretStore.
+  externalSecrets:
+    deploy: true
+    createLocalK8sSecret: false
+    clusterSecretStoreRef: "gen3-secret-store"  # Created by Database1 RGD
+
+  # ── Misc ───────────────────────────────────────────────────────────────────
+  logoutInactiveUsers: true
+  workspaceTimeoutInMinutes: 480
+  maintenanceMode: "off"
+  dispatcherJobNum: "10"
+  pdb: false
+  metricsEnabled: true
+
+# ─── Compulsory services — ENABLED ───────────────────────────────────────────
+
+ambassador:
+  enabled: true
+  replicaCount: 1
+
+arborist:
+  enabled: true
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: arborist
+    username: arborist
+    password: <from-secrets-manager>
+    port: "5432"
+  externalSecrets:
+    dbcreds: <spoke>-arborist-creds   # Secrets Manager secret name
+
+audit:
+  enabled: true
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: audit
+    username: audit
+    password: <from-secrets-manager>
+    port: "5432"
+  # SQS settings injected by Helm1 RGD from messaging-bridge
+  server:
+    sqs:
+      region: <aws-region>
+      url: https://sqs.REGION.amazonaws.com/ACCOUNT_ID/<spoke>-audit-sqs
+  serviceAccount:
+    create: true
+    annotations:
+      # IRSA role ARN injected by Helm1 RGD from iam-bridge
+      eks.amazonaws.com/role-arn: <arn:aws:iam::ACCOUNT_ID:role/SPOKE-audit-role>
+    name: audit-sa
+  externalSecrets:
+    dbcreds: <spoke>-audit-creds
+    auditG3auto: audit-g3auto
+
+fence:
+  enabled: true
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: fence
+    username: fence
+    password: <from-secrets-manager>
+    port: "5432"
+  serviceAccount:
+    create: true
+    annotations:
+      # IRSA role ARN injected by Helm1 RGD from iam-bridge
+      eks.amazonaws.com/role-arn: <arn:aws:iam::ACCOUNT_ID:role/SPOKE-fence-role>
+    name: fence-sa
+  # Usersync CronJob — reads user.yaml from S3 to populate arborist policies
+  usersync:
+    usersync: true
+    schedule: "*/30 * * * *"
+    # S3 path to user.yaml (in the users/logging bucket created by Storage1 RGD)
+    userYamlS3Path: s3://<users-bucket-name>/<env>/user.yaml
+    syncFromDbgap: false
+    addDbgap: false
+    onlyDbgap: false
+    slack_webhook: None
+    slack_send_dbgap: false
+  externalSecrets:
+    dbcreds: <spoke>-fence-creds
+    fenceConfig: fence-config
+    fenceJwtKeys: fence-jwt-keys
+
+hatchery:
+  # Set enabled: false if workspaces are not needed (truly minimal deployment)
+  enabled: true
+  serviceAccount:
+    create: true
+    annotations:
+      # IRSA role ARN injected by Helm1 RGD from iam-bridge
+      eks.amazonaws.com/role-arn: <arn:aws:iam::ACCOUNT_ID:role/SPOKE-hatchery-role>
+    name: hatchery-sa
+
+indexd:
+  enabled: true
+  defaultPrefix: "PREFIX/"
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: indexd
+    username: indexd
+    password: <from-secrets-manager>
+    port: "5432"
+  externalSecrets:
+    dbcreds: <spoke>-indexd-creds
+
+manifestservice:
+  # Conditionally enabled by Helm1 RGD based on storage-bridge manifest-bucket-name
+  enabled: true
+  serviceAccount:
+    create: true
+    annotations:
+      # IRSA role ARN injected by Helm1 RGD from iam-bridge
+      eks.amazonaws.com/role-arn: <arn:aws:iam::ACCOUNT_ID:role/SPOKE-manifestservice-role>
+    name: manifestservice-sa
+  externalSecrets:
+    manifestserviceG3auto: manifestservice-g3auto
+
+metadata:
+  enabled: true
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: metadata
+    username: metadata
+    password: <from-secrets-manager>
+    port: "5432"
+  externalSecrets:
+    dbcreds: <spoke>-metadata-creds
+    metadataG3auto: metadata-g3auto
+
+peregrine:
+  enabled: true
+  # Peregrine reads the sheepdog database with its own read-only user.
+  # Evidence: etl/templates/etl-secret.yaml DB_DATABASE=sheepdog, DB_USERNAME=peregrine
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: sheepdog     # Shared with sheepdog — peregrine is read-only user
+    username: peregrine
+    password: <from-secrets-manager>
+    port: "5432"
+  externalSecrets:
+    dbcreds: <spoke>-peregrine-creds
+
+portal:
+  enabled: true
+  # portal has no database or IRSA; it is a React SPA served by NGINX
+  # Conditionally enabled by Helm1 RGD based on storage-bridge dashboard-bucket-name
+
+revproxy:
+  enabled: true
+  ingress:
+    # group.name matches environment for ALB group sharing across namespaces
+    aws:
+      group: example              # Set to global.environment value
+      sslPolicy: ELBSecurityPolicy-TLS13-1-2-2021-06
+
+sheepdog:
+  enabled: true
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: sheepdog
+    username: sheepdog
+    password: <from-secrets-manager>
+    port: "5432"
+  externalSecrets:
+    dbcreds: <spoke>-sheepdog-creds
+
+wts:
+  enabled: true
+  postgres:
+    host: <aurora-cluster.cluster-XXXXXX.REGION.rds.amazonaws.com>
+    database: wts
+    username: wts
+    password: <from-secrets-manager>
+    port: "5432"
+  externalSecrets:
+    dbcreds: <spoke>-wts-creds
+    wtsG3auto: wts-g3auto
+    wtsOidcClient: wts-oidc-client
+
+# ─── ETL — DISABLED in minimal (requires OpenSearch) ─────────────────────────
+# ETL (tube) writes to Elasticsearch/OpenSearch via the esproxy-service.
+# Both OpenSearch and aws-es-proxy are excluded from minimal deployment.
+# Re-enable when Search1 RGD is deployed and aws-es-proxy is enabled.
+etl:
+  enabled: false
+  # esEndpoint injected by Helm1 RGD from search-bridge opensearch-endpoint
+  # esEndpoint: <vpc-endpoint.REGION.es.amazonaws.com>
+
+# ─── Non-minimal services — DISABLED ─────────────────────────────────────────
+
+# OpenSearch proxy — disabled because ETL and guppy are disabled in minimal
+aws-es-proxy:
+  enabled: false
+  esEndpoint: <vpc-endpoint.REGION.es.amazonaws.com>  # from search-bridge
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: <arn:aws:iam::ACCOUNT_ID:role/SPOKE-aws-es-proxy-role>
+
+aws-sigv4-proxy:
+  enabled: false
+
+argo-wrapper:
+  enabled: false
+
+cedar:
+  enabled: false
+
+cohort-middleware:
+  enabled: false
+
+dashboard:
+  enabled: false
+
+data-upload-cron:
+  enabled: false
+
+datareplicate:
+  enabled: false
+
+dicom-server:
+  enabled: false
+
+embedding-management-service:
+  enabled: false
+
+frontend-framework:
+  enabled: false
+
+gen3-analysis:
+  enabled: false
+
+gen3-user-data-library:
+  enabled: false
+
+gen3-workflow:
+  enabled: false
+
+# guppy requires OpenSearch + ETL index — disabled in minimal
+guppy:
+  enabled: false
+
+neuvector:
+  enabled: false
+
+ohif-viewer:
+  enabled: false
+
+ohdsi-atlas:
+  enabled: false
+
+ohdsi-webapi:
+  enabled: false
+
+orthanc:
+  enabled: false
+
+requestor:
+  enabled: false
+
+sower:
+  enabled: false
+
+# ssjdispatcher processes SQS upload events — not needed without data upload pipeline
+ssjdispatcher:
+  enabled: false

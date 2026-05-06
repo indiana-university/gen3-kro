@@ -1,282 +1,314 @@
-# # AwsGen3Compute1 — Tier 3: Compute (Modular RGD v1)
-# #
-# # Standard Mode EKS with Managed Node Groups. Gen3 services require
-# # pre-installed ALB controller, managed node groups, and explicit
-# # add-on management (vpc-cni, CoreDNS, kube-proxy).
-# #
-# # All IAM roles and security groups are pre-provisioned by Network1
-# # (Tier 0) with computeEnabled=true.
-# #
-# # Resources:
-# #   - eksCluster: EKS cluster with 4 subnets (public + private)
-# #   - eksNodeGroup: Managed node group on private subnets
-# #   - argoCDSpokeRole: IAM role for CSOC ArgoCD to authenticate to spoke EKS
-# #   - argoCDAccessEntry: EKS access entry granting ArgoCD role cluster admin
-# #   - computeBridge: ConfigMap with EKS outputs for downstream tiers
-# #
-# # PREREQUISITES:
-# #   1. Network1 deployed with computeEnabled=true (publishes compute prep keys on networkBridge)
-# #   2. ACK controllers: eks, iam
-# #
-# # CROSS-TIER: Reads the single networkBridge for IAM roles, EKS SG,
-# # VPC, subnets, and platform key via externalRef.
+# AwsGen3Compute1 — Tier 3: Compute (Modular RGD v1)
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3compute1
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Compute1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      foundationBridgeName: string | default="foundation-bridge"
+      computeBridgeName: string | default="compute-bridge"
 
-# apiVersion: kro.run/v1alpha1
-# kind: ResourceGraphDefinition
-# metadata:
-#   name: awsgen3compute1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "0"
-# spec:
-#   schema:
-#     apiVersion: v1alpha1
-#     kind: AwsGen3Compute1
-#     spec:
-#       # ── Identity ──────────────────────────────────────────────────
-#       name: string | required=true
-#       namespace: string | required=true
-#       adoptionPolicy: string | default="adopt-or-create"
-#       deletionPolicy: string | default="delete"
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
 
-#       # ── Shared Infrastructure Config ─────────────────────────────
-#       infrastructureConfigMapName: string | default="infrastructure-values"
+  resources:
 
-#       # ── Bridge References (from Network1) ────────────────────────
-#       foundationBridgeName: string | default="foundation-bridge"
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
 
-#       # ── Bridge Name Override ──────────────────────────────────────
-#       computeBridgeName: string | default="compute-bridge"
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
 
-#     status:
-#       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+    - id: argocdNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: argocd
 
-#   resources:
-#   # ====================================================================
-#   # Layer 0: External References
-#   # ====================================================================
+    - id: foundationBridge
+      readyWhen:
+        - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.foundationBridgeName}
+          namespace: ${schema.spec.namespace}
 
-#     # ── Namespace ────────────────────────────────────────────────────
-#     - id: spokeNamespace
-#       externalRef:
-#         apiVersion: v1
-#         kind: Namespace
-#         metadata:
-#           name: ${schema.spec.namespace}
+  # Standard Mode — compute-auto-mode-enabled != 'true'
 
-#     - id: infrastructureConfig
-#       readyWhen:
-#         - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
-#       externalRef:
-#         apiVersion: v1
-#         kind: ConfigMap
-#         metadata:
-#           name: ${schema.spec.infrastructureConfigMapName}
-#           namespace: ${schema.spec.namespace}
+    - id: eksClusterStandard
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] != 'true'}
+      readyWhen:
+        - ${eksClusterStandard.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksClusterStandard.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksClusterStandard.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.spec.name}-eks
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-eks
+          roleARN: ${foundationBridge.data['cluster-role-arn']}
+          version: ${infrastructureConfig.data['compute-kubernetes-version']}
+          resourcesVPCConfig:
+            subnetIDs:
+              - ${foundationBridge.data['public-subnet-1-id']}
+              - ${foundationBridge.data['public-subnet-2-id']}
+              - ${foundationBridge.data['private-subnet-1-id']}
+              - ${foundationBridge.data['private-subnet-2-id']}
+            securityGroupIDs:
+              - ${foundationBridge.data['eks-security-group-id']}
+            endpointPrivateAccess: true
+            endpointPublicAccess: true
+          encryptionConfig:
+            - provider:
+                keyARN: ${foundationBridge.data['platform-key-arn']}
+              resources:
+                - secrets
+          accessConfig:
+            authenticationMode: "API"
+            bootstrapClusterCreatorAdminPermissions: true
+          tags:
+            Name: ${schema.spec.name}-eks
+            Environment: ${infrastructureConfig.data['aws-environment']}
+            ManagedBy: Kro
+            Project: ${infrastructureConfig.data['aws-project']}
 
-#     # ── ArgoCD Namespace (CSOC account ID for trust policy) ──────────
-#     - id: argocdNamespace
-#       externalRef:
-#         apiVersion: v1
-#         kind: Namespace
-#         metadata:
-#           name: argocd
+    - id: eksNodeGroup
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] != 'true'}
+      readyWhen:
+        - ${eksNodeGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksNodeGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksNodeGroup.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Nodegroup
+        metadata:
+          name: ${schema.spec.name}-nodegroup
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-nodegroup
+          clusterName: ${eksClusterStandard.spec.name}
+          nodeRole: ${foundationBridge.data['node-role-arn']}
+          subnets:
+            - ${foundationBridge.data['private-subnet-1-id']}
+            - ${foundationBridge.data['private-subnet-2-id']}
+          scalingConfig:
+            desiredSize: ${int(infrastructureConfig.data['compute-node-desired-size'])}
+            minSize: ${int(infrastructureConfig.data['compute-node-min-size'])}
+            maxSize: ${int(infrastructureConfig.data['compute-node-max-size'])}
+          instanceTypes: ${infrastructureConfig.data['compute-node-instance-types'].split(',')}
+          amiType: ${infrastructureConfig.data['compute-node-ami-type']}
+          diskSize: ${int(infrastructureConfig.data['compute-node-disk-size'])}
+          tags:
+            Name: ${schema.spec.name}-nodegroup
+            Environment: ${infrastructureConfig.data['aws-environment']}
+            ManagedBy: Kro
+            Project: ${infrastructureConfig.data['aws-project']}
 
-#     # ── networkBridge (base + compute prep outputs) ─────────────────
-#     - id: foundationBridge
-#       readyWhen:
-#         - ${foundationBridge.metadata.?name.orValue('null') != 'null'}
-#       externalRef:
-#         apiVersion: v1
-#         kind: ConfigMap
-#         metadata:
-#           name: ${schema.spec.foundationBridgeName}
-#           namespace: ${schema.spec.namespace}
+  # Auto Mode — compute-auto-mode-enabled == 'true'; AWS manages nodes+networking
 
-#   # ====================================================================
-#   # COMPUTE: EKS Cluster + Managed Node Group
-#   # ====================================================================
+    - id: eksClusterAutoMode
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] == 'true'}
+      readyWhen:
+        - ${eksClusterAutoMode.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksClusterAutoMode.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksClusterAutoMode.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.spec.name}-eks
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-eks
+          roleARN: ${foundationBridge.data['cluster-role-arn']}
+          version: ${infrastructureConfig.data['compute-kubernetes-version']}
+          bootstrapSelfManagedAddons: false
+          resourcesVPCConfig:
+            subnetIDs:
+              - ${foundationBridge.data['public-subnet-1-id']}
+              - ${foundationBridge.data['public-subnet-2-id']}
+              - ${foundationBridge.data['private-subnet-1-id']}
+              - ${foundationBridge.data['private-subnet-2-id']}
+            securityGroupIDs:
+              - ${foundationBridge.data['eks-security-group-id']}
+            endpointPrivateAccess: true
+            endpointPublicAccess: true
+          encryptionConfig:
+            - provider:
+                keyARN: ${foundationBridge.data['platform-key-arn']}
+              resources:
+                - secrets
+          computeConfig:
+            enabled: true
+            nodePools: ${infrastructureConfig.data['compute-auto-mode-node-pools'].split(',')}
+            nodeRoleARN: ${foundationBridge.data['node-role-arn']}
+          storageConfig:
+            blockStorage:
+              enabled: true
+          accessConfig:
+            authenticationMode: "API"
+            bootstrapClusterCreatorAdminPermissions: true
+          tags:
+            Name: ${schema.spec.name}-eks
+            Environment: ${infrastructureConfig.data['aws-environment']}
+            ManagedBy: Kro
+            Project: ${infrastructureConfig.data['aws-project']}
 
-#     # ── EKS Cluster ──────────────────────────────────────────────────
-#     - id: eksCluster
-#       readyWhen:
-#         - ${eksCluster.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-#         - ${eksCluster.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-#         - ${eksCluster.status.?status.orValue('null') == 'ACTIVE'}
-#       template:
-#         apiVersion: eks.services.k8s.aws/v1alpha1
-#         kind: Cluster
-#         metadata:
-#           name: ${schema.spec.name}-eks
-#           namespace: ${schema.spec.namespace}
-#           annotations:
-#             services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-#             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-#             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-#         spec:
-#           name: ${schema.spec.name}-eks
-#           roleARN: ${foundationBridge.data['cluster-role-arn']}
-#           version: ${infrastructureConfig.data['compute-kubernetes-version']}
-#           resourcesVPCConfig:
-#             subnetIDs:
-#               - ${foundationBridge.data['public-subnet-1-id']}
-#               - ${foundationBridge.data['public-subnet-2-id']}
-#               - ${foundationBridge.data['private-subnet-1-id']}
-#               - ${foundationBridge.data['private-subnet-2-id']}
-#             securityGroupIDs:
-#               - ${foundationBridge.data['eks-security-group-id']}
-#             endpointPrivateAccess: true
-#             endpointPublicAccess: true
-#           encryptionConfig:
-#             - provider:
-#                 keyARN: ${foundationBridge.data['platform-key-arn']}
-#               resources:
-#                 - secrets
-#           accessConfig:
-#             authenticationMode: "API"
-#             bootstrapClusterCreatorAdminPermissions: true
-#           logging:
-#             clusterLogging:
-#               - types:
-#                   - api
-#                   - audit
-#                   - authenticator
-#                   - controllerManager
-#                   - scheduler
-#                 enabled: true
-#           tags:
-#             Name: ${schema.spec.name}-eks
-#             Environment: ${infrastructureConfig.data['aws-environment']}
-#             ManagedBy: Kro
-#             Project: ${infrastructureConfig.data['aws-project']}
+    - id: argoCDSpokeRole
+      readyWhen:
+        - ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDSpokeRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-argocd-spoke-access
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-argocd-spoke-access
+          description: "Allows CSOC ArgoCD to authenticate to ${schema.spec.name} spoke EKS cluster"
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"AWS": "arn:aws:iam::${argocdNamespace.metadata.annotations['csoc-account-id']}:root"},
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-argocd-spoke-access
+            - key: Environment
+              value: ${infrastructureConfig.data['aws-environment']}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${infrastructureConfig.data['aws-project']}
 
-#     # ── EKS Managed Node Group ───────────────────────────────────────
-#     - id: eksNodeGroup
-#       readyWhen:
-#         - ${eksNodeGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-#         - ${eksNodeGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-#         - ${eksNodeGroup.status.?status.orValue('null') == 'ACTIVE'}
-#       template:
-#         apiVersion: eks.services.k8s.aws/v1alpha1
-#         kind: Nodegroup
-#         metadata:
-#           name: ${schema.spec.name}-nodegroup
-#           namespace: ${schema.spec.namespace}
-#           annotations:
-#             services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-#             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-#             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-#         spec:
-#           name: ${schema.spec.name}-nodegroup
-#           clusterName: ${eksCluster.spec.name}
-#           nodeRole: ${foundationBridge.data['node-role-arn']}
-#           subnets:
-#             - ${foundationBridge.data['private-subnet-1-id']}
-#             - ${foundationBridge.data['private-subnet-2-id']}
-#           scalingConfig:
-#             desiredSize: ${int(infrastructureConfig.data['compute-node-desired-size'])}
-#             minSize: ${int(infrastructureConfig.data['compute-node-min-size'])}
-#             maxSize: ${int(infrastructureConfig.data['compute-node-max-size'])}
-#           instanceTypes: ${infrastructureConfig.data['compute-node-instance-types'].split(',')}
-#           amiType: ${infrastructureConfig.data['compute-node-ami-type']}
-#           diskSize: ${int(infrastructureConfig.data['compute-node-disk-size'])}
-#           tags:
-#             Name: ${schema.spec.name}-nodegroup
-#             Environment: ${infrastructureConfig.data['aws-environment']}
-#             ManagedBy: Kro
-#             Project: ${infrastructureConfig.data['aws-project']}
+    - id: argoCDAccessEntry
+      readyWhen:
+        - ${argoCDAccessEntry.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDAccessEntry.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: AccessEntry
+        metadata:
+          name: ${schema.spec.name}-argocd-access
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          clusterName: ${schema.spec.name}-eks
+          principalARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('loading')}
+          type: STANDARD
+          accessPolicies:
+            - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+              accessScope:
+                type: cluster
+          tags:
+            Name: ${schema.spec.name}-argocd-access
+            Environment: ${infrastructureConfig.data['aws-environment']}
+            ManagedBy: Kro
 
-#   # ====================================================================
-#   # ARGOCD ACCESS: IAM Role + EKS Access Entry for CSOC ArgoCD
-#   # ====================================================================
+  # Dual-bridge: mode-agnostic downstream refs (separate resources required)
 
-#     # ── IAM Role for ArgoCD spoke access ─────────────────────────────
-#     - id: argoCDSpokeRole
-#       readyWhen:
-#         - ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-#         - ${argoCDSpokeRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-#       template:
-#         apiVersion: iam.services.k8s.aws/v1alpha1
-#         kind: Role
-#         metadata:
-#           name: ${schema.spec.name}-argocd-spoke-access
-#           namespace: ${schema.spec.namespace}
-#           annotations:
-#             services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-#             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-#             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-#         spec:
-#           name: ${schema.spec.name}-argocd-spoke-access
-#           description: "Allows CSOC ArgoCD to authenticate to ${schema.spec.name} spoke EKS cluster"
-#           assumeRolePolicyDocument: |
-#             {
-#               "Version": "2012-10-17",
-#               "Statement": [
-#                 {
-#                   "Effect": "Allow",
-#                   "Principal": {"AWS": "arn:aws:iam::${argocdNamespace.metadata.annotations['csoc-account-id']}:root"},
-#                   "Action": "sts:AssumeRole"
-#                 }
-#               ]
-#             }
-#           tags:
-#             - key: Name
-#               value: ${schema.spec.name}-argocd-spoke-access
-#             - key: Environment
-#               value: ${infrastructureConfig.data['aws-environment']}
-#             - key: ManagedBy
-#               value: Kro
-#             - key: Project
-#               value: ${infrastructureConfig.data['aws-project']}
+    # Standard Mode bridge (compute-auto-mode-enabled != 'true')
+    - id: computeBridgeStandard
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] != 'true'}
+      readyWhen:
+        - ${computeBridgeStandard.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: compute
+            gen3.io/bridge: "true"
+        data:
+          eks-cluster-arn: ${eksClusterStandard.status.?ackResourceMetadata.?arn.orValue("loading")}
+          eks-cluster-endpoint: ${eksClusterStandard.status.?endpoint.orValue("loading")}
+          eks-cluster-name: ${schema.spec.name}-eks
+          eks-cluster-ca: ${eksClusterStandard.status.?certificateAuthority.?data.orValue("loading")}
+          eks-oidc-issuer: ${eksClusterStandard.status.?identity.?oidc.?issuer.orValue("loading")}
+          eks-auto-mode: "false"
+          argocd-spoke-access-arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
 
-#     # ── EKS Access Entry for ArgoCD role ─────────────────────────────
-#     - id: argoCDAccessEntry
-#       readyWhen:
-#         - ${argoCDAccessEntry.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-#         - ${argoCDAccessEntry.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-#       template:
-#         apiVersion: eks.services.k8s.aws/v1alpha1
-#         kind: AccessEntry
-#         metadata:
-#           name: ${schema.spec.name}-argocd-access
-#           namespace: ${schema.spec.namespace}
-#           annotations:
-#             services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
-#             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
-#             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
-#         spec:
-#           clusterName: ${eksCluster.spec.name}
-#           principalARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('loading')}
-#           type: STANDARD
-#           accessPolicies:
-#             - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
-#               accessScope:
-#                 type: cluster
-#           tags:
-#             Name: ${schema.spec.name}-argocd-access
-#             Environment: ${infrastructureConfig.data['aws-environment']}
-#             ManagedBy: Kro
-
-#   # ====================================================================
-#   # BRIDGE: Compute Outputs ConfigMap (for downstream tiers)
-#   # ====================================================================
-
-#     - id: computeBridge
-#       readyWhen:
-#         - ${computeBridge.metadata.?name.orValue('null') != 'null'}
-#       template:
-#         apiVersion: v1
-#         kind: ConfigMap
-#         metadata:
-#           name: ${schema.spec.computeBridgeName}
-#           namespace: ${schema.spec.namespace}
-#           labels:
-#             app.kubernetes.io/managed-by: kro
-#             gen3.io/tier: compute
-#             gen3.io/bridge: "true"
-#         data:
-#           eks-cluster-arn: ${eksCluster.status.?ackResourceMetadata.?arn.orValue("loading")}
-#           eks-cluster-endpoint: ${eksCluster.status.?endpoint.orValue("loading")}
-#           eks-cluster-name: ${schema.spec.name}-eks
-#           eks-cluster-ca: ${eksCluster.status.?certificateAuthority.?data.orValue("loading")}
-#           eks-oidc-issuer: ${eksCluster.status.?identity.?oidc.?issuer.orValue("loading")}
-#           argocd-spoke-access-arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+    # Auto Mode bridge (compute-auto-mode-enabled == 'true')
+    - id: computeBridgeAutoMode
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] == 'true'}
+      readyWhen:
+        - ${computeBridgeAutoMode.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: compute
+            gen3.io/bridge: "true"
+        data:
+          eks-cluster-arn: ${eksClusterAutoMode.status.?ackResourceMetadata.?arn.orValue("loading")}
+          eks-cluster-endpoint: ${eksClusterAutoMode.status.?endpoint.orValue("loading")}
+          eks-cluster-name: ${schema.spec.name}-eks
+          eks-cluster-ca: ${eksClusterAutoMode.status.?certificateAuthority.?data.orValue("loading")}
+          eks-oidc-issuer: ${eksClusterAutoMode.status.?identity.?oidc.?issuer.orValue("loading")}
+          eks-auto-mode: "true"
+          argocd-spoke-access-arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}

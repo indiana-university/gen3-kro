@@ -61,7 +61,6 @@
 # spec:
 #   name: gen3
 #   namespace: spoke1
-#   esoUseIRSA: true
 
 # ---
 # apiVersion: kro.run/v1alpha1

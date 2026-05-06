@@ -1,19 +1,4 @@
 # AwsGen3Messaging1 — Tier 4: Message Queues (Modular RGD v1)
-#
-# SQS queues are managed separately in their own RGD.
-# Both queues are always created (SQS is free-tier). This ensures
-# the messagingBridge ConfigMap always contains ALL queue URL keys,
-# avoiding KRO Test 8 silent-drop issues where Helm1 references
-# bridge keys that would otherwise be missing.
-#
-# PREREQUISITES:
-#   1. Namespace must exist with services.k8s.aws/owner-account-id annotation
-#   2. ACK controller 'sqs' must be running
-#
-# OUTPUT: messagingBridge ConfigMap with SQS queue URLs.
-#
-# COST: ~$0/month (SQS free tier covers typical gen3 volumes).
-
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -25,25 +10,17 @@ spec:
     apiVersion: v1alpha1
     kind: AwsGen3Messaging1
     spec:
-      # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
-
-      # ── Shared Infrastructure Config ─────────────────────────────
       infrastructureConfigMapName: string | default="infrastructure-values"
-
-      # ── Bridge ───────────────────────────────────────────────────
       messagingBridgeName: string | default="messaging-bridge"
 
     status:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
 
   resources:
-  # ====================================================================
-  # Layer 0: External References
-  # ====================================================================
 
     - id: spokeNamespace
       externalRef:
@@ -62,11 +39,8 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-  # ====================================================================
   # SQS QUEUES
-  # ====================================================================
 
-    # ── Audit SQS Queue ──────────────────────────────────────────────
     - id: auditQueue
       readyWhen:
         - ${auditQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -92,7 +66,6 @@ spec:
             ManagedBy: Kro
             Project: ${infrastructureConfig.data['aws-project']}
 
-    # ── SSJDispatcher SQS Queue ──────────────────────────────────────
     - id: ssjdispatcherQueue
       readyWhen:
         - ${ssjdispatcherQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -118,11 +91,7 @@ spec:
             ManagedBy: Kro
             Project: ${infrastructureConfig.data['aws-project']}
 
-  # ====================================================================
-  # BRIDGE: Messaging Outputs ConfigMap (for downstream tiers)
-  # ====================================================================
-  # All queues are unconditional — bridge always contains ALL queue URL keys.
-  # This avoids KRO Test 8 silent-drop issues.
+  # All queues unconditional — avoids Test 8 silent-drop
 
     - id: messagingBridge
       readyWhen:

@@ -1,14 +1,4 @@
 # AwsGen3OIDC — Tier 4: EKS OIDC Provider (Modular RGD v1)
-#
-# Creates the IAM OpenID Connect provider for the spoke EKS cluster and exports
-# an oidcBridge ConfigMap for downstream tiers such as AwsGen3AppIAM1.
-#
-# PREREQUISITES:
-#   1. Compute1 deployed with computeBridge (OIDC issuer)
-#   2. ACK controller 'iam' must be running
-#
-# OUTPUT: oidcBridge ConfigMap with provider ARN, provider name, and issuer.
-
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -24,11 +14,8 @@ spec:
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
-
       infrastructureConfigMapName: string | default="infrastructure-values"
-
       computeBridgeName: string | default="compute-bridge"
-
       oidcBridgeName: string | default="oidc-bridge"
 
     status:

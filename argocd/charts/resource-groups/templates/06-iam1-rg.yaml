@@ -1,28 +1,4 @@
 # AwsGen3AppIAM1 — Tier 5: Application + Cluster IAM (Modular RGD v1)
-#
-# SQS queues are managed separately by AwsGen3Messaging1.
-#
-# Consumes the AwsGen3OIDC1 bridge and creates ALL IRSA roles:
-#   - Per-service roles: fence, audit, hatchery, manifestservice,
-#     externalSecrets, awsEsProxy, ssjdispatcher
-#   - Cluster-level roles: ALB controller, S3 CSI driver, Karpenter, dashboard
-# All role resources are always created (IAM is free-tier). This ensures
-# the iamBridge ConfigMap always contains ALL role ARN keys, avoiding
-# KRO Test 8 silent-drop issues where downstream tiers (Helm1) reference
-# bridge keys that would otherwise be missing.
-#
-# PREREQUISITES:
-#   1. AwsGen3OIDC1 deployed with oidcBridge
-#   2. Storage1 deployed with storageBridge (S3 bucket ARNs)
-#
-# CROSS-TIER: Reads oidcBridge (provider ARN + issuer) and storageBridge
-# (S3 bucket ARNs) via externalRef.
-#
-# OUTPUT: iamBridge ConfigMap with OIDC provider ARN and all IRSA role ARNs
-# for downstream tiers (gen3-helm, cluster-resources, observability).
-#
-# COST: ~$5/month (IAM is effectively free-tier).
-
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -34,30 +10,20 @@ spec:
     apiVersion: v1alpha1
     kind: AwsGen3AppIAM1
     spec:
-      # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
-
       infrastructureConfigMapName: string | default="infrastructure-values"
-
-      # ── Bridge References ────────────────────────────────────────
       oidcBridgeName: string | default="oidc-bridge"
       storageBridgeName: string | default="storage-bridge"
-
-      # ── Bridge ───────────────────────────────────────────────────
       iamBridgeName: string | default="iam-bridge"
 
     status:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
 
   resources:
-  # ====================================================================
-  # Layer 0: External References
-  # ====================================================================
 
-    # ── Namespace ────────────────────────────────────────────────────
     - id: spokeNamespace
       externalRef:
         apiVersion: v1
@@ -75,7 +41,6 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-    # ── OIDC Bridge (provider ARN, provider name, OIDC issuer) ───────
     - id: oidcBridge
       readyWhen:
         - ${oidcBridge.metadata.?name.orValue('null') != 'null'}
@@ -86,7 +51,6 @@ spec:
           name: ${schema.spec.oidcBridgeName}
           namespace: ${schema.spec.namespace}
 
-    # ── Storage Bridge (S3 bucket ARNs) ──────────────────────────────
     - id: storageBridge
       readyWhen:
         - ${storageBridge.metadata.?name.orValue('null') != 'null'}
@@ -108,11 +72,8 @@ spec:
           name: ${oidcBridge.data['oidc-provider-name']}
           namespace: ${schema.spec.namespace}
 
-  # ====================================================================
   # IRSA ROLES: Per-service IAM roles with OIDC trust policies
-  # ====================================================================
 
-    # ── Fence IRSA Role ──────────────────────────────────────────────
     - id: fenceRole
       readyWhen:
         - ${fenceRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -180,7 +141,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── Audit IRSA Role ──────────────────────────────────────────────
     - id: auditRole
       readyWhen:
         - ${auditRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -223,7 +183,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── Hatchery IRSA Role ───────────────────────────────────────────
     - id: hatcheryRole
       readyWhen:
         - ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -278,7 +237,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── ManifestService IRSA Role ────────────────────────────────────
     - id: manifestserviceRole
       readyWhen:
         - ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -321,7 +279,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── ExternalSecrets IRSA Role ────────────────────────────────────
     - id: externalSecretsRole
       readyWhen:
         - ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -376,7 +333,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── AWS ES Proxy IRSA Role (OpenSearch access) ───────────────────
     - id: awsEsProxyRole
       readyWhen:
         - ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -431,7 +387,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── SSJDispatcher IRSA Role (SQS + S3 for data pipeline) ─────────
     - id: ssjdispatcherRole
       readyWhen:
         - ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -494,13 +449,8 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-  # ====================================================================
-  # CLUSTER-LEVEL IRSA ROLES (kube-system service accounts)
-  # ====================================================================
-  # These roles are for EKS cluster addons that run in kube-system.
-  # Trust policy targets kube-system:SA-name on the spoke OIDC.
+  # Cluster-level IRSA roles (kube-system service accounts)
 
-    # ── ALB Controller IRSA Role (AWS Load Balancer Controller) ──────
     - id: albControllerRole
       readyWhen:
         - ${albControllerRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -586,7 +536,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── S3 CSI Driver IRSA Role (Mountpoint for Amazon S3) ───────────
     - id: s3CsiDriverRole
       readyWhen:
         - ${s3CsiDriverRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -652,7 +601,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── Karpenter Controller IRSA Role (node autoscaling) ────────────
     - id: karpenterRole
       readyWhen:
         - ${karpenterRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -743,7 +691,6 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-    # ── Dashboard IRSA Role (S3 read for portal dashboard) ───────────
     - id: dashboardRole
       readyWhen:
         - ${dashboardRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
@@ -801,11 +748,70 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-  # ====================================================================
-  # BRIDGE: IAM Outputs ConfigMap (for downstream tiers)
-  # ====================================================================
-  # All roles are unconditional — bridge always contains ALL role ARN keys.
-  # This avoids KRO Test 8 silent-drop issues.
+    - id: externalDnsRole
+      readyWhen:
+        - ${externalDnsRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${externalDnsRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-external-dns-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-external-dns-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${oidcProvider.status.?ackResourceMetadata.?arn.orValue('loading')}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${oidcBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:external-dns"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            external-dns-route53: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["route53:ChangeResourceRecordSets"],
+                    "Resource": ["arn:aws:route53:::hostedzone/*"]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "route53:ListHostedZones",
+                      "route53:ListResourceRecordSets",
+                      "route53:ListTagsForResource"
+                    ],
+                    "Resource": ["*"]
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-external-dns-role
+            - key: Environment
+              value: ${infrastructureConfig.data['aws-environment']}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${infrastructureConfig.data['aws-project']}
+
+  # All roles unconditional — avoids Test 8 silent-drop
 
     - id: iamBridge
       readyWhen:
@@ -834,3 +840,4 @@ spec:
           s3-csi-driver-role-arn: ${s3CsiDriverRole.status.?ackResourceMetadata.?arn.orValue("loading")}
           karpenter-role-arn: ${karpenterRole.status.?ackResourceMetadata.?arn.orValue("loading")}
           dashboard-role-arn: ${dashboardRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          external-dns-role-arn: ${externalDnsRole.status.?ackResourceMetadata.?arn.orValue("loading")}

@@ -1,28 +1,4 @@
-# AwsGen3Helm1 — Tier 5: Gen3 Application Deployment (Modular RGD v1)
-#
-# Creates an ArgoCD Application CR that deploys the gen3-helm umbrella chart
-# onto the spoke EKS cluster (registered by AwsGen3ClusterResources1/2, Tier 4.5).
-#
-# Values architecture (3-layer):
-#   1. ConfigMap values.yaml key  → helm.values  (operator preferences)
-#   2. Bridge data                → helm.parameters (infrastructure outputs)
-#   3. Schema spec                → helm.parameters (identity: name, region)
-#
-# The operator configures gen3 services (enables, ESO secrets, hostnames)
-# in the 00-values.yaml ConfigMap. Infrastructure outputs (IRSA role ARNs,
-# DB endpoints, SQS URLs, S3 buckets, WAF ARN) come from bridge ConfigMaps
-# and are injected via helm.parameters which override the base values.
-#
-# This RGD does NOT deploy AWS resources — it creates pure Kubernetes
-# resources (ArgoCD Application CR + ConfigMap). No ACK controllers needed.
-#
-# Ref: https://github.com/uc-cdis/gen3-helm/tree/master/helm/gen3
-#
-# PREREQUISITES:
-#   All upstream tiers deployed with their bridge ConfigMaps.
-#   Values ConfigMap applied (00-values.yaml).
-#
-# OUTPUT: ArgoCD Application CR + gen3HelmBridge ConfigMap.
+# AwsGen3Helm1 — Tier 5: Gen3 Application Deployment via ArgoCD multi-source Application
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
@@ -35,45 +11,28 @@ spec:
     apiVersion: v1alpha1
     kind: AwsGen3Helm1
     spec:
-      # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
       region: string | default="us-east-1"
-
-      # ── ArgoCD ───────────────────────────────────────────────────
       argoCDNamespace: string | default="argocd"
       argoCDProject: string | default="default"
-
-      # ── Gen3-Helm Source ─────────────────────────────────────────
       helmChartRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
       helmChartPath: string | default="helm/gen3"
       helmChartTargetRevision: string | default="master"
-
-      # ── Bridge References (canonical defaults for one stack per namespace) ────
-      foundationBridgeName: string | default="foundation-bridge"
-      computeBridgeName: string | default="compute-bridge"
-      databaseBridgeName: string | default="database-bridge"
-      searchBridgeName: string | default="search-bridge"
-      iamBridgeName: string | default="iam-bridge"
-      messagingBridgeName: string | default="messaging-bridge"
-      acmBridgeName: string | default="dns-bridge"
-      clusterResourcesBridgeName: string | default="cluster-resources-bridge"
-      storageBridgeName: string | default="storage-bridge"
-      advancedBridgeName: string | default="advanced-bridge"
-
-      # ── GitOps Values Source ──────────────────────────────────────
-      # The gitops repo (default: gen3-kro itself) serves operator
-      # preferences via a $values ref. Resolved path:
-      #   {valuesBasePath}/{hostname}/values.yaml
-      # valuesBasePath defaults to argocd/fleet/{namespace} (EKS layout).
-      # Set valuesBasePath to override for alternative layouts (e.g.
-      # argocd/local-kind/test for Kind, which has no namespace subdir).
       valuesRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: string | default="main"
-      valuesBasePath: string | default=""
-
-      # ── Bridge (output) ─────────────────────────────────────────
+      valuesBasePath: string | default="" # defaults to "argocd/fleet/<namespace>" if not set
+      acmBridgeName: string | default="dns-bridge"
+      advancedBridgeName: string | default="advanced-bridge"
+      clusterResourcesBridgeName: string | default="cluster-resources-bridge"
+      computeBridgeName: string | default="compute-bridge"
+      databaseBridgeName: string | default="database-bridge"
+      foundationBridgeName: string | default="foundation-bridge"
       gen3HelmBridgeName: string | default="gen3helm-bridge"
+      iamBridgeName: string | default="iam-bridge"
+      messagingBridgeName: string | default="messaging-bridge"
+      searchBridgeName: string | default="search-bridge"
+      storageBridgeName: string | default="storage-bridge"
 
     status:
       ready: ${spokeNamespace.metadata.?name.orValue("loading")}
@@ -82,10 +41,7 @@ spec:
       appSyncStatus: ${gen3App.status.?sync.?status.orValue("loading")}
 
   resources:
-  # ====================================================================
-  # Layer 0: External References (ALL upstream bridges)
-  # ====================================================================
-
+  # External refs
     - id: spokeNamespace
       externalRef:
         apiVersion: v1
@@ -192,11 +148,7 @@ spec:
         metadata:
           name: ${schema.spec.advancedBridgeName}
           namespace: ${schema.spec.namespace}
-
-  # ====================================================================
-  # ARGOCD: Multi-source Application CR for gen3-helm
-  # ====================================================================
-
+  # gen3-helm ArgoCD Application
     - id: gen3App
       readyWhen:
         - ${gen3App.metadata.?name.orValue('null') != 'null'}
@@ -223,56 +175,47 @@ spec:
                 - /data
                 - /stringData
           sources:
-            # ── Source 1: gen3-helm chart ────────────────────────────
+
             - repoURL: ${schema.spec.helmChartRepoURL}
               path: ${schema.spec.helmChartPath}
               targetRevision: ${schema.spec.helmChartTargetRevision}
               helm:
                 releaseName: gen3
-                # Base values from gitops repo ($values ref, lowest priority)
                 valueFiles:
                   - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/fleet/' + schema.spec.namespace}/${acmBridge.data['hostname']}/values.yaml"
-                # Bridge + schema overrides (take precedence over valueFiles)
                 parameters:
-                  # ── Global identity & environment ──────────────────
                   - name: global.environment
                     value: ${schema.spec.namespace}
                   - name: global.aws.region
                     value: ${schema.spec.region}
-                  # ── Hostname (from DNS bridge) ─────────────────────
+                  - name: global.clusterName
+                    value: ${computeBridge.data['eks-cluster-name']}
+                  - name: global.aws.scheme
+                    value: ${clusterResourcesBridge.data['cluster-alb-scheme']}
                   - name: global.hostname
                     value: ${acmBridge.data['hostname']}
-                  # ── ACM Certificate ────────────────────────────────
                   - name: global.revproxyArn
                     value: ${acmBridge.data['acm-cert-arn']}
-                  # ── Storage: upload bucket ─────────────────────────
                   - name: global.dataUploadBucket
                     value: ${storageBridge.data['upload-bucket-name']}
-                  # ── Enable/disable derived from bucket name presence ─
                   - name: manifestservice.enabled
                     value: "${storageBridge.data['manifest-bucket-name'] != '' ? 'true' : 'false'}"
                   - name: portal.enabled
                     value: "${storageBridge.data['dashboard-bucket-name'] != '' ? 'true' : 'false'}"
-                  # ── WAF ────────────────────────────────────────────
                   - name: global.aws.wafv2.enabled
                     value: ${advancedBridge.data['waf-enabled']}
                   - name: global.aws.wafv2.wafAclArn
                     value: ${advancedBridge.data['waf-acl-arn']}
-                  # ── IAM: External Secrets IRSA ─────────────────────
                   - name: global.aws.secretStoreServiceAccount.roleArn
                     value: ${iamBridge.data['external-secrets-role-arn']}
-                  # ── Database ───────────────────────────────────────
                   - name: global.postgres.master.host
                     value: ${databaseBridge.data['aurora-cluster-endpoint']}
                   - name: global.postgres.master.port
                     value: "5432"
-                  # ── OpenSearch ─────────────────────────────────────
                   - name: aws-es-proxy.esEndpoint
                     value: ${searchBridge.data['opensearch-endpoint']}
-                  # ── Revproxy ALB group ─────────────────────────────
                   - name: revproxy.ingress.aws.group
                     value: ${schema.spec.name}
-                  # ── IAM: Per-service IRSA role ARNs ───────────────
                   - name: fence.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${iamBridge.data['fence-role-arn']}
                   - name: audit.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
@@ -287,31 +230,24 @@ spec:
                     value: ${iamBridge.data['ssjdispatcher-role-arn']}
                   - name: dashboard.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${iamBridge.data['dashboard-role-arn']}
-                  # ── Messaging: SQS URLs ────────────────────────────
                   - name: audit.server.sqs.region
                     value: ${schema.spec.region}
                   - name: audit.server.sqs.url
                     value: ${messagingBridge.data['audit-sqs-url']}
                   - name: ssjdispatcher.ssjcreds.sqsUrl
                     value: ${messagingBridge.data['ssjdispatcher-sqs-url']}
-            # ── Source 2: gitops values repo ($values ref) ────────────
-            - repoURL: ${schema.spec.valuesRepoURL}
+            - repoURL: ${schema.spec.valuesRepoURL} # $values ref
               targetRevision: ${schema.spec.valuesRevision}
               ref: values
           destination:
-            # The EKS managed Argo CD capability expects a registered
-            # destination.name rather than relying on kubernetes.default.svc.
-            name: ${clusterResourcesBridge.data['argocd-cluster-name']}
+            name: ${clusterResourcesBridge.data['argocd-cluster-name']} # spoke cluster registered in CSOC ArgoCD
             namespace: ${schema.spec.name}
           syncPolicy:
             syncOptions:
               - CreateNamespace=true
               - ServerSideApply=true
 
-  # ====================================================================
-  # BRIDGE: Gen3 Helm Outputs ConfigMap
-  # ====================================================================
-
+  # Bridge output
     - id: gen3HelmBridge
       readyWhen:
         - ${gen3HelmBridge.metadata.?name.orValue('null') != 'null'}

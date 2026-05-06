@@ -1,24 +1,4 @@
 # AwsGen3Advanced1 — Tier 7: Advanced Services (Modular RGD v1)
-#
-# WAFv2 WebACL for ALB protection. CloudFront is out of scope
-# (no ACK controller available).
-#
-# Creates a regional WAFv2 WebACL with AWS managed rule groups:
-#   - AWSManagedRulesCommonRuleSet (OWASP Top 10)
-#   - AWSManagedRulesKnownBadInputsRuleSet (known bad patterns)
-#   - AWSManagedRulesSQLiRuleSet (SQL injection)
-#
-# The WebACL ARN is exported via a single advancedBridge ConfigMap for
-# downstream consumption by Helm1 (global.aws.wafv2.wafAclArn).
-#
-# PREREQUISITES:
-#   1. ACK wafv2 controller must be running
-#
-# OUTPUT: advancedBridge ConfigMap with WAF state. The graph exposes one bridge
-# and gates the optional WAF values inline with the same infrastructure flag.
-#
-# COST: ~$5-10/month (WAFv2 base + per-rule charges).
-
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
 metadata:
@@ -30,26 +10,18 @@ spec:
     apiVersion: v1alpha1
     kind: AwsGen3Advanced1
     spec:
-      # ── Identity ──────────────────────────────────────────────────
       name: string | required=true
       namespace: string | required=true
       adoptionPolicy: string | default="adopt-or-create"
       deletionPolicy: string | default="delete"
-
       infrastructureConfigMapName: string | default="infrastructure-values"
-
-      # ── Bridge ───────────────────────────────────────────────────
       advancedBridgeName: string | default="advanced-bridge"
 
     status:
       wafAclARN: "${infrastructureConfig.data['advanced-waf-enabled'] == 'true' ? wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
 
   resources:
-  # ====================================================================
-  # Layer 0: External References
-  # ====================================================================
 
-    # ── Namespace ────────────────────────────────────────────────────
     - id: spokeNamespace
       externalRef:
         apiVersion: v1
@@ -67,9 +39,7 @@ spec:
           name: ${schema.spec.infrastructureConfigMapName}
           namespace: ${schema.spec.namespace}
 
-  # ====================================================================
   # WAFv2: Regional Web ACL with AWS Managed Rules
-  # ====================================================================
 
     - id: wafWebAcl
       includeWhen:
@@ -143,13 +113,7 @@ spec:
             - key: Project
               value: ${infrastructureConfig.data['aws-project']}
 
-  # ====================================================================
-  # BRIDGE: Advanced Outputs ConfigMap (for downstream tiers)
-  # ====================================================================
-  # DUAL-BRIDGE PATTERN (Test 8): KRO silently drops any resource whose
-  # template references an excluded (includeWhen=false) node — even through
-  # optional chaining. Two opposite-includeWhen resources write to the same
-  # ConfigMap name so the bridge always exists regardless of WAF state.
+  # Dual-bridge: always-present regardless of WAF state
 
     - id: advancedBridgeWithWaf
       includeWhen:

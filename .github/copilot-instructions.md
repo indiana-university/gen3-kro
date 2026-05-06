@@ -242,7 +242,7 @@ RGDs use versioned naming: modular tier graphs use
 Foundation1 absorbs ALL prep infrastructure (SGs, IAM roles, DB subnets, KMS keys)
 behind feature flags (`databaseEnabled`, `computeEnabled`, `searchEnabled`).
 S3 buckets are conditional via `storageEnabled` flag — when false, Storage1 tier
-manages buckets instead. Foundation1 uses Test 8 dual-bridge pattern: `foundationBridge`
+manages buckets instead. Foundation1 uses Dual-bridge pattern: `foundationBridge`
 (with S3 ARNs) or `foundationBridgeNoStorage` (empty S3 ARNs), both writing to the
 same ConfigMap name. Creates up to 5 bridge ConfigMaps: `foundationBridge` (always) +
 `databasePrepBridge`, `computePrepBridge`, `searchPrepBridge` (conditional) +
