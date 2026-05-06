@@ -1,79 +1,79 @@
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Dns1
-# metadata:
-#   name: gen3
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "16"
-#     argocd.argoproj.io/sync-options: ServerSideApply=true
-# spec:
-#   name: gen3
-#   namespace: spoke1
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Network1
+metadata:
+  name: gen3
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  name: gen3
+  namespace: spoke1
 
-# ---
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Network1
-# metadata:
-#   name: gen3
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "15"
-#     argocd.argoproj.io/sync-options: ServerSideApply=true
-# spec:
-#   name: gen3
-#   namespace: spoke1
+---
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Dns1
+metadata:
+  name: gen3
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  name: gen3
+  namespace: spoke1
 
-# ---
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Storage1
-# metadata:
-#   name: gen3
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "16"
-#     argocd.argoproj.io/sync-options: ServerSideApply=true
-# spec:
-#   name: gen3
-#   namespace: spoke1
+---
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Storage1
+metadata:
+  name: gen3
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "16"
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  name: gen3
+  namespace: spoke1
 
-# ---
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Compute1
-# metadata:
-#   name: gen3
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "20"
-#     argocd.argoproj.io/sync-options: ServerSideApply=true
-# spec:
-#   name: gen3
-#   namespace: spoke1
+---
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Database1
+metadata:
+  name: gen3
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  name: gen3
+  namespace: spoke1
 
-# ---
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Database1
-# metadata:
-#   name: gen3
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "20"
-#     argocd.argoproj.io/sync-options: ServerSideApply=true
-# spec:
-#   name: gen3
-#   namespace: spoke1
+---
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Search1
+metadata:
+  name: gen3
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  name: gen3
+  namespace: spoke1
 
-# ---
-# apiVersion: kro.run/v1alpha1
-# kind: AwsGen3Search1
-# metadata:
-#   name: gen3
-#   namespace: spoke1
-#   annotations:
-#     argocd.argoproj.io/sync-wave: "20"
-#     argocd.argoproj.io/sync-options: ServerSideApply=true
-# spec:
-#   name: gen3
-#   namespace: spoke1
+---
+apiVersion: kro.run/v1alpha1
+kind: AwsGen3Compute1
+metadata:
+  name: gen3
+  namespace: spoke1
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/sync-options: ServerSideApply=true
+spec:
+  name: gen3
+  namespace: spoke1
 
 # ---
 # apiVersion: kro.run/v1alpha1
