@@ -125,7 +125,7 @@ instances:
   database:
     enabled: true
   compute:
-    enabled: true
+    enabled: false
   ## Phase 3
   spokeAccess:
     enabled: true

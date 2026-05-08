@@ -287,6 +287,9 @@ spec:
             enabled: true
             nodePools: ${infrastructureConfig.data['compute-auto-mode-node-pools'].split(',')}
             nodeRoleARN: ${nodeRole.status.?ackResourceMetadata.?arn}
+          kubernetesNetworkConfig:
+            elasticLoadBalancing:
+              enabled: true
           storageConfig:
             blockStorage:
               enabled: true
