@@ -18,11 +18,11 @@ argument-hint: 'Test number and feature being tested (e.g. "9 cross-namespace-re
 
 1. Check existing tests for the next available number:
    ```bash
-   ls argocd/charts/resource-groups/templates/ | grep krotest
+   ls argocd/csoc-eks/charts/aws-rgds-v1/templates/ | grep krotest
    ```
 
 2. Create the RGD at:
-   `argocd/charts/resource-groups/templates/krotest${input:testNum}-${input:feature}-rg.yaml`
+   `argocd/csoc-eks/charts/aws-rgds-v1/templates/krotest${input:testNum}-${input:feature}-rg.yaml`
 
 3. Create test instances in:
    - `argocd/local-kind/test/tests/` (if `usesAWS: no`)

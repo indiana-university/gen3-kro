@@ -8,23 +8,30 @@ This directory contains the declarative GitOps configuration for a multi-cluster
 
 ```
 argocd/
-├── bootstrap/                      # Entry-point ApplicationSets (Terraform-created bootstrap reads this)
-│   ├── csoc-addons.yaml            #   CSOC addon ApplicationSet (wave -20)
-│   ├── ack-multi-acct.yaml         #   ACK CARM multi-account ApplicationSet (wave 5)
-│   └── fleet-instances.yaml        #   KRO infrastructure + app + test instances (wave 30)
 ├── addons/                         # Addon value files (merged via multi-source Helm)
 │   └── addons.yaml                 #   Single file: EKS CSOC addons + Kind local addons
-├── charts/                         # Helm charts consumed by ApplicationSets
-│   ├── application-sets/           #   Meta-chart: generates per-addon ApplicationSets
-│   ├── multi-acct/                 #   ACK CARM multi-account Helm chart
-│   └── resource-groups/            #   KRO ResourceGraphDefinition manifests
-├── fleet/                          # EKS spoke KRO instance CRs (picked up by fleet-instances AppSet)
-│   └── spoke1/
-│       ├── infrastructure/         #   KRO instance definitions + infrastructure-values ConfigMap
-│       ├── cluster-level-resources/ #   AwsGen3ClusterResources2 instance + cluster-values.yaml
-│       └── <hostname>/             #   AwsGen3Helm1 instance + values.yaml
-└── local-kind/                     # Kind cluster instance definitions
-    └── test/                       #   Local: infrastructure/, cluster-resources/, applications/, tests/
+├── csoc-eks/                       # EKS CSOC cluster artifacts
+│   ├── bootstrap/                  #   Entry-point ApplicationSets (Terraform bootstrap reads this)
+│   │   ├── csoc-addons.yaml        #     CSOC addon ApplicationSet (wave -20)
+│   │   ├── ack-multi-acct.yaml     #     ACK CARM multi-account ApplicationSet (wave 5)
+│   │   └── fleet-instances.yaml    #     KRO instance Helm chart ApplicationSet (wave 30)
+│   └── charts/                     #   Helm charts consumed by ApplicationSets
+│       ├── addons/                 #     ACK multi-account Helm chart
+│       ├── agrocd-application-sets/ #    Meta-chart: generates per-addon ApplicationSets
+│       ├── aws-rgds-v1/            #     Chart A: KRO RGD delivery (plain YAML, no Helm directives)
+│       │   └── templates/          #       RGD YAML files (modular + capability tests)
+│   ├── aws-rgd-instances/      #     Chart B: per-spoke ConfigMap + KRO instance CRs
+│       │   └── templates/          #       _helpers.tpl, configmap.yaml, instances.yaml
+│       └── test-kro-graphs/        #     KRO capability test RGDs
+├── csoc-local-kind/                # Local Kind CSOC cluster artifacts
+│   ├── charts/                     #   Same chart structure as csoc-eks/charts/
+│   ├── fleet/                      #   Local Kind spoke values (mirrors spoke-fleet/)
+│   └── test/                       #   Local Kind test instances
+└── spokes/                     # Per-spoke Helm values files
+    └── spoke1/
+        ├── infrastucture-values.yaml   # Layer 1: ConfigMap data + instance toggles
+        ├── cluster-resources/          # Layer 2: cluster add-on values
+        └── <hostname>/                 # Layer 3: gen3-helm values
 ```
 
 ## Reconciliation Chain
@@ -34,18 +41,19 @@ ArgoCD reconciliation follows this chain, enforced by sync waves:
 ```
 Terraform creates:
   └── Bootstrap ApplicationSet (helm_release)
-        └── Reads argocd/bootstrap/ directory
+        └── Reads argocd/csoc-eks/bootstrap/ directory
               ├── csoc-addons.yaml → csoc-addons AppSet (wave -20)
               │                      └── KRO (wave -30)
               │                      └── ACK controllers (wave 1)
-              │                      └── KRO RGDs (wave 10)
+              │                      └── KRO RGDs via aws-rgds-v1 chart (wave 10)
               │                      └── External Secrets (wave 15)
               │
               ├── ack-multi-acct.yaml → ack-multi-acct AppSet (wave 5)
               │                         └── CARM namespaces + IAMRoleSelectors
               │
               └── fleet-instances.yaml → fleet-instances AppSet (wave 30)
-                                         └── KRO instances (infra + apps + tests)
+                                         └── gen3-kro-infrastrructure chart per spoke
+                                             (ConfigMap wave 14 + instances waves 15–30)
 ```
 
 ## Sync Wave Ordering
@@ -64,8 +72,9 @@ Terraform creates:
 
 ### Addon Values
 1. `charts/application-sets/` defaults (lowest)
-2. `addons/addons.yaml`
-3. `fleet/<cluster>/addons.yaml` **(highest — wins)**
+2. `csoc/controller-values/values.yaml`
+3. `csoc/controller-values/<cluster_type>-overrides/addons.yaml`
+4. `spokes/<cluster>/addons/<chart>/values.yaml` **(highest — wins)**
 
 The merge uses multi-source Helm with ref-based value files:
 ```yaml
@@ -74,12 +83,12 @@ sources:
     repoURL: '{{.metadata.annotations.addons_repo_url}}'
     targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
   - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-    path: '{{.metadata.annotations.addons_repo_basepath}}charts/{{.values.addonChart}}'
+    path: '{{.metadata.annotations.addons_repo_basepath}}csoc/helm/agrocd-application-sets'
     helm:
       ignoreMissingValueFiles: true
       valueFiles:
-        - $values/{{.metadata.annotations.addons_config_path}}
-        - $values/{{.metadata.annotations.addons_repo_basepath}}fleet/{{ .name }}/addons.yaml
+        - $values/{{.metadata.annotations.addons_repo_basepath}}csoc/controller-values/values.yaml
+        - $values/{{.metadata.annotations.addons_repo_basepath}}csoc/controller-values/{{index .metadata.labels "cluster_type" | default "eks"}}-overrides/addons.yaml
 ```
 
 ## Cluster Generator & Label/Annotation Contract
@@ -111,7 +120,21 @@ ApplicationSets use the **cluster generator** with label selectors. The ArgoCD c
 
 ## Chart Details
 
-### application-sets (Core Engine)
+### aws-rgds-v1 (Chart A — RGD delivery)
+
+Plain KRO `ResourceGraphDefinition` YAML files. Files follow naming: `<tier>-<provider><name>-rg.yaml`
+(e.g., `00-network1-rg.yaml`). Also contains KRO capability test RGDs (`krotest*-rg.yaml`).
+
+**No Helm directives inside RGD files.** The chart is a versioned packaging wrapper only.
+`values.yaml` is intentionally empty.
+
+### aws-rgd-instances (Chart B — instance delivery)
+
+Helm-templated chart that generates per-spoke KRO instance CRs and the `infrastructure-values`
+ConfigMap. Spoke-specific configuration comes from `spokes/<spoke>/infrastucture-values.yaml`
+via ArgoCD multi-source. The `gen3kro.instance` helper macro enforces consistent metadata.
+
+### agrocd-application-sets (Meta-chart)
 
 Generates one ApplicationSet per enabled addon key in values:
 
@@ -123,23 +146,17 @@ addon-name:
   chartName: "chart-name"          # Chart name
   chartVersion: "1.0.0"            # Pinned version
   namespace: "addon-ns"            # Target namespace
-  type: manifest                   # Optional — "manifest" for raw YAML dirs
-  repoPath: "charts/resource-groups"  # Required if type=manifest
+  type: manifest                   # Optional — "manifest" for plain YAML dirs
+  repoPath: "csoc/helm/aws-rgds-v1"  # Required if type=manifest
   selectors:                       # Optional — extra label matchers
     ack_management_mode: self_managed
 ```
 
-### resource-groups
+## CSOC Addons (`csoc/controller-values/`)
 
-Static KRO `ResourceGraphDefinition` YAML files. Files follow naming: `<tier>-<provider><name>-rg.yaml` (e.g., `00-awsgen3network1-rg.yaml`). Also contains KRO capability test RGDs (`krotest*-rg.yaml`).
-
-### multi-acct
-
-ACK CARM multi-account Helm chart. Creates per-spoke namespaces and IAMRoleSelectors for cross-account resource management.
-
-## CSOC Addons (`addons/addons.yaml`)
-
-The addons file contains both EKS CSOC and Kind local addons, distinguished by `cluster_type` selector (`eks` vs `kind`).
+The base file contains shared addon definitions, including chart repositories,
+versions, namespaces, and common selectors. EKS and Kind toggle enablement and
+isolate cluster-specific settings in their override folders.
 
 ### EKS CSOC Addons
 
@@ -147,28 +164,29 @@ The addons file contains both EKS CSOC and Kind local addons, distinguished by `
 |-------|------|------|---------|
 | `self-managed-kro` | -30 | Helm (OCI) | KRO controller — must be first |
 | `ack-*-controller` (18x) | 1 | Helm (OCI) | ACK: acm, cloudtrail, cloudwatchlogs, ec2, efs, eks, elasticache, iam, kms, lambda, opensearchservice, rds, route53, s3, secretsmanager, sns, sqs, wafv2 |
-| `kro-eks-rgs` | 10 | manifest | KRO ResourceGraphDefinitions |
+| `kro-csoc-rgs` | 10 | manifest | KRO ResourceGraphDefinitions |
 | `external-secrets` | 15 | Helm | External Secrets Operator |
 
 ### Kind Local Addons
 
 | Addon | Wave | Type | Purpose |
 |-------|------|------|---------|
-| `self-managed-kro-kind` | -30 | Helm | KRO controller |
-| `kro-csoc-rgs-kind` | 10 | manifest | KRO ResourceGraphDefinitions |
-| `ack-*-kind` (13x) | 1 | Helm (OCI) | ACK: acm, ec2, eks, elasticache, iam, kms, opensearchservice, rds, route53, s3, secretsmanager, sqs, wafv2 |
+| `self-managed-kro` | -30 | Helm | KRO controller |
+| `kro-csoc-rgs` | 10 | manifest | KRO ResourceGraphDefinitions |
+| `ack-*` (13x) | 1 | Helm (OCI) | ACK: acm, ec2, eks, elasticache, iam, kms, opensearchservice, rds, route53, s3, secretsmanager, sqs, wafv2 |
 
-## Fleet (`fleet/<spoke>/`)
+## Spoke Fleet (`spokes/<spoke>/`)
 
-Each subdirectory is a spoke cluster whose name matches a spoke alias in `spoke_account_ids` in `config/shared.auto.tfvars.json`. Picked up recursively by `fleet-instances` ApplicationSet.
+Each subdirectory is a spoke cluster identified by spoke alias. Used by the `fleet-instances`
+ApplicationSet as Helm values override for `aws-rgd-instances` Chart B.
 
 | Path | Purpose |
 |------|---------|
-| `infrastructure/` | KRO instance definitions + `infrastucture-values` ConfigMap (wave 14) |
-| `cluster-level-resources/` | AwsGen3ClusterResources2 instance + `cluster-values.yaml` |
-| `<hostname>/` | AwsGen3Helm1 instance + `values.yaml` (gen3-helm operator preferences) |
+| `infrastucture-values.yaml` | ConfigMap data + instance enabled/version/spec overrides (wave 14–30) |
+| `cluster-resources/` | Cluster add-on values (for gen3-build chart) |
+| `<hostname>/` | gen3-helm values (gen3-helm operator preferences) |
 
-The `local-kind/test/` directory mirrors this structure for Kind clusters, with additional `cluster-resources/`, `applications/`, and `tests/` subdirectories.
+The `csoc-local-kind/fleet/` directory mirrors this structure for local Kind clusters.
 
 ## Conventions
 
@@ -182,13 +200,15 @@ The `local-kind/test/` directory mirrors this structure for Kind clusters, with 
 ## Validation
 
 ```bash
-# Validate charts render correctly
-helm template argocd/charts/application-sets/
-helm template argocd/charts/resource-groups/
+# Validate Chart B renders correctly for a spoke
+helm template aws-rgd-instances argocd/csoc/helm/aws-rgd-instances \
+  -f argocd/spokes/spoke1/infrastucture-values.yaml \
+  | grep "^kind:"
 
-# Validate with values
-helm template argocd/charts/application-sets/ -f argocd/addons/addons.yaml
+# Lint Chart A
+helm lint argocd/csoc/helm/aws-rgds-v1/
 
-# Validate KRO instance YAML files directly
-kubectl apply --dry-run=client -f argocd/fleet/spoke1/infrastructure/
+# Lint Chart B
+helm lint argocd/csoc/helm/aws-rgd-instances/ \
+  -f argocd/spokes/spoke1/infrastucture-values.yaml
 ```

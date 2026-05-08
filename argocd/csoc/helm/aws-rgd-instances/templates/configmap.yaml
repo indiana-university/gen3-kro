@@ -1,0 +1,108 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: infrastructure-values
+  namespace: {{ .Values.global.namespace }}
+  labels:
+    app.kubernetes.io/managed-by: gen3-kro
+    gen3.io/tier: infrastructure
+    gen3.io/config-type: values
+  annotations:
+    argocd.argoproj.io/sync-wave: "14"
+data:
+  # Global
+  aws-region:      {{ .Values.data.global.aws.region | quote }}
+  # Domain Security (DNS / WAF)
+  dns-hostname:         {{ .Values.data.domainSecurity.hostname | quote }}
+  dns-hosted-zone-name: {{ .Values.data.domainSecurity.hostedZoneName | quote }}
+  dns-hosted-zone-id:   {{ .Values.data.domainSecurity.hostedZoneId | quote }}
+  domain-security-waf-enabled: {{ .Values.data.domainSecurity.wafEnabled | quote }}
+  domain-security-waf-scope:   {{ .Values.data.domainSecurity.wafScope | quote }}
+  # Messaging
+  messaging-sqs-message-retention:  {{ .Values.data.messaging.sqsMessageRetention | quote }}
+  messaging-sqs-visibility-timeout: {{ .Values.data.messaging.sqsVisibilityTimeout | quote }}
+  # Network
+  network-vpc-cidr:         {{ .Values.data.network.vpcCidr | quote }}
+  # Subnet lists by tier (name/cidr/az comma-joined, generated from network.subnets)
+  {{- $publicNames := list }}{{- $publicCidrs := list }}{{- $publicAzs := list }}
+  {{- $privateNames := list }}{{- $privateCidrs := list }}{{- $privateAzs := list }}
+  {{- $dbNames := list }}{{- $dbCidrs := list }}{{- $dbAzs := list }}
+  {{- range .Values.data.network.subnets }}
+  {{-   if eq .type "public" }}
+  {{-     $publicNames = append $publicNames .name }}
+  {{-     $publicCidrs = append $publicCidrs .cidr }}
+  {{-     $publicAzs = append $publicAzs .az }}
+  {{-   else if eq .type "private" }}
+  {{-     $privateNames = append $privateNames .name }}
+  {{-     $privateCidrs = append $privateCidrs .cidr }}
+  {{-     $privateAzs = append $privateAzs .az }}
+  {{-   else if eq .type "db" }}
+  {{-     $dbNames = append $dbNames .name }}
+  {{-     $dbCidrs = append $dbCidrs .cidr }}
+  {{-     $dbAzs = append $dbAzs .az }}
+  {{-   end }}
+  {{- end }}
+  network-subnet-public-names:   {{ join "," $publicNames | quote }}
+  network-subnet-public-cidrs:   {{ join "," $publicCidrs | quote }}
+  network-subnet-public-azs:     {{ join "," $publicAzs | quote }}
+  network-subnet-private-names:  {{ join "," $privateNames | quote }}
+  network-subnet-private-cidrs:  {{ join "," $privateCidrs | quote }}
+  network-subnet-private-azs:    {{ join "," $privateAzs | quote }}
+  network-subnet-db-names:       {{ join "," $dbNames | quote }}
+  network-subnet-db-cidrs:       {{ join "," $dbCidrs | quote }}
+  network-subnet-db-azs:         {{ join "," $dbAzs | quote }}
+  # Storage
+  storage-logging-bucket-name:   {{ .Values.data.storage.loggingBucketName | quote }}
+  storage-data-bucket-name:      {{ .Values.data.storage.dataBucketName | quote }}
+  storage-upload-bucket-name:    {{ .Values.data.storage.uploadBucketName | quote }}
+  storage-manifest-bucket-name:  {{ .Values.data.storage.manifestBucketName | quote }}
+  storage-dashboard-bucket-name: {{ .Values.data.storage.dashboardBucketName | quote }}
+  storage-usersync-bucket-name:  {{ .Values.data.storage.usersyncBucketName | quote }}
+  # Database
+  database-aurora-engine-version:          {{ .Values.data.database.auroraEngineVersion | quote }}
+  database-aurora-db-name:                 {{ .Values.data.database.auroraDbName | quote }}
+  database-aurora-master-username:         {{ .Values.data.database.auroraMasterUsername | quote }}
+  database-aurora-min-capacity:            {{ .Values.data.database.auroraMinCapacity | quote }}
+  database-aurora-max-capacity:            {{ .Values.data.database.auroraMaxCapacity | quote }}
+  database-aurora-master-password-sm-name: {{ .Values.data.database.auroraMasterPasswordSmName | quote }}
+  # Aurora DB instances (name/class/az/promotion tier comma-joined, generated from database.auroraInstances)
+  {{- $auroraInstanceNames := list }}{{- $auroraInstanceClasses := list }}{{- $auroraInstanceAzs := list }}{{- $auroraInstancePromotionTiers := list }}
+  {{- range .Values.data.database.auroraInstances }}
+  {{-   $auroraInstanceNames = append $auroraInstanceNames (toString .name) }}
+  {{-   $auroraInstanceClasses = append $auroraInstanceClasses (toString .instanceClass) }}
+  {{-   $auroraInstanceAzs = append $auroraInstanceAzs (toString .az) }}
+  {{-   $auroraInstancePromotionTiers = append $auroraInstancePromotionTiers (toString .promotionTier) }}
+  {{- end }}
+  database-aurora-instance-names:           {{ join "," $auroraInstanceNames | quote }}
+  database-aurora-instance-classes:         {{ join "," $auroraInstanceClasses | quote }}
+  database-aurora-instance-azs:             {{ join "," $auroraInstanceAzs | quote }}
+  database-aurora-instance-promotion-tiers: {{ join "," $auroraInstancePromotionTiers | quote }}
+  database-eso-use-irsa:                   {{ .Values.data.database.esoUseIrsa | quote }}
+  # Compute
+  compute-kubernetes-version:                       {{ .Values.data.compute.kubernetesVersion | quote }}
+  compute-auto-mode-enabled:                        {{ .Values.data.compute.autoModeEnabled | quote }}
+  compute-auto-mode-node-pools:                     {{ .Values.data.compute.autoModeNodePools | quote }}
+  compute-node-instance-types:                      {{ .Values.data.compute.nodeInstanceTypes | quote }}
+  compute-node-desired-size:                        {{ .Values.data.compute.nodeDesiredSize | quote }}
+  compute-node-min-size:                            {{ .Values.data.compute.nodeMinSize | quote }}
+  compute-node-max-size:                            {{ .Values.data.compute.nodeMaxSize | quote }}
+  compute-node-disk-size:                           {{ .Values.data.compute.nodeDiskSize | quote }}
+  compute-node-ami-type:                            {{ .Values.data.compute.nodeAmiType | quote }}
+  compute-opensearch-engine-version:                {{ .Values.data.compute.openSearchDomain.engineVersion | quote }}
+  compute-opensearch-instance-type:                 {{ .Values.data.compute.openSearchDomain.instanceType | quote }}
+  compute-opensearch-instance-count:                {{ .Values.data.compute.openSearchDomain.instanceCount | quote }}
+  compute-opensearch-volume-size:                   {{ .Values.data.compute.openSearchDomain.volumeSize | quote }}
+  compute-opensearch-ebs-enabled:                   {{ .Values.data.compute.openSearchDomain.ebsEnabled | quote }}
+  compute-opensearch-volume-type:                   {{ .Values.data.compute.openSearchDomain.volumeType | quote }}
+  compute-opensearch-dedicated-master-enabled:      {{ .Values.data.compute.openSearchDomain.dedicatedMasterEnabled | quote }}
+  # Platform Helm (spoke cluster add-on toggles) — consumed by platform-helm1-rg.yaml
+  platform-helm-management-topology:                  {{ .Values.data.platformHelm.managementTopology | quote }}
+  platform-helm-project:                              {{ .Values.data.platformHelm.project | quote }}
+  platform-helm-alb-scheme:                           {{ .Values.data.platformHelm.albScheme | quote }}
+  platform-helm-alb-controller-enabled:               {{ .Values.data.platformHelm.addons.albController | quote }}
+  platform-helm-external-secrets-enabled:             {{ .Values.data.platformHelm.addons.externalSecrets | quote }}
+  platform-helm-cert-manager-enabled:                 {{ .Values.data.platformHelm.addons.certManager | quote }}
+  platform-helm-s3-mountpoint-enabled:                {{ .Values.data.platformHelm.addons.s3Mountpoint | quote }}
+  platform-helm-calico-enabled:                       {{ .Values.data.platformHelm.addons.calico | quote }}
+  platform-helm-kube-state-metrics-enabled:           {{ .Values.data.platformHelm.addons.kubeStateMetrics | quote }}
+  platform-helm-external-dns-enabled:                 {{ .Values.data.platformHelm.addons.externalDns | quote }}

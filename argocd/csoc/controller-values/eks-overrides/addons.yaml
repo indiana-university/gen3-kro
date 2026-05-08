@@ -1,0 +1,149 @@
+# EKS cluster override. Applied on top of ../values.yaml when cluster_type=eks.
+# Base values define versions, chart repositories, selectors, namespaces, and
+# shared Helm values. This file only enables addons and adds EKS-specific IRSA.
+
+globalSelectors:
+  cluster_type: eks
+
+########################################
+# CSOC platform components
+########################################
+
+self-managed-kro:
+  enabled: true
+
+kro-csoc-rgs:
+  enabled: true
+
+external-secrets:
+  enabled: true
+
+########################################
+# ACK controllers
+########################################
+
+ack-cloudtrail:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-cloudwatchlogs:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-ec2:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-efs:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-eks:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-elasticache:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-iam:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-kms:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-lambda:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-opensearchservice:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-rds:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-route53:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-acm:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-s3:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-secretsmanager:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-sns:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-sqs:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
+ack-wafv2:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'

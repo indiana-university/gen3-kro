@@ -1,0 +1,462 @@
+# AwsGen3PlatformHelm1 — Tier 4.5: Spoke Cluster Registration + Platform Bootstrap
+# platform-helm-management-topology: csoc-managed-argocd (default) | spoke-managed-argocd
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3platformhelm1
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3PlatformHelm1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      argoCDNamespace: string | default="argocd"
+      argoCDProject: string | default="default"
+      argocdTargetClusterName: string | default="" # defaults to "${name}-spoke" if not set
+      helmChartRepoURL: string | default="https://github.com/jayadeyemi/Gen3-build.git"
+      helmChartPath: string | default="helm/cluster-level-resources"
+      helmChartTargetRevision: string | default="main"
+      valuesRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
+      valuesRevision: string | default="main"
+      valuesBasePath: string | default="" # defaults to "argocd/spokes/<namespace>" if not set
+      computeBridgeName: string | default="compute-bridge"
+      platformIamBridgeName: string | default="platform-iam-bridge"
+      spokeAccessBridgeName: string | default="spoke-access-bridge"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      platformHelmBridgeName: string | default="platform-helm-bridge"
+
+    status:
+      clusterRegistered: ${argoCDClusterSecret.metadata.?name.orValue("loading")}
+      argoCDClusterName: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
+      eksClusterEndpoint: ${computeBridge.data['eks-cluster-endpoint']}
+
+  resources:
+  # External refs
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: computeBridge
+      readyWhen:
+        - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: platformIamBridge
+      readyWhen:
+        - ${platformIamBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.platformIamBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: spokeAccessBridge
+      readyWhen:
+        - ${spokeAccessBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.spokeAccessBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+  # ArgoCD cluster Secret — registers spoke in CSOC ArgoCD (both topologies)
+    - id: argoCDClusterSecret
+      readyWhen:
+        - ${argoCDClusterSecret.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: Secret
+        metadata:
+          name: "${(schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke') + '-cluster'}"
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            argocd.argoproj.io/secret-type: cluster
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: platform-helm
+            gen3.io/spoke: ${schema.spec.name}
+            fleet_member: spoke
+            environment: ${schema.spec.namespace}
+        type: Opaque
+        stringData:
+          name: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
+          server: ${computeBridge.data['eks-cluster-endpoint']}
+          config: |
+            {
+              "awsAuthConfig": {
+                "clusterName": "${computeBridge.data['eks-cluster-name']}",
+                "roleARN": "${spokeAccessBridge.data['argocd-spoke-access-arn']}"
+              },
+              "tlsClientConfig": {
+                "caData": "${computeBridge.data['eks-cluster-ca']}"
+              }
+            }
+
+  # IAM roles for EKS Capability CRs — spoke-managed-argocd only
+    - id: argoCDCapabilityRole
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] == 'spoke-managed-argocd'}
+      readyWhen:
+        - ${argoCDCapabilityRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDCapabilityRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-argocd-capability-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-argocd-capability-role
+          description: "EKS ArgoCD Capability service role for ${schema.spec.name} spoke"
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Service": "eks.amazonaws.com"},
+                "Action": ["sts:AssumeRole", "sts:TagSession"]
+              }]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-argocd-capability-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: kroCapabilityRole
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] == 'spoke-managed-argocd'}
+      readyWhen:
+        - ${kroCapabilityRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${kroCapabilityRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-kro-capability-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-kro-capability-role
+          description: "EKS KRO Capability service role for ${schema.spec.name} spoke"
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [{
+                "Effect": "Allow",
+                "Principal": {"Service": "eks.amazonaws.com"},
+                "Action": ["sts:AssumeRole", "sts:TagSession"]
+              }]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-kro-capability-role
+            - key: ManagedBy
+              value: Kro
+
+  # EKS Capability CRs — spoke-managed-argocd only; roles created above
+    - id: eksArgoCDCapability
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] == 'spoke-managed-argocd'}
+      readyWhen:
+        - ${eksArgoCDCapability.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksArgoCDCapability.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Capability
+        metadata:
+          name: ${schema.spec.name}-argocd-capability
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          clusterName: ${computeBridge.data['eks-cluster-name']}
+          name: ${schema.spec.name}-argocd
+          type: ARGOCD
+          roleARN: ${argoCDCapabilityRole.status.?ackResourceMetadata.?arn.orValue('loading')}
+          tags:
+            Name: ${schema.spec.name}-argocd-capability
+            ManagedBy: Kro
+            gen3.io/spoke: ${schema.spec.name}
+
+    - id: eksKROCapability
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] == 'spoke-managed-argocd'}
+      readyWhen:
+        - ${eksKROCapability.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksKROCapability.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Capability
+        metadata:
+          name: ${schema.spec.name}-kro-capability
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          clusterName: ${computeBridge.data['eks-cluster-name']}
+          name: ${schema.spec.name}-kro
+          type: KRO
+          roleARN: ${kroCapabilityRole.status.?ackResourceMetadata.?arn.orValue('loading')}
+          tags:
+            Name: ${schema.spec.name}-kro-capability
+            ManagedBy: Kro
+            gen3.io/spoke: ${schema.spec.name}
+
+    - id: clusterResourcesAppOptionA # csoc-managed-argocd topology (both modes)
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] != 'spoke-managed-argocd'}
+      readyWhen:
+        - ${clusterResourcesAppOptionA.metadata.?name.orValue('null') != 'null'}
+        - ${clusterResourcesAppOptionA.status.?health.?status.orValue('Unknown') == 'Healthy'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-platform-helm
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: platform-helm
+            gen3.io/spoke: ${schema.spec.name}
+            gen3.io/topology: csoc-managed-argocd
+          annotations:
+            argocd.argoproj.io/cascade: "orphan"
+        spec:
+          project: ${schema.spec.argoCDProject}
+          sources:
+            - repoURL: ${schema.spec.helmChartRepoURL}
+              path: ${schema.spec.helmChartPath}
+              targetRevision: ${schema.spec.helmChartTargetRevision}
+              helm:
+                releaseName: cluster-level-resources
+                valueFiles:
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/cluster-resources/core-cluster-addons.yaml"
+                parameters:
+                  - name: cluster
+                    value: ${schema.spec.name}
+                  - name: project
+                    value: ${infrastructureConfig.data['platform-helm-project']}
+                  - name: eksClusterEndpoint
+                    value: ${computeBridge.data['eks-cluster-endpoint']}
+                  - name: destinationServer # routes child Apps from CSOC ArgoCD to spoke EKS endpoint
+                    value: ${computeBridge.data['eks-cluster-endpoint']}
+                  - name: eksClusterName
+                    value: ${computeBridge.data['eks-cluster-name']}
+                  - name: accountNumber
+                    value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                  - name: alb-controller.enabled
+                    value: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
+                  - name: alb-controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['alb-controller-role-arn']}
+                  - name: karpenter.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['karpenter-role-arn']}
+                  - name: external-secrets.enabled
+                    value: ${infrastructureConfig.data['platform-helm-external-secrets-enabled']}
+                  - name: cert-manager.enabled
+                    value: ${infrastructureConfig.data['platform-helm-cert-manager-enabled']}
+                  - name: aws-s3-mountpoint.enabled
+                    value: ${infrastructureConfig.data['platform-helm-s3-mountpoint-enabled']}
+                  - name: aws-s3-mountpoint.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['s3-csi-driver-role-arn']}
+                  - name: calico.enabled
+                    value: ${infrastructureConfig.data['platform-helm-calico-enabled']}
+                  - name: kube-state-metrics.enabled
+                    value: ${infrastructureConfig.data['platform-helm-kube-state-metrics-enabled']}
+                  - name: external-dns.enabled
+                    value: ${infrastructureConfig.data['platform-helm-external-dns-enabled']}
+                  - name: external-dns.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['external-dns-role-arn']}
+            - repoURL: ${schema.spec.valuesRepoURL}
+              targetRevision: ${schema.spec.valuesRevision}
+              ref: values
+          destination:
+            server: https://kubernetes.default.svc
+            namespace: ${schema.spec.argoCDNamespace}
+          syncPolicy:
+            automated:
+              selfHeal: true
+              allowEmpty: true
+              prune: false
+            retry:
+              limit: 5
+              backoff:
+                duration: "30s"
+                factor: 2
+                maxDuration: "5m"
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+              - SkipDryRunOnMissingResource=true
+
+    - id: clusterResourcesAppOptionB # spoke-managed-argocd topology (both modes)
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] == 'spoke-managed-argocd'}
+      readyWhen:
+        - ${clusterResourcesAppOptionB.metadata.?name.orValue('null') != 'null'}
+        - ${clusterResourcesAppOptionB.status.?health.?status.orValue('Unknown') == 'Healthy'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-platform-helm
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: platform-helm
+            gen3.io/spoke: ${schema.spec.name}
+            gen3.io/topology: spoke-managed-argocd
+          annotations:
+            argocd.argoproj.io/cascade: "orphan"
+        spec:
+          project: ${schema.spec.argoCDProject}
+          sources:
+            - repoURL: ${schema.spec.helmChartRepoURL}
+              path: ${schema.spec.helmChartPath}
+              targetRevision: ${schema.spec.helmChartTargetRevision}
+              helm:
+                releaseName: cluster-level-resources
+                valueFiles:
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/cluster-resources/core-cluster-addons.yaml"
+                parameters:
+                  - name: cluster
+                    value: ${schema.spec.name}
+                  - name: project
+                    value: ${infrastructureConfig.data['platform-helm-project']}
+                  - name: eksClusterEndpoint
+                    value: ${computeBridge.data['eks-cluster-endpoint']}
+                  - name: eksClusterName
+                    value: ${computeBridge.data['eks-cluster-name']}
+                  - name: accountNumber
+                    value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                  - name: alb-controller.enabled
+                    value: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
+                  - name: alb-controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['alb-controller-role-arn']}
+                  - name: karpenter.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['karpenter-role-arn']}
+                  - name: external-secrets.enabled
+                    value: ${infrastructureConfig.data['platform-helm-external-secrets-enabled']}
+                  - name: cert-manager.enabled
+                    value: ${infrastructureConfig.data['platform-helm-cert-manager-enabled']}
+                  - name: aws-s3-mountpoint.enabled
+                    value: ${infrastructureConfig.data['platform-helm-s3-mountpoint-enabled']}
+                  - name: aws-s3-mountpoint.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['s3-csi-driver-role-arn']}
+                  - name: calico.enabled
+                    value: ${infrastructureConfig.data['platform-helm-calico-enabled']}
+                  - name: kube-state-metrics.enabled
+                    value: ${infrastructureConfig.data['platform-helm-kube-state-metrics-enabled']}
+                  - name: external-dns.enabled
+                    value: ${infrastructureConfig.data['platform-helm-external-dns-enabled']}
+                  - name: external-dns.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${platformIamBridge.data['external-dns-role-arn']}
+            - repoURL: ${schema.spec.valuesRepoURL}
+              targetRevision: ${schema.spec.valuesRevision}
+              ref: values
+          destination:
+            name: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
+            namespace: ${schema.spec.argoCDNamespace}
+          syncPolicy:
+            automated:
+              selfHeal: true
+              allowEmpty: true
+              prune: false
+            retry:
+              limit: 5
+              backoff:
+                duration: "30s"
+                factor: 2
+                maxDuration: "5m"
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+              - SkipDryRunOnMissingResource=true
+
+    - id: platformHelmBridgeOptionA
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] != 'spoke-managed-argocd'}
+      readyWhen:
+        - ${platformHelmBridgeOptionA.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.platformHelmBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: platform-helm
+            gen3.io/bridge: "true"
+        data:
+          argocd-cluster-name: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
+          argocd-cluster-secret: "${(schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke') + '-cluster'}"
+          app-health-status: ${clusterResourcesAppOptionA.status.?health.?status.orValue('Unknown')}
+          app-sync-status: ${clusterResourcesAppOptionA.status.?sync.?status.orValue('Unknown')}
+          argocd-app-name: ${schema.spec.name}-platform-helm
+          eks-cluster-endpoint: ${computeBridge.data['eks-cluster-endpoint']}
+          topology: "csoc-managed-argocd"
+          platform-helm-alb-scheme: ${infrastructureConfig.data['platform-helm-alb-scheme']}
+
+    - id: platformHelmBridgeOptionB
+      includeWhen:
+        - ${infrastructureConfig.data['platform-helm-management-topology'] == 'spoke-managed-argocd'}
+      readyWhen:
+        - ${platformHelmBridgeOptionB.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.platformHelmBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: platform-helm
+            gen3.io/bridge: "true"
+        data:
+          argocd-cluster-name: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
+          argocd-cluster-secret: "${(schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke') + '-cluster'}"
+          app-health-status: ${clusterResourcesAppOptionB.status.?health.?status.orValue('Unknown')}
+          app-sync-status: ${clusterResourcesAppOptionB.status.?sync.?status.orValue('Unknown')}
+          argocd-app-name: ${schema.spec.name}-platform-helm
+          eks-cluster-endpoint: ${computeBridge.data['eks-cluster-endpoint']}
+          argocd-capability-arn: ${eksArgoCDCapability.status.?ackResourceMetadata.?arn.orValue('loading')}
+          kro-capability-arn: ${eksKROCapability.status.?ackResourceMetadata.?arn.orValue('loading')}
+          topology: "spoke-managed-argocd"
+          platform-helm-alb-scheme: ${infrastructureConfig.data['platform-helm-alb-scheme']}

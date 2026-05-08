@@ -1,0 +1,430 @@
+# AwsGen3Compute1 — Tier 1: EKS Cluster + OIDC + IAM Roles + OpenSearch (Modular RGD v1)
+#
+# Naming convention:
+#   EKS cluster:    ${name}-eks-automode   | ${name}-eks-self-managed
+#   OIDC provider:  ${name}-eks-oidc-automode | ${name}-eks-oidc-self-managed
+#   IAM roles:      ${name}-cluster-role | ${name}-node-role
+#   OpenSearch:     ${name}-opensearch
+#
+# Mode switching (Auto ↔ Self-managed) is a DESTRUCTIVE operation:
+#   AWS does not support toggling computeConfig.enabled on an existing cluster.
+#   Distinct resource names prevent KRO from attempting an in-place update.
+#
+# Bridge pattern: 2 variants (autoMode on/off) both write to computeBridgeName.
+#
+# Cross-account access (argoCDSpokeRole / argoCDAccessEntry) → AwsGen3SpokeAccess1
+# IRSA roles → AwsGen3PlatformIAM1 and AwsGen3AppIAM1
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3compute1
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Compute1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      networkSecurityBridgeName: string | default="network-security-bridge"
+      computeBridgeName: string | default="compute-bridge"
+
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+
+  resources:
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+    - id: networkSecurityBridge
+      readyWhen:
+        - ${networkSecurityBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.networkSecurityBridgeName}
+          namespace: ${schema.spec.namespace}
+
+  # ── ALWAYS-PRESENT: Compute IAM Roles (clusterRole, nodeRole) ───────────────
+
+    - id: clusterRole
+      readyWhen:
+        - ${clusterRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${clusterRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-cluster-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-cluster-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Service": "eks.amazonaws.com"},
+                  "Action": ["sts:AssumeRole", "sts:TagSession"]
+                }
+              ]
+            }
+          policies:
+            - arn:aws:iam::aws:policy/AmazonEKSClusterPolicy
+            - arn:aws:iam::aws:policy/AmazonEKSVPCResourceController
+            - arn:aws:iam::aws:policy/AmazonEKSComputePolicy
+            - arn:aws:iam::aws:policy/AmazonEKSBlockStoragePolicy
+            - arn:aws:iam::aws:policy/AmazonEKSLoadBalancingPolicy
+            - arn:aws:iam::aws:policy/AmazonEKSNetworkingPolicy
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-cluster-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: nodeRole
+      readyWhen:
+        - ${nodeRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${nodeRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-node-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-node-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Service": ["ec2.amazonaws.com", "eks.amazonaws.com"]},
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+          policies:
+            - arn:aws:iam::aws:policy/AmazonEKSWorkerNodePolicy
+            - arn:aws:iam::aws:policy/AmazonEKS_CNI_Policy
+            - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryReadOnly
+            - arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPullOnly
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-node-role
+            - key: ManagedBy
+              value: Kro
+
+  # ── Self-managed mode (compute-auto-mode-enabled != 'true') ─────────────────
+
+    - id: eksClusterStandard
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] != 'true'}
+      readyWhen:
+        - ${eksClusterStandard.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksClusterStandard.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksClusterStandard.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.spec.name}-eks-self-managed
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-eks-self-managed
+          roleARN: ${clusterRole.status.?ackResourceMetadata.?arn}
+          version: ${infrastructureConfig.data['compute-kubernetes-version']}
+          resourcesVPCConfig:
+            subnetIDs: ${networkSecurityBridge.data['public-subnet-ids'].split(',') + networkSecurityBridge.data['private-subnet-ids'].split(',')}
+            securityGroupIDs:
+              - ${networkSecurityBridge.data['eks-security-group-id']}
+            endpointPrivateAccess: true
+            endpointPublicAccess: true
+          encryptionConfig:
+            - provider:
+                keyARN: ${networkSecurityBridge.data['platform-key-arn']}
+              resources:
+                - secrets
+          accessConfig:
+            authenticationMode: "API"
+            bootstrapClusterCreatorAdminPermissions: true
+          tags:
+            Name: ${schema.spec.name}-eks-self-managed
+            ManagedBy: Kro
+
+    - id: eksNodeGroup
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] != 'true'}
+      readyWhen:
+        - ${eksNodeGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksNodeGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksNodeGroup.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Nodegroup
+        metadata:
+          name: ${schema.spec.name}-nodegroup-self-managed
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-nodegroup-self-managed
+          clusterName: ${eksClusterStandard.spec.name}
+          nodeRole: ${nodeRole.status.?ackResourceMetadata.?arn}
+          subnets: ${networkSecurityBridge.data['private-subnet-ids'].split(',')}
+          scalingConfig:
+            desiredSize: ${int(infrastructureConfig.data['compute-node-desired-size'])}
+            minSize: ${int(infrastructureConfig.data['compute-node-min-size'])}
+            maxSize: ${int(infrastructureConfig.data['compute-node-max-size'])}
+          instanceTypes: ${infrastructureConfig.data['compute-node-instance-types'].split(',')}
+          amiType: ${infrastructureConfig.data['compute-node-ami-type']}
+          diskSize: ${int(infrastructureConfig.data['compute-node-disk-size'])}
+          tags:
+            Name: ${schema.spec.name}-nodegroup-self-managed
+            ManagedBy: Kro
+
+    - id: oidcProviderStandard
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] != 'true'}
+      readyWhen:
+        - ${oidcProviderStandard.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${oidcProviderStandard.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: OpenIDConnectProvider
+        metadata:
+          name: ${schema.spec.name}-eks-oidc-self-managed
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          url: ${eksClusterStandard.status.?identity.?oidc.?issuer.orValue("loading")}
+          clientIDs:
+            - sts.amazonaws.com
+          thumbprints:
+            - "9e99a48a9960b14926bb7f3b02e22da2b0ab7280"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-eks-oidc-self-managed
+            - key: ManagedBy
+              value: Kro
+
+  # ── Auto Mode (compute-auto-mode-enabled == 'true') ──────────────────────────
+
+    - id: eksClusterAutoMode
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] == 'true'}
+      readyWhen:
+        - ${eksClusterAutoMode.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${eksClusterAutoMode.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${eksClusterAutoMode.status.?status.orValue('null') == 'ACTIVE'}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: Cluster
+        metadata:
+          name: ${schema.spec.name}-eks-automode
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-eks-automode
+          roleARN: ${clusterRole.status.?ackResourceMetadata.?arn}
+          version: ${infrastructureConfig.data['compute-kubernetes-version']}
+          bootstrapSelfManagedAddons: false
+          resourcesVPCConfig:
+            subnetIDs: ${networkSecurityBridge.data['public-subnet-ids'].split(',') + networkSecurityBridge.data['private-subnet-ids'].split(',')}
+            securityGroupIDs:
+              - ${networkSecurityBridge.data['eks-security-group-id']}
+            endpointPrivateAccess: true
+            endpointPublicAccess: true
+          encryptionConfig:
+            - provider:
+                keyARN: ${networkSecurityBridge.data['platform-key-arn']}
+              resources:
+                - secrets
+          computeConfig:
+            enabled: true
+            nodePools: ${infrastructureConfig.data['compute-auto-mode-node-pools'].split(',')}
+            nodeRoleARN: ${nodeRole.status.?ackResourceMetadata.?arn}
+          storageConfig:
+            blockStorage:
+              enabled: true
+          accessConfig:
+            authenticationMode: "API"
+            bootstrapClusterCreatorAdminPermissions: true
+          tags:
+            Name: ${schema.spec.name}-eks-automode
+            ManagedBy: Kro
+
+    - id: oidcProviderAutoMode
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] == 'true'}
+      readyWhen:
+        - ${oidcProviderAutoMode.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${oidcProviderAutoMode.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: OpenIDConnectProvider
+        metadata:
+          name: ${schema.spec.name}-eks-oidc-automode
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          url: ${eksClusterAutoMode.status.?identity.?oidc.?issuer.orValue("loading")}
+          clientIDs:
+            - sts.amazonaws.com
+          thumbprints:
+            - "9e99a48a9960b14926bb7f3b02e22da2b0ab7280"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-eks-oidc-automode
+            - key: ManagedBy
+              value: Kro
+
+  # ── ALWAYS-PRESENT: OpenSearch Domain ───────────────────────────────────────
+
+    - id: openSearchDomain
+      readyWhen:
+        - ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${openSearchDomain.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: opensearchservice.services.k8s.aws/v1alpha1
+        kind: Domain
+        metadata:
+          name: ${schema.spec.name}-opensearch
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-opensearch
+          engineVersion: ${infrastructureConfig.data['compute-opensearch-engine-version']}
+          clusterConfig:
+            instanceType: ${infrastructureConfig.data['compute-opensearch-instance-type']}
+            instanceCount: ${int(infrastructureConfig.data['compute-opensearch-instance-count'])}
+            dedicatedMasterEnabled: ${infrastructureConfig.data['compute-opensearch-dedicated-master-enabled'] == 'true'}
+            zoneAwarenessEnabled: false
+          ebsOptions:
+            ebsEnabled: ${infrastructureConfig.data['compute-opensearch-ebs-enabled'] == 'true'}
+            volumeType: ${infrastructureConfig.data['compute-opensearch-volume-type']}
+            volumeSize: ${int(infrastructureConfig.data['compute-opensearch-volume-size'])}
+          encryptionAtRestOptions:
+            enabled: true
+            kmsKeyID: ${networkSecurityBridge.data['opensearch-kms-key-arn']}
+          nodeToNodeEncryptionOptions:
+            enabled: true
+          domainEndpointOptions:
+            enforceHTTPS: true
+            tlsSecurityPolicy: Policy-Min-TLS-1-2-2019-07
+          vpcOptions:
+            subnetIDs: ${networkSecurityBridge.data['private-subnet-ids'].split(',')}
+            securityGroupIDs:
+              - ${networkSecurityBridge.data['opensearch-sg-id']}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-opensearch
+            - key: ManagedBy
+              value: Kro
+
+   # ── Compute bridge — 2 variants (Auto Mode on/off) ─────────────────────────
+  # Both write to the same ConfigMap name (schema.spec.computeBridgeName).
+  # KRO includeWhen ensures only one is ever active at a time.
+
+    - id: computeBridgeStandard
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] != 'true'}
+      readyWhen:
+        - ${computeBridgeStandard.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: compute
+            gen3.io/bridge: "true"
+        data:
+          eks-cluster-arn: ${eksClusterStandard.status.?ackResourceMetadata.?arn.orValue("loading")}
+          eks-cluster-endpoint: ${eksClusterStandard.status.?endpoint.orValue("loading")}
+          eks-cluster-name: ${schema.spec.name}-eks-self-managed
+          eks-cluster-ca: ${eksClusterStandard.status.?certificateAuthority.?data.orValue("loading")}
+          eks-oidc-issuer: ${eksClusterStandard.status.?identity.?oidc.?issuer.orValue("loading")}
+          eks-auto-mode: "false"
+          oidc-provider-arn: ${oidcProviderStandard.status.?ackResourceMetadata.?arn.orValue("loading")}
+          oidc-provider-name: ${schema.spec.name}-eks-oidc-self-managed
+          opensearch-endpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
+          opensearch-domain-arn: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+    - id: computeBridgeAutoMode
+      includeWhen:
+        - ${infrastructureConfig.data['compute-auto-mode-enabled'] == 'true'}
+      readyWhen:
+        - ${computeBridgeAutoMode.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: compute
+            gen3.io/bridge: "true"
+        data:
+          eks-cluster-arn: ${eksClusterAutoMode.status.?ackResourceMetadata.?arn.orValue("loading")}
+          eks-cluster-endpoint: ${eksClusterAutoMode.status.?endpoint.orValue("loading")}
+          eks-cluster-name: ${schema.spec.name}-eks-automode
+          eks-cluster-ca: ${eksClusterAutoMode.status.?certificateAuthority.?data.orValue("loading")}
+          eks-oidc-issuer: ${eksClusterAutoMode.status.?identity.?oidc.?issuer.orValue("loading")}
+          eks-auto-mode: "true"
+          oidc-provider-arn: ${oidcProviderAutoMode.status.?ackResourceMetadata.?arn.orValue("loading")}
+          oidc-provider-name: ${schema.spec.name}-eks-oidc-automode
+          opensearch-endpoint: ${openSearchDomain.status.?endpoints.?vpc.orValue("loading")}
+          opensearch-domain-arn: ${openSearchDomain.status.?ackResourceMetadata.?arn.orValue("loading")}

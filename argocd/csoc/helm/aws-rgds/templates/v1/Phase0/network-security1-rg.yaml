@@ -1,0 +1,693 @@
+# AwsGen3NetworkSecurity1 — Tier 0: VPC Network + Platform Security (Modular RGD v1)
+#
+# Merged RGD: networking (VPC, subnets, route tables, NAT GW, IGW, EIP)
+# plus security resources (KMS keys, security groups).
+# IAM roles → AwsGen3Compute1
+#
+# Bridge output (network-security-bridge):
+#   Network:   vpc-id, vpc-cidr, igw-id, eip-allocation-id, nat-gateway-id
+#              public-subnet-ids (comma-joined), private-subnet-ids (comma-joined)
+#              public-route-table-id, private-route-table-id
+#   Database:  db-subnet-ids (comma-joined), db-subnet-group-name, aurora-sg-id
+#              database-key-arn
+#   Compute:   eks-security-group-id
+#   OpenSearch: opensearch-kms-key-arn, opensearch-sg-id
+#   KMS:       logging-key-arn, platform-key-arn
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3networksecurity1
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3NetworkSecurity1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      networkSecurityBridgeName: string | default="network-security-bridge"
+
+    status:
+      vpcID: ${vpc.status.?vpcID.orValue("loading")}
+      natGatewayID: ${natGateway1.status.?natGatewayID.orValue("loading")}
+      publicSubnetIDs: ${publicSubnet.map(s, s.status.?subnetID.orValue("loading"))}
+      privateSubnetIDs: ${privateSubnet.map(s, s.status.?subnetID.orValue("loading"))}
+      loggingKeyARN: ${loggingKey.status.?ackResourceMetadata.?arn.orValue("loading")}
+      platformKeyARN: ${platformKey.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+  resources:
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+  # ── ALWAYS-PRESENT: VPC Networking ──────────────────────────────────────────
+
+    - id: vpc
+      readyWhen:
+        - ${vpc.status.?vpcID.orValue('null') != 'null'}
+        - ${vpc.status.?state.orValue('null') == 'available'}
+        - ${vpc.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: VPC
+        metadata:
+          name: ${schema.spec.name}-vpc
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          cidrBlocks:
+            - ${infrastructureConfig.data['network-vpc-cidr']}
+          enableDNSHostnames: true
+          enableDNSSupport: true
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-vpc
+            - key: ManagedBy
+              value: Kro
+
+    - id: eip1
+      readyWhen:
+        - ${eip1.status.?allocationID.orValue('null') != 'null'}
+        - ${eip1.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: ElasticIPAddress
+        metadata:
+          name: ${schema.spec.name}-eip-1
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-eip-1
+            - key: ManagedBy
+              value: Kro
+
+    - id: igw
+      readyWhen:
+        - ${igw.status.?internetGatewayID.orValue('null') != 'null'}
+        - ${igw.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${igw.status.?attachments.orValue([]).exists(a, a.state == "available")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: InternetGateway
+        metadata:
+          name: ${schema.spec.name}-igw
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcRef:
+            from:
+              name: ${vpc.metadata.name}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-igw
+            - key: ManagedBy
+              value: Kro
+
+    - id: publicRouteTable
+      readyWhen:
+        - ${publicRouteTable.status.?routeTableID.orValue('null') != 'null'}
+        - ${publicRouteTable.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: RouteTable
+        metadata:
+          name: ${schema.spec.name}-public-rt
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcID: ${vpc.status.?vpcID}
+          routes:
+            - destinationCIDRBlock: "0.0.0.0/0"
+              gatewayID: ${igw.status.?internetGatewayID}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-public-rt
+            - key: ManagedBy
+              value: Kro
+
+    - id: publicSubnet
+      forEach:
+        - idx: ${lists.range(size(infrastructureConfig.data['network-subnet-public-names'].split(',')))}
+      readyWhen:
+        - ${publicSubnet.status.?subnetID.orValue('null') != 'null'}
+        - ${publicSubnet.status.?state.orValue('null') == 'available'}
+        - ${publicSubnet.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: Subnet
+        metadata:
+          name: ${schema.spec.name + '-' + infrastructureConfig.data['network-subnet-public-names'].split(',')[idx]}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcID: ${vpc.status.?vpcID}
+          cidrBlock: ${infrastructureConfig.data['network-subnet-public-cidrs'].split(',')[idx]}
+          availabilityZone: ${infrastructureConfig.data['network-subnet-public-azs'].split(',')[idx]}
+          mapPublicIPOnLaunch: true
+          routeTableRefs:
+            - from:
+                name: ${publicRouteTable.metadata.name}
+          tags:
+            - key: Name
+              value: ${schema.spec.name + '-' + infrastructureConfig.data['network-subnet-public-names'].split(',')[idx]}
+            - key: ManagedBy
+              value: Kro
+            - key: kubernetes.io/role/elb
+              value: "1"
+
+    - id: natGateway1
+      readyWhen:
+        - ${natGateway1.status.?natGatewayID.orValue('null') != 'null'}
+        - ${natGateway1.status.?state.orValue('null') == 'available'}
+        - ${natGateway1.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: NATGateway
+        metadata:
+          name: ${schema.spec.name}-nat-gw-1
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          allocationID: ${eip1.status.?allocationID}
+          subnetID: ${publicSubnet[0].status.?subnetID}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-nat-gw-1
+            - key: ManagedBy
+              value: Kro
+
+    - id: privateRouteTable
+      readyWhen:
+        - ${privateRouteTable.status.?routeTableID.orValue('null') != 'null'}
+        - ${privateRouteTable.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: RouteTable
+        metadata:
+          name: ${schema.spec.name}-private-rt
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcID: ${vpc.status.?vpcID}
+          routes:
+            - destinationCIDRBlock: "0.0.0.0/0"
+              natGatewayID: ${natGateway1.status.?natGatewayID}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-private-rt
+            - key: ManagedBy
+              value: Kro
+
+    - id: privateSubnet
+      forEach:
+        - idx: ${lists.range(size(infrastructureConfig.data['network-subnet-private-names'].split(',')))}
+      readyWhen:
+        - ${privateSubnet.status.?subnetID.orValue('null') != 'null'}
+        - ${privateSubnet.status.?state.orValue('null') == 'available'}
+        - ${privateSubnet.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: Subnet
+        metadata:
+          name: ${schema.spec.name + '-' + infrastructureConfig.data['network-subnet-private-names'].split(',')[idx]}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcID: ${vpc.status.?vpcID}
+          cidrBlock: ${infrastructureConfig.data['network-subnet-private-cidrs'].split(',')[idx]}
+          availabilityZone: ${infrastructureConfig.data['network-subnet-private-azs'].split(',')[idx]}
+          mapPublicIPOnLaunch: false
+          routeTableRefs:
+            - from:
+                name: ${privateRouteTable.metadata.name}
+          tags:
+            - key: Name
+              value: ${schema.spec.name + '-' + infrastructureConfig.data['network-subnet-private-names'].split(',')[idx]}
+            - key: ManagedBy
+              value: Kro
+            - key: kubernetes.io/role/internal-elb
+              value: "1"
+            - key: kubernetes.io/cluster/${schema.spec.name}
+              value: owned
+
+  # ── ALWAYS-PRESENT: KMS Keys ─────────────────────────────────────────────────
+
+    - id: loggingKey
+      readyWhen:
+        - ${loggingKey.status.?keyID.orValue('null') != 'null'}
+        - ${loggingKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${loggingKey.status.?enabled.orValue(false) == true}
+      template:
+        apiVersion: kms.services.k8s.aws/v1alpha1
+        kind: Key
+        metadata:
+          name: ${schema.spec.name}-logging-key
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          description: "KMS key for logging and audit data (CloudTrail, VPC Flow Logs, security logs)"
+          keyUsage: "ENCRYPT_DECRYPT"
+          enableKeyRotation: true
+          tags:
+            - tagKey: Name
+              tagValue: ${schema.spec.name}-logging-key
+            - tagKey: ManagedBy
+              tagValue: Kro
+            - tagKey: KeyPurpose
+              tagValue: logging-audit
+
+    - id: platformKey
+      readyWhen:
+        - ${platformKey.status.?keyID.orValue('null') != 'null'}
+        - ${platformKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${platformKey.status.?enabled.orValue(false) == true}
+      template:
+        apiVersion: kms.services.k8s.aws/v1alpha1
+        kind: Key
+        metadata:
+          name: ${schema.spec.name}-platform-key
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          description: "KMS key for platform services (EKS secrets, S3 app buckets, EFS)"
+          keyUsage: "ENCRYPT_DECRYPT"
+          enableKeyRotation: true
+          policy: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "Enable IAM User Permissions",
+                  "Effect": "Allow",
+                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
+                  "Action": "kms:*",
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "Allow EKS to use the key",
+                  "Effect": "Allow",
+                  "Principal": {"Service": "eks.amazonaws.com"},
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey",
+                    "kms:CreateGrant",
+                    "kms:DescribeKey"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          tags:
+            - tagKey: Name
+              tagValue: ${schema.spec.name}-platform-key
+            - tagKey: ManagedBy
+              tagValue: Kro
+            - tagKey: KeyPurpose
+              tagValue: platform
+
+  # ── ALWAYS-PRESENT: Database network support ────────────────────────────────
+
+    - id: dbRouteTable
+      readyWhen:
+        - ${dbRouteTable.status.?routeTableID.orValue('null') != 'null'}
+        - ${dbRouteTable.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: RouteTable
+        metadata:
+          name: ${schema.spec.name}-db-rt
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcID: ${vpc.status.?vpcID}
+          routes:
+            - destinationCIDRBlock: "0.0.0.0/0"
+              natGatewayID: ${natGateway1.status.?natGatewayID}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-db-rt
+            - key: ManagedBy
+              value: Kro
+
+    - id: dbSubnet
+      forEach:
+        - idx: ${lists.range(size(infrastructureConfig.data['network-subnet-db-names'].split(',')))}
+      readyWhen:
+        - ${dbSubnet.status.?subnetID.orValue('null') != 'null'}
+        - ${dbSubnet.status.?state.orValue('null') == 'available'}
+        - ${dbSubnet.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: Subnet
+        metadata:
+          name: ${schema.spec.name + '-' + infrastructureConfig.data['network-subnet-db-names'].split(',')[idx]}
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          vpcID: ${vpc.status.?vpcID}
+          cidrBlock: ${infrastructureConfig.data['network-subnet-db-cidrs'].split(',')[idx]}
+          availabilityZone: ${infrastructureConfig.data['network-subnet-db-azs'].split(',')[idx]}
+          mapPublicIPOnLaunch: false
+          routeTableRefs:
+            - from:
+                name: ${dbRouteTable.metadata.name}
+          tags:
+            - key: Name
+              value: ${schema.spec.name + '-' + infrastructureConfig.data['network-subnet-db-names'].split(',')[idx]}
+            - key: ManagedBy
+              value: Kro
+            - key: Tier
+              value: database
+
+    - id: dbSubnetGroup
+      readyWhen:
+        - ${dbSubnetGroup.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${dbSubnetGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: rds.services.k8s.aws/v1alpha1
+        kind: DBSubnetGroup
+        metadata:
+          name: ${schema.spec.name}-db-subnet-group
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-db-subnet-group
+          description: "DB subnet group for ${schema.spec.name}"
+          subnetIDs: ${dbSubnet.map(s, s.status.?subnetID.orValue(""))}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-db-subnet-group
+            - key: ManagedBy
+              value: Kro
+
+    - id: auroraSg
+      readyWhen:
+        - ${auroraSg.status.?id.orValue('null') != 'null'}
+        - ${auroraSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-aurora-sg
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-aurora-sg
+          description: "PostgreSQL access for ${schema.spec.name}"
+          vpcID: ${vpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 5432
+              toPort: 5432
+              ipRanges:
+                - cidrIP: ${infrastructureConfig.data['network-vpc-cidr']}
+                  description: "PostgreSQL from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-aurora-sg
+            - key: ManagedBy
+              value: Kro
+
+    - id: databaseKey
+      readyWhen:
+        - ${databaseKey.status.?keyID.orValue('null') != 'null'}
+        - ${databaseKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${databaseKey.status.?enabled.orValue(false) == true}
+      template:
+        apiVersion: kms.services.k8s.aws/v1alpha1
+        kind: Key
+        metadata:
+          name: ${schema.spec.name}-database-key
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          description: "KMS key for Aurora PostgreSQL encryption (${schema.spec.name})"
+          keyUsage: "ENCRYPT_DECRYPT"
+          enableKeyRotation: true
+          policy: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "Enable IAM User Permissions",
+                  "Effect": "Allow",
+                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
+                  "Action": "kms:*",
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "Allow RDS to use the key",
+                  "Effect": "Allow",
+                  "Principal": {"Service": "rds.amazonaws.com"},
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey",
+                    "kms:CreateGrant",
+                    "kms:DescribeKey",
+                    "kms:ReEncryptFrom",
+                    "kms:ReEncryptTo"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          tags:
+            - tagKey: Name
+              tagValue: ${schema.spec.name}-database-key
+            - tagKey: ManagedBy
+              tagValue: Kro
+            - tagKey: KeyPurpose
+              tagValue: database
+
+  # ── ALWAYS-PRESENT: Compute network support ─────────────────────────────────
+
+    - id: eksSecurityGroup
+      readyWhen:
+        - ${eksSecurityGroup.status.?id.orValue('null') != 'null'}
+        - ${eksSecurityGroup.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-eks-sg
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-eks-sg
+          description: "EKS additional security group for ${schema.spec.name}"
+          vpcID: ${vpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 443
+              toPort: 443
+              ipRanges:
+                - cidrIP: ${infrastructureConfig.data['network-vpc-cidr']}
+                  description: "HTTPS API server access from VPC"
+            - ipProtocol: tcp
+              fromPort: 10250
+              toPort: 10250
+              ipRanges:
+                - cidrIP: ${infrastructureConfig.data['network-vpc-cidr']}
+                  description: "Kubelet API from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-eks-sg
+            - key: ManagedBy
+              value: Kro
+
+  # ── ALWAYS-PRESENT: OpenSearch network support ──────────────────────────────
+
+    - id: searchKey
+      readyWhen:
+        - ${searchKey.status.?keyID.orValue('null') != 'null'}
+        - ${searchKey.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${searchKey.status.?enabled.orValue(false) == true}
+      template:
+        apiVersion: kms.services.k8s.aws/v1alpha1
+        kind: Key
+        metadata:
+          name: ${schema.spec.name}-search-key
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          description: "KMS key for OpenSearch encryption (${schema.spec.name})"
+          keyUsage: "ENCRYPT_DECRYPT"
+          enableKeyRotation: true
+          policy: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Sid": "Enable IAM User Permissions",
+                  "Effect": "Allow",
+                  "Principal": {"AWS": "arn:aws:iam::${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}:root"},
+                  "Action": "kms:*",
+                  "Resource": "*"
+                },
+                {
+                  "Sid": "Allow OpenSearch to use the key",
+                  "Effect": "Allow",
+                  "Principal": {"Service": "es.amazonaws.com"},
+                  "Action": [
+                    "kms:Decrypt",
+                    "kms:GenerateDataKey",
+                    "kms:CreateGrant",
+                    "kms:DescribeKey"
+                  ],
+                  "Resource": "*"
+                }
+              ]
+            }
+          tags:
+            - tagKey: Name
+              tagValue: ${schema.spec.name}-search-key
+            - tagKey: ManagedBy
+              tagValue: Kro
+            - tagKey: KeyPurpose
+              tagValue: search
+
+    - id: openSearchSg
+      readyWhen:
+        - ${openSearchSg.status.?id.orValue('null') != 'null'}
+        - ${openSearchSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-opensearch-sg
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-opensearch-sg
+          description: "OpenSearch access for ${schema.spec.name}"
+          vpcID: ${vpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 443
+              toPort: 443
+              ipRanges:
+                - cidrIP: ${infrastructureConfig.data['network-vpc-cidr']}
+                  description: "HTTPS to OpenSearch from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-opensearch-sg
+            - key: ManagedBy
+              value: Kro
+
+  # ── Bridge ConfigMap ──────────────────────────────────────────────────────────
+  # Subnet IDs are output as comma-joined lists so downstream graphs can use
+  # .split(',') to iterate over them (e.g. for EKS subnetIDs, OpenSearch vpcOptions).
+
+    - id: networkSecurityBridge
+      readyWhen:
+        - ${networkSecurityBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.networkSecurityBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: network-security
+            gen3.io/bridge: "true"
+        data:
+          # VPC
+          vpc-id: ${vpc.status.?vpcID}
+          vpc-cidr: ${infrastructureConfig.data['network-vpc-cidr']}
+          igw-id: ${igw.status.?internetGatewayID}
+          eip-allocation-id: ${eip1.status.?allocationID}
+          nat-gateway-id: ${natGateway1.status.?natGatewayID}
+          # Subnet ID lists (comma-joined) — use .split(',') in downstream RGDs
+          public-subnet-ids: "${publicSubnet.map(s, s.status.?subnetID.orValue('')).join(',')}"
+          private-subnet-ids: "${privateSubnet.map(s, s.status.?subnetID.orValue('')).join(',')}"
+          # Route tables
+          public-route-table-id: ${publicRouteTable.status.?routeTableID}
+          private-route-table-id: ${privateRouteTable.status.?routeTableID}
+          # Database subnet IDs and subnet group
+          db-subnet-ids: "${dbSubnet.map(s, s.status.?subnetID.orValue('')).join(',')}"
+          db-subnet-group-name: ${dbSubnetGroup.spec.name}
+          # KMS keys (always present)
+          logging-key-arn: ${loggingKey.status.?ackResourceMetadata.?arn.orValue("loading")}
+          platform-key-arn: ${platformKey.status.?ackResourceMetadata.?arn.orValue("loading")}
+          # Database security + KMS
+          aurora-sg-id: ${auroraSg.status.?id.orValue("loading")}
+          database-key-arn: ${databaseKey.status.?ackResourceMetadata.?arn.orValue("loading")}
+          # Compute security
+          eks-security-group-id: ${eksSecurityGroup.status.?id.orValue("loading")}
+          # OpenSearch security + KMS
+          opensearch-kms-key-arn: ${searchKey.status.?ackResourceMetadata.?arn.orValue("loading")}
+          opensearch-sg-id: ${openSearchSg.status.?id.orValue("loading")}

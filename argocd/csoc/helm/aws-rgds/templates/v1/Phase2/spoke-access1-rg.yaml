@@ -1,0 +1,146 @@
+# AwsGen3SpokeAccess1 — Tier 3a: Cross-account ArgoCD cluster access
+#
+# Extracts the two always-on cluster access resources from Compute1:
+#   - argoCDSpokeRole: IAM role allowing CSOC ArgoCD to assume-role into the spoke cluster
+#   - argoCDAccessEntry: EKS access entry granting that role AmazonEKSClusterAdminPolicy
+#
+# Reads eks-cluster-name from compute-bridge so it works with both EKS modes
+# (${name}-eks-automode or ${name}-eks-self-managed) without conditional logic.
+#
+# Outputs spoke-access-bridge with argocd-spoke-access-arn for PlatformHelm1.
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3spokeaccess1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3SpokeAccess1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      computeBridgeName: string | default="compute-bridge"
+      spokeAccessBridgeName: string | default="spoke-access-bridge"
+
+    status:
+      ready: ${spokeAccessBridge.metadata.?name.orValue("loading")}
+      argoCDSpokeRoleARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+  resources:
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+    - id: argocdNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: argocd
+
+    - id: computeBridge
+      readyWhen:
+        - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: argoCDSpokeRole
+      readyWhen:
+        - ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDSpokeRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-argocd-spoke-access
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-argocd-spoke-access
+          description: "Allows CSOC ArgoCD to authenticate to ${schema.spec.name} spoke EKS cluster"
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"AWS": "arn:aws:iam::${argocdNamespace.metadata.annotations['csoc-account-id']}:root"},
+                  "Action": "sts:AssumeRole"
+                }
+              ]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-argocd-spoke-access
+            - key: ManagedBy
+              value: Kro
+
+    - id: argoCDAccessEntry
+      readyWhen:
+        - ${argoCDAccessEntry.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${argoCDAccessEntry.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: eks.services.k8s.aws/v1alpha1
+        kind: AccessEntry
+        metadata:
+          name: ${schema.spec.name}-argocd-access
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          clusterName: ${computeBridge.data['eks-cluster-name']}
+          principalARN: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue('loading')}
+          type: STANDARD
+          accessPolicies:
+            - policyARN: arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy
+              accessScope:
+                type: cluster
+          tags:
+            Name: ${schema.spec.name}-argocd-access
+            ManagedBy: Kro
+
+    - id: spokeAccessBridge
+      readyWhen:
+        - ${spokeAccessBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.spokeAccessBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: spoke-access
+            gen3.io/bridge: "true"
+        data:
+          argocd-spoke-access-arn: ${argoCDSpokeRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          argocd-access-entry-arn: ${argoCDAccessEntry.status.?ackResourceMetadata.?arn.orValue("loading")}

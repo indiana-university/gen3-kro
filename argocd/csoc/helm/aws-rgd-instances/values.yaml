@@ -1,0 +1,294 @@
+# Default values for aws-rgd-instances chart.
+# Controls: (1) infrastructure-values ConfigMap data, (2) KRO instance deployment.
+# Per-spoke overrides live in argocd/spokes/<spoke>/infrastucture-values.yaml
+#
+# ⚠️  WARNING: global.name and global.namespace are baked into ALL AWS resource
+#    names and namespaces. Do NOT change them after the first deploy.
+
+global:
+  name: gen3          # instance metadata.name — immutable after first deploy
+  namespace: spoke1   # spoke namespace — immutable after first deploy
+
+# ── infrastructure-values ConfigMap data ─────────────────────────────────────
+# Consumed by all RGDs via externalRef on ConfigMap "infrastructure-values".
+# configmap.yaml maps these nested values to the flat keys expected by RGDs.
+# Safe to change at any time — does NOT recreate AWS resources directly,
+# though some values (e.g. VPC CIDRs) require resource recreation if changed.
+data:
+  global:
+    aws:
+      region: us-east-1
+
+  # ── Domain Security (DNS / WAF) ────────────────────────────────────────
+  domainSecurity:
+    hostname: ""
+    hostedZoneName: ""
+    hostedZoneId: ""
+    wafEnabled: "false"
+    wafScope: REGIONAL
+
+  # ── Messaging ─────────────────────────────────────────────────────────
+  messaging:
+    sqsMessageRetention: "345600"
+    sqsVisibilityTimeout: "300"
+
+  # ── Network ───────────────────────────────────────────────────────────
+  network:
+    vpcCidr: 10.0.0.0/16
+    subnets:
+      - name: public-subnet-1
+        type: public
+        cidr: 10.0.240.0/24
+        az: us-east-1a
+      - name: private-subnet-1
+        type: private
+        cidr: 10.0.0.0/20
+        az: us-east-1a
+      - name: db-subnet-1
+        type: db
+        cidr: 10.0.32.0/24
+        az: us-east-1a
+
+
+  # ── Storage ───────────────────────────────────────────────────────────
+  storage:
+    loggingBucketName: gen3-logging
+    dataBucketName: gen3-data
+    uploadBucketName: gen3-upload
+    manifestBucketName: ""
+    dashboardBucketName: ""
+    usersyncBucketName: gen3-usersync
+
+  # ── Database ──────────────────────────────────────────────────────────
+  database:
+    auroraEngineVersion: "16.6"
+    auroraDbName: gen3
+    auroraMasterUsername: postgres
+    auroraMinCapacity: "0.5"
+    auroraMaxCapacity: "4"
+    auroraMasterPasswordSmName: gen3-aurora-master-password
+    auroraInstances:
+      - name: writer
+        instanceClass: db.serverless
+        az: us-east-1a
+        promotionTier: "0"
+    esoUseIrsa: "true" # "false"=K8s Secret (local Kind), "true"=IRSA/PodIdentity (EKS)
+
+  # ── Compute ───────────────────────────────────────────────────────────
+  compute:
+    kubernetesVersion: "1.35"
+    # "true"=EKS Auto Mode (disables nodegroup), "false"=managed nodegroup
+    autoModeEnabled: "true"
+    autoModeNodePools: "general-purpose,system"
+    # Managed nodegroup settings (used when autoModeEnabled=false)
+    nodeInstanceTypes: "m5.large"
+    nodeDesiredSize: "2"
+    nodeMinSize: "1"
+    nodeMaxSize: "5"
+    nodeDiskSize: "20"
+    nodeAmiType: AL2_x86_64
+    openSearchDomain:
+      engineVersion: OpenSearch_2.11
+      instanceType: t3.small.search
+      instanceCount: "1"
+      volumeSize: "10"
+      ebsEnabled: "true"
+      volumeType: gp3
+      dedicatedMasterEnabled: "false"
+
+  # ── Platform Helm (spoke cluster add-on toggles) ───────────────────────
+  # NOTE: Core k8s add-ons (vpc-cni, kube-proxy, coreDNS, ebs-csi-driver, karpenter)
+  # are NOT controlled via ConfigMap. Set them in cluster-values.yaml directly.
+  # Auto Mode forces these to "false" via hardcoded RGD parameters.
+  platformHelm:
+    managementTopology: "csoc-managed-argocd"
+    project: gen3
+    albScheme: "internet-facing"
+    addons:
+      albController: "true"
+      externalSecrets: "true"
+      certManager: "true"
+      s3Mountpoint: "false"
+      calico: "false"
+      kubeStateMetrics: "true"
+      externalDns: "false"
+
+# ── KRO instance deployment ───────────────────────────────────────────────────
+# Each block controls one KRO CR instance.
+#
+# enabled:   deploy this instance (true/false)
+# version:   appended to the Kind base name → e.g. "1" gives AwsGen3VpcNetwork1
+# syncWave:  ArgoCD sync-wave annotation (controls ordering within ArgoCD)
+#
+# spec:      Fields passed directly into the KRO CR spec (SAFE TO CHANGE).
+#   • adoptionPolicy / deletionPolicy  — lifecycle hints; no AWS impact
+#   • infrastructureConfigMapName      — which ConfigMap RGD reads from
+#   • *BridgeName fields               — K8s ConfigMap names for bridge data
+#   • Helm/values repo fields          — where chart / values are sourced from
+#
+# ⚠️  DO NOT put name or namespace in spec — they come from global above.
+# ⚠️  DO NOT change version after first deploy without a migration plan.
+instances:
+
+  # Tier 0 — Network Security (VPC networking + KMS keys + Security Groups)
+  networkSecurity:
+    enabled: true
+    version: "1"
+    syncWave: "15"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      networkSecurityBridgeName: "network-security-bridge"
+
+  # Tier 0 — Domain Security (Route53 hosted zone, ACM certificate, WAFv2 WebACL)
+  domainSecurity:
+    enabled: true
+    version: "1"
+    syncWave: "15"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      domainSecurityBridgeName: "domain-security-bridge"
+
+  # Tier 0 — Messaging (SQS queues: audit, ssjdispatcher)
+  messaging:
+    enabled: false
+    version: "1"
+    syncWave: "15"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      messagingBridgeName: "messaging-bridge"
+
+  # Tier 1 — Storage (S3 buckets: logging, data, upload + optional manifest/dashboard)
+  # Depends on: network-security-bridge (for KMS key ARNs)
+  storage:
+    enabled: true
+    version: "1"
+    syncWave: "20"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      networkSecurityBridgeName: "network-security-bridge"
+      storageBridgeName: "storage-bridge"
+
+  # Tier 1 — Database (Aurora PostgreSQL cluster + ExternalSecret / SecretStore)
+  # Depends on: network-security-bridge
+  database:
+    enabled: true
+    version: "1"
+    syncWave: "20"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      networkSecurityBridgeName: "network-security-bridge"
+      esoAwsCredsSecretName: "eso-aws-credentials"
+      databaseBridgeName: "database-bridge"
+
+  # Tier 1 — Compute (EKS cluster + IAM roles + OpenSearch)
+  # Depends on: network-security-bridge
+  compute:
+    enabled: true
+    version: "1"
+    syncWave: "20"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      networkSecurityBridgeName: "network-security-bridge"
+      computeBridgeName: "compute-bridge"
+
+  # Tier 2 — SpokeAccess (ArgoCD spoke role + EKS access entry)
+  # Depends on: compute-bridge
+  spokeAccess:
+    enabled: false
+    version: "1"
+    syncWave: "25"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      computeBridgeName: "compute-bridge"
+      spokeAccessBridgeName: "spoke-access-bridge"
+
+  # Tier 2 — PlatformIAM (4 platform addon IRSA roles: alb, s3-csi, karpenter, external-dns)
+  # Depends on: compute-bridge, storage-bridge
+  platformIam:
+    enabled: false
+    version: "1"
+    syncWave: "25"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      computeBridgeName: "compute-bridge"
+      storageBridgeName: "storage-bridge"
+      platformIamBridgeName: "platform-iam-bridge"
+
+  # Tier 2 — AppIAM (8 IRSA roles: fence, audit, hatchery, manifestservice, ESO, etc.)
+  # Depends on: compute-bridge, storage-bridge
+  appIam:
+    enabled: false
+    version: "1"
+    syncWave: "25"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      computeBridgeName: "compute-bridge"
+      storageBridgeName: "storage-bridge"
+      appIamBridgeName: "app-iam-bridge"
+
+  # Tier 3 — PlatformHelm (spoke cluster registration + cluster add-ons ArgoCD App)
+  # Depends on: compute-bridge, platform-iam-bridge, spoke-access-bridge
+  platformHelm:
+    enabled: false
+    version: "1"
+    syncWave: "30"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "delete"
+      infrastructureConfigMapName: "infrastructure-values"
+      argoCDNamespace: "argocd"
+      argoCDProject: "default"
+      argocdTargetClusterName: ""
+      helmChartRepoURL: "https://github.com/jayadeyemi/Gen3-build.git"
+      helmChartPath: "helm/cluster-level-resources"
+      helmChartTargetRevision: "main"
+      valuesRepoURL: "https://github.com/indiana-university/gen3-kro.git"
+      valuesRevision: "main"
+      valuesBasePath: ""
+      computeBridgeName: "compute-bridge"
+      platformIamBridgeName: "platform-iam-bridge"
+      spokeAccessBridgeName: "spoke-access-bridge"
+      platformHelmBridgeName: "platform-helm-bridge"
+
+  # Tier 4 — AppHelm (gen3-helm Application via ArgoCD multi-source)
+  # Depends on: ALL upstream bridges
+  appHelm:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      argoCDNamespace: "argocd"
+      argoCDProject: "default"
+      infrastructureConfigMapName: "infrastructure-values"
+      helmChartRepoURL: "https://github.com/uc-cdis/gen3-helm.git"
+      helmChartPath: "helm/gen3"
+      helmChartTargetRevision: "master"
+      valuesRepoURL: "https://github.com/indiana-university/gen3-kro.git"
+      valuesRevision: "main"
+      valuesBasePath: ""
+      domainSecurityBridgeName: "domain-security-bridge"
+      platformHelmBridgeName: "platform-helm-bridge"
+      computeBridgeName: "compute-bridge"
+      databaseBridgeName: "database-bridge"
+      appHelmBridgeName: "apphelm-bridge"
+      appIamBridgeName: "app-iam-bridge"
+      messagingBridgeName: "messaging-bridge"
+      storageBridgeName: "storage-bridge"

@@ -109,10 +109,12 @@ GIT_REPO_BASEPATH="argocd/"
 
 # ACK Controllers — installed by ArgoCD, credentials injected by this script
 # NO endpoint_url override — controllers talk to REAL AWS APIs
-# Controller list and versions are defined ONLY in addons.yaml (ack-*-kind entries).
-# This script discovers them dynamically — no hardcoded list.
+# Controller list and versions are defined in controller-values base + Kind override.
+# This script discovers enabled ACK controllers from the same merged values.
 ACK_NAMESPACE="ack"
-ADDONS_YAML="${REPO_DIR}/argocd/addons/addons.yaml"
+ADDONS_BASE_YAML="${REPO_DIR}/argocd/csoc/controller-values/values.yaml"
+ADDONS_KIND_OVERRIDES_YAML="${REPO_DIR}/argocd/csoc/controller-values/kind-overrides/addons.yaml"
+ADDONS_APPSET_CHART="${REPO_DIR}/argocd/csoc/helm/agrocd-application-sets"
 FLEET_DIR="${REPO_DIR}/argocd/local-kind/test"
 
 # AWS credential state (set by validate_credentials)
@@ -420,13 +422,51 @@ YAML
   log_success "ACK credentials Secret created/updated in ${ACK_NAMESPACE}"
 
   # Wait for ACK deployments to exist before patching (ArgoCD creates them async)
-  # Expected count derived from addons.yaml (single source of truth) — no hardcoded list.
+  # Expected count is derived from the same base+Kind override values ArgoCD renders.
   log_info "Waiting for ACK controller deployments to be created by ArgoCD..."
   local max_deploy_wait=300
   local deploy_elapsed=0
   local expected_count
-  expected_count=$(grep -c '^ack-.*-kind:' "${ADDONS_YAML}" 2>/dev/null || echo 0)
-  log_info "Expected ACK controllers (from addons.yaml): ${expected_count}"
+  expected_count=""
+  if command -v helm >/dev/null 2>&1 && [[ -d "${ADDONS_APPSET_CHART}" ]]; then
+    expected_count="$(
+      helm template csoc-addons "${ADDONS_APPSET_CHART}" \
+        -f "${ADDONS_BASE_YAML}" \
+        -f "${ADDONS_KIND_OVERRIDES_YAML}" 2>/dev/null \
+        | awk '
+            /^kind: ApplicationSet$/ { in_appset = 1; next }
+            in_appset && /^  name: ack-/ { count++; in_appset = 0 }
+            /^---$/ { in_appset = 0 }
+            END { print count + 0 }
+          '
+    )"
+  fi
+  if [[ ! "${expected_count}" =~ ^[0-9]+$ ]]; then
+    if command -v yq >/dev/null 2>&1; then
+      expected_count="$(
+        yq eval-all '. as $item ireduce ({}; . * $item) | to_entries | map(select((.key | test("^ack-")) and (.value.enabled == true))) | length' \
+          "${ADDONS_BASE_YAML}" "${ADDONS_KIND_OVERRIDES_YAML}" 2>/dev/null || true
+      )"
+    fi
+  fi
+  if [[ ! "${expected_count}" =~ ^[0-9]+$ ]]; then
+    expected_count="$(
+      awk '
+        /^ack-/ { in_ack = 1; enabled = 0; next }
+        /^[^[:space:]].*:/ {
+          if (in_ack && enabled == 1) count++
+          in_ack = 0
+          enabled = 0
+        }
+        in_ack && /^[[:space:]]+enabled:[[:space:]]+true([[:space:]]|$)/ { enabled = 1 }
+        END {
+          if (in_ack && enabled == 1) count++
+          print count + 0
+        }
+      ' "${ADDONS_KIND_OVERRIDES_YAML}" 2>/dev/null
+    )"
+  fi
+  log_info "Expected ACK controllers (from Kind controller values): ${expected_count}"
   while true; do
     local found_count
     found_count=$(kubectl get deployments -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" \
@@ -445,7 +485,7 @@ YAML
   done
 
   # Inject credentials into ACK deployments — all deployments in the ack namespace
-  # are controllers from addons.yaml ack-*-kind entries (chartName values like ec2-chart, etc.)
+  # are controllers rendered from the Kind controller-values override.
   local deployments
   deployments=$(kubectl get deployments -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" \
     --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null || true)
@@ -643,7 +683,6 @@ metadata:
     addons_repo_url: "${GIT_REPO_URL}"
     addons_repo_revision: "${GIT_REPO_REVISION}"
     addons_repo_basepath: "${GIT_REPO_BASEPATH}"
-    addons_config_path: "argocd/addons/addons.yaml"
     fleet_repo_url: "${GIT_REPO_URL}"
     fleet_repo_revision: "${GIT_REPO_REVISION}"
     fleet_repo_basepath: "${GIT_REPO_BASEPATH}"

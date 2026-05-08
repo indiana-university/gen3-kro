@@ -25,7 +25,7 @@ capability testing. It uses a Kind cluster on the host machine (no DevContainer)
 
 ### When to Use Local CSOC
 
-- Authoring or modifying RGDs (`argocd/charts/resource-groups/templates/`)
+- Authoring or modifying RGDs (`argocd/csoc/helm/aws-rgds-v1/templates/`)
 - Testing KRO capability tests
 - Iterating on KRO CR instances
 - Validating ArgoCD bootstrap chain changes
@@ -47,7 +47,7 @@ bash scripts/kind-local-test.sh inject-creds
 
 ```bash
 # 1. Edit your RGD
-vim argocd/charts/resource-groups/templates/awsgen3foundation1-rg.yaml
+vim argocd/csoc/helm/aws-rgds-v1/templates/awsgen3foundation1-rg.yaml
 
 # 2. Push to trigger ArgoCD sync
 git add -A && git commit -m "feat: update Foundation1 RGD" && git push

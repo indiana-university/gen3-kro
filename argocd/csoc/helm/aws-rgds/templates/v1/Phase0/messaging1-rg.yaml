@@ -1,0 +1,107 @@
+# AwsGen3Messaging1 — Tier 4: Message Queues (Modular RGD v1)
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3messaging1
+  annotations:
+    argocd.argoproj.io/sync-wave: "15"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3Messaging1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      messagingBridgeName: string | default="messaging-bridge"
+
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+
+  resources:
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+  # SQS QUEUES
+
+    - id: auditQueue
+      readyWhen:
+        - ${auditQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${auditQueue.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: sqs.services.k8s.aws/v1alpha1
+        kind: Queue
+        metadata:
+          name: ${schema.spec.name}-audit-queue
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          queueName: ${schema.spec.name}-audit-sqs
+          messageRetentionPeriod: ${infrastructureConfig.data['messaging-sqs-message-retention']}
+          visibilityTimeout: ${infrastructureConfig.data['messaging-sqs-visibility-timeout']}
+          sqsManagedSSEEnabled: "true"
+          tags:
+            Name: ${schema.spec.name}-audit-sqs
+            ManagedBy: Kro
+
+    - id: ssjdispatcherQueue
+      readyWhen:
+        - ${ssjdispatcherQueue.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${ssjdispatcherQueue.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: sqs.services.k8s.aws/v1alpha1
+        kind: Queue
+        metadata:
+          name: ${schema.spec.name}-ssjdispatcher-queue
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          queueName: ${schema.spec.name}-ssjdispatcher-sqs
+          messageRetentionPeriod: ${infrastructureConfig.data['messaging-sqs-message-retention']}
+          visibilityTimeout: ${infrastructureConfig.data['messaging-sqs-visibility-timeout']}
+          sqsManagedSSEEnabled: "true"
+          tags:
+            Name: ${schema.spec.name}-ssjdispatcher-sqs
+            ManagedBy: Kro
+
+  # All queues unconditional — avoids Test 8 silent-drop
+
+    - id: messagingBridge
+      readyWhen:
+        - ${messagingBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.messagingBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: messaging
+            gen3.io/bridge: "true"
+        data:
+          audit-sqs-url: ${auditQueue.status.?queueURL.orValue("loading")}
+          ssjdispatcher-sqs-url: ${ssjdispatcherQueue.status.?queueURL.orValue("loading")}

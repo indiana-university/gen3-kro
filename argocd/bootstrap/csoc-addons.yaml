@@ -16,8 +16,6 @@ spec:
       selector:
         matchLabels:
           fleet_member: control-plane
-      values:
-        addonChart: application-sets
   template:
     metadata:
       name: csoc-addons
@@ -28,12 +26,13 @@ spec:
         repoURL: '{{.metadata.annotations.addons_repo_url}}'
         targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
       - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-        path: '{{.metadata.annotations.addons_repo_basepath}}charts/{{.values.addonChart}}'
+        path: '{{.metadata.annotations.addons_repo_basepath}}csoc/helm/agrocd-application-sets'
         targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
         helm:
           ignoreMissingValueFiles: true
           valueFiles:
-            - $values/{{.metadata.annotations.addons_config_path}}
+            - $values/{{.metadata.annotations.addons_repo_basepath}}csoc/controller-values/values.yaml
+            - $values/{{.metadata.annotations.addons_repo_basepath}}csoc/controller-values/{{index .metadata.labels "cluster_type" | default "eks"}}-overrides/addons.yaml
       destination:
         namespace: argocd
         name: '{{.name}}'

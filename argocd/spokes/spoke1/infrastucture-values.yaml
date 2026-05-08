@@ -1,0 +1,141 @@
+# Helm values override for aws-rgd-instances chart — spoke1
+# Used as: helm install aws-rgd-instances ./chart -f infrastucture-values.yaml
+# (or via ArgoCD multi-source $values ref)
+#
+# Only values that differ from chart defaults need to be listed;
+# all keys are shown here for visibility and self-documentation.
+
+global:
+  name: gen3        # ⚠️ immutable after first deploy
+  namespace: spoke1 # ⚠️ immutable after first deploy
+
+# ── infrastructure-values ConfigMap data ─────────────────────────────────────
+data:
+  global:
+    aws:
+      region: us-east-1
+
+  domainSecurity:
+    hostname: "spoke1dev.rds-pla.net"
+    hostedZoneName: rds-pla.net
+    hostedZoneId: "/hostedzone/Z095986738M5ANBGDR7OG"
+    wafEnabled: "false"
+    wafScope: REGIONAL
+
+  messaging:
+    sqsMessageRetention: "345600"
+    sqsVisibilityTimeout: "300"
+
+  network:
+    vpcCidr: 172.0.0.0/16
+    subnets:
+      - name: public-subnet-1
+        type: public
+        cidr: 172.0.240.0/24
+        az: us-east-1a
+      - name: public-subnet-2
+        type: public
+        cidr: 172.0.241.0/24
+        az: us-east-1b
+      - name: private-subnet-1
+        type: private
+        cidr: 172.0.0.0/20
+        az: us-east-1a
+      - name: private-subnet-2
+        type: private
+        cidr: 172.0.16.0/20
+        az: us-east-1b
+      - name: db-subnet-1
+        type: db
+        cidr: 172.0.32.0/24
+        az: us-east-1a
+      - name: db-subnet-2
+        type: db
+        cidr: 172.0.33.0/24
+        az: us-east-1b
+
+  storage:
+    loggingBucketName: gen3-spoke1-logging
+    dataBucketName: gen3-spoke1-data
+    uploadBucketName: gen3-spoke1-upload
+    manifestBucketName: ""
+    dashboardBucketName: ""
+    usersyncBucketName: gen3-spoke1-usersync
+
+  database:
+    auroraEngineVersion: "16.6"
+    auroraDbName: gen3
+    auroraMasterUsername: postgres
+    auroraMinCapacity: "0.5"
+    auroraMaxCapacity: "4"
+    auroraMasterPasswordSmName: spoke1-aurora-master-password
+    auroraInstances:
+      - name: writer
+        instanceClass: db.serverless
+        az: us-east-1a
+        promotionTier: "0"
+    esoUseIrsa: "true"
+
+  compute:
+    kubernetesVersion: "1.35"
+    autoModeEnabled: "true"
+    autoModeNodePools: "general-purpose,system"
+    nodeInstanceTypes: "m5.large"
+    nodeDesiredSize: "2"
+    nodeMinSize: "1"
+    nodeMaxSize: "5"
+    nodeDiskSize: "20"
+    nodeAmiType: AL2_x86_64
+    openSearchDomain:
+      engineVersion: OpenSearch_2.11
+      instanceType: t3.small.search
+      instanceCount: "1"
+      volumeSize: "10"
+      ebsEnabled: "true"
+      volumeType: gp3
+      dedicatedMasterEnabled: "false"
+
+  platformHelm:
+    managementTopology: "csoc-managed-argocd"
+    project: gen3
+    albScheme: "internet-facing"
+    addons:
+      albController: "true"
+      externalSecrets: "true"
+      certManager: "true"
+      s3Mountpoint: "true"
+      calico: "true"
+      kubeStateMetrics: "true"
+      externalDns: "true"
+
+# ── KRO instance toggles ──────────────────────────────────────────────────────
+# Only enabled/version/syncWave need overriding here; spec fields fall back to
+# chart defaults unless explicitly overridden.
+instances:
+  # Phase 1
+  networkSecurity:
+    enabled: false
+  domainSecurity:
+    enabled: false
+  messaging:
+    enabled: false
+  ## Phase 2
+  storage:
+    enabled: false
+  database:
+    enabled: false
+  compute:
+    enabled: false
+  ## Phase 3
+  spokeAccess:
+    enabled: false
+  platformIam:
+    enabled: false
+  appIam:
+    enabled: false
+  ## Phase 4
+  platformHelm:
+    enabled: false
+  ## Phase 5
+  appHelm:
+    enabled: false

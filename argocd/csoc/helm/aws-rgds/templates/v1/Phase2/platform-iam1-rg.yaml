@@ -1,0 +1,379 @@
+# AwsGen3PlatformIAM1 — Tier 5: Platform Addon IAM roles (Modular RGD v1)
+#
+# Provides 4 IRSA roles for cluster-level platform addons:
+#   alb-controller, s3-csi-driver, karpenter, external-dns
+#
+# OIDC data read from compute-bridge (no separate oidc-bridge dependency).
+# Application service roles (fence, audit, etc.) → AwsGen3AppIAM1
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3platformiam1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3PlatformIAM1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      computeBridgeName: string | default="compute-bridge"
+      storageBridgeName: string | default="storage-bridge"
+      platformIamBridgeName: string | default="platform-iam-bridge"
+
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+
+  resources:
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+    - id: computeBridge
+      readyWhen:
+        - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: storageBridge
+      readyWhen:
+        - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+
+  # IRSA ROLES: Cluster-level platform addon service accounts
+
+    - id: albControllerRole
+      readyWhen:
+        - ${albControllerRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${albControllerRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-alb-controller-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-alb-controller-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            alb-controller-policy: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["elasticloadbalancing:*"],
+                    "Resource": "*"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "ec2:Describe*",
+                      "ec2:CreateSecurityGroup",
+                      "ec2:AuthorizeSecurityGroupIngress",
+                      "ec2:RevokeSecurityGroupIngress",
+                      "ec2:DeleteSecurityGroup",
+                      "ec2:CreateTags",
+                      "ec2:DeleteTags"
+                    ],
+                    "Resource": "*"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "acm:ListCertificates",
+                      "acm:DescribeCertificate",
+                      "acm:GetCertificate",
+                      "iam:CreateServiceLinkedRole",
+                      "wafv2:GetWebACL",
+                      "wafv2:GetWebACLForResource",
+                      "wafv2:AssociateWebACL",
+                      "wafv2:DisassociateWebACL",
+                      "shield:GetSubscriptionState",
+                      "shield:DescribeProtection",
+                      "shield:CreateProtection",
+                      "shield:DeleteProtection"
+                    ],
+                    "Resource": "*"
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-alb-controller-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: s3CsiDriverRole
+      readyWhen:
+        - ${s3CsiDriverRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${s3CsiDriverRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-s3-csi-driver-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-s3-csi-driver-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:s3-csi-driver-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            s3-csi-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:ListBucket"],
+                    "Resource": [
+                      "${storageBridge.data['data-bucket-arn']}",
+                      "${storageBridge.data['upload-bucket-arn']}"
+                    ]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:PutObject", "s3:AbortMultipartUpload", "s3:DeleteObject"],
+                    "Resource": [
+                      "${storageBridge.data['data-bucket-arn']}/*",
+                      "${storageBridge.data['upload-bucket-arn']}/*"
+                    ]
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-s3-csi-driver-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: karpenterRole
+      readyWhen:
+        - ${karpenterRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${karpenterRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-karpenter-controller-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-karpenter-controller-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:karpenter"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            karpenter-controller: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "ec2:CreateFleet",
+                      "ec2:CreateLaunchTemplate",
+                      "ec2:CreateTags",
+                      "ec2:DeleteLaunchTemplate",
+                      "ec2:DescribeAvailabilityZones",
+                      "ec2:DescribeImages",
+                      "ec2:DescribeInstances",
+                      "ec2:DescribeInstanceTypeOfferings",
+                      "ec2:DescribeInstanceTypes",
+                      "ec2:DescribeLaunchTemplates",
+                      "ec2:DescribeSecurityGroups",
+                      "ec2:DescribeSubnets",
+                      "ec2:RunInstances",
+                      "ec2:TerminateInstances",
+                      "iam:PassRole",
+                      "ssm:GetParameter",
+                      "pricing:GetProducts",
+                      "eks:DescribeCluster"
+                    ],
+                    "Resource": "*"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "iam:GetInstanceProfile",
+                      "iam:CreateInstanceProfile",
+                      "iam:TagInstanceProfile",
+                      "iam:AddRoleToInstanceProfile",
+                      "iam:RemoveRoleFromInstanceProfile",
+                      "iam:DeleteInstanceProfile"
+                    ],
+                    "Resource": "*"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueUrl", "sqs:GetQueueAttributes"],
+                    "Resource": "arn:aws:sqs:${infrastructureConfig.data['aws-region']}:*:${schema.spec.name}-karpenter-*"
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-karpenter-controller-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: externalDnsRole
+      readyWhen:
+        - ${externalDnsRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${externalDnsRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-external-dns-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-external-dns-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:external-dns"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            external-dns-route53: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["route53:ChangeResourceRecordSets"],
+                    "Resource": ["arn:aws:route53:::hostedzone/*"]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "route53:ListHostedZones",
+                      "route53:ListResourceRecordSets",
+                      "route53:ListTagsForResource"
+                    ],
+                    "Resource": ["*"]
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-external-dns-role
+            - key: ManagedBy
+              value: Kro
+
+  # All roles unconditional — avoids Test 8 silent-drop
+
+    - id: platformIamBridge
+      readyWhen:
+        - ${platformIamBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.platformIamBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: iam
+            gen3.io/bridge: "true"
+        data:
+          alb-controller-role-arn: ${albControllerRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          s3-csi-driver-role-arn: ${s3CsiDriverRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          karpenter-role-arn: ${karpenterRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          external-dns-role-arn: ${externalDnsRole.status.?ackResourceMetadata.?arn.orValue("loading")}

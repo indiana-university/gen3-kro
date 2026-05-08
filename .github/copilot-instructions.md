@@ -92,21 +92,21 @@ gen3-kro/
 ├── argocd/
 │   ├── addons/
 │   │   └── addons.yaml              # All addon definitions (EKS + local, filtered by cluster_type)
-│   ├── bootstrap/           # Entry-point ApplicationSets (EKS + local)
-│   ├── charts/
-│   │   ├── application-sets/  # Meta-chart: creates per-addon ApplicationSets
-│   │   ├── instances/         # Helm chart for KRO CR instances
-│   │   └── resource-groups/
-│   │       └── templates/     # RGD YAML files (modular + capability tests)
-│   ├── fleet/               # EKS spoke KRO instance CRs (fleet-instances ApplicationSet)
-│   │   └── spoke1/
-│   │       ├── infrastructure/    # instances.yaml + infrastucture-values.yaml
-│   │       ├── cluster-level-resources/  # app.yaml + cluster-values.yaml
-│   │       └── {hostname}/        # app.yaml + values.yaml
-│   └── local-kind/          # Local Kind cluster KRO instances
-│       └── test/
-│           ├── infrastructure/  # Production KRO CR instances (real AWS)
-│           └── tests/           # KRO capability test instances
+│   ├── csoc-eks/            # EKS CSOC cluster artifacts
+│   │   ├── bootstrap/       # Entry-point ApplicationSets (csoc-addons + fleet-instances)
+│   │   └── charts/
+│   │       ├── aws-rgds-v1/           # Chart A: RGD delivery (plain YAML, no Helm directives)
+│   │       │   └── templates/         # RGD YAML files (modular + capability tests)
+│   │       └── gen3-kro-infrastrructure/  # Chart B: per-spoke ConfigMap + KRO instance CRs
+│   ├── csoc-local-kind/     # Local Kind CSOC cluster artifacts
+│   │   ├── charts/          # Same chart structure as csoc-eks/charts/
+│   │   ├── fleet/           # Local Kind spoke values
+│   │   └── test/            # Local Kind test instances
+│   └── spoke-fleet/         # Per-spoke Helm values files (fleet repo)
+│       └── spoke1/
+│           ├── infrastucture-values.yaml  # Layer 1: ConfigMap data + instance toggles
+│           ├── cluster-resources/         # Layer 2: cluster add-on values
+│           └── {hostname}/                # Layer 3: gen3-helm values
 ├── config/                  # User config (gitignored except examples)
 ├── docs/                    # Documentation, diagrams, design reports
 ├── iam/                     # Per-spoke IAM inline policies
@@ -270,9 +270,10 @@ via gen3-helm init containers.
 
 ## KRO Capability Tests
 
-All KRO feature-validation tests live in `argocd/charts/resource-groups/templates/`
-and are ArgoCD-managed — no manual `kubectl apply`. Instances are declared in
-`argocd/local-kind/test/tests/`.
+All KRO feature-validation tests live in `argocd/csoc-eks/charts/aws-rgds-v1/templates/`
+(production RGDs) and `argocd/csoc-eks/charts/test-kro-graphs/templates/` (capability test
+RGDs), and are ArgoCD-managed — no manual `kubectl apply`. Instances are declared in
+`argocd/csoc-local-kind/test/tests/`.
 
 | # | Kind | RGD file | Instance key(s) | Resources | AWS? |
 |---|------|----------|-----------------|-----------|------|

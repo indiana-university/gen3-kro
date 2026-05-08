@@ -40,13 +40,17 @@ spec:
     spec:
       project: default
       sources:
+      - ref: values
+        repoURL: '{{.metadata.annotations.fleet_repo_url}}'
+        targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
+
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}{{if .metadata.annotations.fleet_instances_path}}{{.metadata.annotations.fleet_instances_path}}{{else}}fleet/{{.name}}{{end}}'
-        directory:
-          recurse: true
-          include: '*.yaml'
-          exclude: '{values.yaml,cluster-values.yaml}'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}csoc/helm/aws-rgd-instances'
+        helm:
+          releaseName: aws-rgd-instances
+          valueFiles:
+            - $values/{{.metadata.annotations.fleet_repo_basepath}}spokes/{{.name}}/infrastucture-values.yaml
       destination:
         namespace: argocd
         name: '{{.name}}'

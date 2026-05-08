@@ -58,7 +58,7 @@ fi
 # ── Report output setup ───────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-RGD_DIR="${REPO_ROOT}/argocd/charts/resource-groups/templates"
+RGD_DIR="${REPO_ROOT}/argocd/csoc-eks/charts/aws-rgds-v1/templates"
 REPORT_DIR="$REPO_ROOT/outputs/reports"
 REPORT_FILENAME="${NAMESPACE}-report"
 if [[ "${ADD_TIMESTAMP}" == true ]]; then

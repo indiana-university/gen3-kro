@@ -1,0 +1,497 @@
+# AwsGen3AppIAM1 — Tier 5: Application Service IAM roles (Modular RGD v1)
+#
+# Provides 8 IRSA roles for gen3 application services:
+#   fence, audit, hatchery, manifestservice, external-secrets,
+#   aws-es-proxy, ssjdispatcher, dashboard
+#
+# OIDC data read from compute-bridge (no separate oidc-bridge dependency).
+# Platform addon roles (alb, s3-csi, karpenter, external-dns) → AwsGen3PlatformIAM1
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3appiam1
+  annotations:
+    argocd.argoproj.io/sync-wave: "25"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3AppIAM1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      computeBridgeName: string | default="compute-bridge"
+      storageBridgeName: string | default="storage-bridge"
+      appIamBridgeName: string | default="app-iam-bridge"
+
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+
+  resources:
+
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+    - id: computeBridge
+      readyWhen:
+        - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: storageBridge
+      readyWhen:
+        - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+
+  # IRSA ROLES: Application service accounts
+
+    - id: fenceRole
+      readyWhen:
+        - ${fenceRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${fenceRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-fence-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-fence-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:fence-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            fence-s3-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:PutObject", "s3:ListBucket"],
+                    "Resource": [
+                      "${storageBridge.data['data-bucket-arn']}",
+                      "${storageBridge.data['data-bucket-arn']}/*",
+                      "${storageBridge.data['upload-bucket-arn']}",
+                      "${storageBridge.data['upload-bucket-arn']}/*"
+                    ]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:ListBucket"],
+                    "Resource": [
+                      "${storageBridge.data['users-bucket-arn']}",
+                      "${storageBridge.data['users-bucket-arn']}/*"
+                    ]
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-fence-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: auditRole
+      readyWhen:
+        - ${auditRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${auditRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-audit-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-audit-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:audit-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-audit-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: hatcheryRole
+      readyWhen:
+        - ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${hatcheryRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-hatchery-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-hatchery-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:hatchery-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            hatchery-ec2: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["ec2:RunInstances", "ec2:TerminateInstances", "ec2:CreateTags", "ec2:DescribeInstances"],
+                    "Resource": "*"
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-hatchery-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: manifestserviceRole
+      readyWhen:
+        - ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${manifestserviceRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-manifestservice-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-manifestservice-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:manifestservice-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-manifestservice-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: externalSecretsRole
+      readyWhen:
+        - ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${externalSecretsRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-external-secrets-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-external-secrets-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:external-secrets-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            secrets-read: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
+                    "Resource": "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:${schema.spec.name}-*"
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-external-secrets-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: awsEsProxyRole
+      readyWhen:
+        - ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${awsEsProxyRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-aws-es-proxy-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-aws-es-proxy-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:aws-es-proxy-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            opensearch-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["es:ESHttpGet", "es:ESHttpHead", "es:ESHttpPost", "es:ESHttpPut", "es:ESHttpDelete", "es:ESHttpPatch"],
+                    "Resource": "arn:aws:es:${infrastructureConfig.data['aws-region']}:*:domain/${schema.spec.name}-*"
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-aws-es-proxy-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: ssjdispatcherRole
+      readyWhen:
+        - ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${ssjdispatcherRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-ssjdispatcher-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-ssjdispatcher-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:ssjdispatcher-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            ssjdispatcher-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["sqs:ReceiveMessage", "sqs:DeleteMessage", "sqs:GetQueueAttributes", "sqs:GetQueueUrl"],
+                    "Resource": "arn:aws:sqs:${infrastructureConfig.data['aws-region']}:*:${schema.spec.name}-*"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:PutObject"],
+                    "Resource": [
+                      "${storageBridge.data['data-bucket-arn']}",
+                      "${storageBridge.data['data-bucket-arn']}/*"
+                    ]
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-ssjdispatcher-role
+            - key: ManagedBy
+              value: Kro
+
+    - id: dashboardRole
+      readyWhen:
+        - ${dashboardRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${dashboardRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: iam.services.k8s.aws/v1alpha1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-dashboard-role
+          namespace: ${schema.spec.namespace}
+          annotations:
+            services.k8s.aws/region: ${infrastructureConfig.data['aws-region']}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+        spec:
+          name: ${schema.spec.name}-dashboard-role
+          assumeRolePolicyDocument: |
+            {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Principal": {"Federated": "${computeBridge.data['oidc-provider-arn']}"},
+                  "Action": "sts:AssumeRoleWithWebIdentity",
+                  "Condition": {
+                    "StringEquals": {
+                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:dashboard-sa"
+                    }
+                  }
+                }
+              ]
+            }
+          inlinePolicies:
+            dashboard-s3-read: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:ListBucket"],
+                    "Resource": [
+                      "arn:aws:s3:::${storageBridge.data['dashboard-bucket-name']}",
+                      "arn:aws:s3:::${storageBridge.data['dashboard-bucket-name']}/*"
+                    ]
+                  }
+                ]
+              }
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-dashboard-role
+            - key: ManagedBy
+              value: Kro
+
+  # All roles unconditional — avoids Test 8 silent-drop
+
+    - id: appIamBridge
+      readyWhen:
+        - ${appIamBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.appIamBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: iam
+            gen3.io/bridge: "true"
+        data:
+          fence-role-arn: ${fenceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          audit-role-arn: ${auditRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          hatchery-role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          manifestservice-role-arn: ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          external-secrets-role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          aws-es-proxy-role-arn: ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          ssjdispatcher-role-arn: ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          dashboard-role-arn: ${dashboardRole.status.?ackResourceMetadata.?arn.orValue("loading")}

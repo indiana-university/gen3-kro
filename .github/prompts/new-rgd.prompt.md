@@ -19,11 +19,11 @@ argument-hint: 'Component name (e.g. "database2", "messaging2", "waf1")'
 1. Determine the versioned name:
    - `metadata.name`: lowercase, no hyphens (e.g., `awsgen3${input:componentName}`)
    - `kind`: CamelCase (e.g., `AwsGen3${input:componentName}`)
-   - Filename: `argocd/charts/resource-groups/templates/awsgen3${input:componentName}-rg.yaml`
+   - Filename: `argocd/csoc-eks/charts/aws-rgds-v1/templates/awsgen3${input:componentName}-rg.yaml`
 
 2. Read existing RGDs for patterns — start with the closest match:
    ```bash
-   ls argocd/charts/resource-groups/templates/
+   ls argocd/csoc-eks/charts/aws-rgds-v1/templates/
    ```
 
 3. Scaffold the RGD with:
