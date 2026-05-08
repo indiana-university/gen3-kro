@@ -160,9 +160,9 @@ spec:
       forEach:
         - idx: ${lists.range(size(infrastructureConfig.data['network-subnet-public-names'].split(',')))}
       readyWhen:
-        - ${publicSubnet.status.?subnetID.orValue('null') != 'null'}
-        - ${publicSubnet.status.?state.orValue('null') == 'available'}
-        - ${publicSubnet.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${each.status.?subnetID.orValue('null') != 'null'}
+        - ${each.status.?state.orValue('null') == 'available'}
+        - ${each.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       template:
         apiVersion: ec2.services.k8s.aws/v1alpha1
         kind: Subnet
@@ -242,9 +242,9 @@ spec:
       forEach:
         - idx: ${lists.range(size(infrastructureConfig.data['network-subnet-private-names'].split(',')))}
       readyWhen:
-        - ${privateSubnet.status.?subnetID.orValue('null') != 'null'}
-        - ${privateSubnet.status.?state.orValue('null') == 'available'}
-        - ${privateSubnet.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${each.status.?subnetID.orValue('null') != 'null'}
+        - ${each.status.?state.orValue('null') == 'available'}
+        - ${each.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       template:
         apiVersion: ec2.services.k8s.aws/v1alpha1
         kind: Subnet
@@ -385,9 +385,9 @@ spec:
       forEach:
         - idx: ${lists.range(size(infrastructureConfig.data['network-subnet-db-names'].split(',')))}
       readyWhen:
-        - ${dbSubnet.status.?subnetID.orValue('null') != 'null'}
-        - ${dbSubnet.status.?state.orValue('null') == 'available'}
-        - ${dbSubnet.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${each.status.?subnetID.orValue('null') != 'null'}
+        - ${each.status.?state.orValue('null') == 'available'}
+        - ${each.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
       template:
         apiVersion: ec2.services.k8s.aws/v1alpha1
         kind: Subnet

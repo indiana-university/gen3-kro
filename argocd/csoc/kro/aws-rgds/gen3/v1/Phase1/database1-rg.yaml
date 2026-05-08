@@ -184,9 +184,9 @@ spec:
       forEach:
         - idx: ${lists.range(size(infrastructureConfig.data['database-aurora-instance-names'].split(',')))}
       readyWhen:
-        - ${auroraInstance.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
-        - ${auroraInstance.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
-        - ${auroraInstance.status.?dbInstanceStatus.orValue('null') == 'available'}
+        - ${each.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
+        - ${each.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${each.status.?dbInstanceStatus.orValue('null') == 'available'}
       template:
         apiVersion: rds.services.k8s.aws/v1alpha1
         kind: DBInstance

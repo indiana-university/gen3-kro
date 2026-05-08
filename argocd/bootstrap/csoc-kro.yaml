@@ -31,6 +31,7 @@ spec:
         path: '{{.metadata.annotations.addons_repo_basepath}}csoc/kro'
         directory:
           recurse: true
+          exclude: 'aws-rgds/test/*'
       destination:
         namespace: kro
         name: '{{.name}}'

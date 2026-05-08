@@ -33,7 +33,6 @@ spec:
 
     status:
       clusterRegistered: ${argoCDClusterSecret.metadata.?name.orValue("loading")}
-      argoCDClusterName: "${schema.spec.argocdTargetClusterName != '' ? schema.spec.argocdTargetClusterName : schema.spec.name + '-spoke'}"
       eksClusterEndpoint: ${computeBridge.data['eks-cluster-endpoint']}
 
   resources:
