@@ -114,28 +114,28 @@ data:
 instances:
   # Phase 1
   networkSecurity:
-    enabled: true
+    enabled: false
   domainSecurity:
-    enabled: true
+    enabled: false
   messaging:
-    enabled: true
+    enabled: false
   ## Phase 2
   storage:
-    enabled: true
+    enabled: false
   database:
-    enabled: true
+    enabled: false
   compute:
-    enabled: true
+    enabled: false
   ## Phase 3
   spokeAccess:
-    enabled: true
+    enabled: false
   platformIam:
-    enabled: true
+    enabled: false
   appIam:
-    enabled: true
+    enabled: false
   ## Phase 4
   platformHelm:
-    enabled: true
+    enabled: false
   ## Phase 5
   appHelm:
-    enabled: true
+    enabled: false
