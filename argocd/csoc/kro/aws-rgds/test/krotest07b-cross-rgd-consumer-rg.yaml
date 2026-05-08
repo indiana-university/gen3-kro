@@ -16,7 +16,7 @@
 # This validates the core cross-RGD pattern for gen3-kro modular tiers:
 #   Foundation SG ID → bridge ConfigMap → Network/DB tier SG ingressRule
 #
-# Deployed via ArgoCD by the recursive csoc-kro Application.
+# Inactive by default; apply manually when testing this capability.
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition

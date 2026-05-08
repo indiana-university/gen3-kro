@@ -17,7 +17,7 @@
 # The bridge ConfigMap is read by krotest07b (consumer) via externalRef.
 # Bridge name pattern: {spec.name}-crossrgd-bridge
 #
-# Deployed via ArgoCD by the recursive csoc-kro Application.
+# Inactive by default; apply manually when testing this capability.
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition

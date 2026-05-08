@@ -1,13 +1,13 @@
-# KRO Capability Test 4: Bridge Secret Consumer
+# KRO Capability Test 4: Bridge ConfigMap Consumer
 #
-# Tests KRO's externalRef feature — reading a Secret created by another
+# Tests KRO's externalRef feature — reading a ConfigMap created by another
 # RGD (the bridge producer from Test 3) and using its data in templates.
 # This validates the cross-RGD data flow pattern.
 #
 # Prerequisite: Test 3 (bridge-producer) must be deployed first.
 #
 # Validates:
-#   - externalRef to read an existing Secret
+#   - externalRef to read an existing ConfigMap
 #   - Using externalRef data fields in template CEL expressions
 #   - Dependency from externalRef → template resources
 #   - Status propagation from externally-referenced resources
@@ -30,30 +30,30 @@ spec:
       namespace: string | default="kro-test"
       environment: string | default="test"
 
-      # Bridge Secret reference (from producer RGD)
-      bridgeSecretName: string | required=true
+      # Bridge ConfigMap reference (from producer RGD)
+      bridgeConfigMapName: string | required=true
 
     status:
-      bridgeSecretFound: ${bridgeOutputs.metadata.?name.orValue("not-found")}
+      bridgeConfigMapFound: ${bridgeOutputs.metadata.?name.orValue("not-found")}
       consumedVpcId: ${consumerConfig.data.consumed_vpc_id}
       consumedKmsArn: ${consumerConfig.data.consumed_kms_arn}
 
   resources:
     # ================================================================
     # Layer 0: externalRef — read the bridge ConfigMap from producer
-    # Uses ConfigMap (not Secret) to avoid bytes/string type mismatch.
+    # Reads string data from the producer bridge ConfigMap.
     # ================================================================
     - id: bridgeOutputs
       externalRef:
         apiVersion: v1
         kind: ConfigMap
         metadata:
-          name: ${schema.spec.bridgeSecretName}
+          name: ${schema.spec.bridgeConfigMapName}
           namespace: ${schema.spec.namespace}
 
     # ================================================================
     # Layer 1: Consume the bridge data in templates
-    # Creates a ConfigMap using data from the externally-referenced Secret
+    # Creates a ConfigMap using data from the externally-referenced ConfigMap
     # ================================================================
     - id: consumerConfig
       readyWhen:
@@ -100,4 +100,4 @@ spec:
         data:
           # Uses data from consumerConfig (which came from bridge)
           summary: "VPC=${consumerConfig.data.consumed_vpc_id}, KMS=${consumerConfig.data.consumed_kms_arn}"
-          chain: "producer → bridge-secret → consumer → downstream"
+          chain: "producer -> bridge-configmap -> consumer -> downstream"

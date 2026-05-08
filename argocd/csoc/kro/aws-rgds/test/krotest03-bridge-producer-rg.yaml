@@ -1,14 +1,14 @@
-# KRO Capability Test 3: Bridge Secret Producer
+# KRO Capability Test 3: Bridge ConfigMap Producer
 #
-# Tests the bridge Secret pattern — creating a K8s Secret containing
+# Tests the bridge ConfigMap pattern — creating a K8s ConfigMap containing
 # outputs from the RGD's own resources, for consumption by other RGDs.
-# This mirrors gen3-kro's infraOutputsSecret pattern.
+# This mirrors gen3-kro's bridge ConfigMap pattern.
 #
 # Validates:
-#   - Creating a Secret with stringData from resource status fields
-#   - Conditional bridge Secret (includeWhen)
-#   - Status propagation from multiple resources into Secret
-#   - Secret contains correct data for downstream consumption
+#   - Creating a ConfigMap from resource status fields
+#   - Conditional bridge ConfigMap (includeWhen)
+#   - Status propagation from multiple resources into a ConfigMap
+#   - ConfigMap contains correct data for downstream consumption
 #
 # Usage:
 #   kubectl apply -f argocd/csoc/kro/aws-rgds/test/krotest03-bridge-producer-rg.yaml
@@ -32,14 +32,13 @@ spec:
       vpcCIDR: string | default="10.0.0.0/16"
       subnetCount: string | default="2"
 
-      # Bridge Secret toggle
-      createBridgeSecret: boolean | default=true
+      # Bridge ConfigMap toggle
+      createBridgeConfigMap: boolean | default=true
 
     status:
       namespacePhase: ${targetNamespace.status.phase}
       networkConfigName: ${networkConfig.metadata.?name.orValue("loading")}
       storageConfigName: ${storageConfig.metadata.?name.orValue("loading")}
-      bridgeSecretName: ${bridgeSecret.metadata.?name.orValue("excluded")}
 
   resources:
     # ================================================================
@@ -104,14 +103,13 @@ spec:
 
     # ================================================================
     # Layer 2: Bridge ConfigMap — aggregates outputs from Layer 1
-    # Uses ConfigMap (not Secret) to avoid Secret bytes/string type
-    # mismatch in KRO CEL expressions (discovered in this test).
+    # Uses ConfigMap values to keep CEL expressions in string data.
     # ================================================================
-    - id: bridgeSecret
+    - id: bridgeConfigMap
       includeWhen:
-        - ${schema.spec.createBridgeSecret == true}
+        - ${schema.spec.createBridgeConfigMap == true}
       readyWhen:
-        - ${bridgeSecret.metadata.?name.orValue('null') != 'null'}
+        - ${bridgeConfigMap.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap

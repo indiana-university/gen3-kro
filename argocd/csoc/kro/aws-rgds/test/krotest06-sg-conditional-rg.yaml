@@ -27,7 +27,7 @@
 #                     1 admin    (includeWhen adminEnabled AND (db OR compute))
 #   ConfigMap:        1 summary (real ACK status IDs for downstream reference)
 #
-# Deployed via ArgoCD by the recursive csoc-kro Application.
+# Inactive by default; apply manually when testing this capability.
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
@@ -62,11 +62,7 @@ spec:
       vpcId: ${testVpc.status.?vpcID.orValue("loading")}
       igwId: ${igw.status.?internetGatewayID.orValue("loading")}
       publicRouteTableId: ${publicRouteTable.status.?routeTableID.orValue("loading")}
-      privateRouteTableId: ${privateRouteTable.status.?routeTableID.orValue("excluded")}
       baseSgId: ${baseSg.status.?id.orValue("loading")}
-      databaseSgId: ${databaseSg.status.?id.orValue("excluded")}
-      computeSgId: ${computeSg.status.?id.orValue("excluded")}
-      adminSgId: ${adminSg.status.?id.orValue("excluded")}
       summaryConfigName: ${summaryConfig.metadata.?name.orValue("loading")}
 
   resources:
@@ -466,9 +462,10 @@ spec:
     # ================================================================
     # Summary ConfigMap — aggregates real ACK EC2 status field values
     #
-    # Proves ACK status fields (SG IDs, VPC ID, RT IDs) are accessible
-    # via CEL within the same RGD graph. Also serves as a bridge output
-    # for downstream tier RGDs (e.g., EKS node group SG attachment list).
+    # Proves ACK status fields for always-present resources are accessible
+    # via CEL within the same RGD graph. Conditional resources are intentionally
+    # not referenced here because KRO drops fields that reference excluded
+    # includeWhen resources.
     # ================================================================
     - id: summaryConfig
       readyWhen:
@@ -486,9 +483,5 @@ spec:
           vpc_id: ${testVpc.status.?vpcID.orValue("loading")}
           igw_id: ${igw.status.?internetGatewayID.orValue("loading")}
           public_rt_id: ${publicRouteTable.status.?routeTableID.orValue("loading")}
-          private_rt_id: ${privateRouteTable.status.?routeTableID.orValue("not-deployed")}
           base_sg_id: ${baseSg.status.?id.orValue("loading")}
-          database_sg_id: ${databaseSg.status.?id.orValue("not-deployed")}
-          compute_sg_id: ${computeSg.status.?id.orValue("not-deployed")}
-          admin_sg_id: ${adminSg.status.?id.orValue("not-deployed")}
           environment: ${schema.spec.environment}

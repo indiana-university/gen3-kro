@@ -8,7 +8,6 @@
 #   - Multi-condition includeWhen (AND logic)
 #   - OR logic within a single expression
 #   - Dependency cascading (child skipped when parent skipped)
-#   - Status reporting when resources are excluded
 #
 # Usage:
 #   kubectl apply -f argocd/csoc/kro/aws-rgds/test/krotest02-includewhen-rg.yaml
@@ -38,11 +37,6 @@ spec:
 
     status:
       namespacePhase: ${targetNamespace.status.phase}
-      featureAConfig: ${featureAConfig.metadata.?name.orValue("excluded")}
-      featureBConfig: ${featureBConfig.metadata.?name.orValue("excluded")}
-      featureABConfig: ${featureABConfig.metadata.?name.orValue("excluded")}
-      tierConfig: ${tierConfig.metadata.?name.orValue("excluded")}
-      cascadeChild: ${cascadeChild.metadata.?name.orValue("excluded")}
 
   resources:
     # ================================================================
@@ -152,6 +146,7 @@ spec:
     # ================================================================
     - id: cascadeChild
       includeWhen:
+        - ${schema.spec.featureA == true}
         - ${schema.spec.featureC == true}
       readyWhen:
         - ${cascadeChild.metadata.?name.orValue('null') != 'null'}
@@ -167,4 +162,4 @@ spec:
             parent-config: ${featureAConfig.metadata.name}
         data:
           parent: ${featureAConfig.metadata.name}
-          note: "Child that depends on featureA ConfigMap — cascades if featureA excluded"
+          note: "Child that depends on featureA ConfigMap and is skipped if featureA is excluded"

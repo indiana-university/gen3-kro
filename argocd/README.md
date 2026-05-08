@@ -14,7 +14,7 @@ argocd/
 ├── csoc/
 │   ├── controllers/            # base + cluster-type controller values
 │   ├── helm/                   # csoc-controllers, ack-multi-acct, kro-aws-instances
-│   └── kro/                    # ResourceGraphDefinitions, synced recursively
+│   └── kro/                    # Gen3 ResourceGraphDefinitions; tests excluded by default
 └── spokes/
     └── <spoke>/                # per-spoke infrastructure and workload values
 ```
@@ -39,7 +39,7 @@ Terraform
 | -20 | `csoc-controllers` | Generates controller ApplicationSets |
 | 1 | `ack-*` | ACK controllers |
 | 5 | `ack-multi-acct` | ACK CARM namespaces and IAMRoleSelectors |
-| 10 | `csoc-kro` | Recursive RGD delivery from `csoc/kro` |
+| 10 | `csoc-kro` | Recursive Gen3 RGD delivery from `csoc/kro` |
 | 15 | `external-secrets` | External Secrets Operator |
 | 30 | `fleet-instances` | Per-spoke KRO instance chart |
 
