@@ -365,7 +365,8 @@ spec:
             enforceHTTPS: true
             tlsSecurityPolicy: Policy-Min-TLS-1-2-2019-07
           vpcOptions:
-            subnetIDs: ${networkSecurityBridge.data['private-subnet-ids'].split(',')}
+            subnetIDs:
+              - ${networkSecurityBridge.data['private-subnet-ids'].split(',')[0]}
             securityGroupIDs:
               - ${networkSecurityBridge.data['opensearch-sg-id']}
           tags:
