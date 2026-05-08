@@ -155,7 +155,6 @@ spec:
           engine: aurora-postgresql
           engineVersion: ${infrastructureConfig.data['database-aurora-engine-version']}
           databaseName: ${infrastructureConfig.data['database-aurora-db-name']}
-          availabilityZones: ${infrastructureConfig.data['network-subnet-db-azs'].split(',')}
           port: 5432
           masterUsername: ${infrastructureConfig.data['database-aurora-master-username']}
           # CEL ref ensures auroraMasterPasswordES is Ready before Aurora cluster is created
