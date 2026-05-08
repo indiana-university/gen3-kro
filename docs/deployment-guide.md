@@ -368,7 +368,7 @@ After addons sync (wave 1):
 kubectl get pods -A | grep ack-
 
 # Check ACK controller logs for cross-account assume
-kubectl logs -n ack-system deployment/ack-ec2-controller | tail -20
+kubectl logs -n ack deployment/ec2-chart | tail -20
 ```
 
 ### KRO Instances
@@ -377,10 +377,11 @@ After fleet sync (wave 30):
 
 ```bash
 # List KRO instances by kind (examples)
-kubectl get awsgen3foundation1,awsgen3compute1 -A
+kubectl get awsgen3networksecurity1,awsgen3compute1 -A
 
-# Or list all CR files for a spoke
-ls argocd/fleet/spoke1/infrastructure/
+# Or render the spoke KRO instances that ArgoCD applies
+helm template kro-aws-instances argocd/csoc/helm/kro-aws-instances \
+  -f argocd/spokes/spoke1/infrastucture-values.yaml | grep '^kind:'
 
 # Check instance status
 kubectl describe vpc spoke1-vpc -n spoke1
@@ -441,7 +442,7 @@ argocd app get fleet --show-operation
 
 1. Add spoke config to `config/shared.auto.tfvars.json` under `spokes` array
 2. Create `iam/<new-spoke-alias>/ack/inline-policy.json` (or rely on `_default`)
-3. Add fleet files in `argocd/fleet/<new-cluster>/`
+3. Add spoke values in `argocd/spokes/<new-spoke>/`
 4. Run Phase 1 on HOST: `cd terragrunt/live/aws/iam-setup && terragrunt stack run apply`
 5. Run Phase 2: `bash scripts/install.sh apply`
 
@@ -451,14 +452,15 @@ Edit the appropriate values file:
 
 | Scope | File to Edit |
 |-------|-------------|
-| All CSOC addons | `argocd/addons/csoc/addons.yaml` |
-| Single cluster | `argocd/fleet/<cluster>/` |
+| Controller defaults | `argocd/csoc/controllers/values.yaml` |
+| Cluster-type controller overrides | `argocd/csoc/controllers/<cluster_type>-overrides/addons.yaml` |
+| Spoke instances | `argocd/spokes/<spoke>/infrastucture-values.yaml` |
 
 Push to git — ArgoCD will reconcile automatically.
 
 ### KRO Instance Changes
 
-Edit the relevant tier YAML in `argocd/fleet/<cluster>/infrastructure/instances.yaml` and push. ArgoCD will reconcile the KRO instance, which will cascade to ACK resources.
+Edit `argocd/spokes/<spoke>/infrastucture-values.yaml` and push. ArgoCD will reconcile the `kro-aws-instances` chart, which cascades through KRO to ACK resources.
 
 ### Rotating Git Credentials
 
@@ -488,7 +490,8 @@ bash scripts/mfa-session.sh --no-mfa            # Option B: admin static creds
 ### Step 1: Delete KRO Instances
 
 ```bash
-kubectl delete -f argocd/fleet/spoke1/infrastructure/
+helm template kro-aws-instances argocd/csoc/helm/kro-aws-instances \
+  -f argocd/spokes/spoke1/infrastucture-values.yaml | kubectl delete -f -
 # Wait for ACK to delete spoke resources (VPCs, EKS clusters, RDS...)
 kubectl get vpc,cluster -A   # verify gone
 ```
@@ -585,7 +588,7 @@ ArgoCD Helm releases can timeout if images are slow to pull. Increase timeout in
 
 ```bash
 kubectl get events -n argocd --sort-by='.firstTimestamp' | tail -20
-kubectl describe pod -n ack-system -l app.kubernetes.io/name=ack-ec2-controller
+kubectl describe pod -n ack -l app.kubernetes.io/name=ec2-chart
 ```
 
 ---
@@ -619,13 +622,13 @@ Writes MFA-assumed-role credentials to `~/.aws/credentials [csoc]`.
 ### Step 2 — Create Kind Cluster + Install Stack
 
 ```bash
-bash scripts/kind-local-test.sh create install
+bash scripts/kind-csoc.sh create install
 ```
 
 This runs in sequence:
 1. `kind create cluster` using `scripts/kind-config.yaml`
 2. Helm installs ArgoCD
-3. Creates ArgoCD cluster Secret with `fleet_member: control-plane` and injects AWS account ID
+3. Creates ArgoCD cluster Secrets for the local control plane and `spoke1`, then injects AWS account ID
 4. Applies bootstrap ApplicationSets
 5. ArgoCD reconciles: KRO → ACK controllers → RGDs → KRO instances
 
@@ -634,10 +637,10 @@ This runs in sequence:
 After ArgoCD deploys the ACK controllers (wave 1), inject your credentials:
 
 ```bash
-bash scripts/kind-local-test.sh inject-creds
+bash scripts/kind-csoc.sh inject-creds
 ```
 
-Creates the `ack-aws-credentials` K8s Secret in `ack-system`.
+Creates the `ack-aws-credentials` K8s Secret in `ack`.
 Re-run this command every time credentials are renewed.
 
 ### Step 4 — Verify
@@ -658,14 +661,14 @@ kubectl get rgd
 ```bash
 # Renew credentials
 bash scripts/mfa-session.sh <MFA_CODE>
-bash scripts/kind-local-test.sh inject-creds
+bash scripts/kind-csoc.sh inject-creds
 
 # Check status
-bash scripts/kind-local-test.sh status
-bash scripts/kro-status-report.sh
+bash scripts/kind-csoc.sh status
+bash scripts/reports/kro-status-report.sh
 
 # Tear down
-bash scripts/kind-local-test.sh destroy
+bash scripts/kind-csoc.sh destroy
 ```
 
 See [docs/local-csoc-guide.md](local-csoc-guide.md) for the complete local CSOC reference.

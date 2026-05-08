@@ -25,7 +25,7 @@ capability testing. It uses a Kind cluster on the host machine (no DevContainer)
 
 ### When to Use Local CSOC
 
-- Authoring or modifying RGDs (`argocd/csoc/helm/aws-rgds-v1/templates/`)
+- Authoring or modifying RGDs (`argocd/csoc/kro/aws-rgds/`)
 - Testing KRO capability tests
 - Iterating on KRO CR instances
 - Validating ArgoCD bootstrap chain changes
@@ -37,29 +37,29 @@ capability testing. It uses a Kind cluster on the host machine (no DevContainer)
 bash scripts/mfa-session.sh <MFA_CODE>
 
 # Create cluster + install stack
-bash scripts/kind-local-test.sh create install
+bash scripts/kind-csoc.sh create install
 
 # Inject credentials
-bash scripts/kind-local-test.sh inject-creds
+bash scripts/kind-csoc.sh inject-creds
 ```
 
 ### RGD Authoring Loop
 
 ```bash
 # 1. Edit your RGD
-vim argocd/csoc/helm/aws-rgds-v1/templates/awsgen3foundation1-rg.yaml
+vim argocd/csoc/kro/aws-rgds/gen3/v1/Phase0/network-security1-rg.yaml
 
 # 2. Push to trigger ArgoCD sync
 git add -A && git commit -m "feat: update Foundation1 RGD" && git push
 
 # 3. Watch ArgoCD reconcile
-kubectl get application kro-local-rgs -n argocd -w
+kubectl get application csoc-kro -n argocd -w
 
 # 4. Check RGD status
-kubectl get rgd awsgen3foundation1 -o yaml
+kubectl get rgd awsgen3networksecurity1 -o yaml
 
 # 5. Watch instance reconcile
-kubectl get awsgen3foundation1 -n <namespace> -w
+kubectl get awsgen3networksecurity1 -n <namespace> -w
 ```
 
 ### Credential Renewal
@@ -67,7 +67,7 @@ kubectl get awsgen3foundation1 -n <namespace> -w
 MFA credentials expire periodically. Renew them:
 ```bash
 bash scripts/mfa-session.sh <NEW_MFA_CODE>
-bash scripts/kind-local-test.sh inject-creds
+bash scripts/kind-csoc.sh inject-creds
 ```
 
 ### Promoting RGDs to EKS CSOC
@@ -257,16 +257,7 @@ Releases are managed by maintainers using semantic versioning.
 
 ### Version Bumping
 
-Use the version bump script:
-
-```bash
-./scripts/version-bump.sh [major|minor|patch]
-```
-
-This updates:
-- Addon versions in `argocd/addons/csoc/catalog.yaml`
-- Helm chart versions in `argocd/charts/*/Chart.yaml`
-- Creates git tag
+When cutting a release, update changed chart versions under `argocd/csoc/helm/*/Chart.yaml`, tag the repo, and include the rendered ArgoCD validation output in the release notes.
 
 ### Release Checklist
 

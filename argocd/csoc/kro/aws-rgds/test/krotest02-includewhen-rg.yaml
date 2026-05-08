@@ -1,0 +1,170 @@
+# KRO Capability Test 2: includeWhen
+#
+# Tests KRO's conditional resource creation using includeWhen.
+# Uses K8s-native ConfigMaps (no AWS cost).
+#
+# Validates:
+#   - Single-condition includeWhen (boolean flag)
+#   - Multi-condition includeWhen (AND logic)
+#   - OR logic within a single expression
+#   - Dependency cascading (child skipped when parent skipped)
+#   - Status reporting when resources are excluded
+#
+# Usage:
+#   kubectl apply -f argocd/csoc/kro/aws-rgds/test/krotest02-includewhen-rg.yaml
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-includewhen-test
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroIncludeWhenTest
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test"
+      environment: string | default="test"
+
+      # Feature flags for conditional resources
+      featureA: boolean | default=true
+      featureB: boolean | default=false
+      featureC: boolean | default=false
+
+      # For OR logic test
+      tier: string | default="dev"
+
+    status:
+      namespacePhase: ${targetNamespace.status.phase}
+      featureAConfig: ${featureAConfig.metadata.?name.orValue("excluded")}
+      featureBConfig: ${featureBConfig.metadata.?name.orValue("excluded")}
+      featureABConfig: ${featureABConfig.metadata.?name.orValue("excluded")}
+      tierConfig: ${tierConfig.metadata.?name.orValue("excluded")}
+      cascadeChild: ${cascadeChild.metadata.?name.orValue("excluded")}
+
+  resources:
+    # ================================================================
+    # Layer 0: Namespace (always created)
+    # ================================================================
+    - id: targetNamespace
+      readyWhen:
+        - ${targetNamespace.status.phase == "Active"}
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            test-suite: kro-capabilities
+            test-name: includewhen
+
+    # ================================================================
+    # Layer 1: Single-condition includeWhen (boolean flag)
+    # ================================================================
+    - id: featureAConfig
+      includeWhen:
+        - ${schema.spec.featureA == true}
+      readyWhen:
+        - ${featureAConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-feature-a
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: includewhen-single
+        data:
+          feature: "A"
+          note: "Created because featureA is true"
+
+    # ================================================================
+    # Layer 1: Another single-condition (featureB — default false)
+    # ================================================================
+    - id: featureBConfig
+      includeWhen:
+        - ${schema.spec.featureB == true}
+      readyWhen:
+        - ${featureBConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-feature-b
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: includewhen-single
+        data:
+          feature: "B"
+          note: "Created because featureB is true"
+
+    # ================================================================
+    # Layer 2: Multi-condition AND (featureA AND featureB both required)
+    # ================================================================
+    - id: featureABConfig
+      includeWhen:
+        - ${schema.spec.featureA == true}
+        - ${schema.spec.featureB == true}
+      readyWhen:
+        - ${featureABConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-feature-ab
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: includewhen-multi
+        data:
+          feature: "A+B"
+          note: "Created because BOTH featureA and featureB are true"
+
+    # ================================================================
+    # Layer 1: OR logic within a single expression
+    # ================================================================
+    - id: tierConfig
+      includeWhen:
+        - ${schema.spec.tier == "staging" || schema.spec.tier == "production"}
+      readyWhen:
+        - ${tierConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-tier-config
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: includewhen-or
+        data:
+          tier: ${schema.spec.tier}
+          note: "Created for staging or production tiers only"
+
+    # ================================================================
+    # Layer 2: Cascade test — depends on featureAConfig
+    # If featureA is excluded, this should also be skipped
+    # ================================================================
+    - id: cascadeChild
+      includeWhen:
+        - ${schema.spec.featureC == true}
+      readyWhen:
+        - ${cascadeChild.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-cascade-child
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: includewhen-cascade
+            parent-config: ${featureAConfig.metadata.name}
+        data:
+          parent: ${featureAConfig.metadata.name}
+          note: "Child that depends on featureA ConfigMap — cascades if featureA excluded"

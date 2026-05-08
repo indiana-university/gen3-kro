@@ -58,7 +58,7 @@ fi
 # ── Report output setup ───────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
-RGD_DIR="${REPO_ROOT}/argocd/csoc-eks/charts/aws-rgds-v1/templates"
+RGD_DIR="${REPO_ROOT}/argocd/csoc/kro/aws-rgds/gen3/v1"
 REPORT_DIR="$REPO_ROOT/outputs/reports"
 REPORT_FILENAME="${NAMESPACE}-report"
 if [[ "${ADD_TIMESTAMP}" == true ]]; then
@@ -95,13 +95,16 @@ rgd_dir = sys.argv[1]
 if not os.path.isdir(rgd_dir):
     sys.exit(0)
 results = []
-for fname in sorted(os.listdir(rgd_dir)):
+for root, _, files in os.walk(rgd_dir):
+  for fname in sorted(files):
     if not fname.endswith('-rg.yaml'):
         continue
-    m = re.match(r'^(\d+)', fname)
+    fpath = os.path.join(root, fname)
+    rel = os.path.relpath(fpath, rgd_dir)
+    m = re.search(r'Phase(\d+)', rel)
     order = int(m.group(1)) if m else 99
     try:
-        text = open(os.path.join(rgd_dir, fname)).read()
+        text = open(fpath).read()
     except Exception:
         continue
     # ResourceGraphDefinition names match the generated CRD resource name.
@@ -109,7 +112,7 @@ for fname in sorted(os.listdir(rgd_dir)):
     resource_name = next((name for name in name_matches if name.startswith('awsgen3')), None)
     if not resource_name:
         continue
-    results.append((order, fname, resource_name))
+    results.append((order, rel, resource_name))
 for _, _, resource_name in sorted(results):
     print(resource_name)
 PYEOF

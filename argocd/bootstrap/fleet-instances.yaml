@@ -1,19 +1,17 @@
 # ======================================================================
 # fleet-instances — All KRO instance CRs for spoke clusters
 # ======================================================================
-# Recursively applies all *.yaml files under the cluster's instance root
-# (excluding values.yaml and cluster-values.yaml) as a single ArgoCD
-# Application per spoke.
+# Renders the shared kro-aws-instances chart once per spoke as a single ArgoCD
+# Application.
 #
-# Instance root path (from cluster Secret annotation `fleet_instances_path`):
-#   EKS CSOC  — not set → defaults to fleet/{{.name}}  (e.g. fleet/spoke1)
-#   Kind CSOC — fleet_instances_path: "local-kind/test"
+# Values root path:
+#   spokes/{{.name}}/infrastucture-values.yaml
 #
 # Matched by cluster secrets with enable_infra_instances: "true".
 # Deployment ordering: argocd sync-wave + RGD readyWhen bridge externalRefs.
 #
 # Repo coordinates (fleet_repo_url, fleet_repo_revision, fleet_repo_basepath)
-# and fleet_instances_path are read from the cluster Secret annotations.
+# are read from the cluster Secret annotations.
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
@@ -46,9 +44,9 @@ spec:
 
       - repoURL: '{{.metadata.annotations.fleet_repo_url}}'
         targetRevision: '{{.metadata.annotations.fleet_repo_revision}}'
-        path: '{{.metadata.annotations.fleet_repo_basepath}}csoc/helm/aws-rgd-instances'
+        path: '{{.metadata.annotations.fleet_repo_basepath}}csoc/helm/kro-aws-instances'
         helm:
-          releaseName: aws-rgd-instances
+          releaseName: kro-aws-instances
           valueFiles:
             - $values/{{.metadata.annotations.fleet_repo_basepath}}spokes/{{.name}}/infrastucture-values.yaml
       destination:

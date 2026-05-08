@@ -1,0 +1,249 @@
+# AwsGen3AppHelm1 — Tier 5: Gen3 Application Deployment via ArgoCD multi-source Application
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: awsgen3apphelm1
+  annotations:
+    argocd.argoproj.io/sync-wave: "35"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: AwsGen3AppHelm1
+    spec:
+      name: string | required=true
+      namespace: string | required=true
+      argoCDNamespace: string | default="argocd"
+      argoCDProject: string | default="default"
+      infrastructureConfigMapName: string | default="infrastructure-values"
+      helmChartRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
+      helmChartPath: string | default="helm/gen3"
+      helmChartTargetRevision: string | default="master"
+      valuesRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
+      valuesRevision: string | default="main"
+      valuesBasePath: string | default="" # defaults to "argocd/spokes/<namespace>" if not set
+      domainSecurityBridgeName: string | default="domain-security-bridge"
+      platformHelmBridgeName: string | default="platform-helm-bridge"
+      computeBridgeName: string | default="compute-bridge"
+      databaseBridgeName: string | default="database-bridge"
+      appHelmBridgeName: string | default="apphelm-bridge"
+      appIamBridgeName: string | default="app-iam-bridge"
+      messagingBridgeName: string | default="messaging-bridge"
+      storageBridgeName: string | default="storage-bridge"
+
+    status:
+      ready: ${spokeNamespace.metadata.?name.orValue("loading")}
+      argoCDClusterName: ${platformHelmBridge.data['argocd-cluster-name']}
+      appHealthStatus: ${gen3App.status.?health.?status.orValue("loading")}
+      appSyncStatus: ${gen3App.status.?sync.?status.orValue("loading")}
+
+  resources:
+  # External refs
+    - id: spokeNamespace
+      externalRef:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+
+    - id: infrastructureConfig
+      readyWhen:
+        - ${infrastructureConfig.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.infrastructureConfigMapName}
+          namespace: ${schema.spec.namespace}
+
+    - id: computeBridge
+      readyWhen:
+        - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.computeBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: databaseBridge
+      readyWhen:
+        - ${databaseBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.databaseBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: appIamBridge
+      readyWhen:
+        - ${appIamBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.appIamBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: messagingBridge
+      readyWhen:
+        - ${messagingBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.messagingBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: domainSecurityBridge
+      readyWhen:
+        - ${domainSecurityBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.domainSecurityBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: platformHelmBridge
+      readyWhen:
+        - ${platformHelmBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.platformHelmBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: storageBridge
+      readyWhen:
+        - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+
+  # gen3-helm ArgoCD Application
+    - id: gen3App
+      readyWhen:
+        - ${gen3App.metadata.?name.orValue('null') != 'null'}
+        - ${gen3App.status.?health.?status.orValue('Unknown') == 'Healthy'}
+        - ${gen3App.status.?sync.?status.orValue('Unknown') == 'Synced'}
+      template:
+        apiVersion: argoproj.io/v1alpha1
+        kind: Application
+        metadata:
+          name: ${schema.spec.name}-app-helm
+          namespace: ${schema.spec.argoCDNamespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: application
+            gen3.io/spoke: ${schema.spec.name}
+          annotations:
+            argocd.argoproj.io/cascade: "orphan"
+        spec:
+          project: ${schema.spec.argoCDProject}
+          ignoreDifferences:
+            - group: ""
+              kind: Secret
+              jsonPointers:
+                - /data
+                - /stringData
+          sources:
+
+            - repoURL: ${schema.spec.helmChartRepoURL}
+              path: ${schema.spec.helmChartPath}
+              targetRevision: ${schema.spec.helmChartTargetRevision}
+              helm:
+                releaseName: gen3
+                valueFiles:
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/${domainSecurityBridge.data['hostname']}/gen3-values.yaml"
+                parameters:
+                  - name: global.environment
+                    value: ${schema.spec.namespace}
+                  - name: global.aws.region
+                    value: ${infrastructureConfig.data['aws-region']}
+                  - name: global.clusterName
+                    value: ${computeBridge.data['eks-cluster-name']}
+                  - name: global.aws.scheme
+                    value: ${platformHelmBridge.data['platform-helm-alb-scheme']}
+                  - name: global.hostname
+                    value: ${domainSecurityBridge.data['hostname']}
+                  - name: global.revproxyArn
+                    value: ${domainSecurityBridge.data['acm-cert-arn']}
+                  - name: global.dataUploadBucket
+                    value: ${storageBridge.data['upload-bucket-name']}
+                  - name: manifestservice.enabled
+                    value: "${storageBridge.data['manifest-bucket-name'] != '' ? 'true' : 'false'}"
+                  - name: portal.enabled
+                    value: "${storageBridge.data['dashboard-bucket-name'] != '' ? 'true' : 'false'}"
+                  - name: global.aws.wafv2.enabled
+                    value: ${domainSecurityBridge.data['waf-enabled']}
+                  - name: global.aws.wafv2.wafAclArn
+                    value: ${domainSecurityBridge.data['waf-acl-arn']}
+                  - name: global.aws.secretStoreServiceAccount.roleArn
+                    value: ${appIamBridge.data['external-secrets-role-arn']}
+                  - name: global.postgres.master.host
+                    value: ${databaseBridge.data['aurora-cluster-endpoint']}
+                  - name: global.postgres.master.port
+                    value: "5432"
+                  - name: aws-es-proxy.esEndpoint
+                    value: ${computeBridge.data['opensearch-endpoint']}
+                  - name: revproxy.ingress.aws.group
+                    value: ${schema.spec.name}
+                  - name: fence.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${appIamBridge.data['fence-role-arn']}
+                  - name: audit.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${appIamBridge.data['audit-role-arn']}
+                  - name: hatchery.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${appIamBridge.data['hatchery-role-arn']}
+                  - name: manifestservice.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${appIamBridge.data['manifestservice-role-arn']}
+                  - name: aws-es-proxy.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${appIamBridge.data['aws-es-proxy-role-arn']}
+                  - name: ssjdispatcher.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${appIamBridge.data['ssjdispatcher-role-arn']}
+                  - name: dashboard.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
+                    value: ${appIamBridge.data['dashboard-role-arn']}
+                  - name: audit.server.sqs.region
+                    value: ${infrastructureConfig.data['aws-region']}
+                  - name: audit.server.sqs.url
+                    value: ${messagingBridge.data['audit-sqs-url']}
+                  - name: ssjdispatcher.ssjcreds.sqsUrl
+                    value: ${messagingBridge.data['ssjdispatcher-sqs-url']}
+            - repoURL: ${schema.spec.valuesRepoURL} # $values ref
+              targetRevision: ${schema.spec.valuesRevision}
+              ref: values
+          destination:
+            name: ${platformHelmBridge.data['argocd-cluster-name']} # spoke cluster registered in CSOC ArgoCD
+            namespace: ${schema.spec.name}
+          syncPolicy:
+            retry:
+              limit: 5
+            syncOptions:
+              - CreateNamespace=true
+              - ServerSideApply=true
+
+  # Bridge output
+    - id: appHelmBridge
+      readyWhen:
+        - ${appHelmBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.appHelmBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: application
+            gen3.io/bridge: "true"
+        data:
+          argocd-app-name: ${schema.spec.name}-app-helm
+          argocd-cluster-name: ${platformHelmBridge.data['argocd-cluster-name']}
+          target-cluster: ${computeBridge.data['eks-cluster-endpoint']}
+          app-health-status: ${gen3App.status.?health.?status.orValue('Unknown')}
+          app-sync-status: ${gen3App.status.?sync.?status.orValue('Unknown')}

@@ -10,10 +10,9 @@ You are working in the dev container at:
 - Gen3 Build subcharts: `/workspaces/gen3-kro/references/gen3-build/helm`
 - Gen3 Build reference repo: `/workspaces/gen3-kro/references/gen3-build`
 - Cluster-level resources chart in Gen3 Build: `/workspaces/gen3-kro/references/gen3-build/helm/cluster-level-resources`
-- KRO resource group definitions in this repo: `/workspaces/gen3-kro/argocd/csoc/helm/aws-rgds-v1/templates`
-- Existing fleet/test values examples:
-  - `/workspaces/gen3-kro/argocd/fleet`
-  - `/workspaces/gen3-kro/argocd/local-kind/test`
+- KRO resource group definitions in this repo: `/workspaces/gen3-kro/argocd/csoc/kro/aws-rgds`
+- Existing spoke values examples:
+  - `/workspaces/gen3-kro/argocd/spokes`
 
 Treat `references/gen3-build` as local reference repositories. Prefer reading from them directly instead of using web search.
 
@@ -28,7 +27,7 @@ Focus on:
 - Its `Chart.yaml` dependencies
 - Subchart values, templates, and documentation under `/workspaces/gen3-kro/references/gen3-build/helm`
 - Any Gen3 Build cluster-level resource assumptions relevant to AWS
-- Any KRO/RGD assumptions in `/workspaces/gen3-kro/argocd/csoc/helm/aws-rgds-v1/templates`
+- Any KRO/RGD assumptions in `/workspaces/gen3-kro/argocd/csoc/kro/aws-rgds`
 
 Do not simply list every chart dependency. Identify:
 
@@ -109,9 +108,9 @@ Create:
 
 Compare the minimal Gen3 Build requirements against the KRO/RGD resources currently defined in:
 
-- `/workspaces/gen3-kro/argocd/csoc/helm/aws-rgds-v1/templates/06-iam1-rg.yaml`
-- `/workspaces/gen3-kro/argocd/csoc/helm/aws-rgds-v1/templates/07-clusterresources1-rg.yaml`
-- `/workspaces/gen3-kro/argocd/csoc/helm/aws-rgds-v1/templates/08-helm1-rg.yaml`
+- `/workspaces/gen3-kro/argocd/csoc/kro/aws-rgds/gen3/v1/Phase2/platform-iam1-rg.yaml`
+- `/workspaces/gen3-kro/argocd/csoc/kro/aws-rgds/gen3/v1/Phase3/platform-helm1-rg.yaml`
+- `/workspaces/gen3-kro/argocd/csoc/kro/aws-rgds/gen3/v1/Phase4/app-helm1-rg.yaml`
 - Other nearby resource-group templates as needed
 
 List AWS prerequisites that appear required for a real minimal deployment but are not currently included, generated, or surfaced by the RGD flow.
@@ -180,7 +179,7 @@ Start with these files:
 - `/workspaces/gen3-kro/references/gen3-build/docs`
 - `/workspaces/gen3-kro/references/gen3-build/helm/cluster-level-resources/values.yaml`
 - `/workspaces/gen3-kro/references/gen3-build/helm/cluster-level-resources/templates`
-- `/workspaces/gen3-kro/argocd/csoc/helm/aws-rgds-v1/templates`
+- `/workspaces/gen3-kro/argocd/csoc/kro/aws-rgds`
 
 Use `rg` for searches. Useful search terms include:
 

@@ -1,14 +1,14 @@
 # Spoke1 Directory
 
 This directory contains the per-spoke values files for the `spoke1` cluster.
-`argocd/bootstrap/fleet-instances.yaml` applies the shared `aws-rgd-instances`
+`argocd/bootstrap/fleet-instances.yaml` applies the shared `kro-aws-instances`
 chart with these values.
 
 ## Layout
 
 ```text
 argocd/spokes/spoke1/
-├── infrastucture-values.yaml     # aws-rgd-instances override values
+├── infrastucture-values.yaml     # kro-aws-instances override values
 ├── cluster-resources/
 │   └── core-cluster-addons.yaml  # PlatformHelm1 $values file
 └── spoke1dev.rds-pla.net/
@@ -20,7 +20,7 @@ argocd/spokes/spoke1/
 | Wave | Resource | File | Purpose |
 |------|----------|------|---------|
 | 14 | `ConfigMap/infrastructure-values` | `infrastucture-values.yaml` | Shared infrastructure inputs |
-| 15-30 | `AwsGen3*1` instances | rendered from `aws-rgd-instances` | Network/security, storage, database, compute, IAM, platform Helm, app Helm |
+| 15-35 | `AwsGen3*1` instances | rendered from `kro-aws-instances` | Network/security, storage, database, compute, IAM, platform Helm, app Helm |
 
 ## Important topology
 

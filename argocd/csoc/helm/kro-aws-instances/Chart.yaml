@@ -1,0 +1,14 @@
+# Per-spoke infrastructure deployment chart.
+# Deploys: (1) infrastructure-values ConfigMap, (2) KRO CR instances.
+# Values are overridden per spoke via argocd/spokes/<spoke>/infrastucture-values.yaml
+apiVersion: v2
+name: kro-aws-instances
+description: Per-spoke infrastructure-values ConfigMap and KRO instance CRs
+type: application
+version: 0.2.0
+appVersion: "1.0.0"
+maintainers:
+  - name: RDServices
+    email: rdservices@iu.edu
+  - name: Basanami (Jimi) Adeyemi
+    email: boadeyem@iu.edu

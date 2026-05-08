@@ -1,0 +1,494 @@
+# KRO Capability Test 6: SecurityGroup & RouteTable with Conditional Entries
+#
+# Tests the viable patterns for conditionally "growing" SecurityGroups and
+# RouteTables as optional tiers are added — using REAL ACK EC2 resources.
+#
+# CORE FINDING (see docs/design-reports/04-modular-sg-routetable-design.md):
+#   KRO templates are static YAML + CEL values. Conditional array ENTRIES
+#   within a single ACK SecurityGroup.spec.ingressRules or
+#   RouteTable.spec.routes are NOT possible. The viable patterns are:
+#
+#   Pattern A (WORKS): Multiple SG/RT resources with includeWhen — one per
+#     tier. Each tier adds its own SG; workloads attach all relevant SGs.
+#     Same pattern applies to RouteTables (public-rt always, private-rt
+#     conditional on tier requirements).
+#   Pattern C (NOT POSSIBLE): Conditional inline array entries in one
+#     resource. KRO has no block-level templating — CEL substitutes values
+#     only, not YAML structure.
+#
+# Resources created (real AWS, zero cost):
+#   VPC:              1
+#   InternetGateway:  1 (data transfer billed separately if used)
+#   RouteTable:       1 always (public-rt with IGW route)
+#                     1 conditional (private-rt, includeWhen privateEnabled)
+#   SecurityGroup:    1 base    (always)
+#                     1 database (includeWhen databaseEnabled)
+#                     1 compute  (includeWhen computeEnabled)
+#                     1 admin    (includeWhen adminEnabled AND (db OR compute))
+#   ConfigMap:        1 summary (real ACK status IDs for downstream reference)
+#
+# Deployed via ArgoCD by the recursive csoc-kro Application.
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: krotest06-sg-conditional
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroTest06SgConditional
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test-sg"
+      environment: string | default="test"
+      region: string | default="us-east-1"
+      adoptionPolicy: string | default="adopt-or-create"
+      deletionPolicy: string | default="delete"
+      project: string | default="gen3-kro"
+
+      vpcCidr: string | default="10.100.0.0/16"
+
+      # Tier feature flags — controls which SG and RT resources are created
+      databaseEnabled: boolean | default=false
+      computeEnabled: boolean | default=false
+      adminEnabled: boolean | default=false
+      # Controls whether a private RouteTable is created (Pattern A for RT)
+      privateRoutingEnabled: boolean | default=false
+
+    status:
+      namespacePhase: ${targetNamespace.status.phase}
+      vpcId: ${testVpc.status.?vpcID.orValue("loading")}
+      igwId: ${igw.status.?internetGatewayID.orValue("loading")}
+      publicRouteTableId: ${publicRouteTable.status.?routeTableID.orValue("loading")}
+      privateRouteTableId: ${privateRouteTable.status.?routeTableID.orValue("excluded")}
+      baseSgId: ${baseSg.status.?id.orValue("loading")}
+      databaseSgId: ${databaseSg.status.?id.orValue("excluded")}
+      computeSgId: ${computeSg.status.?id.orValue("excluded")}
+      adminSgId: ${adminSg.status.?id.orValue("excluded")}
+      summaryConfigName: ${summaryConfig.metadata.?name.orValue("loading")}
+
+  resources:
+    # ================================================================
+    # Layer 0: Namespace
+    # ================================================================
+    - id: targetNamespace
+      readyWhen:
+        - ${targetNamespace.status.phase == "Active"}
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            test-suite: kro-capabilities
+            test-name: sg-conditional
+
+    # ================================================================
+    # Layer 1: VPC
+    # All SGs and RTs require a VPC. Shared foundation for all resources.
+    # ================================================================
+    - id: testVpc
+      readyWhen:
+        - ${testVpc.status.?vpcID.orValue('null') != 'null'}
+        - ${testVpc.status.?state.orValue('null') == 'available'}
+        - ${testVpc.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: VPC
+        metadata:
+          name: ${schema.spec.name}-vpc
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-conditional
+        spec:
+          cidrBlocks:
+            - ${schema.spec.vpcCidr}
+          enableDNSHostnames: true
+          enableDNSSupport: true
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-vpc
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Layer 2: Internet Gateway
+    # Required for the public RouteTable 0.0.0.0/0 route.
+    # Uses spec.vpcRef (K8s name reference — NOT the VPC ID directly).
+    # ================================================================
+    - id: igw
+      readyWhen:
+        - ${igw.status.?internetGatewayID.orValue('null') != 'null'}
+        - ${igw.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+        - ${igw.status.?attachments.orValue([]).exists(a, a.state == "available")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: InternetGateway
+        metadata:
+          name: ${schema.spec.name}-igw
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-conditional
+        spec:
+          vpcRef:
+            from:
+              name: ${testVpc.metadata.name}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-igw
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Pattern A — RouteTable Layer 1: Public RT (always)
+    #
+    # Always created. Has a default 0.0.0.0/0 route to the IGW.
+    # This is the "base" equivalent for Route Tables.
+    # ================================================================
+    - id: publicRouteTable
+      readyWhen:
+        - ${publicRouteTable.status.?routeTableID.orValue('null') != 'null'}
+        - ${publicRouteTable.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: RouteTable
+        metadata:
+          name: ${schema.spec.name}-public-rt
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-conditional
+            rt-tier: public
+        spec:
+          vpcID: ${testVpc.status.?vpcID}
+          routes:
+            - destinationCIDRBlock: "0.0.0.0/0"
+              gatewayID: ${igw.status.?internetGatewayID}
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-public-rt
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Pattern A — RouteTable Layer 2: Private RT (conditional)
+    #
+    # PATTERN A FOR ROUTE TABLES:
+    # Only created when privateRoutingEnabled=true. Holds private subnet
+    # routing. In production would route to a NAT Gateway (omitted here
+    # — NAT GW has hourly cost). Demonstrates the correct approach:
+    # create a separate RT resource, not conditional entries in public-rt.
+    #
+    # Pattern C (NOT POSSIBLE): Cannot add a conditional route entry to
+    # publicRouteTable.spec.routes based on a flag — array entries are
+    # static YAML; CEL can only substitute field values.
+    # ================================================================
+    - id: privateRouteTable
+      includeWhen:
+        - ${schema.spec.privateRoutingEnabled == true}
+      readyWhen:
+        - ${privateRouteTable.status.?routeTableID.orValue('null') != 'null'}
+        - ${privateRouteTable.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: RouteTable
+        metadata:
+          name: ${schema.spec.name}-private-rt
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-conditional
+            rt-tier: private
+        spec:
+          vpcID: ${testVpc.status.?vpcID}
+          # No NAT gateway route — avoids hourly cost in tests.
+          # Production: add natGatewayID route once NAT GW provisioned.
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-private-rt
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Pattern A — SecurityGroup Layer 1: Base SG (always)
+    #
+    # Always created. Contains essential ingress rules every deployment
+    # needs. Static ingressRules list — no conditional entries.
+    # ================================================================
+    - id: baseSg
+      readyWhen:
+        - ${baseSg.status.?id.orValue('null') != 'null'}
+        - ${baseSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-sg-base
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-pattern-a
+            sg-tier: base
+        spec:
+          name: ${schema.spec.name}-base-sg
+          description: "Base SG - SSH and health checks, always present"
+          vpcID: ${testVpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 22
+              toPort: 22
+              ipRanges:
+                - cidrIP: "0.0.0.0/0"
+                  description: "SSH"
+            - ipProtocol: tcp
+              fromPort: 8080
+              toPort: 8080
+              ipRanges:
+                - cidrIP: ${schema.spec.vpcCidr}
+                  description: "Health checks from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-base-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Pattern A — SecurityGroup Layer 2: Database SG (conditional)
+    #
+    # Only created when databaseEnabled=true. MySQL/Postgres ingress from
+    # VPC CIDR only. Kept separate so non-database deployments carry zero
+    # database surface area.
+    #
+    # Pattern C (NOT POSSIBLE): Cannot add port 3306/5432 entries to
+    # baseSg.spec.ingressRules conditionally. Static YAML only.
+    # ================================================================
+    - id: databaseSg
+      includeWhen:
+        - ${schema.spec.databaseEnabled == true}
+      readyWhen:
+        - ${databaseSg.status.?id.orValue('null') != 'null'}
+        - ${databaseSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-sg-database
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-pattern-a
+            sg-tier: database
+        spec:
+          name: ${schema.spec.name}-database-sg
+          description: "Database SG - MySQL and PostgreSQL from VPC only"
+          vpcID: ${testVpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 3306
+              toPort: 3306
+              ipRanges:
+                - cidrIP: ${schema.spec.vpcCidr}
+                  description: "MySQL from VPC"
+            - ipProtocol: tcp
+              fromPort: 5432
+              toPort: 5432
+              ipRanges:
+                - cidrIP: ${schema.spec.vpcCidr}
+                  description: "PostgreSQL from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-database-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Pattern A — SecurityGroup Layer 2: Compute SG (conditional)
+    #
+    # Only created when computeEnabled=true. API and gRPC ports from VPC.
+    # Kept separate for fine-grained attachment to EKS node groups.
+    # ================================================================
+    - id: computeSg
+      includeWhen:
+        - ${schema.spec.computeEnabled == true}
+      readyWhen:
+        - ${computeSg.status.?id.orValue('null') != 'null'}
+        - ${computeSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-sg-compute
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-pattern-a
+            sg-tier: compute
+        spec:
+          name: ${schema.spec.name}-compute-sg
+          description: "Compute SG - API and gRPC from VPC internal"
+          vpcID: ${testVpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 8080
+              toPort: 8080
+              ipRanges:
+                - cidrIP: ${schema.spec.vpcCidr}
+                  description: "API from VPC"
+            - ipProtocol: tcp
+              fromPort: 9090
+              toPort: 9090
+              ipRanges:
+                - cidrIP: ${schema.spec.vpcCidr}
+                  description: "gRPC from VPC"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-compute-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Pattern A — SecurityGroup Layer 3: Admin SG (AND condition)
+    #
+    # Only created when adminEnabled=true AND (databaseEnabled OR
+    # computeEnabled). Tests KRO multi-condition AND with OR sub-expression.
+    # Ingress from bastion range only — references the Aurora SG pattern
+    # used in gen3-kro's infra1flat.
+    # ================================================================
+    - id: adminSg
+      includeWhen:
+        - ${schema.spec.adminEnabled == true}
+        - ${schema.spec.databaseEnabled == true || schema.spec.computeEnabled == true}
+      readyWhen:
+        - ${adminSg.status.?id.orValue('null') != 'null'}
+        - ${adminSg.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
+      template:
+        apiVersion: ec2.services.k8s.aws/v1alpha1
+        kind: SecurityGroup
+        metadata:
+          name: ${schema.spec.name}-sg-admin
+          namespace: ${targetNamespace.metadata.name}
+          annotations:
+            services.k8s.aws/region: ${schema.spec.region}
+            services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
+            services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-pattern-a
+            sg-tier: admin
+        spec:
+          name: ${schema.spec.name}-admin-sg
+          description: "Admin SG - management access: adminEnabled AND (db OR compute)"
+          vpcID: ${testVpc.status.?vpcID}
+          ingressRules:
+            - ipProtocol: tcp
+              fromPort: 22
+              toPort: 22
+              ipRanges:
+                - cidrIP: "10.0.255.0/24"
+                  description: "Admin SSH from bastion subnet"
+            - ipProtocol: tcp
+              fromPort: 443
+              toPort: 443
+              ipRanges:
+                - cidrIP: "10.0.255.0/24"
+                  description: "Admin HTTPS from bastion subnet"
+          tags:
+            - key: Name
+              value: ${schema.spec.name}-admin-sg
+            - key: Environment
+              value: ${schema.spec.environment}
+            - key: ManagedBy
+              value: Kro
+            - key: Project
+              value: ${schema.spec.project}
+
+    # ================================================================
+    # Summary ConfigMap — aggregates real ACK EC2 status field values
+    #
+    # Proves ACK status fields (SG IDs, VPC ID, RT IDs) are accessible
+    # via CEL within the same RGD graph. Also serves as a bridge output
+    # for downstream tier RGDs (e.g., EKS node group SG attachment list).
+    # ================================================================
+    - id: summaryConfig
+      readyWhen:
+        - ${summaryConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-network-summary
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: sg-summary
+        data:
+          vpc_id: ${testVpc.status.?vpcID.orValue("loading")}
+          igw_id: ${igw.status.?internetGatewayID.orValue("loading")}
+          public_rt_id: ${publicRouteTable.status.?routeTableID.orValue("loading")}
+          private_rt_id: ${privateRouteTable.status.?routeTableID.orValue("not-deployed")}
+          base_sg_id: ${baseSg.status.?id.orValue("loading")}
+          database_sg_id: ${databaseSg.status.?id.orValue("not-deployed")}
+          compute_sg_id: ${computeSg.status.?id.orValue("not-deployed")}
+          admin_sg_id: ${adminSg.status.?id.orValue("not-deployed")}
+          environment: ${schema.spec.environment}

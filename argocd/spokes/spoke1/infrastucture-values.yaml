@@ -1,5 +1,5 @@
-# Helm values override for aws-rgd-instances chart — spoke1
-# Used as: helm install aws-rgd-instances ./chart -f infrastucture-values.yaml
+# Helm values override for kro-aws-instances chart — spoke1
+# Used as: helm template kro-aws-instances ./chart -f infrastucture-values.yaml
 # (or via ArgoCD multi-source $values ref)
 #
 # Only values that differ from chart defaults need to be listed;

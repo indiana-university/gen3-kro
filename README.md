@@ -53,20 +53,15 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 ```
 ├── .devcontainer/                   # VS Code DevContainer (EKS workflow)
 ├── argocd/                          # GitOps configuration
-│   ├── bootstrap/                   #   Entry-point ApplicationSets (3 files)
-│   ├── addons/                      #   Addon values (single combined file)
-│   ├── charts/                      #   Helm charts consumed by ApplicationSets
-│   │   ├── application-sets/        #     Meta-chart: generates per-addon ApplicationSets
-│   │   ├── multi-acct/              #     ACK CARM multi-account chart
-│   │   └── resource-groups/         #     KRO ResourceGraphDefinition manifests
-│   ├── fleet/                       #   EKS spoke KRO instance CRs
-│   │   └── spoke1/                  #     spoke1: infrastructure/, cluster-level-resources/, <hostname>/
-│   └── local-kind/                  #   Kind cluster instance definitions
-│       └── test/                    #     Local: infrastructure/, cluster-resources/, applications/, tests/
+│   ├── bootstrap/                   #   Entry-point ArgoCD ApplicationSets
+│   ├── csoc/                        #   CSOC controllers, Helm charts, KRO RGDs
+│   │   ├── controllers/             #     Controller ApplicationSet values
+│   │   ├── helm/                    #     Charts used by bootstrap AppSets
+│   │   └── kro/                     #     Recursively synced ResourceGraphDefinitions
+│   └── spokes/                      #   Per-spoke KRO instance and workload values
 ├── config/                          # User config files (gitignored except examples)
 ├── docs/                            # Documentation, diagrams, design reports
 ├── iam/                             # Per-spoke IAM inline policies
-├── merge-plan/                      # Branch-merge planning documents
 ├── references/                      # Upstream reference repos (gen3-helm, kro, etc.)
 ├── scripts/                         # Deployment and orchestration scripts
 ├── terraform/
@@ -76,7 +71,6 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 │       │                            #   aws-spoke, developer-identity
 │       └── units/                   #   Terragrunt unit wrappers (aws-spoke, developer-identity)
 ├── terragrunt/live/aws/             # Spoke IAM Terragrunt stack (host-only, iam-setup/)
-├── troubleshooters/                 # Diagnostic scripts (status-checker)
 ├── outputs/                         # Generated artifacts (gitignored)
 └── third-party-licenses/            # Bundled license files
 ```
@@ -214,7 +208,6 @@ terragrunt stack run destroy
 | [Local CSOC Guide](docs/local-csoc-guide.md) | Host-based Kind cluster setup and operations |
 | [Security Model](docs/security.md) | IAM, cross-account trust, credentials |
 | [ArgoCD Configuration](argocd/README.md) | GitOps structure and conventions |
-| [Platform Status](docs/platform-status.md) | Pending items, risks, limitations |
 | [Contributing](CONTRIBUTING.md) | Branching, code quality, PR process |
 
 ## Project Conventions

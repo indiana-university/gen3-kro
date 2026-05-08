@@ -4,16 +4,16 @@
 #
 # Produces a structured report of:
 #   1. KRO controller health + all RGDs
-#   2. ACK controller health (auto-discovered from addons.yaml)
-#   3. Active KRO instance status (auto-discovered from infrastructure/ and tests/)
+#   2. ACK controller health (auto-discovered from controller values)
+#   3. Active KRO instance status (rendered from kro-aws-instances values)
 #      — conditions, status fields, bridge ConfigMaps, per-instance ACK resources
 #      NOTE: cluster-resources/ and applications/ subdirs are not yet scanned
 #   4. ACK-managed AWS resources (all namespaces from infrastructure/ and tests/)
 #   5. ArgoCD Application health
 #
-# Fleet instance directory layout:
-#   argocd/local-kind/test/   (local Kind default)
-#   argocd/fleet/<cluster>/   (EKS spoke; use --cluster <name>)
+# Fleet values directory layout:
+#   argocd/spokes/spoke1/       (local Kind default)
+#   argocd/spokes/<cluster>/    (EKS spoke; use --cluster <name>)
 #
 # Output is always written to outputs/reports/<name>.ansi (ANSI colours preserved).
 # Filename is derived from flags; existing files are overwritten unless -ts is used.
@@ -34,8 +34,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
 
-ADDONS_FILE="${REPO_DIR}/argocd/addons/addons.yaml"
-INFRA_DIR="${REPO_DIR}/argocd/local-kind/test"
+ADDONS_FILE="${REPO_DIR}/argocd/csoc/controllers/values.yaml"
+INSTANCES_CHART="${REPO_DIR}/argocd/csoc/helm/kro-aws-instances"
+INFRA_DIR="${REPO_DIR}/argocd/spokes/spoke1"
 
 # ── Argument Parsing ──────────────────────────────────────────────────────────
 FILTER_CLUSTER=""
@@ -62,7 +63,7 @@ done
 
 # ── Resolve INFRA_DIR from --cluster if provided ─────────────────────────────
 if [[ -n "${FILTER_CLUSTER}" ]]; then
-  INFRA_DIR="${REPO_DIR}/argocd/fleet/${FILTER_CLUSTER}"
+  INFRA_DIR="${REPO_DIR}/argocd/spokes/${FILTER_CLUSTER}"
   if [[ ! -d "${INFRA_DIR}" ]]; then
     echo "Error: fleet directory not found: ${INFRA_DIR}"
     exit 1
@@ -119,9 +120,9 @@ print_empty_section() {
 kget()  { kubectl get "$@" 2>/dev/null || true; }
 kdesc() { kubectl describe "$@" 2>/dev/null || true; }
 
-# ── Helper: auto-discover ACK controller service-account names from addons.yaml
+# ── Helper: auto-discover ACK controller service-account names from controller values
 # Returns lines of "ack-<service>-controller" by reading serviceAccount.name
-# from each ack-* block in addons.yaml.
+# from each ack-* block in values.yaml.
 discover_ack_controllers() {
   python3 - "${ADDONS_FILE}" <<'PYEOF'
 import sys, re
@@ -140,53 +141,41 @@ for m in re.finditer(r'name:\s*["\']?(ack-[\w-]+-controller)["\']?', text):
 PYEOF
 }
 
-# ── Helper: auto-discover active instances from infrastructure/ and tests/ ────
-# Scans all *.yaml files in both directories, parsing non-commented YAML docs
-# to extract deployed KRO instances.
+# ── Helper: auto-discover active instances from rendered kro-aws-instances chart
 # Outputs lines of "kind|instance-name|namespace"
 discover_instances() {
-  python3 - "${INFRA_DIR}" <<'PYEOF'
-import sys, os, re
+  python3 - "${INSTANCES_CHART}" "${INFRA_DIR}/infrastucture-values.yaml" <<'PYEOF'
+import os, re, subprocess, sys
 
-base_dir = sys.argv[1]
-subdirs = ['infrastructure', 'tests']
+chart_dir, values_file = sys.argv[1], sys.argv[2]
+if not os.path.isdir(chart_dir) or not os.path.isfile(values_file):
+    sys.exit(0)
 
-for subdir in subdirs:
-    scan_dir = os.path.join(base_dir, subdir)
-    if not os.path.isdir(scan_dir):
+try:
+    rendered = subprocess.run(
+        ["helm", "template", "kro-aws-instances", chart_dir, "-f", values_file],
+        check=False,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    ).stdout
+except Exception:
+    rendered = ""
+
+for doc in re.split(r'^---[ \t]*$', rendered, flags=re.MULTILINE):
+    active = [l for l in doc.splitlines() if l.strip() and not l.lstrip().startswith('#')]
+    if not active:
         continue
-
-    for fname in sorted(os.listdir(scan_dir)):
-        if not fname.endswith('.yaml'):
-            continue
-        fpath = os.path.join(scan_dir, fname)
-        try:
-            text = open(fpath).read()
-        except Exception as e:
-            print(f"# error reading {fpath}: {e}", file=sys.stderr)
-            continue
-
-        # Split into YAML documents on '---' boundary
-        docs = re.split(r'^---[ \t]*$', text, flags=re.MULTILINE)
-
-        for doc in docs:
-            # Collect only non-commented, non-empty lines
-            active = [l for l in doc.splitlines()
-                      if l.strip() and not l.lstrip().startswith('#')]
-            if not active:
-                continue
-
-            kind = name = ns = ''
-            for line in active:
-                if re.match(r'^kind:\s*\S', line) and not kind:
-                    kind = line.split(':', 1)[1].strip()
-                elif re.match(r'^  name:\s*\S', line) and not name:
-                    name = line.split(':', 1)[1].strip()
-                elif re.match(r'^  namespace:\s*\S', line) and not ns:
-                    ns = line.split(':', 1)[1].strip()
-
-            if kind and name and ns:
-                print(f"{kind}|{name}|{ns}")
+    kind = name = ns = ""
+    for line in active:
+        if re.match(r'^kind:\s*\S', line) and not kind:
+            kind = line.split(':', 1)[1].strip()
+        elif re.match(r'^  name:\s*\S', line) and not name:
+            name = line.split(':', 1)[1].strip()
+        elif re.match(r'^  namespace:\s*\S', line) and not ns:
+            ns = line.split(':', 1)[1].strip()
+    if kind.startswith("AwsGen3") and name and ns:
+        print(f"{kind}|{name}|{ns}")
 PYEOF
 }
 
@@ -405,12 +394,12 @@ section_kro() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SECTION 2 — ACK Controllers (auto-discovered from addons.yaml)
+# SECTION 2 — ACK Controllers (auto-discovered from controller values)
 # ─────────────────────────────────────────────────────────────────────────────
 section_ack_controllers() {
   log_banner "SECTION 2 — ACK Controllers"
 
-  # All ACK controllers share namespace "ack" (consolidated namespace per addons.yaml)
+  # All ACK controllers share namespace "ack" (consolidated namespace per controller values)
   local ACK_NS="ack"
 
   # Discover service account names → derive controller deployment names
@@ -461,17 +450,17 @@ section_ack_controllers() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
-# SECTION 3 — Active KRO Instances (auto-discovered from infrastructure/ and tests/)
+# SECTION 3 — Active KRO Instances (rendered from kro-aws-instances values)
 # ─────────────────────────────────────────────────────────────────────────────
 section_instances() {
   log_banner "SECTION 3 — KRO Instance Status"
-  log_info "Auto-discovering instances from ${INFRA_DIR}/{infrastructure,tests}/"
+  log_info "Auto-discovering instances from ${INFRA_DIR}/infrastucture-values.yaml"
 
   local entries
   readarray -t entries < <(discover_instances)
 
   if [[ ${#entries[@]} -eq 0 ]]; then
-    log_warn "No active instances found in ${INFRA_DIR}/infrastructure/ or ${INFRA_DIR}/tests/"
+    log_warn "No active instances rendered from ${INFRA_DIR}/infrastucture-values.yaml"
   fi
 
   local found_any=0

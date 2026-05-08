@@ -28,7 +28,7 @@ spec:
       project: default
       sources:
       - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-        path: '{{.metadata.annotations.addons_repo_basepath}}charts/multi-acct'
+        path: '{{.metadata.annotations.addons_repo_basepath}}csoc/helm/ack-multi-acct'
         targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
         helm:
           releaseName: ack-multi-acct

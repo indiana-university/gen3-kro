@@ -425,8 +425,8 @@ Kind does not have an OIDC provider, so IRSA is not available.
 Developer runs: bash scripts/mfa-session.sh <MFA_CODE>
     → STS AssumeRole with MFA → writes ~/.aws/credentials [csoc]
 
-bash scripts/kind-local-test.sh inject-creds
-    → kubectl create secret ack-aws-credentials -n ack-system
+bash scripts/kind-csoc.sh inject-creds
+    → kubectl create secret ack-aws-credentials -n ack
     → ACK controllers read from this Secret
 ```
 
@@ -437,7 +437,7 @@ bash scripts/kind-local-test.sh inject-creds
 | MFA required | `mfa-session.sh` enforces MFA token for every session |
 | Credential expiry | STS session tokens expire (typically 1–12 hours) |
 | No git storage | `~/.aws/credentials` is never committed |
-| K8s Secret scope | `ack-aws-credentials` lives only in `ack-system` namespace |
+| K8s Secret scope | `ack-aws-credentials` lives only in the `ack` namespace |
 | No restart needed | ACK controllers re-read the Secret on next reconcile |
 
 ### Credential Renewal (Local CSOC)
@@ -447,11 +447,11 @@ bash scripts/kind-local-test.sh inject-creds
 bash scripts/mfa-session.sh <NEW_MFA_CODE>
 
 # Step 2: Inject into cluster
-bash scripts/kind-local-test.sh inject-creds
+bash scripts/kind-csoc.sh inject-creds
 
 # Step 3: Verify
 aws sts get-caller-identity --profile csoc
-kubectl get secret ack-aws-credentials -n ack-system
+kubectl get secret ack-aws-credentials -n ack
 ```
 
 > Never store the `ack-aws-credentials` Secret value in git, logs, or outputs.

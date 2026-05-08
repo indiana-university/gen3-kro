@@ -31,13 +31,13 @@
 #
 # Bootstrap pattern (mirrors gen3-kro EKS CSOC):
 #   1. kind-csoc.sh installs ArgoCD via Helm (only direct install)
-#   2. Creates ArgoCD cluster Secret with fleet_member labels
-#   3. Applies bootstrap ApplicationSets (csoc-addons + fleet-instances)
-#   4. ArgoCD reconciles everything via application-sets chart:
+#   2. Creates ArgoCD cluster Secrets with fleet_member labels
+#   3. Applies bootstrap ApplicationSets (csoc-controllers, csoc-kro, fleet-instances)
+#   4. ArgoCD reconciles everything via the controller ApplicationSet chart:
 #      Wave -30: KRO controller
-#      Wave   1: ACK controllers (from addons.yaml, pointed at REAL AWS)
+#      Wave   1: ACK controllers (from controller values, pointed at REAL AWS)
 #      Wave  10: KRO ResourceGraphDefinitions
-#      Wave  30: KRO instances (from fleet-instances, when uncommented)
+#      Wave  30: KRO instances (from fleet-instances)
 #
 # KRO instance sync-wave ordering:
 #   Wave 14: infrastructure-values ConfigMap
@@ -53,12 +53,11 @@
 #   Run `scripts/mfa-session.sh <MFA_CODE>` on HOST to refresh.
 #   install stage auto-injects creds; run $0 inject-creds to refresh later
 #
-# Fleet instance directory (local Kind):
-#   argocd/local-kind/test/
-#     infrastructure/     — infra tiers (Network, DNS, Storage, Compute, Database, Search, AppIAM)
-#     cluster-resources/  — ClusterResources1
-#     applications/       — Helm1
-#     tests/              — KRO capability test instances
+# Fleet values directory (local Kind):
+#   argocd/spokes/spoke1/
+#     infrastucture-values.yaml  — per-spoke KRO instance values
+#     cluster-resources/         — PlatformHelm1 values
+#     <hostname>/                — AppHelm1 values
 ###############################################################################
 set -euo pipefail
 
@@ -106,16 +105,19 @@ ARGOCD_NAMESPACE="argocd"
 GIT_REPO_URL="https://github.com/indiana-university/gen3-kro.git"
 GIT_REPO_REVISION="main"
 GIT_REPO_BASEPATH="argocd/"
+LOCAL_SPOKE_NAME="${LOCAL_SPOKE_NAME:-spoke1}"
+LOCAL_CONTROL_PLANE_SECRET_NAME="${LOCAL_CONTROL_PLANE_SECRET_NAME:-local-aws-dev}"
+LOCAL_SPOKE_FLEET_SECRET_NAME="${LOCAL_SPOKE_FLEET_SECRET_NAME:-${LOCAL_SPOKE_NAME}-fleet}"
 
 # ACK Controllers — installed by ArgoCD, credentials injected by this script
 # NO endpoint_url override — controllers talk to REAL AWS APIs
-# Controller list and versions are defined in controller-values base + Kind override.
+# Controller list and versions are defined in controller base + Kind override.
 # This script discovers enabled ACK controllers from the same merged values.
 ACK_NAMESPACE="ack"
-ADDONS_BASE_YAML="${REPO_DIR}/argocd/csoc/controller-values/values.yaml"
-ADDONS_KIND_OVERRIDES_YAML="${REPO_DIR}/argocd/csoc/controller-values/kind-overrides/addons.yaml"
-ADDONS_APPSET_CHART="${REPO_DIR}/argocd/csoc/helm/agrocd-application-sets"
-FLEET_DIR="${REPO_DIR}/argocd/local-kind/test"
+ADDONS_BASE_YAML="${REPO_DIR}/argocd/csoc/controllers/values.yaml"
+ADDONS_KIND_OVERRIDES_YAML="${REPO_DIR}/argocd/csoc/controllers/kind-overrides/addons.yaml"
+ADDONS_APPSET_CHART="${REPO_DIR}/argocd/csoc/helm/csoc-controllers"
+FLEET_DIR="${REPO_DIR}/argocd/spokes/${LOCAL_SPOKE_NAME}"
 
 # AWS credential state (set by validate_credentials)
 CRED_TIER="tier4"
@@ -430,7 +432,7 @@ YAML
   expected_count=""
   if command -v helm >/dev/null 2>&1 && [[ -d "${ADDONS_APPSET_CHART}" ]]; then
     expected_count="$(
-      helm template csoc-addons "${ADDONS_APPSET_CHART}" \
+      helm template csoc-controllers "${ADDONS_APPSET_CHART}" \
         -f "${ADDONS_BASE_YAML}" \
         -f "${ADDONS_KIND_OVERRIDES_YAML}" 2>/dev/null \
         | awk '
@@ -485,7 +487,7 @@ YAML
   done
 
   # Inject credentials into ACK deployments — all deployments in the ack namespace
-  # are controllers rendered from the Kind controller-values override.
+  # are controllers rendered from the Kind controller override.
   local deployments
   deployments=$(kubectl get deployments -n "$ACK_NAMESPACE" --context "$KIND_CONTEXT" \
     --no-headers -o custom-columns=NAME:.metadata.name 2>/dev/null || true)
@@ -512,11 +514,11 @@ YAML
   fi
 
   # ── Update AWS Account ID on ArgoCD cluster Secret and spoke Namespaces ──
-  # The install stage sets aws_account_id on the cluster Secret initially.
+  # The install stage sets aws_account_id on the cluster Secrets initially.
   # On credential renewal the STS identity may differ, so we update both
-  # the cluster Secret annotation AND all spoke Namespaces directly.
+  # cluster Secret annotations AND all spoke Namespaces directly.
   # (The directory source ApplicationSet applies raw CR YAML directly.)
-  log_banner "Updating AWS Account ID on ArgoCD cluster Secret and spoke Namespaces"
+  log_banner "Updating AWS Account ID on ArgoCD cluster Secrets and spoke Namespaces"
   local aws_account_id
   aws_account_id="$(aws sts get-caller-identity --profile "${profile}" --output text --query 'Account' 2>/dev/null || true)"
   if [[ -z "${aws_account_id}" ]]; then
@@ -525,48 +527,49 @@ YAML
   fi
 
   log_info "AWS Account ID: ${aws_account_id}"
-  kubectl annotate secret local-aws-dev \
+  kubectl annotate secret "${LOCAL_CONTROL_PLANE_SECRET_NAME}" \
     -n "${ARGOCD_NAMESPACE}" \
     --context "${KIND_CONTEXT}" \
     "aws_account_id=${aws_account_id}" \
     --overwrite 2>/dev/null && \
-    log_success "ArgoCD cluster Secret updated with account ID" || \
-    log_warn "Could not update ArgoCD cluster Secret — install stage may not have run yet"
+    log_success "Control-plane cluster Secret updated with account ID" || \
+    log_warn "Could not update control-plane cluster Secret — install stage may not have run yet"
+
+  kubectl annotate secret "${LOCAL_SPOKE_FLEET_SECRET_NAME}" \
+    -n "${ARGOCD_NAMESPACE}" \
+    --context "${KIND_CONTEXT}" \
+    "aws_account_id=${aws_account_id}" \
+    "spoke_account_id=${aws_account_id}" \
+    --overwrite 2>/dev/null && \
+    log_success "Spoke fleet cluster Secret updated with account ID" || \
+    log_warn "Could not update spoke fleet cluster Secret — install stage may not have run yet"
 
   # Annotate spoke Namespaces with account ID (used by ACK controllers)
   create_spoke_namespaces "${aws_account_id}"
 }
 
 ###############################################################################
-# HELPER: discover_spoke_namespaces — Extract namespaces from fleet instance YAMLs
+# HELPER: discover_spoke_namespaces — Extract namespaces from spoke values
 #
-# Scans local-kind/test/{infrastructure,cluster-resources,applications,tests}/*.yaml
-# for metadata.namespace values. Handles both active and commented-out instances
-# so namespaces are pre-created before instances are uncommented.
-# YAML files in local-kind/test/ are the single source of truth.
+# Scans the local spoke values root for metadata/global namespace values so
+# namespaces are pre-created before KRO instances render.
 ###############################################################################
 discover_spoke_namespaces() {
-  local namespaces=()
-  for dir in infrastructure cluster-resources applications tests; do
-    local scan_dir="${FLEET_DIR}/${dir}"
-    [[ -d "$scan_dir" ]] || continue
-    # Match '  namespace: <value>' lines (active or commented-out).
-    # Anchored to start-of-line so camelCase fields like
-    # foundationNamespace/computeNamespace/producerNamespace are excluded
-    # (they don't start with 'namespace:' after stripping comments/whitespace).
-    while IFS= read -r ns; do
-      [[ -n "$ns" ]] && namespaces+=("$ns")
-    done < <(
-      grep -rh '^\s*#*\s*namespace:' "$scan_dir"/*.yaml 2>/dev/null \
-        | sed 's/^[# ]*//' \
-        | sed 's/namespace:\s*//' \
-        | tr -d '"' | tr -d "'" | tr -d ' ' \
-        | grep -v '^$' \
-        | sort -u
-    )
-  done
-  # Output unique, sorted list
-  printf '%s\n' "${namespaces[@]}" | sort -u
+  {
+    [[ -f "${FLEET_DIR}/infrastucture-values.yaml" ]] && \
+      grep -h '^\s*#*\s*namespace:' "${FLEET_DIR}/infrastucture-values.yaml" 2>/dev/null || true
+    for dir in infrastructure cluster-resources applications tests; do
+      local scan_dir="${FLEET_DIR}/${dir}"
+      [[ -d "$scan_dir" ]] || continue
+      grep -rh '^\s*#*\s*namespace:' "$scan_dir"/*.yaml 2>/dev/null || true
+    done
+  } \
+    | sed 's/^[#[:space:]]*//' \
+    | sed 's/namespace:[[:space:]]*//' \
+    | sed 's/[[:space:]]*#.*$//' \
+    | tr -d '"' | tr -d "'" | tr -d ' ' \
+    | grep -v '^$' \
+    | sort -u
 }
 
 ###############################################################################
@@ -574,7 +577,7 @@ discover_spoke_namespaces() {
 #
 # Creates all KRO instance namespaces with services.k8s.aws/owner-account-id,
 # required by ACK controllers to route API calls to the correct AWS account.
-# Namespace list is discovered from fleet instance YAMLs (not hardcoded).
+# Namespace list is discovered from spoke values (not hardcoded).
 # Called by stage_install (initial setup) and stage_inject_creds (cred renewal).
 ###############################################################################
 create_spoke_namespaces() {
@@ -588,13 +591,13 @@ create_spoke_namespaces() {
   local discovered_namespaces
   discovered_namespaces=$(discover_spoke_namespaces)
   if [[ -z "$discovered_namespaces" ]]; then
-    log_warn "No namespaces found in fleet instance YAMLs — nothing to create"
+    log_warn "No namespaces found in spoke values — nothing to create"
     return 0
   fi
 
   local ns_count
   ns_count=$(echo "$discovered_namespaces" | wc -l)
-  log_info "Discovered ${ns_count} namespaces from fleet instance YAMLs"
+  log_info "Discovered ${ns_count} namespaces from spoke values"
 
   while IFS= read -r ns; do
     [[ -z "$ns" ]] && continue
@@ -618,9 +621,9 @@ NSYAML
 # Everything else (KRO, ACK controllers, RGDs, instances) is deployed
 # by ArgoCD through the bootstrap ApplicationSet chain:
 #   1. Install ArgoCD via Helm
-#   2. Create ArgoCD cluster Secret (enables cluster generator matching)
-#   3. Apply bootstrap ApplicationSets (csoc-addons + local-infra-instances)
-#   4. ArgoCD reconciles: application-sets chart → per-addon ApplicationSets
+#   2. Create ArgoCD cluster Secrets (enable cluster generator matching)
+#   3. Apply bootstrap ApplicationSets from argocd/bootstrap
+#   4. ArgoCD reconciles: controllers, RGDs, and per-spoke KRO instances
 ###############################################################################
 stage_install() {
   log_stage "install" "Bootstrapping cluster via ArgoCD..."
@@ -653,14 +656,14 @@ stage_install() {
   log_success "ArgoCD v${ARGOCD_VERSION} installed in ${ARGOCD_NAMESPACE}"
   wait_for_pods "$ARGOCD_NAMESPACE" 180
 
-  # ── ArgoCD Cluster Secret (enables cluster generator matching) ────────
-  log_banner "Creating ArgoCD Cluster Secret"
+  # ── ArgoCD Cluster Secrets (enable cluster generator matching) ────────
+  log_banner "Creating ArgoCD Cluster Secrets"
 
   # Fetch AWS account ID at runtime (never stored in git)
   local aws_account_id
   aws_account_id="$(aws sts get-caller-identity --profile "${AWS_PROFILE:-csoc}" --output text --query 'Account' 2>/dev/null || true)"
   if [[ -z "${aws_account_id}" ]]; then
-    log_warn "Could not determine AWS account ID — cluster secret will lack aws_account_id annotation"
+    log_warn "Could not determine AWS account ID — cluster secrets will lack aws_account_id annotation"
   else
     log_success "AWS Account ID resolved at runtime: ${aws_account_id}"
   fi
@@ -669,14 +672,13 @@ stage_install() {
 apiVersion: v1
 kind: Secret
 metadata:
-  name: local-aws-dev
+  name: ${LOCAL_CONTROL_PLANE_SECRET_NAME}
   namespace: ${ARGOCD_NAMESPACE}
   labels:
     argocd.argoproj.io/secret-type: cluster
     fleet_member: control-plane
     ack_management_mode: self_managed
     cluster_type: kind
-    enable_infra_instances: "true"
     enable_kro_csoc_rgs: "true"
     enable_external_secrets: "true"
   annotations:
@@ -686,12 +688,11 @@ metadata:
     fleet_repo_url: "${GIT_REPO_URL}"
     fleet_repo_revision: "${GIT_REPO_REVISION}"
     fleet_repo_basepath: "${GIT_REPO_BASEPATH}"
-    fleet_instances_path: "local-kind/test"
     aws_region: "us-east-1"
     aws_account_id: "${aws_account_id}"
 type: Opaque
 stringData:
-  name: local-aws-dev
+  name: ${LOCAL_CONTROL_PLANE_SECRET_NAME}
   server: https://kubernetes.default.svc
   config: |
     {
@@ -700,7 +701,39 @@ stringData:
       }
     }
 CLUSTERSECRET
-  log_success "ArgoCD cluster Secret 'local-aws-dev' created (fleet_member=control-plane)"
+  log_success "ArgoCD cluster Secret '${LOCAL_CONTROL_PLANE_SECRET_NAME}' created (fleet_member=control-plane)"
+
+  kubectl apply --context "$KIND_CONTEXT" -f - <<CLUSTERSECRET
+apiVersion: v1
+kind: Secret
+metadata:
+  name: ${LOCAL_SPOKE_FLEET_SECRET_NAME}
+  namespace: ${ARGOCD_NAMESPACE}
+  labels:
+    argocd.argoproj.io/secret-type: cluster
+    fleet_member: fleet-spoke-infra
+    cluster_type: kind
+    enable_infra_instances: "true"
+  annotations:
+    fleet_repo_url: "${GIT_REPO_URL}"
+    fleet_repo_revision: "${GIT_REPO_REVISION}"
+    fleet_repo_basepath: "${GIT_REPO_BASEPATH}"
+    spoke_alias: "${LOCAL_SPOKE_NAME}"
+    spoke_account_id: "${aws_account_id}"
+    aws_region: "us-east-1"
+    aws_account_id: "${aws_account_id}"
+type: Opaque
+stringData:
+  name: ${LOCAL_SPOKE_NAME}
+  server: https://kubernetes.default.svc
+  config: |
+    {
+      "tlsClientConfig": {
+        "insecure": true
+      }
+    }
+CLUSTERSECRET
+  log_success "ArgoCD cluster Secret '${LOCAL_SPOKE_FLEET_SECRET_NAME}' created (fleet_member=fleet-spoke-infra, name=${LOCAL_SPOKE_NAME})"
 
   # Annotate spoke Namespaces with account ID (ACK requires this for API routing)
   create_spoke_namespaces "${aws_account_id}"
@@ -733,15 +766,18 @@ OCISECRET
   log_banner "Applying Bootstrap ApplicationSets"
   local bootstrap_dir="${REPO_DIR}/argocd/bootstrap"
 
-  for manifest in csoc-addons.yaml fleet-instances.yaml; do
-    local manifest_path="${bootstrap_dir}/${manifest}"
-    if [[ -f "$manifest_path" ]]; then
-      log_info "Applying: ${manifest}"
-      kubectl apply -f "$manifest_path" --context "$KIND_CONTEXT" 2>/dev/null || \
-        log_warn "No active objects in ${manifest} (file may be fully commented-out — skipped)"
-    else
-      log_warn "Bootstrap manifest not found: ${manifest_path}"
-    fi
+  shopt -s nullglob
+  local manifests=("${bootstrap_dir}"/*.yaml)
+  shopt -u nullglob
+  if [[ ${#manifests[@]} -eq 0 ]]; then
+    log_warn "No bootstrap manifests found in ${bootstrap_dir}"
+  fi
+  for manifest_path in "${manifests[@]}"; do
+    local manifest
+    manifest="$(basename "$manifest_path")"
+    log_info "Applying: ${manifest}"
+    kubectl apply -f "$manifest_path" --context "$KIND_CONTEXT" 2>/dev/null || \
+      log_warn "No active objects in ${manifest} (file may be fully commented-out — skipped)"
   done
   log_success "Bootstrap ApplicationSets applied"
 
@@ -988,6 +1024,6 @@ main() {
 }
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
-LOG_FILE="${LOG_DIR}/kind-local-test-${TIMESTAMP}.log"
+LOG_FILE="${LOG_DIR}/kind-csoc-${TIMESTAMP}.log"
 main 2>&1 | tee -a "$LOG_FILE"
 exit "${PIPESTATUS[0]}"

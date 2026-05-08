@@ -106,7 +106,7 @@ locals {
 # to iterate spokes without hard-coding the list in the ApplicationSet YAML.
 #
 # ACK CARM (namespace annotations) is handled by the ack-multi-acct Helm chart
-# deployed via the csoc-addons ApplicationSet, NOT by Terraform.
+# deployed through ArgoCD bootstrap, NOT by Terraform.
 ################################################################################
 resource "kubernetes_secret_v1" "spoke_fleet" {
   for_each = var.enabled ? var.spoke_account_ids : {}
@@ -137,9 +137,6 @@ resource "kubernetes_secret_v1" "spoke_fleet" {
         # per-spoke metadata carried as annotations for ApplicationSet parametrisation
         spoke_alias      = each.key
         spoke_account_id = each.value
-        # Explicitly empty so fleet-instances go template (missingkey=error) falls
-        # back to fleet/{{.name}} instead of erroring on a missing map key.
-        fleet_instances_path = ""
       }
     )
   }

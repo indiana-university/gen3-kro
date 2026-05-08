@@ -14,7 +14,7 @@
 # This file is grounded in:
 #   references/gen3-build/helm/gen3/values.yaml
 #   references/gen3-build/helm/*/values.yaml
-#   argocd/charts/resource-groups/templates/08-helm1-rg.yaml
+#   argocd/csoc/kro/aws-rgds/gen3/v1/Phase4/app-helm1-rg.yaml
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ─── Global ──────────────────────────────────────────────────────────────────
