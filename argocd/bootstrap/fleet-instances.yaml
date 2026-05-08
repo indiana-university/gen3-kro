@@ -48,7 +48,7 @@ spec:
         helm:
           releaseName: kro-aws-instances
           valueFiles:
-            - $values/{{.metadata.annotations.fleet_repo_basepath}}spokes/{{.name}}/infrastucture-values.yaml
+            - $values/{{.metadata.annotations.fleet_repo_basepath}}spokes/{{.name}}/infrastructure-values.yaml
       destination:
         namespace: argocd
         name: '{{.name}}'
