@@ -23,6 +23,8 @@ spec:
       hostedZoneID: "${infrastructureConfig.data['dns-hostname'] != '' ? hostedZone.status.?id.orValue('loading') : ''}"
       wafAclARN: "${infrastructureConfig.data['domain-security-waf-enabled'] == 'true' ? wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
       acmCertificateARN: "${infrastructureConfig.data['dns-hostname'] != '' ? acmCert.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
+      hostname: ${infrastructureConfig.data['dns-hostname']}
+      wafEnabled: ${infrastructureConfig.data['domain-security-waf-enabled']}
 
   resources:
   # Hosted Zone + ACM Certificate + DNS Validation
@@ -180,12 +182,14 @@ spec:
             - key: ManagedBy
               value: Kro
 
-  # Dual-bridge: always-present bridge regardless of hostname and WAF state
-    - id: domainSecurityBridgeWithHostname
+  # Conditional duplicate bridge. Each branch uses the same ConfigMap name, but
+  # only references resources that are active under the same includeWhen.
+    - id: domainSecurityBridgeWithHostnameAndWaf
       includeWhen:
         - ${infrastructureConfig.data['dns-hostname'] != ''}
+        - ${infrastructureConfig.data['domain-security-waf-enabled'] == 'true'}
       readyWhen:
-        - ${domainSecurityBridgeWithHostname.metadata.?name.orValue('null') != 'null'}
+        - ${domainSecurityBridgeWithHostnameAndWaf.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap
@@ -202,14 +206,40 @@ spec:
           hosted-zone-name: ${infrastructureConfig.data['dns-hosted-zone-name']}
           acm-cert-arn: ${acmCert.status.?ackResourceMetadata.?arn.orValue('loading')}
           hostname: ${infrastructureConfig.data['dns-hostname']}
-          waf-acl-arn: "${infrastructureConfig.data['domain-security-waf-enabled'] == 'true' ? wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
-          waf-enabled: "${infrastructureConfig.data['domain-security-waf-enabled']}"
+          waf-acl-arn: ${wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading')}
+          waf-enabled: "true"
 
-    - id: domainSecurityBridgeNoHostname
+    - id: domainSecurityBridgeWithHostnameNoWaf
+      includeWhen:
+        - ${infrastructureConfig.data['dns-hostname'] != ''}
+        - ${infrastructureConfig.data['domain-security-waf-enabled'] != 'true'}
+      readyWhen:
+        - ${domainSecurityBridgeWithHostnameNoWaf.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.domainSecurityBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: domain-security
+            gen3.io/bridge: "true"
+            gen3.io/purpose: dns
+        data:
+          hosted-zone-id: ${hostedZone.status.?id.orValue('loading')}
+          hosted-zone-name: ${infrastructureConfig.data['dns-hosted-zone-name']}
+          acm-cert-arn: ${acmCert.status.?ackResourceMetadata.?arn.orValue('loading')}
+          hostname: ${infrastructureConfig.data['dns-hostname']}
+          waf-acl-arn: ""
+          waf-enabled: "false"
+
+    - id: domainSecurityBridgeNoHostnameAndWaf
       includeWhen:
         - ${infrastructureConfig.data['dns-hostname'] == ''}
+        - ${infrastructureConfig.data['domain-security-waf-enabled'] == 'true'}
       readyWhen:
-        - ${domainSecurityBridgeNoHostname.metadata.?name.orValue('null') != 'null'}
+        - ${domainSecurityBridgeNoHostnameAndWaf.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap
@@ -226,5 +256,30 @@ spec:
           hosted-zone-name: ""
           acm-cert-arn: ""
           hostname: ""
-          waf-acl-arn: "${infrastructureConfig.data['domain-security-waf-enabled'] == 'true' ? wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading') : ''}"
-          waf-enabled: "${infrastructureConfig.data['domain-security-waf-enabled']}"
+          waf-acl-arn: ${wafWebAcl.status.?ackResourceMetadata.?arn.orValue('loading')}
+          waf-enabled: "true"
+
+    - id: domainSecurityBridgeNoHostnameNoWaf
+      includeWhen:
+        - ${infrastructureConfig.data['dns-hostname'] == ''}
+        - ${infrastructureConfig.data['domain-security-waf-enabled'] != 'true'}
+      readyWhen:
+        - ${domainSecurityBridgeNoHostnameNoWaf.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.domainSecurityBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: domain-security
+            gen3.io/bridge: "true"
+            gen3.io/purpose: dns
+        data:
+          hosted-zone-id: ""
+          hosted-zone-name: ""
+          acm-cert-arn: ""
+          hostname: ""
+          waf-acl-arn: ""
+          waf-enabled: "false"
