@@ -212,7 +212,6 @@ instances:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
       infrastructureConfigMapName: "infrastructure-values"
-      secretWriterServiceAccountName: "gen3-secret-writer-sa"
       auroraMasterPasswordSecretBridgeName: "aurora-master-password-secret-bridge"
       masterUsername: "{{ .Values.data.database.auroraMasterUsername }}"
       masterPort: "{{ .Values.data.database.auroraPort }}"
@@ -320,7 +319,7 @@ instances:
   fenceConfigSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
@@ -330,7 +329,7 @@ instances:
   fenceGoogleAppCredsSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
@@ -340,7 +339,7 @@ instances:
   fenceGoogleStorageCredsSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
@@ -350,7 +349,7 @@ instances:
   wtsG3AutoSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
@@ -360,7 +359,7 @@ instances:
   auditG3AutoSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
@@ -371,7 +370,7 @@ instances:
   metadataG3AutoSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
@@ -381,7 +380,7 @@ instances:
   indexdServiceCredsSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
@@ -391,7 +390,7 @@ instances:
   manifestserviceG3AutoSecret:
     enabled: false
     version: "1"
-    syncWave: "35"
+    syncWave: "34"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "retain"
