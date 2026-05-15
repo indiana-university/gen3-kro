@@ -12,7 +12,7 @@
 #  Wave 25  PlatformIAM1     → reads compute-bridge + storage-bridge → platform-iam-bridge
 #  Wave 25  AppIAM1          → reads compute-bridge + storage-bridge → app-iam-bridge
 #  Wave 30  PlatformHelm1    → reads compute-bridge + platform-iam-bridge + spoke-access-bridge
-#  Wave 35  App external secret instances → opt-in companions to AppHelm
+#  Wave 34  App external secret instances → opt-in companions to AppHelm
 #  Wave 35  AppHelm1         → reads infrastructure bridges and passes values through
 #
 # Toggle instances on/off in values.yaml (or per-spoke override file).

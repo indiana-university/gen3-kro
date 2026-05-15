@@ -12,7 +12,7 @@ kind: ResourceGraphDefinition
 metadata:
   name: awsgen3appiam1
   annotations:
-    argocd.argoproj.io/sync-wave: "25"
+    argocd.argoproj.io/sync-wave: "0"
 spec:
   schema:
     apiVersion: v1alpha1

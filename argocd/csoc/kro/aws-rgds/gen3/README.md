@@ -1,7 +1,8 @@
 # Resource Groups — KRO ResourceGraphDefinitions
 
 KRO RGDs for the gen3-kro CSOC cluster. Deployed by the recursive `csoc-kro`
-Application; RGD resources use dependency sync waves 15, 20, 25, 30, and 35.
+Application; RGD resources share sync wave 0. Dependency ordering belongs to
+the generated KRO instances in the `kro-aws-instances` chart.
 
 ## Naming
 
