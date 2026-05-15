@@ -126,16 +126,16 @@ data:
 instances:
   # Phase 1
   networkSecurity:
-    enabled: false
+    enabled: true
   domainSecurity:
-    enabled: false
+    enabled: true
   messaging:
-    enabled: false
+    enabled: true
   ## Phase 2
   storage:
-    enabled: false
+    enabled: true
   database:
-    enabled: false
+    enabled: true
   compute:
     enabled: false
   ## Phase 3
