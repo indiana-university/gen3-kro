@@ -80,8 +80,7 @@ spec:
           # RDS creates and manages the master password in Secrets Manager automatically.
           # ARN is available at auroraCluster.status.masterUserSecret.secretARN after cluster is available.
           manageMasterUserPassword: true
-          masterUserSecret:
-            kmsKeyID: ${networkSecurityBridge.data['database-key-arn']}
+          masterUserSecretKMSKeyID: ${networkSecurityBridge.data['database-key-arn']}
           dbSubnetGroupName: ${networkSecurityBridge.data['db-subnet-group-name']}
           vpcSecurityGroupIDs:
             - ${networkSecurityBridge.data['aurora-sg-id']}
