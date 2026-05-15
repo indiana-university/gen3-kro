@@ -25,6 +25,7 @@ spec:
       valuesRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: string | default="main"
       valuesBasePath: string | default="" # defaults to "argocd/spokes/<namespace>" if not set
+      valuesFilename: string | default="cluster-resources/cluster-values.yaml"
       computeBridgeName: string | default="compute-bridge"
       platformIamBridgeName: string | default="platform-iam-bridge"
       spokeAccessBridgeName: string | default="spoke-access-bridge"
@@ -266,7 +267,7 @@ spec:
               helm:
                 releaseName: cluster-level-resources
                 valueFiles:
-                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/cluster-resources/core-cluster-addons.yaml"
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/${schema.spec.valuesFilename}"
                 parameters:
                   - name: cluster
                     value: ${schema.spec.name}
@@ -280,10 +281,16 @@ spec:
                     value: ${computeBridge.data['eks-cluster-name']}
                   - name: accountNumber
                     value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                  - name: crossplane-crds.region
+                    value: ${infrastructureConfig.data['aws-region']}
                   - name: alb-controller.enabled
                     value: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
                   - name: alb-controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['alb-controller-role-arn']}
+                  - name: karpenter.awsRegion
+                    value: ${infrastructureConfig.data['aws-region']}
+                  - name: karpenter-crds.selectorTag
+                    value: ${computeBridge.data['eks-cluster-name']}
                   - name: karpenter.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['karpenter-role-arn']}
                   - name: external-secrets.enabled
@@ -298,10 +305,14 @@ spec:
                     value: ${infrastructureConfig.data['platform-helm-calico-enabled']}
                   - name: kube-state-metrics.enabled
                     value: ${infrastructureConfig.data['platform-helm-kube-state-metrics-enabled']}
+                  - name: external-dns.awsRegion
+                    value: ${infrastructureConfig.data['aws-region']}
                   - name: external-dns.enabled
                     value: ${infrastructureConfig.data['platform-helm-external-dns-enabled']}
                   - name: external-dns.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['external-dns-role-arn']}
+                  - name: external-dns.domainFilters[0]
+                    value: ${infrastructureConfig.data['dns-hosted-zone-name']}
             - repoURL: ${schema.spec.valuesRepoURL}
               targetRevision: ${schema.spec.valuesRevision}
               ref: values
@@ -352,7 +363,7 @@ spec:
               helm:
                 releaseName: cluster-level-resources
                 valueFiles:
-                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/cluster-resources/core-cluster-addons.yaml"
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/${schema.spec.valuesFilename}"
                 parameters:
                   - name: cluster
                     value: ${schema.spec.name}
@@ -364,10 +375,16 @@ spec:
                     value: ${computeBridge.data['eks-cluster-name']}
                   - name: accountNumber
                     value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                  - name: crossplane-crds.region
+                    value: ${infrastructureConfig.data['aws-region']}
                   - name: alb-controller.enabled
                     value: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
                   - name: alb-controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['alb-controller-role-arn']}
+                  - name: karpenter.awsRegion
+                    value: ${infrastructureConfig.data['aws-region']}
+                  - name: karpenter-crds.selectorTag
+                    value: ${computeBridge.data['eks-cluster-name']}
                   - name: karpenter.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['karpenter-role-arn']}
                   - name: external-secrets.enabled
@@ -382,10 +399,14 @@ spec:
                     value: ${infrastructureConfig.data['platform-helm-calico-enabled']}
                   - name: kube-state-metrics.enabled
                     value: ${infrastructureConfig.data['platform-helm-kube-state-metrics-enabled']}
+                  - name: external-dns.awsRegion
+                    value: ${infrastructureConfig.data['aws-region']}
                   - name: external-dns.enabled
                     value: ${infrastructureConfig.data['platform-helm-external-dns-enabled']}
                   - name: external-dns.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['external-dns-role-arn']}
+                  - name: external-dns.domainFilters[0]
+                    value: ${infrastructureConfig.data['dns-hosted-zone-name']}
             - repoURL: ${schema.spec.valuesRepoURL}
               targetRevision: ${schema.spec.valuesRevision}
               ref: values

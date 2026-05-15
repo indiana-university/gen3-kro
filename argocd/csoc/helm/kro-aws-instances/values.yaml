@@ -8,6 +8,8 @@
 global:
   name: gen3          # instance metadata.name — immutable after first deploy
   namespace: spoke1   # spoke namespace — immutable after first deploy
+  aws:
+    region: us-east-1
 
 # ── infrastructure-values ConfigMap data ─────────────────────────────────────
 # Consumed by all RGDs via externalRef on ConfigMap "infrastructure-values".
@@ -15,10 +17,6 @@ global:
 # Safe to change at any time — does NOT recreate AWS resources directly,
 # though some values (e.g. VPC CIDRs) require resource recreation if changed.
 data:
-  global:
-    aws:
-      region: us-east-1
-
   # ── Domain Security (DNS / WAF) ────────────────────────────────────────
   domainSecurity:
     hostname: ""
@@ -52,13 +50,14 @@ data:
 
   # ── Storage ───────────────────────────────────────────────────────────
   storage:
-    loggingBucketName: gen3-logging
-    dataBucketName: gen3-data
-    uploadBucketName: gen3-upload
-    manifestBucketName: ""
-    dashboardBucketName: ""
-    usersyncBucketName: gen3-usersync
-
+    # Leave empty — configmap.yaml auto-generates as <global.name>-<global.namespace>-<purpose>.
+    # Override only to use a pre-existing bucket name that does not follow that pattern.
+    loggingBucketName: ""
+    dataBucketName: ""
+    uploadBucketName: ""
+    usersyncBucketName: ""
+    manifestBucketName: ""    # leave empty to disable manifest service
+    dashboardBucketName: ""   # leave empty to disable portal/dashboard
   # ── Database ──────────────────────────────────────────────────────────
   database:
     auroraEngineVersion: "16.6"
@@ -66,13 +65,39 @@ data:
     auroraMasterUsername: postgres
     auroraMinCapacity: "0.5"
     auroraMaxCapacity: "4"
-    auroraMasterPasswordSmName: gen3-aurora-master-password
+    auroraPort: "5432"
     auroraInstances:
       - name: writer
         instanceClass: db.serverless
         az: us-east-1a
         promotionTier: "0"
     esoUseIrsa: "true" # "false"=K8s Secret (local Kind), "true"=IRSA/PodIdentity (EKS)
+
+  # ── AWS Secrets Manager names ──────────────────────────────────────────
+  # Values here are suffixes. RGDs/AppHelm publish them as
+  # <global.name>-<global.namespace>-<suffix>, with hardcoded service suffixes
+  # as the fallback when a suffix is blank.
+  secretNames:
+    auroraMasterPassword: aurora-master-password
+    arboristDbCreds: arborist-creds
+    auditDbCreds: audit-creds
+    auditG3Auto: audit-g3auto
+    fenceDbCreds: fence-creds
+    fenceConfig: fence-config
+    fenceJwtKeys: fence-jwt-keys
+    fenceGoogleAppCreds: fence-google-app-creds-secret
+    fenceGoogleStorageCreds: fence-google-storage-creds-secret
+    fenceSshKeys: fence-ssh-keys
+    indexdDbCreds: indexd-creds
+    indexdServiceCreds: indexd-service-creds
+    metadataDbCreds: metadata-creds
+    metadataG3Auto: metadata-g3auto
+    manifestserviceG3Auto: manifestservice-g3auto
+    peregrineDbCreds: peregrine-creds
+    sheepdogDbCreds: sheepdog-creds
+    wtsDbCreds: wts-creds
+    wtsG3Auto: wts-g3auto
+    wtsOidcClient: wts-oidc-client
 
   # ── Compute ───────────────────────────────────────────────────────────
   compute:
@@ -176,17 +201,34 @@ instances:
       networkSecurityBridgeName: "network-security-bridge"
       storageBridgeName: "storage-bridge"
 
+  # Tier 1 preflight — Aurora master password SM object + value.
+  # Uses the per-spoke gen3-secret-writer-sa from the multi-account chart.
+  secretBootstrap:
+    enabled: true
+    version: "1"
+    syncWave: "26"
+    metadataName: "{{ .Values.global.name }}-secret-bootstrap"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretWriterServiceAccountName: "gen3-secret-writer-sa"
+      auroraMasterPasswordSecretBridgeName: "aurora-master-password-secret-bridge"
+      masterUsername: "{{ .Values.data.database.auroraMasterUsername }}"
+      masterPort: "{{ .Values.data.database.auroraPort }}"
+
   # Tier 1 — Database (Aurora PostgreSQL cluster + ExternalSecret / SecretStore)
-  # Depends on: network-security-bridge
+  # Depends on: network-security-bridge, aurora-master-password-secret-bridge
   database:
     enabled: true
     version: "1"
-    syncWave: "20"
+    syncWave: "27"
     spec:
       adoptionPolicy: "adopt-or-create"
       deletionPolicy: "delete"
       infrastructureConfigMapName: "infrastructure-values"
       networkSecurityBridgeName: "network-security-bridge"
+      auroraMasterPasswordSecretBridgeName: "aurora-master-password-secret-bridge"
       esoAwsCredsSecretName: "eso-aws-credentials"
       databaseBridgeName: "database-bridge"
 
@@ -263,13 +305,101 @@ instances:
       valuesRepoURL: "https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: "main"
       valuesBasePath: ""
+      valuesFilename: "cluster-values.yaml"
       computeBridgeName: "compute-bridge"
       platformIamBridgeName: "platform-iam-bridge"
       spokeAccessBridgeName: "spoke-access-bridge"
       platformHelmBridgeName: "platform-helm-bridge"
 
-  # Tier 4 — AppHelm (gen3-helm Application via ArgoCD multi-source)
-  # Depends on: ALL upstream bridges
+  # Tier 4 companion — app ExternalSecret backing values, alongside AppHelm.
+  # Disabled by default because these mirror gen3-build app config secrets.
+  # Enable only when the matching gen3-values createK8s* flag is false and
+  # you want KRO to seed retained AWS Secrets Manager values from gen3-secret-bootstrap.
+  # These run at AppHelm's sync wave so operators can decide which values are
+  # pre-seeded and which are produced after app services start.
+  fenceConfigSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "fence-config-secret-bridge"
+
+  fenceGoogleAppCredsSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "fence-google-app-creds-secret-bridge"
+
+  fenceGoogleStorageCredsSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "fence-google-storage-creds-secret-bridge"
+
+  wtsG3AutoSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "wts-g3auto-secret-bridge"
+
+  auditG3AutoSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "audit-g3auto-secret-bridge"
+      messagingConfigMapName: "messaging-bridge"
+
+  metadataG3AutoSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "metadata-g3auto-secret-bridge"
+
+  indexdServiceCredsSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "indexd-service-creds-secret-bridge"
+
+  manifestserviceG3AutoSecret:
+    enabled: false
+    version: "1"
+    syncWave: "35"
+    spec:
+      adoptionPolicy: "adopt-or-create"
+      deletionPolicy: "retain"
+      infrastructureConfigMapName: "infrastructure-values"
+      secretBridgeName: "manifestservice-g3auto-secret-bridge"
+
+  # Tier 4 — AppHelm (Gen3-build Application via ArgoCD multi-source)
+  # Depends on: ALL upstream infrastructure bridges
   appHelm:
     enabled: false
     version: "1"
@@ -278,12 +408,13 @@ instances:
       argoCDNamespace: "argocd"
       argoCDProject: "default"
       infrastructureConfigMapName: "infrastructure-values"
-      helmChartRepoURL: "https://github.com/uc-cdis/gen3-helm.git"
+      helmChartRepoURL: "https://github.com/jayadeyemi/Gen3-build.git"
       helmChartPath: "helm/gen3"
-      helmChartTargetRevision: "master"
+      helmChartTargetRevision: "main"
       valuesRepoURL: "https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: "main"
       valuesBasePath: ""
+      valuesFilename: "gen3-values.yaml"
       domainSecurityBridgeName: "domain-security-bridge"
       platformHelmBridgeName: "platform-helm-bridge"
       computeBridgeName: "compute-bridge"

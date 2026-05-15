@@ -76,9 +76,10 @@ locals {
     # fail when enable_ack_self_managed=false. Empty → no IRSA; real ARN → IRSA.
     {
       ack_self_managed_role_arn = var.ack_self_managed_role_arn
+      csoc_assume_role_arn      = var.ack_self_managed_role_arn
     },
     local.spoke_account_annotations,
-    # Always present so ack-multi-acct ApplicationSet (missingkey=error) doesn't
+    # Always present so multi-account ApplicationSet (missingkey=error) doesn't
     # fail when no spoke accounts are configured yet. Empty JSON → no namespaces.
     {
       fleet_spokes_json = length(var.spoke_account_ids) > 0 ? jsonencode(var.spoke_account_ids) : "{}"
@@ -105,7 +106,7 @@ locals {
 # objects are applied to the CSOC cluster. The generator iterates these secrets
 # to iterate spokes without hard-coding the list in the ApplicationSet YAML.
 #
-# ACK CARM (namespace annotations) is handled by the ack-multi-acct Helm chart
+# ACK CARM (namespace annotations) is handled by the multi-account Helm chart
 # deployed through ArgoCD bootstrap, NOT by Terraform.
 ################################################################################
 resource "kubernetes_secret_v1" "spoke_fleet" {

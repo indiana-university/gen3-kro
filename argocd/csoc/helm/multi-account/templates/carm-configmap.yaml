@@ -25,7 +25,7 @@ metadata:
     argocd.argoproj.io/sync-wave: "-5"
   labels:
     app.kubernetes.io/managed-by: Helm
-    app.kubernetes.io/part-of: ack-multi-acct
+    app.kubernetes.io/part-of: multi-account
 data:
   {{- $clusters := .Values.clustersJson | fromJson }}
   {{- range $alias, $accountId := $clusters }}

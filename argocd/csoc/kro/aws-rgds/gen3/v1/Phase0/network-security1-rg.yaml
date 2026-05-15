@@ -458,8 +458,8 @@ spec:
           vpcID: ${vpc.status.?vpcID}
           ingressRules:
             - ipProtocol: tcp
-              fromPort: 5432
-              toPort: 5432
+              fromPort: ${int(infrastructureConfig.data['database-aurora-port'])}
+              toPort: ${int(infrastructureConfig.data['database-aurora-port'])}
               ipRanges:
                 - cidrIP: ${infrastructureConfig.data['network-vpc-cidr']}
                   description: "PostgreSQL from VPC"

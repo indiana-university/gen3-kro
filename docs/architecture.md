@@ -64,7 +64,7 @@ bootstrap ApplicationSet
 └── bootstrap Application -> argocd/bootstrap
     ├── csoc-controllers -> self-managed-kro, ack-*, external-secrets
     ├── csoc-kro -> recursive argocd/csoc/kro RGD sync
-    ├── ack-multi-acct -> CARM namespaces and IAMRoleSelectors
+    ├── multi-account -> per-spoke namespaces, CARM wiring, and secret-writer SAs
     └── fleet-instances -> kro-aws-instances per spoke
 ```
 
@@ -73,7 +73,7 @@ bootstrap ApplicationSet
 | -30 | KRO controller | Required before RGDs |
 | -20 | `csoc-controllers` | Generates controller AppSets |
 | 1 | ACK controllers | Required before ACK-backed instances |
-| 5 | `ack-multi-acct` | Cross-account ACK routing |
+| 5 | `multi-account` | Cross-account namespace and secret-writer wiring |
 | 10 | `csoc-kro` | Recursive RGD delivery |
 | 15 | External Secrets | Workload secret provider |
 | 30 | `fleet-instances` | Per-spoke KRO instances |

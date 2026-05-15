@@ -1,0 +1,118 @@
+# KRO Capability Test 10: Excluded resource references in ternaries
+#
+# Uses only Kubernetes ConfigMaps. This test reproduces the domain-security
+# bridge failure mode: a template references an includeWhen-excluded resource in
+# one branch of a ternary expression.
+#
+# Validates:
+#   - Bad pattern: an always-present bridge references an optional resource inside
+#     a ternary. KRO may drop that bridge when the optional resource is excluded.
+#   - Good pattern: duplicate same-named bridges with opposite includeWhen
+#     conditions. Each bridge only references resources active in the same branch.
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-excluded-resource-ternary-test
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroExcludedResourceTernaryTest
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test"
+      optionalEnabled: boolean | default=false
+      optionalValue: string | default="enabled-value"
+    status:
+      namespacePhase: ${targetNamespace.status.phase}
+
+  resources:
+    - id: targetNamespace
+      readyWhen:
+        - ${targetNamespace.status.phase == "Active"}
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            test-suite: kro-capabilities
+            test-name: excluded-resource-ternary
+
+    - id: optionalConfig
+      includeWhen:
+        - ${schema.spec.optionalEnabled == true}
+      readyWhen:
+        - ${optionalConfig.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-optional
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: excluded-resource-ternary
+            branch: optional
+        data:
+          value: ${schema.spec.optionalValue}
+
+    - id: badBridge
+      readyWhen:
+        - ${badBridge.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-bad-bridge
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: excluded-resource-ternary
+            pattern: bad
+        data:
+          optional-enabled: "${schema.spec.optionalEnabled ? 'true' : 'false'}"
+          optional-value: "${schema.spec.optionalEnabled ? optionalConfig.data.value : ''}"
+
+    - id: goodBridgeEnabled
+      includeWhen:
+        - ${schema.spec.optionalEnabled == true}
+      readyWhen:
+        - ${goodBridgeEnabled.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-good-bridge
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: excluded-resource-ternary
+            pattern: good
+            branch: enabled
+        data:
+          optional-enabled: "true"
+          optional-value: ${optionalConfig.data.value}
+
+    - id: goodBridgeDisabled
+      includeWhen:
+        - ${schema.spec.optionalEnabled == false}
+      readyWhen:
+        - ${goodBridgeDisabled.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-good-bridge
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: excluded-resource-ternary
+            pattern: good
+            branch: disabled
+        data:
+          optional-enabled: "false"
+          optional-value: ""

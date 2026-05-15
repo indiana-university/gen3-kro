@@ -22,6 +22,7 @@ spec:
       loggingBucketARN: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
       dataBucketARN: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
       uploadBucketARN: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+      usersBucketARN: ${usersBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
 
   resources:
 
@@ -69,7 +70,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          name: ${infrastructureConfig.data['storage-logging-bucket-name']}
+          name: "${infrastructureConfig.data['storage-logging-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-logging-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-logging'}"
           versioning:
             status: "Enabled"
           encryption:
@@ -85,7 +86,7 @@ spec:
           tagging:
             tagSet:
               - key: Name
-                value: ${infrastructureConfig.data['storage-logging-bucket-name']}
+                value: "${infrastructureConfig.data['storage-logging-bucket-name'] != '' ? infrastructureConfig.data['storage-logging-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-logging'}"
               - key: ManagedBy
                 value: Kro
               - key: BucketType
@@ -106,7 +107,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          name: ${infrastructureConfig.data['storage-data-bucket-name']}
+          name: "${infrastructureConfig.data['storage-data-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-data-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-data'}"
           versioning:
             status: "Enabled"
           encryption:
@@ -122,7 +123,7 @@ spec:
           tagging:
             tagSet:
               - key: Name
-                value: ${infrastructureConfig.data['storage-data-bucket-name']}
+                value: "${infrastructureConfig.data['storage-data-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-data-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-data'}"
               - key: ManagedBy
                 value: Kro
               - key: BucketType
@@ -143,7 +144,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          name: ${infrastructureConfig.data['storage-upload-bucket-name']}
+          name: "${infrastructureConfig.data['storage-upload-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-upload-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-upload'}"
           versioning:
             status: "Enabled"
           encryption:
@@ -159,7 +160,7 @@ spec:
           tagging:
             tagSet:
               - key: Name
-                value: ${infrastructureConfig.data['storage-upload-bucket-name']}
+                value: "${infrastructureConfig.data['storage-upload-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-upload-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-upload'}"
               - key: ManagedBy
                 value: Kro
               - key: BucketType
@@ -182,7 +183,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          name: ${infrastructureConfig.data['storage-manifest-bucket-name']}
+          name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-manifest-bucket-name']}"
           versioning:
             status: "Enabled"
           encryption:
@@ -198,7 +199,7 @@ spec:
           tagging:
             tagSet:
               - key: Name
-                value: ${infrastructureConfig.data['storage-manifest-bucket-name']}
+                value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-manifest-bucket-name']}"
               - key: ManagedBy
                 value: Kro
               - key: BucketType
@@ -221,7 +222,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          name: ${infrastructureConfig.data['storage-dashboard-bucket-name']}
+          name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-dashboard-bucket-name']}"
           versioning:
             status: "Enabled"
           encryption:
@@ -237,15 +238,13 @@ spec:
           tagging:
             tagSet:
               - key: Name
-                value: ${infrastructureConfig.data['storage-dashboard-bucket-name']}
+                value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-dashboard-bucket-name']}"
               - key: ManagedBy
                 value: Kro
               - key: BucketType
                 value: dashboard
 
     - id: usersBucket
-      includeWhen:
-        - ${infrastructureConfig.data['storage-usersync-bucket-name'] != ''}
       readyWhen:
         - ${usersBucket.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
         - ${usersBucket.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -260,7 +259,7 @@ spec:
             services.k8s.aws/adoption-policy: ${schema.spec.adoptionPolicy}
             services.k8s.aws/deletion-policy: ${schema.spec.deletionPolicy}
         spec:
-          name: ${infrastructureConfig.data['storage-usersync-bucket-name']}
+          name: "${infrastructureConfig.data['storage-usersync-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-usersync-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-usersync'}"
           versioning:
             status: "Enabled"
           encryption:
@@ -276,17 +275,20 @@ spec:
           tagging:
             tagSet:
               - key: Name
-                value: ${infrastructureConfig.data['storage-usersync-bucket-name']}
+                value: "${infrastructureConfig.data['storage-usersync-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-usersync-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-usersync'}"
               - key: ManagedBy
                 value: Kro
               - key: BucketType
                 value: usersync
 
-  # Dual-bridge: conditional bucket ARNs (manifest, dashboard) — separate bridges per combo
+  # Bridge variants avoid evaluating absent optional bucket resources.
+  # Compulsory buckets are always present: logging, data, upload, usersync.
 
-    - id: storageBridge
+    - id: storageBridgeAllBuckets
+      includeWhen:
+        - ${infrastructureConfig.data['storage-manifest-bucket-name'] != '' && infrastructureConfig.data['storage-dashboard-bucket-name'] != ''}
       readyWhen:
-        - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+        - ${storageBridgeAllBuckets.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap
@@ -299,12 +301,101 @@ spec:
             gen3.io/bridge: "true"
         data:
           logging-bucket-arn: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
-          logging-bucket-name: ${infrastructureConfig.data['storage-logging-bucket-name']}
+          logging-bucket-name: "${infrastructureConfig.data['storage-logging-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-logging-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-logging'}"
           data-bucket-arn: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
-          data-bucket-name: ${infrastructureConfig.data['storage-data-bucket-name']}
+          data-bucket-name: "${infrastructureConfig.data['storage-data-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-data-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-data'}"
           upload-bucket-arn: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
-          upload-bucket-name: ${infrastructureConfig.data['storage-upload-bucket-name']}
-          manifest-bucket-name: ${infrastructureConfig.data['storage-manifest-bucket-name']}
-          dashboard-bucket-name: ${infrastructureConfig.data['storage-dashboard-bucket-name']}
+          upload-bucket-name: "${infrastructureConfig.data['storage-upload-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-upload-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-upload'}"
           users-bucket-arn: ${usersBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
-          users-bucket-name: ${infrastructureConfig.data['storage-usersync-bucket-name']}
+          users-bucket-name: "${infrastructureConfig.data['storage-usersync-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-usersync-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-usersync'}"
+          manifest-bucket-arn: ${manifestBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          manifest-bucket-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-manifest-bucket-name']}"
+          dashboard-bucket-arn: ${dashboardBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          dashboard-bucket-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-dashboard-bucket-name']}"
+
+    - id: storageBridgeManifestOnly
+      includeWhen:
+        - ${infrastructureConfig.data['storage-manifest-bucket-name'] != '' && infrastructureConfig.data['storage-dashboard-bucket-name'] == ''}
+      readyWhen:
+        - ${storageBridgeManifestOnly.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: storage
+            gen3.io/bridge: "true"
+        data:
+          logging-bucket-arn: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          logging-bucket-name: "${infrastructureConfig.data['storage-logging-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-logging-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-logging'}"
+          data-bucket-arn: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          data-bucket-name: "${infrastructureConfig.data['storage-data-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-data-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-data'}"
+          upload-bucket-arn: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          upload-bucket-name: "${infrastructureConfig.data['storage-upload-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-upload-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-upload'}"
+          users-bucket-arn: ${usersBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          users-bucket-name: "${infrastructureConfig.data['storage-usersync-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-usersync-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-usersync'}"
+          manifest-bucket-arn: ${manifestBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          manifest-bucket-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-manifest-bucket-name']}"
+          dashboard-bucket-arn: ""
+          dashboard-bucket-name: ""
+
+    - id: storageBridgeDashboardOnly
+      includeWhen:
+        - ${infrastructureConfig.data['storage-manifest-bucket-name'] == '' && infrastructureConfig.data['storage-dashboard-bucket-name'] != ''}
+      readyWhen:
+        - ${storageBridgeDashboardOnly.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: storage
+            gen3.io/bridge: "true"
+        data:
+          logging-bucket-arn: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          logging-bucket-name: "${infrastructureConfig.data['storage-logging-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-logging-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-logging'}"
+          data-bucket-arn: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          data-bucket-name: "${infrastructureConfig.data['storage-data-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-data-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-data'}"
+          upload-bucket-arn: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          upload-bucket-name: "${infrastructureConfig.data['storage-upload-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-upload-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-upload'}"
+          users-bucket-arn: ${usersBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          users-bucket-name: "${infrastructureConfig.data['storage-usersync-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-usersync-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-usersync'}"
+          manifest-bucket-arn: ""
+          manifest-bucket-name: ""
+          dashboard-bucket-arn: ${dashboardBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          dashboard-bucket-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-dashboard-bucket-name']}"
+
+    - id: storageBridgeCompulsoryBuckets
+      includeWhen:
+        - ${infrastructureConfig.data['storage-manifest-bucket-name'] == '' && infrastructureConfig.data['storage-dashboard-bucket-name'] == ''}
+      readyWhen:
+        - ${storageBridgeCompulsoryBuckets.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: storage
+            gen3.io/bridge: "true"
+        data:
+          logging-bucket-arn: ${loggingBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          logging-bucket-name: "${infrastructureConfig.data['storage-logging-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-logging-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-logging'}"
+          data-bucket-arn: ${dataBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          data-bucket-name: "${infrastructureConfig.data['storage-data-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-data-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-data'}"
+          upload-bucket-arn: ${uploadBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          upload-bucket-name: "${infrastructureConfig.data['storage-upload-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-upload-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-upload'}"
+          users-bucket-arn: ${usersBucket.status.?ackResourceMetadata.?arn.orValue("loading")}
+          users-bucket-name: "${infrastructureConfig.data['storage-usersync-bucket-name'] != '' ? schema.spec.name + '-' + schema.spec.namespace + '-' + infrastructureConfig.data['storage-usersync-bucket-name'] : schema.spec.name + '-' + schema.spec.namespace + '-usersync'}"
+          manifest-bucket-arn: ""
+          manifest-bucket-name: ""
+          dashboard-bucket-arn: ""
+          dashboard-bucket-name: ""

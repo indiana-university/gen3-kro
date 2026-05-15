@@ -31,6 +31,9 @@ crash.log
 # └─────────────────────────────────────────┘
 **/secrets/*
 **/secrets.yaml
+**/client_secret_*.json
+**/client_secret_*.yaml
+**/client_secret_*.yml
 **/*.pem
 **/*.ppk
 **/*.tfvars

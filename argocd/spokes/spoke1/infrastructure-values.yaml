@@ -8,13 +8,11 @@
 global:
   name: gen3        # ⚠️ immutable after first deploy
   namespace: spoke1 # ⚠️ immutable after first deploy
+  aws:
+    region: us-east-1
 
 # ── infrastructure-values ConfigMap data ─────────────────────────────────────
 data:
-  global:
-    aws:
-      region: us-east-1
-
   domainSecurity:
     hostname: "spoke1dev.rds-pla.net"
     hostedZoneName: rds-pla.net
@@ -55,12 +53,12 @@ data:
         az: us-east-1b
 
   storage:
-    loggingBucketName: gen3-spoke1-logging
-    dataBucketName: gen3-spoke1-data
-    uploadBucketName: gen3-spoke1-upload
-    manifestBucketName: ""
-    dashboardBucketName: ""
-    usersyncBucketName: gen3-spoke1-usersync
+    loggingBucketName: ""       # auto: gen3-spoke1-logging
+    dataBucketName: ""          # auto: gen3-spoke1-data
+    uploadBucketName: ""        # auto: gen3-spoke1-upload
+    usersyncBucketName: ""      # auto: gen3-spoke1-usersync
+    manifestBucketName: ""      # empty = manifest service disabled
+    dashboardBucketName: ""     # empty = portal/dashboard disabled
 
   database:
     auroraEngineVersion: "16.6"
@@ -68,13 +66,35 @@ data:
     auroraMasterUsername: postgres
     auroraMinCapacity: "0.5"
     auroraMaxCapacity: "4"
-    auroraMasterPasswordSmName: spoke1-aurora-master-password
+    auroraPort: "5432"
     auroraInstances:
       - name: writer
         instanceClass: db.serverless
         az: us-east-1a
         promotionTier: "0"
     esoUseIrsa: "true"
+
+  secretNames:
+    auroraMasterPassword: aurora-master-password
+    arboristDbCreds: arborist-creds
+    auditDbCreds: audit-creds
+    auditG3Auto: audit-g3auto
+    fenceDbCreds: fence-creds
+    fenceConfig: fence-config
+    fenceJwtKeys: fence-jwt-keys
+    fenceGoogleAppCreds: fence-google-app-creds-secret
+    fenceGoogleStorageCreds: fence-google-storage-creds-secret
+    fenceSshKeys: fence-ssh-keys
+    indexdDbCreds: indexd-creds
+    indexdServiceCreds: indexd-service-creds
+    metadataDbCreds: metadata-creds
+    metadataG3Auto: metadata-g3auto
+    manifestserviceG3Auto: manifestservice-g3auto
+    peregrineDbCreds: peregrine-creds
+    sheepdogDbCreds: sheepdog-creds
+    wtsDbCreds: wts-creds
+    wtsG3Auto: wts-g3auto
+    wtsOidcClient: wts-oidc-client
 
   compute:
     kubernetesVersion: "1.35"
@@ -122,6 +142,8 @@ instances:
   ## Phase 2
   storage:
     enabled: false
+  secretBootstrap:
+    enabled: false
   database:
     enabled: false
   compute:
@@ -135,6 +157,23 @@ instances:
     enabled: false
   ## Phase 4
   platformHelm:
+    enabled: false
+  ## Phase 5 companion — Secret RGDs (opt-in AWS SM values from gen3-secret-bootstrap)
+  fenceConfigSecret:
+    enabled: false
+  fenceGoogleAppCredsSecret:
+    enabled: false
+  fenceGoogleStorageCredsSecret:
+    enabled: false
+  wtsG3AutoSecret:
+    enabled: false
+  auditG3AutoSecret:
+    enabled: false
+  metadataG3AutoSecret:
+    enabled: false
+  indexdServiceCredsSecret:
+    enabled: false
+  manifestserviceG3AutoSecret:
     enabled: false
   ## Phase 5
   appHelm:

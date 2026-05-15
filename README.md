@@ -144,7 +144,7 @@ kubectl get applications -n argocd     # Bootstrap Application created
 
 ## Local CSOC Quick Start (Host-Based Kind)
 
-Use the local CSOC for RGD authoring and testing without EKS overhead.
+Use the local CSOC for RGD authoring and KRO capability testing without EKS overhead.
 **No container needed** — runs entirely on the host.
 
 ### Prerequisites

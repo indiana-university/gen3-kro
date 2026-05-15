@@ -9,9 +9,17 @@ metadata:
     gen3.io/config-type: values
   annotations:
     argocd.argoproj.io/sync-wave: "14"
+{{- /* Bucket names: empty = auto-generated in RGDs as <name>-<namespace>-<purpose>. */}}
+{{- /* manifest and dashboard: empty = service disabled (no auto-generation).   */}}
+{{- $loggingBucketName  := .Values.data.storage.loggingBucketName }}
+{{- $dataBucketName     := .Values.data.storage.dataBucketName }}
+{{- $uploadBucketName   := .Values.data.storage.uploadBucketName }}
+{{- $manifestBucketName := .Values.data.storage.manifestBucketName }}
+{{- $dashboardBucketName := .Values.data.storage.dashboardBucketName }}
+{{- $usersyncBucketName := .Values.data.storage.usersyncBucketName }}
 data:
   # Global
-  aws-region:      {{ .Values.data.global.aws.region | quote }}
+  aws-region:      {{ .Values.global.aws.region | quote }}
   # Domain Security (DNS / WAF)
   dns-hostname:         {{ .Values.data.domainSecurity.hostname | quote }}
   dns-hosted-zone-name: {{ .Values.data.domainSecurity.hostedZoneName | quote }}
@@ -52,19 +60,20 @@ data:
   network-subnet-db-cidrs:       {{ join "," $dbCidrs | quote }}
   network-subnet-db-azs:         {{ join "," $dbAzs | quote }}
   # Storage
-  storage-logging-bucket-name:   {{ .Values.data.storage.loggingBucketName | quote }}
-  storage-data-bucket-name:      {{ .Values.data.storage.dataBucketName | quote }}
-  storage-upload-bucket-name:    {{ .Values.data.storage.uploadBucketName | quote }}
-  storage-manifest-bucket-name:  {{ .Values.data.storage.manifestBucketName | quote }}
-  storage-dashboard-bucket-name: {{ .Values.data.storage.dashboardBucketName | quote }}
-  storage-usersync-bucket-name:  {{ .Values.data.storage.usersyncBucketName | quote }}
+  storage-logging-bucket-name:   {{ $loggingBucketName | quote }}
+  storage-data-bucket-name:      {{ $dataBucketName | quote }}
+  storage-upload-bucket-name:    {{ $uploadBucketName | quote }}
+  storage-manifest-bucket-name:  {{ $manifestBucketName | quote }}
+  storage-dashboard-bucket-name: {{ $dashboardBucketName | quote }}
+  storage-usersync-bucket-name:  {{ $usersyncBucketName | quote }}
   # Database
   database-aurora-engine-version:          {{ .Values.data.database.auroraEngineVersion | quote }}
   database-aurora-db-name:                 {{ .Values.data.database.auroraDbName | quote }}
   database-aurora-master-username:         {{ .Values.data.database.auroraMasterUsername | quote }}
   database-aurora-min-capacity:            {{ .Values.data.database.auroraMinCapacity | quote }}
   database-aurora-max-capacity:            {{ .Values.data.database.auroraMaxCapacity | quote }}
-  database-aurora-master-password-sm-name: {{ .Values.data.database.auroraMasterPasswordSmName | quote }}
+  database-aurora-master-password-sm-name: {{ .Values.data.secretNames.auroraMasterPassword | quote }}
+  database-aurora-port:                    {{ default "5432" .Values.data.database.auroraPort | quote }}
   # Aurora DB instances (name/class/az/promotion tier comma-joined, generated from database.auroraInstances)
   {{- $auroraInstanceNames := list }}{{- $auroraInstanceClasses := list }}{{- $auroraInstanceAzs := list }}{{- $auroraInstancePromotionTiers := list }}
   {{- range .Values.data.database.auroraInstances }}
@@ -78,6 +87,29 @@ data:
   database-aurora-instance-azs:             {{ join "," $auroraInstanceAzs | quote }}
   database-aurora-instance-promotion-tiers: {{ join "," $auroraInstancePromotionTiers | quote }}
   database-eso-use-irsa:                   {{ .Values.data.database.esoUseIrsa | quote }}
+  # AWS Secrets Manager name suffixes. RGDs/AppHelm publish them as
+  # <global.name>-<global.namespace>-<suffix>, falling back to hardcoded
+  # service suffixes if a value is blank.
+  secret-name-aurora-master-password:              {{ .Values.data.secretNames.auroraMasterPassword | quote }}
+  secret-name-arborist-dbcreds:                    {{ .Values.data.secretNames.arboristDbCreds | quote }}
+  secret-name-audit-dbcreds:                       {{ .Values.data.secretNames.auditDbCreds | quote }}
+  secret-name-audit-g3auto:                        {{ .Values.data.secretNames.auditG3Auto | quote }}
+  secret-name-fence-dbcreds:                       {{ .Values.data.secretNames.fenceDbCreds | quote }}
+  secret-name-fence-config:                        {{ .Values.data.secretNames.fenceConfig | quote }}
+  secret-name-fence-jwt-keys:                      {{ .Values.data.secretNames.fenceJwtKeys | quote }}
+  secret-name-fence-google-app-creds:              {{ .Values.data.secretNames.fenceGoogleAppCreds | quote }}
+  secret-name-fence-google-storage-creds:          {{ .Values.data.secretNames.fenceGoogleStorageCreds | quote }}
+  secret-name-fence-ssh-keys:                      {{ .Values.data.secretNames.fenceSshKeys | quote }}
+  secret-name-indexd-dbcreds:                      {{ .Values.data.secretNames.indexdDbCreds | quote }}
+  secret-name-indexd-service-creds:                {{ .Values.data.secretNames.indexdServiceCreds | quote }}
+  secret-name-metadata-dbcreds:                    {{ .Values.data.secretNames.metadataDbCreds | quote }}
+  secret-name-metadata-g3auto:                     {{ .Values.data.secretNames.metadataG3Auto | quote }}
+  secret-name-manifestservice-g3auto:              {{ .Values.data.secretNames.manifestserviceG3Auto | quote }}
+  secret-name-peregrine-dbcreds:                   {{ .Values.data.secretNames.peregrineDbCreds | quote }}
+  secret-name-sheepdog-dbcreds:                    {{ .Values.data.secretNames.sheepdogDbCreds | quote }}
+  secret-name-wts-dbcreds:                         {{ .Values.data.secretNames.wtsDbCreds | quote }}
+  secret-name-wts-g3auto:                          {{ .Values.data.secretNames.wtsG3Auto | quote }}
+  secret-name-wts-oidc-client:                     {{ .Values.data.secretNames.wtsOidcClient | quote }}
   # Compute
   compute-kubernetes-version:                       {{ .Values.data.compute.kubernetesVersion | quote }}
   compute-auto-mode-enabled:                        {{ .Values.data.compute.autoModeEnabled | quote }}

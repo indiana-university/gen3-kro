@@ -1,0 +1,12 @@
+apiVersion: v2
+name: multi-account
+description: >
+  Creates per-spoke Kubernetes Namespaces, ACK CARM routing resources, and
+  shared service accounts for cross-account bootstrap jobs.
+type: application
+version: 0.1.0
+maintainers:
+  - name: RDServices
+    email: rdservices@iu.edu
+  - name: Basanami (Jimi) Adeyemi
+    email: boadeyem@iu.edu

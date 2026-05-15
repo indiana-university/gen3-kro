@@ -225,7 +225,13 @@
       "Resource": [
         "arn:aws:secretsmanager:*:*:secret:rds!*",
         "arn:aws:secretsmanager:*:*:secret:gen3-*",
-        "arn:aws:secretsmanager:*:*:secret:spoke*-*"
+        "arn:aws:secretsmanager:*:*:secret:spoke*-*",
+        "arn:aws:secretsmanager:*:*:secret:fence-*",
+        "arn:aws:secretsmanager:*:*:secret:audit-*",
+        "arn:aws:secretsmanager:*:*:secret:metadata-*",
+        "arn:aws:secretsmanager:*:*:secret:indexd-*",
+        "arn:aws:secretsmanager:*:*:secret:manifestservice-*",
+        "arn:aws:secretsmanager:*:*:secret:wts-*"
       ]
     },
     {

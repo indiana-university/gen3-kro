@@ -1,11 +1,11 @@
-# Standalone ApplicationSet for ACK CARM namespaces and IAMRoleSelectors.
+# Standalone ApplicationSet for per-spoke multi-account namespace wiring.
 # Deployed directly (not via the addon framework) so that annotation values
 # are injected via explicit Helm parameters — the unambiguous ArgoCD pattern.
 # Wave 5: after KRO (wave -30) and ACK controllers (wave 1), before RGDs (wave 10).
 apiVersion: argoproj.io/v1alpha1
 kind: ApplicationSet
 metadata:
-  name: ack-multi-acct
+  name: multi-account
   namespace: argocd
   annotations:
     argocd.argoproj.io/sync-wave: "5"
@@ -23,20 +23,21 @@ spec:
           enable_multi_acct: "true"
   template:
     metadata:
-      name: ack-multi-acct
+      name: multi-account
     spec:
       project: default
       sources:
       - repoURL: '{{.metadata.annotations.addons_repo_url}}'
-        path: '{{.metadata.annotations.addons_repo_basepath}}csoc/helm/ack-multi-acct'
+        path: '{{.metadata.annotations.addons_repo_basepath}}csoc/helm/multi-account'
         targetRevision: '{{.metadata.annotations.addons_repo_revision}}'
         helm:
-          releaseName: ack-multi-acct
+          releaseName: multi-account
           # Pass clustersJson as an inline YAML value so it stays as a string
           # (helm --set / --set-string both mis-parse JSON curly braces).
           values: |
             clustersJson: '{{.metadata.annotations.fleet_spokes_json}}'
             clusterName: '{{.metadata.annotations.aws_cluster_name}}'
+            csocAssumeRoleArn: '{{.metadata.annotations.csoc_assume_role_arn}}'
       destination:
         namespace: argocd
         name: '{{.name}}'

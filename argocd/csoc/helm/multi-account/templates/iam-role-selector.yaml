@@ -14,7 +14,7 @@
 apiVersion: services.k8s.aws/v1alpha1
 kind: IAMRoleSelector
 metadata:
-  name: {{ $alias }}-ack-role
+  name: {{ $alias }}-role
   namespace: {{ $alias }}
   annotations:
     argocd.argoproj.io/sync-wave: "-5"

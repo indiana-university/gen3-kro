@@ -52,6 +52,10 @@ spec:
     - id: computeBridge
       readyWhen:
         - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+        - ${computeBridge.data['oidc-provider-arn'] != ''}
+        - ${computeBridge.data['oidc-provider-arn'] != 'loading'}
+        - ${computeBridge.data['eks-oidc-issuer'] != ''}
+        - ${computeBridge.data['eks-oidc-issuer'] != 'loading'}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
@@ -62,6 +66,14 @@ spec:
     - id: storageBridge
       readyWhen:
         - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+        - ${storageBridge.data['data-bucket-arn'] != ''}
+        - ${storageBridge.data['data-bucket-arn'] != 'loading'}
+        - ${storageBridge.data['upload-bucket-arn'] != ''}
+        - ${storageBridge.data['upload-bucket-arn'] != 'loading'}
+        - ${storageBridge.data['users-bucket-arn'] != ''}
+        - ${storageBridge.data['users-bucket-arn'] != 'loading'}
+        - ${storageBridge.data['manifest-bucket-arn'] != 'loading'}
+        - ${storageBridge.data['dashboard-bucket-arn'] != 'loading'}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
@@ -223,6 +235,8 @@ spec:
               value: Kro
 
     - id: manifestserviceRole
+      includeWhen:
+        - ${storageBridge.data['manifest-bucket-arn'] != ''}
       readyWhen:
         - ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
         - ${manifestserviceRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -254,6 +268,23 @@ spec:
                 }
               ]
             }
+          inlinePolicies:
+            manifestservice-s3-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:ListBucket"],
+                    "Resource": "${storageBridge.data['manifest-bucket-arn']}"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+                    "Resource": "${storageBridge.data['manifest-bucket-arn']}/*"
+                  }
+                ]
+              }
           tags:
             - key: Name
               value: ${schema.spec.name}-manifestservice-role
@@ -293,14 +324,34 @@ spec:
               ]
             }
           inlinePolicies:
-            secrets-read: |
+            secrets-manager-access: |
               {
                 "Version": "2012-10-17",
                 "Statement": [
                   {
                     "Effect": "Allow",
-                    "Action": ["secretsmanager:GetSecretValue", "secretsmanager:DescribeSecret"],
-                    "Resource": "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:${schema.spec.name}-*"
+                    "Action": [
+                      "secretsmanager:GetSecretValue",
+                      "secretsmanager:DescribeSecret",
+                      "secretsmanager:CreateSecret",
+                      "secretsmanager:PutSecretValue",
+                      "secretsmanager:UpdateSecret",
+                      "secretsmanager:TagResource"
+                    ],
+                    "Resource": [
+                      "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:${schema.spec.name}-*",
+                      "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:fence-*",
+                      "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:indexd-*",
+                      "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:audit-*",
+                      "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:metadata-*",
+                      "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:manifestservice-*",
+                      "arn:aws:secretsmanager:${infrastructureConfig.data['aws-region']}:*:secret:wts-*"
+                    ]
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["secretsmanager:ListSecrets"],
+                    "Resource": "*"
                   }
                 ]
               }
@@ -419,6 +470,8 @@ spec:
               value: Kro
 
     - id: dashboardRole
+      includeWhen:
+        - ${storageBridge.data['dashboard-bucket-arn'] != ''}
       readyWhen:
         - ${dashboardRole.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
         - ${dashboardRole.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -457,11 +510,13 @@ spec:
                 "Statement": [
                   {
                     "Effect": "Allow",
-                    "Action": ["s3:GetObject", "s3:ListBucket"],
-                    "Resource": [
-                      "arn:aws:s3:::${storageBridge.data['dashboard-bucket-name']}",
-                      "arn:aws:s3:::${storageBridge.data['dashboard-bucket-name']}/*"
-                    ]
+                    "Action": ["s3:ListBucket"],
+                    "Resource": "${storageBridge.data['dashboard-bucket-arn']}"
+                  },
+                  {
+                    "Effect": "Allow",
+                    "Action": ["s3:GetObject"],
+                    "Resource": "${storageBridge.data['dashboard-bucket-arn']}/*"
                   }
                 ]
               }
@@ -471,11 +526,15 @@ spec:
             - key: ManagedBy
               value: Kro
 
-  # All roles unconditional — avoids Test 8 silent-drop
+  # Bridge variants avoid evaluating absent optional service roles.
+  # manifestserviceRole exists only when manifest-bucket-arn is non-empty.
+  # dashboardRole exists only when dashboard-bucket-arn is non-empty.
 
-    - id: appIamBridge
+    - id: appIamBridgeAllRoles
+      includeWhen:
+        - ${storageBridge.data['manifest-bucket-arn'] != '' && storageBridge.data['dashboard-bucket-arn'] != ''}
       readyWhen:
-        - ${appIamBridge.metadata.?name.orValue('null') != 'null'}
+        - ${appIamBridgeAllRoles.metadata.?name.orValue('null') != 'null'}
       template:
         apiVersion: v1
         kind: ConfigMap
@@ -495,3 +554,78 @@ spec:
           aws-es-proxy-role-arn: ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue("loading")}
           ssjdispatcher-role-arn: ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue("loading")}
           dashboard-role-arn: ${dashboardRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+    - id: appIamBridgeManifestOnly
+      includeWhen:
+        - ${storageBridge.data['manifest-bucket-arn'] != '' && storageBridge.data['dashboard-bucket-arn'] == ''}
+      readyWhen:
+        - ${appIamBridgeManifestOnly.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.appIamBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: iam
+            gen3.io/bridge: "true"
+        data:
+          fence-role-arn: ${fenceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          audit-role-arn: ${auditRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          hatchery-role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          manifestservice-role-arn: ${manifestserviceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          external-secrets-role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          aws-es-proxy-role-arn: ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          ssjdispatcher-role-arn: ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          dashboard-role-arn: ""
+
+    - id: appIamBridgeDashboardOnly
+      includeWhen:
+        - ${storageBridge.data['manifest-bucket-arn'] == '' && storageBridge.data['dashboard-bucket-arn'] != ''}
+      readyWhen:
+        - ${appIamBridgeDashboardOnly.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.appIamBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: iam
+            gen3.io/bridge: "true"
+        data:
+          fence-role-arn: ${fenceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          audit-role-arn: ${auditRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          hatchery-role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          manifestservice-role-arn: ""
+          external-secrets-role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          aws-es-proxy-role-arn: ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          ssjdispatcher-role-arn: ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          dashboard-role-arn: ${dashboardRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+
+    - id: appIamBridgeCoreRoles
+      includeWhen:
+        - ${storageBridge.data['manifest-bucket-arn'] == '' && storageBridge.data['dashboard-bucket-arn'] == ''}
+      readyWhen:
+        - ${appIamBridgeCoreRoles.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.appIamBridgeName}
+          namespace: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            gen3.io/tier: iam
+            gen3.io/bridge: "true"
+        data:
+          fence-role-arn: ${fenceRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          audit-role-arn: ${auditRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          hatchery-role-arn: ${hatcheryRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          manifestservice-role-arn: ""
+          external-secrets-role-arn: ${externalSecretsRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          aws-es-proxy-role-arn: ${awsEsProxyRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          ssjdispatcher-role-arn: ${ssjdispatcherRole.status.?ackResourceMetadata.?arn.orValue("loading")}
+          dashboard-role-arn: ""

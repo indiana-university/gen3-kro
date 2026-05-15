@@ -1,0 +1,346 @@
+# ── Spoke1 Cluster-Level Resources Configuration ──
+# Layer 1 of the 3-layer values architecture
+# Passed to: cluster-level-resources Helm chart (platform-helm1-rg.yaml)
+#
+# IMPORTANT: Fields marked with [RGD OVERRIDE] are set by platform-helm1-rg.yaml helm.parameters
+# and will override these values. Keep these fields for documentation only; actual values from RGD.
+#
+# ────────────────────────────────────────────────────────────────────────────────────────────
+
+# ── Cluster Metadata ─────────────────────────────────────────────────────────────────────────
+cluster: "spoke1"  # [RGD] platform-helm1: ${schema.spec.name}
+project: gen3      # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-project']}
+
+# AWS account number that this cluster lives in
+accountNumber: "xxxxxxxxxxxx"  # [RGD] platform-helm1: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+
+# EKS cluster endpoints
+eksClusterEndpoint: ""   # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']}
+destinationServer: ""    # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']} (csoc-managed topology only)
+eksClusterName: "spoke1" # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-name']}
+
+# This is universal for all of our configuration; values files live in the same repo/branch
+configuration:
+  configurationRepo: https://github.com/indiana-university/gen3-kro
+  configurationRevision: main
+
+# Optional: Karpenter node config chart (if using Karpenter for node management)
+karpenterNodeConfigChart:
+  repoURL: ""
+  targetRevision: ""
+  path: ""
+
+# ────────────────────────────────────────────────────────────────────────────────────────────
+# ── CLUSTER ADD-ONS ──────────────────────────────────────────────────────────────────────────
+# ────────────────────────────────────────────────────────────────────────────────────────────
+
+# AWS Load Balancer Controller — manages ALB/NLB ingress resources
+alb-controller:
+  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
+  targetRevision: "1.13.4"
+  hostNetworkEnabled: false
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['alb-controller-role-arn']}
+  configuration:
+    enabled: false
+
+# Argo Events — event-driven workflow triggering
+argo-events:
+  enabled: false
+  targetRevision: "2.1.3"
+  configuration:
+    enabled: false
+
+# AWS S3 Mountpoint CSI Driver — mount S3 buckets as volumes
+aws-s3-mountpoint:
+  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-s3-mountpoint-enabled']}
+  targetRevision: "2.2.0"
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['s3-csi-driver-role-arn']}
+  configuration:
+    enabled: false
+
+# Cert-Manager — automates TLS certificate provisioning
+cert-manager:
+  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-cert-manager-enabled']}
+  targetRevision: "v1.17.2"
+  configuration:
+    enabled: false
+
+# Calico — network policy enforcement engine
+calico:
+  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-calico-enabled']}
+  targetRevision: "v3.30.3"
+  configuration:
+    enabled: false
+
+# CoreDNS — DNS server for in-cluster service discovery (usually managed by EKS)
+coreDNS:
+  enabled: false
+  targetRevision: "1.43.1"
+  configuration:
+    enabled: false
+    coreDnsServiceIP: "10.100.0.10"
+
+# Crossplane — infrastructure composition framework
+crossplane:
+  enabled: false
+  targetRevision: "1.19.2"
+  configuration:
+    enabled: false
+
+# Crossplane CRDs — custom resource definitions for Crossplane
+crossplane-crds:
+  enabled: false
+  useIRSA: true
+  iamRoleName: "crossplane-role"
+  awsAccessKeyID: "YOUR_ACCESS_KEY_ID"
+  awsSecretAccessKey: "YOUR_SECRET_ACCESS_KEY"
+  region: "us-east-1"
+  targetRevision: "v0.52.5"
+  configuration:
+    enabled: false
+
+# Argo Workflows — containerized workflow execution
+argo-workflows:
+  enabled: false
+  targetRevision: "0.29.1"
+  namespace: "argo"
+  GEN3_ARGO_DB_HOST: ""
+  GEN3_ARGO_DB_NAME: ""
+  GEN3_ARGO_BUCKET: ""
+  configuration:
+    enabled: false
+
+# Cilium — eBPF-based networking and security
+cilium:
+  enabled: false
+  targetRevision: "1.18.4"
+  configuration:
+    enabled: false
+
+# Custom Objects — arbitrary Kubernetes resources (YAML pass-through)
+custom-objects:
+  enabled: false
+
+# EBS CSI Driver — provisions and attaches EBS volumes
+ebs-csi-driver:
+  enabled: false
+  targetRevision: "2.48.0"
+  configuration:
+    enabled: false
+
+# External Secrets Operator — syncs secrets from AWS Secrets Manager
+external-secrets:
+  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-external-secrets-enabled']}
+  targetRevision: "0.9.13"
+  configuration:
+    enabled: false
+
+# ExternalDNS — automatically manages Route53 DNS records
+external-dns:
+  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-external-dns-enabled']}
+  targetRevision: "1.15.2"
+  awsRegion: "us-east-1"
+  zoneType: "public"                    # "public" | "private"
+  policy: "sync"                         # "sync" (create+delete) | "upsert-only" (create only)
+  domainFilters:                         # [RGD] platform-helm1: ${infrastructureConfig.data['dns-hosted-zone-name']}
+    - rds-pla.net                        # placeholder; overridden at runtime with actual hosted zone name
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['external-dns-role-arn']}
+  configuration:
+    enabled: false
+
+# Fluentd — log aggregation and forwarding
+fluentd:
+  enabled: false
+  targetRevision: "0.5.2"
+  configuration:
+    enabled: false
+
+# Grafana Alloy — observability data pipeline (metrics, logs, traces)
+grafana-alloy:
+  enabled: false
+  targetRevision: 0.4.0
+  configuration:
+    enabled: false
+
+# Karpenter — automatic node provisioning and consolidation
+karpenter:
+  enabled: false
+  awsRegion: "us-east-1"
+  targetRevision: 1.0.8
+  serviceAccount:
+    annotations:
+      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['karpenter-role-arn']}
+  configuration:
+    enabled: false
+  resources:
+    requests: {}
+  controller:
+    image: {}
+
+# Karpenter CRDs — custom resource definitions for Karpenter node pooling
+karpenter-crds:
+  enabled: false
+  targetRevision: master
+  amiSelectorName: "EKS-FIPS*"
+  amiOwner: "143731057154"
+  useAlias: false
+  alias: "al2023@latest"
+  selectorTag: spoke1  # Karpenter will only create nodes with this tag
+  migration: false
+  default:
+    enabled: false
+    weight: 99
+    disruptionBudget: "10%"
+    consolidation: true
+    consolidateAfter: "30s"
+    consolidationPolicy: "WhenEmpty"
+    expireAfter: "168h"
+    limits:
+      cpu: "1000"
+      memory: 1000Gi
+    volumeSize: 50Gi
+    additionalTags: {}
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand
+          - spot
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+      - key: karpenter.k8s.aws/instance-category
+        operator: In
+        values:
+          - c
+          - m
+          - r
+          - t
+  gpu:
+    enabled: false
+    consolidation: true
+    consolidateAfter: "30s"
+    consolidationPolicy: "WhenEmpty"
+    expireAfter: "168h"
+    volumeSize: 50Gi
+    additionalTags: {}
+  secondary:
+    enabled: false
+    weight: 1
+    disruptionBudget: "10%"
+    consolidation: true
+    consolidateAfter: "30s"
+    consolidationPolicy: "WhenEmpty"
+    expireAfter: "168h"
+    volumeSize: 50Gi
+    additionalTags: {}
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand
+          - spot
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+      - key: karpenter.k8s.aws/instance-category
+        operator: In
+        values:
+          - c
+          - m
+          - r
+          - t
+  jupyter:
+    enabled: false
+    consolidation: true
+    consolidateAfter: "30s"
+    consolidationPolicy: "WhenEmpty"
+    expireAfter: "168h"
+    volumeSize: 50Gi
+    additionalTags: {}
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+      - key: karpenter.k8s.aws/instance-category
+        operator: In
+        values:
+          - c
+          - m
+          - r
+          - t
+  workflow:
+    enabled: false
+    consolidation: true
+    consolidateAfter: "30s"
+    consolidationPolicy: "WhenEmpty"
+    expireAfter: "168h"
+    volumeSize: 50Gi
+    sgSelector: ""
+    additionalTags: {}
+    requirements:
+      - key: karpenter.sh/capacity-type
+        operator: In
+        values:
+          - on-demand
+      - key: kubernetes.io/arch
+        operator: In
+        values:
+          - amd64
+      - key: karpenter.k8s.aws/instance-category
+        operator: In
+        values:
+          - c
+          - m
+          - r
+          - t
+
+# kube-proxy — network packet forwarding
+kube-proxy:
+  enabled: false
+  image:
+    repo: "602401143452.dkr.ecr.us-east-1.amazonaws.com/eks/kube-proxy"
+    tag: "v1.33.3-minimal-eksbuild.11"
+  configuration:
+    enabled: false
+
+# kube-state-metrics — exposes K8s object metrics for Prometheus
+kube-state-metrics:
+  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-kube-state-metrics-enabled']}
+  configuration:
+    enabled: false
+  targetRevision: 6.3.0
+
+# Metrics Server — provides resource metrics for HPA/VPA
+metrics-server:
+  enabled: false
+  targetRevision: "3.13.0"
+  hostNetworkEnabled: false
+  configuration:
+    enabled: false
+
+# NVIDIA Device Plugin — enables GPU support in K8s
+nvidia-device-plugin:
+  enabled: false
+  targetRevision: v0.18.0
+
+# VPC CNI — AWS VPC networking for pods
+vpc-cni:
+  enabled: false
+
+# ────────────────────────────────────────────────────────────────────────────────────────────
+# NOTE: Observability configuration (alloy-configmap-data, fluentd-configmap-data) omitted
+# for brevity. Add them to cluster-values if using Alloy or Fluentd logging.

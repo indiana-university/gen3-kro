@@ -12,8 +12,11 @@ Arguments (positional via list):
 
 Rendered spec:
   • name and namespace come from .Values.global (immutable after first deploy)
-  • All fields under $inst.spec are passed through verbatim — these are the
-    safe-to-change fields: adoptionPolicy, deletionPolicy, *BridgeName, repo URLs, etc.
+  • metadataName may override metadata.name when multiple instances of the same
+    RGD kind are needed; spec.name still remains .Values.global.name.
+  • All fields under $inst.spec are templated with the Helm root context and
+    then passed through. These are the safe-to-change fields: adoptionPolicy,
+    deletionPolicy, *BridgeName, repo URLs, etc.
   • If $inst.spec is empty the KRO CR still renders correctly because every
     non-required field has a default in the RGD schema.
 */}}
@@ -22,11 +25,12 @@ Rendered spec:
 {{- $inst     := index . 1 -}}
 {{- $kindBase := index . 2 -}}
 {{- if $inst.enabled }}
+{{- $metadataName := default $ctx.Values.global.name $inst.metadataName -}}
 ---
 apiVersion: kro.run/v1alpha1
 kind: {{ $kindBase }}{{ $inst.version }}
 metadata:
-  name: {{ $ctx.Values.global.name }}
+  name: {{ tpl $metadataName $ctx }}
   namespace: {{ $ctx.Values.global.namespace }}
   annotations:
     argocd.argoproj.io/sync-wave: {{ $inst.syncWave | quote }}
@@ -35,7 +39,7 @@ spec:
   name: {{ $ctx.Values.global.name }}
   namespace: {{ $ctx.Values.global.namespace }}
   {{- with $inst.spec }}
-  {{- toYaml . | nindent 2 }}
+  {{- tpl (toYaml .) $ctx | nindent 2 }}
   {{- end }}
 {{ end }}
 {{- end }}

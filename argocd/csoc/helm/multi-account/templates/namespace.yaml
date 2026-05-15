@@ -1,9 +1,12 @@
 {{- /*
-  Creates one Kubernetes Namespace per spoke with ACK CARM annotations.
+  Creates one Kubernetes Namespace per spoke with cross-account annotations.
 
   ACK uses namespace annotations for Cross-Account Resource Management:
     services.k8s.aws/owner-account-id          - target AWS account ID
     services.k8s.aws/owner-account-role-arn    - IAM role ARN to assume in that account
+
+  Secret bootstrap jobs read the same owner-account-role-arn annotation and
+  assume the Terraform-created spoke role before touching AWS Secrets Manager.
 
   The role ARN follows the per-spoke naming convention:
     <spoke-alias>-spoke-role  (e.g., spoke1-spoke-role)

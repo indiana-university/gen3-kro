@@ -16,6 +16,7 @@ spec:
       deletionPolicy: string | default="delete"
       infrastructureConfigMapName: string | default="infrastructure-values"
       networkSecurityBridgeName: string | default="network-security-bridge"
+      auroraMasterPasswordSecretBridgeName: string | default="aurora-master-password-secret-bridge"
       esoAwsCredsSecretName: string | default="eso-aws-credentials"
       databaseBridgeName: string | default="database-bridge"
 
@@ -54,6 +55,18 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.networkSecurityBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: auroraMasterPasswordSecretBridge
+      readyWhen:
+        - ${auroraMasterPasswordSecretBridge.metadata.?name.orValue('null') != 'null'}
+        - ${auroraMasterPasswordSecretBridge.data['created'] == 'true'}
+        - ${auroraMasterPasswordSecretBridge.data['secret-arn'] != 'loading'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.auroraMasterPasswordSecretBridgeName}
           namespace: ${schema.spec.namespace}
 
   # Test 8: two opposite-includeWhen SecretStores — selected by database-eso-use-irsa
@@ -132,10 +145,12 @@ spec:
           data:
             - secretKey: password
               remoteRef:
-                key: ${infrastructureConfig.data['database-aurora-master-password-sm-name']}
+                key: ${auroraMasterPasswordSecretBridge.data['secret-name']}
                 property: password
 
     - id: auroraCluster
+      includeWhen:
+        - ${auroraMasterPasswordSecretBridge.data['created'] == 'true'}
       readyWhen:
         - ${auroraCluster.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
         - ${auroraCluster.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -155,7 +170,7 @@ spec:
           engine: aurora-postgresql
           engineVersion: ${infrastructureConfig.data['database-aurora-engine-version']}
           databaseName: ${infrastructureConfig.data['database-aurora-db-name']}
-          port: 5432
+          port: ${int(infrastructureConfig.data['database-aurora-port'])}
           masterUsername: ${infrastructureConfig.data['database-aurora-master-username']}
           # CEL ref ensures auroraMasterPasswordES is Ready before Aurora cluster is created
           masterUserPassword:
@@ -226,8 +241,9 @@ spec:
           aurora-cluster-endpoint: ${auroraCluster.status.?endpoint}
           aurora-reader-endpoint: ${auroraCluster.status.?readerEndpoint}
           aurora-cluster-arn: ${auroraCluster.status.?ackResourceMetadata.?arn}
-          aurora-port: "5432"
+          aurora-port: ${infrastructureConfig.data['database-aurora-port']}
           aurora-master-username: ${infrastructureConfig.data['database-aurora-master-username']}
           aurora-database-name: ${infrastructureConfig.data['database-aurora-db-name']}
-          # SM key name for downstream ESO (gen3-helm global.postgres.externalSecret)
-          aurora-master-password-sm-name: ${infrastructureConfig.data['database-aurora-master-password-sm-name']}
+          # SM key name for downstream ESO (Gen3 app global.postgres.externalSecret)
+          aurora-master-password-sm-name: ${auroraMasterPasswordSecretBridge.data['secret-name']}
+          aurora-master-password-sm-arn: ${auroraMasterPasswordSecretBridge.data['secret-arn']}

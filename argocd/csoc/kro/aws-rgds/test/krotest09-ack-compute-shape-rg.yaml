@@ -1,0 +1,135 @@
+# KRO Capability Test 9: ACK compute subnet/config shaping
+#
+# Uses only Kubernetes ConfigMaps and Roles. It validates the CEL shapes used by
+# ACK EKS/OpenSearch specs without creating AWS resources.
+#
+# Validates:
+#   - EKS subnet lists can be built from public + private subnet arrays.
+#   - EKS Auto Mode emits the full compute/network/storage config set.
+#   - OpenSearch single-AZ mode selects exactly one subnet.
+#   - OpenSearch multi-AZ mode selects a configurable subnet slice.
+
+apiVersion: kro.run/v1alpha1
+kind: ResourceGraphDefinition
+metadata:
+  name: kro-ack-compute-shape-test
+  annotations:
+    argocd.argoproj.io/sync-wave: "0"
+spec:
+  schema:
+    apiVersion: v1alpha1
+    kind: KroACKComputeShapeTest
+    spec:
+      name: string | required=true
+      namespace: string | default="kro-test"
+      publicSubnetIDs: '[]string | default=["subnet-public-a","subnet-public-b"]'
+      privateSubnetIDs: '[]string | default=["subnet-private-a","subnet-private-b"]'
+      eksAutoModeEnabled: boolean | default=true
+      opensearchZoneAwarenessEnabled: boolean | default=false
+      opensearchAvailabilityZoneCount: integer | default=2
+    status:
+      eksSubnetIDs: ${shapeSummary.data.eksSubnetIDs}
+      opensearchSelectedSubnetIDs: ${shapeSummary.data.opensearchSelectedSubnetIDs}
+      opensearchSelectedSubnetCount: ${shapeSummary.data.opensearchSelectedSubnetCount}
+
+  resources:
+    - id: targetNamespace
+      readyWhen:
+        - ${targetNamespace.status.phase == "Active"}
+      template:
+        apiVersion: v1
+        kind: Namespace
+        metadata:
+          name: ${schema.spec.namespace}
+          labels:
+            app.kubernetes.io/managed-by: kro
+            test-suite: kro-capabilities
+            test-name: ack-compute-shape
+
+    - id: eksSubnetListRole
+      readyWhen:
+        - ${eksSubnetListRole.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-eks-subnets
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: ack-compute-shape
+            shape: eks-subnet-list
+        rules:
+          - apiGroups:
+              - kro.test
+            resources: ${schema.spec.publicSubnetIDs + schema.spec.privateSubnetIDs}
+            verbs:
+              - get
+
+    - id: opensearchSingleSubnetRole
+      readyWhen:
+        - ${opensearchSingleSubnetRole.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-opensearch-single-subnet
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: ack-compute-shape
+            shape: opensearch-single-subnet
+        rules:
+          - apiGroups:
+              - kro.test
+            resources:
+              - ${schema.spec.privateSubnetIDs[0]}
+            verbs:
+              - get
+
+    - id: opensearchMultiSubnetRole
+      readyWhen:
+        - ${opensearchMultiSubnetRole.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: rbac.authorization.k8s.io/v1
+        kind: Role
+        metadata:
+          name: ${schema.spec.name}-opensearch-multi-subnet
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: ack-compute-shape
+            shape: opensearch-multi-subnet
+        rules:
+          - apiGroups:
+              - kro.test
+            resources: ${schema.spec.privateSubnetIDs.slice(0, schema.spec.opensearchAvailabilityZoneCount)}
+            verbs:
+              - get
+
+    - id: shapeSummary
+      readyWhen:
+        - ${shapeSummary.metadata.?name.orValue('null') != 'null'}
+      template:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.name}-ack-compute-shape
+          namespace: ${targetNamespace.metadata.name}
+          labels:
+            test-suite: kro-capabilities
+            test-name: ack-compute-shape
+        data:
+          eksSubnetIDs: ${(schema.spec.publicSubnetIDs + schema.spec.privateSubnetIDs).join(',')}
+          eksSubnetCount: "${string(size(schema.spec.publicSubnetIDs + schema.spec.privateSubnetIDs))}"
+          eksSubnetFieldType: "[]string"
+          eksAutoModeRequiredConfigs: "${schema.spec.eksAutoModeEnabled ? 'computeConfig,kubernetesNetworkConfig,storageConfig' : 'not-auto-mode'}"
+          eksKubernetesNetworkConfig: "${schema.spec.eksAutoModeEnabled ? 'elasticLoadBalancing.enabled=true' : 'not-required'}"
+          opensearchInputSubnetIDs: ${schema.spec.privateSubnetIDs.join(',')}
+          opensearchInputSubnetCount: "${string(size(schema.spec.privateSubnetIDs))}"
+          opensearchSingleAZSubnetIDs: ${schema.spec.privateSubnetIDs[0]}
+          opensearchMultiAZSubnetIDs: ${schema.spec.privateSubnetIDs.slice(0, schema.spec.opensearchAvailabilityZoneCount).join(',')}
+          opensearchSelectedSubnetIDs: "${schema.spec.opensearchZoneAwarenessEnabled ? schema.spec.privateSubnetIDs.slice(0, schema.spec.opensearchAvailabilityZoneCount).join(',') : schema.spec.privateSubnetIDs[0]}"
+          opensearchSelectedSubnetCount: "${schema.spec.opensearchZoneAwarenessEnabled ? string(schema.spec.opensearchAvailabilityZoneCount) : '1'}"
+          opensearchZoneAwarenessEnabled: "${schema.spec.opensearchZoneAwarenessEnabled ? 'true' : 'false'}"
+          opensearchAvailabilityZoneCount: "${string(schema.spec.opensearchAvailabilityZoneCount)}"

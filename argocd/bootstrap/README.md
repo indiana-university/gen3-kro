@@ -6,7 +6,7 @@ Terraform creates the first `bootstrap` ApplicationSet, which reads this directo
 |------|---------|
 | `csoc-controllers.yaml` | Controller ApplicationSets from `csoc/controllers` |
 | `csoc-kro.yaml` | Recursive `csoc-kro` Application for `csoc/kro` |
-| `ack-multi-acct.yaml` | ACK CARM namespaces and IAMRoleSelectors |
+| `multi-account.yaml` | Per-spoke namespaces, ACK CARM wiring, and secret-writer service accounts |
 | `fleet-instances.yaml` | Per-spoke KRO instance Applications |
 
 Bootstrap pruning is enabled so renamed or removed AppSets are cleaned up by ArgoCD.

@@ -16,12 +16,13 @@ spec:
       argoCDNamespace: string | default="argocd"
       argoCDProject: string | default="default"
       infrastructureConfigMapName: string | default="infrastructure-values"
-      helmChartRepoURL: string | default="https://github.com/uc-cdis/gen3-helm.git"
+      helmChartRepoURL: string | default="https://github.com/jayadeyemi/Gen3-build.git"
       helmChartPath: string | default="helm/gen3"
-      helmChartTargetRevision: string | default="master"
+      helmChartTargetRevision: string | default="main"
       valuesRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: string | default="main"
       valuesBasePath: string | default="" # defaults to "argocd/spokes/<namespace>" if not set
+      valuesFilename: string | default="gen3-values.yaml"
       domainSecurityBridgeName: string | default="domain-security-bridge"
       platformHelmBridgeName: string | default="platform-helm-bridge"
       computeBridgeName: string | default="compute-bridge"
@@ -59,6 +60,10 @@ spec:
     - id: computeBridge
       readyWhen:
         - ${computeBridge.metadata.?name.orValue('null') != 'null'}
+        - ${computeBridge.data['eks-cluster-name'] != ''}
+        - ${computeBridge.data['eks-cluster-name'] != 'loading'}
+        - ${computeBridge.data['eks-cluster-endpoint'] != ''}
+        - ${computeBridge.data['eks-cluster-endpoint'] != 'loading'}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
@@ -69,6 +74,12 @@ spec:
     - id: databaseBridge
       readyWhen:
         - ${databaseBridge.metadata.?name.orValue('null') != 'null'}
+        - ${databaseBridge.data['aurora-cluster-endpoint'] != ''}
+        - ${databaseBridge.data['aurora-cluster-endpoint'] != 'loading'}
+        - ${databaseBridge.data['aurora-master-password-sm-name'] != ''}
+        - ${databaseBridge.data['aurora-master-password-sm-name'] != 'loading'}
+        - ${databaseBridge.data['aurora-master-username'] != ''}
+        - ${databaseBridge.data['aurora-port'] != ''}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
@@ -79,6 +90,20 @@ spec:
     - id: appIamBridge
       readyWhen:
         - ${appIamBridge.metadata.?name.orValue('null') != 'null'}
+        - ${appIamBridge.data['fence-role-arn'] != ''}
+        - ${appIamBridge.data['fence-role-arn'] != 'loading'}
+        - ${appIamBridge.data['audit-role-arn'] != ''}
+        - ${appIamBridge.data['audit-role-arn'] != 'loading'}
+        - ${appIamBridge.data['hatchery-role-arn'] != ''}
+        - ${appIamBridge.data['hatchery-role-arn'] != 'loading'}
+        - ${appIamBridge.data['external-secrets-role-arn'] != ''}
+        - ${appIamBridge.data['external-secrets-role-arn'] != 'loading'}
+        - ${appIamBridge.data['aws-es-proxy-role-arn'] != ''}
+        - ${appIamBridge.data['aws-es-proxy-role-arn'] != 'loading'}
+        - ${appIamBridge.data['ssjdispatcher-role-arn'] != ''}
+        - ${appIamBridge.data['ssjdispatcher-role-arn'] != 'loading'}
+        - ${appIamBridge.data['manifestservice-role-arn'] != 'loading'}
+        - ${appIamBridge.data['dashboard-role-arn'] != 'loading'}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
@@ -109,6 +134,9 @@ spec:
     - id: platformHelmBridge
       readyWhen:
         - ${platformHelmBridge.metadata.?name.orValue('null') != 'null'}
+        - ${platformHelmBridge.data['argocd-cluster-name'] != ''}
+        - ${platformHelmBridge.data['argocd-cluster-name'] != 'loading'}
+        - ${platformHelmBridge.data['platform-helm-alb-scheme'] != ''}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
@@ -119,6 +147,12 @@ spec:
     - id: storageBridge
       readyWhen:
         - ${storageBridge.metadata.?name.orValue('null') != 'null'}
+        - ${storageBridge.data['upload-bucket-name'] != ''}
+        - ${storageBridge.data['upload-bucket-name'] != 'loading'}
+        - ${storageBridge.data['users-bucket-name'] != ''}
+        - ${storageBridge.data['users-bucket-name'] != 'loading'}
+        - ${storageBridge.data['manifest-bucket-name'] != 'loading'}
+        - ${storageBridge.data['dashboard-bucket-name'] != 'loading'}
       externalRef:
         apiVersion: v1
         kind: ConfigMap
@@ -126,7 +160,7 @@ spec:
           name: ${schema.spec.storageBridgeName}
           namespace: ${schema.spec.namespace}
 
-  # gen3-helm ArgoCD Application
+  # Gen3 app ArgoCD Application
     - id: gen3App
       readyWhen:
         - ${gen3App.metadata.?name.orValue('null') != 'null'}
@@ -160,12 +194,14 @@ spec:
               helm:
                 releaseName: gen3
                 valueFiles:
-                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/${domainSecurityBridge.data['hostname']}/gen3-values.yaml"
+                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/${domainSecurityBridge.data['hostname']}/${schema.spec.valuesFilename}"
                 parameters:
                   - name: global.environment
                     value: ${schema.spec.namespace}
                   - name: global.aws.region
                     value: ${infrastructureConfig.data['aws-region']}
+                  - name: global.aws.account
+                    value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
                   - name: global.clusterName
                     value: ${computeBridge.data['eks-cluster-name']}
                   - name: global.aws.scheme
@@ -176,20 +212,66 @@ spec:
                     value: ${domainSecurityBridge.data['acm-cert-arn']}
                   - name: global.dataUploadBucket
                     value: ${storageBridge.data['upload-bucket-name']}
-                  - name: manifestservice.enabled
-                    value: "${storageBridge.data['manifest-bucket-name'] != '' ? 'true' : 'false'}"
-                  - name: portal.enabled
-                    value: "${storageBridge.data['dashboard-bucket-name'] != '' ? 'true' : 'false'}"
+                  - name: fence.usersync.userYamlS3Path
+                    value: ${'s3://' + storageBridge.data['users-bucket-name'] + '/user.yaml'}
+                  - name: manifestservice.manifestserviceG3auto.bucketName
+                    value: ${storageBridge.data['manifest-bucket-name']}
+                  - name: dashboard.dashboardConfig.bucket
+                    value: ${storageBridge.data['dashboard-bucket-name']}
                   - name: global.aws.wafv2.enabled
                     value: ${domainSecurityBridge.data['waf-enabled']}
                   - name: global.aws.wafv2.wafAclArn
                     value: ${domainSecurityBridge.data['waf-acl-arn']}
                   - name: global.aws.secretStoreServiceAccount.roleArn
                     value: ${appIamBridge.data['external-secrets-role-arn']}
+                  - name: global.aws.secretStoreServiceAccount.name
+                    value: external-secrets-sa
+                  - name: global.postgres.externalSecret
+                    value: ${databaseBridge.data['aurora-master-password-sm-name']}
+                  - name: global.postgres.master.username
+                    value: ${databaseBridge.data['aurora-master-username']}
                   - name: global.postgres.master.host
                     value: ${databaseBridge.data['aurora-cluster-endpoint']}
                   - name: global.postgres.master.port
-                    value: "5432"
+                    value: ${databaseBridge.data['aurora-port']}
+                  - name: arborist.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-arborist-dbcreds'] != '' ? infrastructureConfig.data['secret-name-arborist-dbcreds'] : 'arborist-creds')}"
+                  - name: audit.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-audit-dbcreds'] != '' ? infrastructureConfig.data['secret-name-audit-dbcreds'] : 'audit-creds')}"
+                  - name: audit.externalSecrets.auditG3auto
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-audit-g3auto'] != '' ? infrastructureConfig.data['secret-name-audit-g3auto'] : 'audit-g3auto')}"
+                  - name: fence.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-dbcreds'] != '' ? infrastructureConfig.data['secret-name-fence-dbcreds'] : 'fence-creds')}"
+                  - name: fence.externalSecrets.fenceConfig
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-config'] != '' ? infrastructureConfig.data['secret-name-fence-config'] : 'fence-config')}"
+                  - name: fence.externalSecrets.fenceJwtKeys
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-jwt-keys'] != '' ? infrastructureConfig.data['secret-name-fence-jwt-keys'] : 'fence-jwt-keys')}"
+                  - name: fence.externalSecrets.fenceGoogleAppCredsSecret
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-google-app-creds'] != '' ? infrastructureConfig.data['secret-name-fence-google-app-creds'] : 'fence-google-app-creds-secret')}"
+                  - name: fence.externalSecrets.fenceGoogleStorageCredsSecret
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-google-storage-creds'] != '' ? infrastructureConfig.data['secret-name-fence-google-storage-creds'] : 'fence-google-storage-creds-secret')}"
+                  - name: fence.externalSecrets.fenceSshKeys
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-ssh-keys'] != '' ? infrastructureConfig.data['secret-name-fence-ssh-keys'] : 'fence-ssh-keys')}"
+                  - name: indexd.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-indexd-dbcreds'] != '' ? infrastructureConfig.data['secret-name-indexd-dbcreds'] : 'indexd-creds')}"
+                  - name: indexd.externalSecrets.serviceCreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-indexd-service-creds'] != '' ? infrastructureConfig.data['secret-name-indexd-service-creds'] : 'indexd-service-creds')}"
+                  - name: metadata.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-metadata-dbcreds'] != '' ? infrastructureConfig.data['secret-name-metadata-dbcreds'] : 'metadata-creds')}"
+                  - name: metadata.externalSecrets.metadataG3auto
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-metadata-g3auto'] != '' ? infrastructureConfig.data['secret-name-metadata-g3auto'] : 'metadata-g3auto')}"
+                  - name: manifestservice.externalSecrets.manifestserviceG3auto
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-manifestservice-g3auto'] != '' ? infrastructureConfig.data['secret-name-manifestservice-g3auto'] : 'manifestservice-g3auto')}"
+                  - name: peregrine.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-peregrine-dbcreds'] != '' ? infrastructureConfig.data['secret-name-peregrine-dbcreds'] : 'peregrine-creds')}"
+                  - name: sheepdog.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-sheepdog-dbcreds'] != '' ? infrastructureConfig.data['secret-name-sheepdog-dbcreds'] : 'sheepdog-creds')}"
+                  - name: wts.externalSecrets.dbcreds
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-wts-dbcreds'] != '' ? infrastructureConfig.data['secret-name-wts-dbcreds'] : 'wts-creds')}"
+                  - name: wts.externalSecrets.wtsG3auto
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-wts-g3auto'] != '' ? infrastructureConfig.data['secret-name-wts-g3auto'] : 'wts-g3auto')}"
+                  - name: wts.externalSecrets.wtsOidcClient
+                    value: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-wts-oidc-client'] != '' ? infrastructureConfig.data['secret-name-wts-oidc-client'] : 'wts-oidc-client')}"
                   - name: aws-es-proxy.esEndpoint
                     value: ${computeBridge.data['opensearch-endpoint']}
                   - name: revproxy.ingress.aws.group
@@ -247,3 +329,23 @@ spec:
           target-cluster: ${computeBridge.data['eks-cluster-endpoint']}
           app-health-status: ${gen3App.status.?health.?status.orValue('Unknown')}
           app-sync-status: ${gen3App.status.?sync.?status.orValue('Unknown')}
+          aurora-master-password-secret-name: ${databaseBridge.data['aurora-master-password-sm-name']}
+          arborist-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-arborist-dbcreds'] != '' ? infrastructureConfig.data['secret-name-arborist-dbcreds'] : 'arborist-creds')}"
+          audit-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-audit-dbcreds'] != '' ? infrastructureConfig.data['secret-name-audit-dbcreds'] : 'audit-creds')}"
+          audit-g3auto-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-audit-g3auto'] != '' ? infrastructureConfig.data['secret-name-audit-g3auto'] : 'audit-g3auto')}"
+          fence-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-dbcreds'] != '' ? infrastructureConfig.data['secret-name-fence-dbcreds'] : 'fence-creds')}"
+          fence-config-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-config'] != '' ? infrastructureConfig.data['secret-name-fence-config'] : 'fence-config')}"
+          fence-jwt-keys-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-jwt-keys'] != '' ? infrastructureConfig.data['secret-name-fence-jwt-keys'] : 'fence-jwt-keys')}"
+          fence-google-app-creds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-google-app-creds'] != '' ? infrastructureConfig.data['secret-name-fence-google-app-creds'] : 'fence-google-app-creds-secret')}"
+          fence-google-storage-creds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-google-storage-creds'] != '' ? infrastructureConfig.data['secret-name-fence-google-storage-creds'] : 'fence-google-storage-creds-secret')}"
+          fence-ssh-keys-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-ssh-keys'] != '' ? infrastructureConfig.data['secret-name-fence-ssh-keys'] : 'fence-ssh-keys')}"
+          indexd-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-indexd-dbcreds'] != '' ? infrastructureConfig.data['secret-name-indexd-dbcreds'] : 'indexd-creds')}"
+          indexd-service-creds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-indexd-service-creds'] != '' ? infrastructureConfig.data['secret-name-indexd-service-creds'] : 'indexd-service-creds')}"
+          metadata-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-metadata-dbcreds'] != '' ? infrastructureConfig.data['secret-name-metadata-dbcreds'] : 'metadata-creds')}"
+          metadata-g3auto-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-metadata-g3auto'] != '' ? infrastructureConfig.data['secret-name-metadata-g3auto'] : 'metadata-g3auto')}"
+          manifestservice-g3auto-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-manifestservice-g3auto'] != '' ? infrastructureConfig.data['secret-name-manifestservice-g3auto'] : 'manifestservice-g3auto')}"
+          peregrine-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-peregrine-dbcreds'] != '' ? infrastructureConfig.data['secret-name-peregrine-dbcreds'] : 'peregrine-creds')}"
+          sheepdog-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-sheepdog-dbcreds'] != '' ? infrastructureConfig.data['secret-name-sheepdog-dbcreds'] : 'sheepdog-creds')}"
+          wts-dbcreds-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-wts-dbcreds'] != '' ? infrastructureConfig.data['secret-name-wts-dbcreds'] : 'wts-creds')}"
+          wts-g3auto-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-wts-g3auto'] != '' ? infrastructureConfig.data['secret-name-wts-g3auto'] : 'wts-g3auto')}"
+          wts-oidc-client-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-wts-oidc-client'] != '' ? infrastructureConfig.data['secret-name-wts-oidc-client'] : 'wts-oidc-client')}"

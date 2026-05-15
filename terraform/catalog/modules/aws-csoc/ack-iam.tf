@@ -29,7 +29,10 @@ resource "aws_iam_role" "ack_csoc_source" {
             "${local.oidc_provider_id}:aud" = "sts.amazonaws.com"
           }
           StringLike = {
-            "${local.oidc_provider_id}:sub" = "system:serviceaccount:${local.ack_namespace}:ack-*-controller"
+            "${local.oidc_provider_id}:sub" = [
+              "system:serviceaccount:${local.ack_namespace}:ack-*-controller",
+              "system:serviceaccount:*:gen3-secret-writer-sa"
+            ]
           }
         }
       }

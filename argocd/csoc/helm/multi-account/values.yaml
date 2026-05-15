@@ -1,5 +1,5 @@
 # clustersJson: JSON-encoded map of spoke-alias → AWS account ID
-# Injected by the ack-multi-acct ApplicationSet from the CSOC cluster secret
+# Injected by the multi-account ApplicationSet from the CSOC cluster secret
 # annotation fleet_spokes_json (set by Terraform argocd-bootstrap module).
 # Example: '{"spoke1":"1111111111111","spoke2":"2222222222222"}'
 clustersJson: "{}"
@@ -12,3 +12,11 @@ clustersJson: "{}"
 # clusterName: CSOC EKS cluster name — used for informational annotations.
 # Injected by the ApplicationSet from the aws_cluster_name annotation.
 clusterName: ""
+
+# CSOC source IAM role ARN. Secret-writer pods use this service account via IRSA,
+# then assume the per-spoke Terraform-created <spoke-alias>-spoke-role.
+csocAssumeRoleArn: ""
+
+secretWriterServiceAccount:
+  enabled: true
+  name: gen3-secret-writer-sa

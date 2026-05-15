@@ -66,7 +66,7 @@ locals {
   # in a template expression — unused annotations are noise.
   addons_metadata = merge(
     {
-      # Cluster identity — used by ack-multi-acct (clusterName) and ACK SA IRSA (aws_region)
+      # Cluster identity — used by multi-account and ACK SA IRSA (aws_region)
       aws_cluster_name = local.cluster_info.cluster_name
       aws_region       = local.region
     },
