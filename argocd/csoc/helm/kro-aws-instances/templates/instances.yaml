@@ -5,8 +5,8 @@
 #  Wave 15  DomainSecurity1  → produces domain-security-bridge (Route53 + ACM + WAF)
 #  Wave 15  Messaging1       → standalone             → produces messaging-bridge
 #  Wave 20  Storage1         → reads network-security-bridge → produces storage-bridge
-#  Wave 26  SecretBootstrap1 → seeds 6 AWS SM secrets from gen3-secret-bootstrap K8s Secret
-#  Wave 27  Database1        → reads network-security-bridge + gen3-secret-bootstrap → database-bridge
+#  Wave 26  SecretBootstrap1 → seeds 5 AWS SM secrets from gen3-secret-bootstrap K8s Secret
+#  Wave 27  Database1        → reads network-security-bridge → database-bridge
 #  Wave 20  Compute1         → reads network-security-bridge → compute-bridge (EKS + IAM + OpenSearch)
 #  Wave 25  SpokeAccess1     → reads compute-bridge  → produces spoke-access-bridge
 #  Wave 25  PlatformIAM1     → reads compute-bridge + storage-bridge → platform-iam-bridge

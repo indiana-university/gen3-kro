@@ -193,7 +193,7 @@ instances:
       networkSecurityBridgeName: "network-security-bridge"
       storageBridgeName: "storage-bridge"
 
-  # Tier 1 preflight — Six AWS SM secrets seeded from gen3-secret-bootstrap K8s Secret.
+  # Tier 1 preflight — Five AWS SM secrets seeded from gen3-secret-bootstrap K8s Secret.
   # Always enabled; individual jobs are gated by run-flags inside the bootstrap secret.
   secretBootstrap:
     enabled: true
@@ -203,8 +203,8 @@ instances:
       infrastructureConfigMapName: "infrastructure-values"
       secretWriterImage: "quay.io/cdis/awshelper:master"
 
-  # Tier 1 — Database (Aurora PostgreSQL cluster + ExternalSecret / SecretStore)
-  # Depends on: network-security-bridge, gen3-secret-bootstrap K8s Secret
+  # Tier 1 — Database (Aurora PostgreSQL cluster + database bridge)
+  # Depends on: network-security-bridge
   database:
     enabled: true
     version: "1"
@@ -214,7 +214,6 @@ instances:
       deletionPolicy: "delete"
       infrastructureConfigMapName: "infrastructure-values"
       networkSecurityBridgeName: "network-security-bridge"
-      esoAwsCredsSecretName: "eso-aws-credentials"
       databaseBridgeName: "database-bridge"
 
   # Tier 1 — Compute (EKS cluster + IAM roles + OpenSearch)
