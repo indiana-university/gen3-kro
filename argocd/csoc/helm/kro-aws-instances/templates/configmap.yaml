@@ -91,23 +91,15 @@ data:
   # <global.name>-<global.namespace>-<suffix>, falling back to hardcoded
   # service suffixes if a value is blank.
   secret-name-aurora-master-password:              {{ .Values.data.secretNames.auroraMasterPassword | quote }}
-  secret-name-arborist-dbcreds:                    {{ .Values.data.secretNames.arboristDbCreds | quote }}
-  secret-name-audit-dbcreds:                       {{ .Values.data.secretNames.auditDbCreds | quote }}
   secret-name-audit-g3auto:                        {{ .Values.data.secretNames.auditG3Auto | quote }}
-  secret-name-fence-dbcreds:                       {{ .Values.data.secretNames.fenceDbCreds | quote }}
   secret-name-fence-config:                        {{ .Values.data.secretNames.fenceConfig | quote }}
   secret-name-fence-jwt-keys:                      {{ .Values.data.secretNames.fenceJwtKeys | quote }}
   secret-name-fence-google-app-creds:              {{ .Values.data.secretNames.fenceGoogleAppCreds | quote }}
   secret-name-fence-google-storage-creds:          {{ .Values.data.secretNames.fenceGoogleStorageCreds | quote }}
   secret-name-fence-ssh-keys:                      {{ .Values.data.secretNames.fenceSshKeys | quote }}
-  secret-name-indexd-dbcreds:                      {{ .Values.data.secretNames.indexdDbCreds | quote }}
   secret-name-indexd-service-creds:                {{ .Values.data.secretNames.indexdServiceCreds | quote }}
-  secret-name-metadata-dbcreds:                    {{ .Values.data.secretNames.metadataDbCreds | quote }}
   secret-name-metadata-g3auto:                     {{ .Values.data.secretNames.metadataG3Auto | quote }}
   secret-name-manifestservice-g3auto:              {{ .Values.data.secretNames.manifestserviceG3Auto | quote }}
-  secret-name-peregrine-dbcreds:                   {{ .Values.data.secretNames.peregrineDbCreds | quote }}
-  secret-name-sheepdog-dbcreds:                    {{ .Values.data.secretNames.sheepdogDbCreds | quote }}
-  secret-name-wts-dbcreds:                         {{ .Values.data.secretNames.wtsDbCreds | quote }}
   secret-name-wts-g3auto:                          {{ .Values.data.secretNames.wtsG3Auto | quote }}
   secret-name-wts-oidc-client:                     {{ .Values.data.secretNames.wtsOidcClient | quote }}
   # Compute

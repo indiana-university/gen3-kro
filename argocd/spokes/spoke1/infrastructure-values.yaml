@@ -76,23 +76,15 @@ data:
 
   secretNames:
     auroraMasterPassword: aurora-master-password
-    arboristDbCreds: arborist-creds
-    auditDbCreds: audit-creds
     auditG3Auto: audit-g3auto
-    fenceDbCreds: fence-creds
     fenceConfig: fence-config
     fenceJwtKeys: fence-jwt-keys
     fenceGoogleAppCreds: fence-google-app-creds-secret
     fenceGoogleStorageCreds: fence-google-storage-creds-secret
     fenceSshKeys: fence-ssh-keys
-    indexdDbCreds: indexd-creds
     indexdServiceCreds: indexd-service-creds
-    metadataDbCreds: metadata-creds
     metadataG3Auto: metadata-g3auto
     manifestserviceG3Auto: manifestservice-g3auto
-    peregrineDbCreds: peregrine-creds
-    sheepdogDbCreds: sheepdog-creds
-    wtsDbCreds: wts-creds
     wtsG3Auto: wts-g3auto
     wtsOidcClient: wts-oidc-client
 
@@ -134,18 +126,16 @@ data:
 instances:
   # Phase 1
   networkSecurity:
-    enabled: false
+    enabled: true
   domainSecurity:
-    enabled: false
+    enabled: true
   messaging:
-    enabled: false
+    enabled: true
   ## Phase 2
   storage:
-    enabled: false
-  secretBootstrap:
-    enabled: false
+    enabled: true
   database:
-    enabled: false
+    enabled: true
   compute:
     enabled: false
   ## Phase 3
@@ -157,23 +147,6 @@ instances:
     enabled: false
   ## Phase 4
   platformHelm:
-    enabled: false
-  ## Phase 5 companion — Secret RGDs (opt-in AWS SM values from gen3-secret-bootstrap)
-  fenceConfigSecret:
-    enabled: false
-  fenceGoogleAppCredsSecret:
-    enabled: false
-  fenceGoogleStorageCredsSecret:
-    enabled: false
-  wtsG3AutoSecret:
-    enabled: false
-  auditG3AutoSecret:
-    enabled: false
-  metadataG3AutoSecret:
-    enabled: false
-  indexdServiceCredsSecret:
-    enabled: false
-  manifestserviceG3AutoSecret:
     enabled: false
   ## Phase 5
   appHelm:

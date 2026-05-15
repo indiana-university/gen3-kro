@@ -5,14 +5,14 @@
 #  Wave 15  DomainSecurity1  → produces domain-security-bridge (Route53 + ACM + WAF)
 #  Wave 15  Messaging1       → standalone             → produces messaging-bridge
 #  Wave 20  Storage1         → reads network-security-bridge → produces storage-bridge
-#  Wave 26  SecretBootstrap1 → writes retained Aurora SM value through spoke role
-#  Wave 27  Database1        → reads network-security-bridge + aurora secret bridge → database-bridge
+#  Wave 26  SecretBootstrap1 → seeds 6 AWS SM secrets from gen3-secret-bootstrap K8s Secret
+#  Wave 27  Database1        → reads network-security-bridge + gen3-secret-bootstrap → database-bridge
 #  Wave 20  Compute1         → reads network-security-bridge → compute-bridge (EKS + IAM + OpenSearch)
 #  Wave 25  SpokeAccess1     → reads compute-bridge  → produces spoke-access-bridge
 #  Wave 25  PlatformIAM1     → reads compute-bridge + storage-bridge → platform-iam-bridge
 #  Wave 25  AppIAM1          → reads compute-bridge + storage-bridge → app-iam-bridge
 #  Wave 30  PlatformHelm1    → reads compute-bridge + platform-iam-bridge + spoke-access-bridge
-#  Wave 34  App external secret instances → opt-in companions to AppHelm
+#  Wave 34  SecretDependent1 → seeds 3 infra-dependent AWS SM secrets from gen3-secret-bootstrap
 #  Wave 35  AppHelm1         → reads infrastructure bridges and passes values through
 #
 # Toggle instances on/off in values.yaml (or per-spoke override file).
@@ -28,12 +28,5 @@
 {{ include "gen3kro.instance" (list . .Values.instances.appIam           "AwsGen3AppIAM")          }}
 {{ include "gen3kro.instance" (list . .Values.instances.messaging        "AwsGen3Messaging")       }}
 {{ include "gen3kro.instance" (list . .Values.instances.platformHelm     "AwsGen3PlatformHelm")    }}
-{{ include "gen3kro.instance" (list . .Values.instances.fenceConfigSecret "AwsGen3FenceConfigSecret") }}
-{{ include "gen3kro.instance" (list . .Values.instances.fenceGoogleAppCredsSecret "AwsGen3FenceGoogleAppCredsSecret") }}
-{{ include "gen3kro.instance" (list . .Values.instances.fenceGoogleStorageCredsSecret "AwsGen3FenceGoogleStorageCredsSecret") }}
-{{ include "gen3kro.instance" (list . .Values.instances.wtsG3AutoSecret "AwsGen3WtsG3AutoSecret") }}
-{{ include "gen3kro.instance" (list . .Values.instances.auditG3AutoSecret "AwsGen3AuditG3AutoSecret") }}
-{{ include "gen3kro.instance" (list . .Values.instances.metadataG3AutoSecret "AwsGen3MetadataG3AutoSecret") }}
-{{ include "gen3kro.instance" (list . .Values.instances.indexdServiceCredsSecret "AwsGen3IndexdServiceCredsSecret") }}
-{{ include "gen3kro.instance" (list . .Values.instances.manifestserviceG3AutoSecret "AwsGen3ManifestserviceG3AutoSecret") }}
+{{ include "gen3kro.instance" (list . .Values.instances.secretDependent  "AwsGen3SecretDependent") }}
 {{ include "gen3kro.instance" (list . .Values.instances.appHelm          "AwsGen3AppHelm")         }}

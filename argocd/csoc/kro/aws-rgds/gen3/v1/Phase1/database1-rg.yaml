@@ -16,8 +16,6 @@ spec:
       deletionPolicy: string | default="delete"
       infrastructureConfigMapName: string | default="infrastructure-values"
       networkSecurityBridgeName: string | default="network-security-bridge"
-      auroraMasterPasswordSecretBridgeName: string | default="aurora-master-password-secret-bridge"
-      esoAwsCredsSecretName: string | default="eso-aws-credentials"
       databaseBridgeName: string | default="database-bridge"
 
     status:
@@ -57,100 +55,7 @@ spec:
           name: ${schema.spec.networkSecurityBridgeName}
           namespace: ${schema.spec.namespace}
 
-    - id: auroraMasterPasswordSecretBridge
-      readyWhen:
-        - ${auroraMasterPasswordSecretBridge.metadata.?name.orValue('null') != 'null'}
-        - ${auroraMasterPasswordSecretBridge.data['created'] == 'true'}
-        - ${auroraMasterPasswordSecretBridge.data['secret-arn'] != 'loading'}
-      externalRef:
-        apiVersion: v1
-        kind: ConfigMap
-        metadata:
-          name: ${schema.spec.auroraMasterPasswordSecretBridgeName}
-          namespace: ${schema.spec.namespace}
-
-  # Test 8: two opposite-includeWhen SecretStores — selected by database-eso-use-irsa
-
-    - id: secretStoreLocal
-      includeWhen:
-        - ${infrastructureConfig.data['database-eso-use-irsa'] != 'true'}
-      readyWhen:
-        - ${secretStoreLocal.metadata.?name.orValue('null') != 'null'}
-      template:
-        apiVersion: external-secrets.io/v1
-        kind: SecretStore
-        metadata:
-          name: gen3-secret-store
-          namespace: ${schema.spec.namespace}
-          labels:
-            app.kubernetes.io/managed-by: kro
-            gen3.io/tier: database
-        spec:
-          provider:
-            aws:
-              service: SecretsManager
-              region: ${infrastructureConfig.data['aws-region']}
-              auth:
-                secretRef:
-                  accessKeyIDSecretRef:
-                    name: ${schema.spec.esoAwsCredsSecretName}
-                    key: access-key
-                  secretAccessKeySecretRef:
-                    name: ${schema.spec.esoAwsCredsSecretName}
-                    key: secret-access-key
-
-    # EKS Pod Identity — no explicit credentials needed
-    - id: secretStoreIRSA
-      includeWhen:
-        - ${infrastructureConfig.data['database-eso-use-irsa'] == 'true'}
-      readyWhen:
-        - ${secretStoreIRSA.metadata.?name.orValue('null') != 'null'}
-      template:
-        apiVersion: external-secrets.io/v1
-        kind: SecretStore
-        metadata:
-          name: gen3-secret-store
-          namespace: ${schema.spec.namespace}
-          labels:
-            app.kubernetes.io/managed-by: kro
-            gen3.io/tier: database
-        spec:
-          provider:
-            aws:
-              service: SecretsManager
-              region: ${infrastructureConfig.data['aws-region']}
-              # No auth — ESO uses EKS Pod Identity ambient credentials
-
-    # AWS SM → K8s Secret "aurora-master-password"; referenced by ACK DBCluster masterUserPassword
-    - id: auroraMasterPasswordES
-      readyWhen:
-        - ${auroraMasterPasswordES.status.?conditions.orValue([]).exists(c, c.type == "Ready" && c.status == "True")}
-      template:
-        apiVersion: external-secrets.io/v1
-        kind: ExternalSecret
-        metadata:
-          name: aurora-master-password
-          namespace: ${schema.spec.namespace}
-          labels:
-            app.kubernetes.io/managed-by: kro
-            gen3.io/tier: database
-        spec:
-          refreshInterval: 5m
-          secretStoreRef:
-            name: gen3-secret-store
-            kind: SecretStore
-          target:
-            name: aurora-master-password
-            creationPolicy: Owner
-          data:
-            - secretKey: password
-              remoteRef:
-                key: ${auroraMasterPasswordSecretBridge.data['secret-name']}
-                property: password
-
     - id: auroraCluster
-      includeWhen:
-        - ${auroraMasterPasswordSecretBridge.data['created'] == 'true'}
       readyWhen:
         - ${auroraCluster.status.?ackResourceMetadata.?arn.orValue('null') != 'null'}
         - ${auroraCluster.status.?conditions.orValue([]).exists(c, c.type == "ACK.ResourceSynced" && c.status == "True")}
@@ -172,11 +77,11 @@ spec:
           databaseName: ${infrastructureConfig.data['database-aurora-db-name']}
           port: ${int(infrastructureConfig.data['database-aurora-port'])}
           masterUsername: ${infrastructureConfig.data['database-aurora-master-username']}
-          # CEL ref ensures auroraMasterPasswordES is Ready before Aurora cluster is created
-          masterUserPassword:
-            name: ${auroraMasterPasswordES.metadata.name}
-            namespace: ${schema.spec.namespace}
-            key: password
+          # RDS creates and manages the master password in Secrets Manager automatically.
+          # ARN is available at auroraCluster.status.masterUserSecret.secretARN after cluster is available.
+          manageMasterUserPassword: true
+          masterUserSecret:
+            kmsKeyID: ${networkSecurityBridge.data['database-key-arn']}
           dbSubnetGroupName: ${networkSecurityBridge.data['db-subnet-group-name']}
           vpcSecurityGroupIDs:
             - ${networkSecurityBridge.data['aurora-sg-id']}
@@ -244,6 +149,5 @@ spec:
           aurora-port: ${infrastructureConfig.data['database-aurora-port']}
           aurora-master-username: ${infrastructureConfig.data['database-aurora-master-username']}
           aurora-database-name: ${infrastructureConfig.data['database-aurora-db-name']}
-          # SM key name for downstream ESO (Gen3 app global.postgres.externalSecret)
-          aurora-master-password-sm-name: ${auroraMasterPasswordSecretBridge.data['secret-name']}
-          aurora-master-password-sm-arn: ${auroraMasterPasswordSecretBridge.data['secret-arn']}
+          # SM ARN for the RDS-managed master password secret (set after Aurora cluster is available)
+          aurora-master-password-sm-arn: ${auroraCluster.status.?masterUserSecret.?secretARN.orValue("loading")}
