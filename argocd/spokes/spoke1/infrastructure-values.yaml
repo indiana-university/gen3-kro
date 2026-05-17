@@ -151,8 +151,8 @@ instances:
   ## Phase 5
   appHelm:
     enabled: false
-  ## Secret bootstrap (disabled to reset stuck instance; re-enable to run)
+  ## Secret bootstrap (re-enabled after IAM fix for spoke1-spoke-role SM permissions)
   secretBootstrap:
-    enabled: false
+    enabled: true
   secretDependent:
-    enabled: false
+    enabled: true
