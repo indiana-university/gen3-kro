@@ -373,6 +373,29 @@
           "es:ListTags"
         ],
         "Resource": "*"
+      },
+
+      {
+        "Sid": "SecretsManagerAccess",
+        "Effect": "Allow",
+        "Action": [
+          "secretsmanager:CreateSecret",
+          "secretsmanager:PutSecretValue",
+          "secretsmanager:GetSecretValue",
+          "secretsmanager:UpdateSecret",
+          "secretsmanager:DeleteSecret",
+          "secretsmanager:DescribeSecret",
+          "secretsmanager:TagResource",
+          "secretsmanager:UntagResource",
+          "secretsmanager:ListSecretVersionIds",
+          "secretsmanager:RestoreSecret",
+          "secretsmanager:ListSecrets"
+        ],
+        "Resource": [
+          "arn:aws:secretsmanager:*:${account_id}:secret:gen3-*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:spoke*-*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:rds!*"
+        ]
       }
     ]
 }

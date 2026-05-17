@@ -194,7 +194,7 @@ instances:
       storageBridgeName: "storage-bridge"
 
   # Tier 1 preflight — Five AWS SM secrets seeded from gen3-secret-bootstrap K8s Secret.
-  # Always enabled; individual jobs are gated by run-flags inside the bootstrap secret.
+  # Always enabled; individual jobs are created only when their bootstrap Secret run-flag is true.
   secretBootstrap:
     enabled: true
     version: "1"
@@ -296,7 +296,7 @@ instances:
       platformHelmBridgeName: "platform-helm-bridge"
 
   # Tier 4 companion — three AWS SM secrets that depend on infrastructure readiness.
-  # Always enabled; individual jobs are gated by run-flags inside the bootstrap secret.
+  # Always enabled; individual jobs are created only when their bootstrap Secret run-flag is true.
   secretDependent:
     enabled: true
     version: "1"

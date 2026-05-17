@@ -151,8 +151,8 @@ instances:
   ## Phase 5
   appHelm:
     enabled: false
-  ## Secret bootstrap (re-enabled after IAM fix for spoke1-spoke-role SM permissions)
+  ## Secret bootstrap (disabled for full cleanup + instance recompile from updated RGD)
   secretBootstrap:
-    enabled: true
+    enabled: false
   secretDependent:
-    enabled: true
+    enabled: false
