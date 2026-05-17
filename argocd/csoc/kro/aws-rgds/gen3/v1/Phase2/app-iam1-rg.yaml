@@ -336,6 +336,7 @@ spec:
                       "secretsmanager:CreateSecret",
                       "secretsmanager:PutSecretValue",
                       "secretsmanager:UpdateSecret",
+                      "secretsmanager:DeleteSecret",
                       "secretsmanager:TagResource"
                     ],
                     "Resource": [

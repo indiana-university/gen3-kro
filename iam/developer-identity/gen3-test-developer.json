@@ -388,15 +388,37 @@
           "secretsmanager:TagResource",
           "secretsmanager:UntagResource",
           "secretsmanager:ListSecretVersionIds",
-          "secretsmanager:RestoreSecret",
-          "secretsmanager:ListSecrets"
+          "secretsmanager:RestoreSecret"
         ],
         "Resource": [
           "arn:aws:secretsmanager:*:${account_id}:secret:gen3-*",
           "arn:aws:secretsmanager:*:${account_id}:secret:spoke*-*",
-          "arn:aws:secretsmanager:*:${account_id}:secret:rds!*"
+          "arn:aws:secretsmanager:*:${account_id}:secret:rds!*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:fence-*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:audit-*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:metadata-*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:indexd-*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:manifestservice-*",
+          "arn:aws:secretsmanager:*:${account_id}:secret:wts-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:gen3-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:spoke*-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:rds!*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:fence-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:audit-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:metadata-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:indexd-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:manifestservice-*",
+          "arn:aws:secretsmanager:*:${spoke1_account_id}:secret:wts-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:gen3-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:spoke*-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:rds!*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:fence-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:audit-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:metadata-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:indexd-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:manifestservice-*",
+          "arn:aws:secretsmanager:*:${spoke2_account_id}:secret:wts-*"
         ]
       }
     ]
 }
-
