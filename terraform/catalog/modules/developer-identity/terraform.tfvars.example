@@ -4,8 +4,8 @@
 # aws_profile             = "csoc"
 # region                  = "us-east-1"
 # iam_user_name           = "Terraform.User"
-# role_name               = "csoc-user"
+# devcontainer_role_name  = "rds-gen3-devcontainer-role"
 # role_max_session_duration = 43200   # 12 hours
-# mfa_device_name         = "Terraform.User-virtual-mfa"
+# mfa_device_name         = "rds-gen3-devcontainer-mfa"
 # terraform_state_bucket  = ""       # scope S3 perms if known
 # terraform_state_locks_table = ""   # scope DynamoDB perms if known

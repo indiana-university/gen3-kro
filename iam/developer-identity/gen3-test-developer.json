@@ -21,6 +21,8 @@
           "s3:GetBucketPublicAccessBlock",
           "s3:GetBucketTagging",
           "s3:ListBucket",
+          "s3:ListBucketVersions",
+          "s3:ListBucketMultipartUploads",
           "kms:DescribeKey",
           "kms:GetKeyPolicy",
           "kms:GetKeyRotationStatus",
@@ -211,12 +213,18 @@
           "s3:PutBucketPublicAccessBlock",
           "s3:PutBucketTagging",
           "s3:DeleteBucketTagging",
+          "s3:ListBucketVersions",
+          "s3:ListBucketMultipartUploads",
+          "s3:ListMultipartUploadParts",
           "s3:PutObject",
           "s3:GetObject",
-          "s3:DeleteObject"
+          "s3:DeleteObject",
+          "s3:DeleteObjectVersion",
+          "s3:AbortMultipartUpload"
         ],
         "Resource": [
-          "arn:aws:s3:::*"
+          "arn:aws:s3:::*",
+          "arn:aws:s3:::*/*"
         ]
       },
 
@@ -274,6 +282,8 @@
           "sts:TagSession"
         ],
         "Resource": [
+          "arn:aws:iam::${account_id}:role/*-spoke-role",
+          "arn:aws:iam::${account_id}:role/*-argocd-spoke-access",
           "arn:aws:iam::${spoke1_account_id}:role/*-spoke-role",
           "arn:aws:iam::${spoke1_account_id}:role/*-argocd-spoke-access",
           "arn:aws:iam::${spoke2_account_id}:role/*-spoke-role",

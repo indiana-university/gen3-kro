@@ -90,7 +90,7 @@ resource "aws_iam_virtual_mfa_device" "user_mfa" {
 ###############################################################################
 
 resource "aws_iam_role" "devcontainer" {
-  name                 = var.role_name
+  name                 = var.devcontainer_role_name
   max_session_duration = var.role_max_session_duration
   tags                 = var.tags
 
@@ -116,7 +116,7 @@ resource "aws_iam_role" "devcontainer" {
         }
       }
     ]
-  }) : jsonencode({
+    }) : jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
@@ -136,7 +136,7 @@ resource "aws_iam_role" "devcontainer" {
 ###############################################################################
 
 resource "aws_iam_role_policy" "devcontainer_permissions" {
-  name   = "${var.role_name}-permissions"
+  name   = "${var.devcontainer_role_name}-permissions"
   role   = aws_iam_role.devcontainer.id
   policy = local.policy_content
 }
@@ -148,7 +148,7 @@ resource "aws_iam_role_policy" "devcontainer_permissions" {
 resource "aws_iam_user_policy" "allow_assume_devcontainer_role" {
   count = var.attach_user_policy && var.iam_user_name != "" && length(data.aws_iam_user.target) > 0 ? 1 : 0
 
-  name = "allow-assume-${var.role_name}"
+  name = "allow-assume-${var.devcontainer_role_name}"
   user = var.iam_user_name
 
   policy = jsonencode({
@@ -208,7 +208,7 @@ resource "local_file" "mfa_setup_instructions" {
        region = ${var.region}
        output = yaml
 
-       [profile ${var.role_name}]
+       [profile ${var.devcontainer_role_name}]
        role_arn = ${aws_iam_role.devcontainer.arn}
        source_profile = ${var.aws_profile}
       mfa_serial = ${aws_iam_virtual_mfa_device.user_mfa[0].arn}
@@ -219,7 +219,7 @@ resource "local_file" "mfa_setup_instructions" {
     5. Test the setup:
 
        # This will prompt for your MFA code:
-       aws sts get-caller-identity --profile ${var.role_name}
+       aws sts get-caller-identity --profile ${var.devcontainer_role_name}
 
     ═══════════════════════════════════════════════════════════════════
     SECURITY NOTES
@@ -239,9 +239,9 @@ resource "local_file" "aws_config_snippet" {
 
   content = <<-EOT
     # Add these profiles to ~/.aws/config
-    # The ${var.role_name} profile assumes the scoped role with MFA
+    # The ${var.devcontainer_role_name} profile assumes the scoped role with MFA
 
-    [profile ${var.role_name}]
+    [profile ${var.devcontainer_role_name}]
     role_arn = ${aws_iam_role.devcontainer.arn}
     source_profile = ${var.aws_profile}
     mfa_serial = ${try(aws_iam_virtual_mfa_device.user_mfa[0].arn, "<register-mfa-separately>")}

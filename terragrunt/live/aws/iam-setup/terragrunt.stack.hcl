@@ -22,8 +22,8 @@ locals {
   config_file = "${local.repo_root}/config/shared.auto.tfvars.json"
   config      = jsondecode(file(local.config_file))
 
-  spokes_config        = lookup(local.config, "spokes", [])
-  dev_identity_config  = lookup(local.config, "developer_identity", {})
+  spokes_config       = lookup(local.config, "spokes", [])
+  dev_identity_config = lookup(local.config, "developer_identity", {})
 
   ###############################################################################
   # CSOC provider — shared AWS identity for CSOC account operations
@@ -70,9 +70,9 @@ locals {
     for spoke in local.spokes :
     spoke.alias => (
       fileexists("${local.repo_root}/${local.iam_base_path}/${spoke.alias}/ack/${local.iam_policy_file}") ?
-        "${local.iam_base_path}/${spoke.alias}/ack/${local.iam_policy_file}" : (
+      "${local.iam_base_path}/${spoke.alias}/ack/${local.iam_policy_file}" : (
         fileexists("${local.repo_root}/${local.iam_base_path}/_default/ack/${local.iam_policy_file}") ?
-          "${local.iam_base_path}/_default/ack/${local.iam_policy_file}" : "none"
+        "${local.iam_base_path}/_default/ack/${local.iam_policy_file}" : "none"
       )
     )
   }
@@ -111,14 +111,16 @@ locals {
   ###############################################################################
   # Developer identity configuration — sourced from developer_identity in shared.auto.tfvars.json
   ###############################################################################
-  dev_iam_user_name         = lookup(local.dev_identity_config, "iam_user_name", "")
-  dev_role_name             = lookup(local.dev_identity_config, "role_name", "${local.csoc_alias}-csoc-user")
-  dev_mfa_device_name       = lookup(local.dev_identity_config, "mfa_device_name", "${local.csoc_alias}-csoc-user-mfa")
-  dev_create_virtual_mfa    = lookup(local.dev_identity_config, "create_virtual_mfa", true)
-  dev_assume_requires_mfa   = lookup(local.dev_identity_config, "assume_requires_mfa", true)
-  dev_attach_user_policy    = lookup(local.dev_identity_config, "attach_user_policy", true)
-  dev_policy_filename       = lookup(local.dev_identity_config, "policy_filename", "gen3-test-developer.json")
-  dev_role_max_session_secs = lookup(local.dev_identity_config, "role_max_session_duration", 43200)
+  dev_iam_user_name              = lookup(local.dev_identity_config, "iam_user_name", "")
+  devcontainer_role_suffix       = lookup(local.dev_identity_config, "devcontainer_role_suffix", "devcontainer-role")
+  devcontainer_role_name         = "${local.csoc_alias}-${local.devcontainer_role_suffix}"
+  devcontainer_mfa_device_suffix = lookup(local.dev_identity_config, "mfa_device_suffix", "devcontainer-mfa")
+  devcontainer_mfa_device_name   = "${local.csoc_alias}-${local.devcontainer_mfa_device_suffix}"
+  dev_create_virtual_mfa         = lookup(local.dev_identity_config, "create_virtual_mfa", true)
+  dev_assume_requires_mfa        = lookup(local.dev_identity_config, "assume_requires_mfa", true)
+  dev_attach_user_policy         = lookup(local.dev_identity_config, "attach_user_policy", true)
+  dev_policy_filename            = lookup(local.dev_identity_config, "policy_filename", "gen3-test-developer.json")
+  dev_role_max_session_secs      = lookup(local.dev_identity_config, "role_max_session_duration", 43200)
 
   ###############################################################################
   # Tags
@@ -153,21 +155,21 @@ unit "developer_identity" {
     iam_user_name = local.dev_iam_user_name
 
     # Role config
-    role_name                 = local.dev_role_name
+    devcontainer_role_name    = local.devcontainer_role_name
     role_max_session_duration = local.dev_role_max_session_secs
     assume_requires_mfa       = local.dev_assume_requires_mfa
     assume_principal_arns     = []
     attach_user_policy        = local.dev_attach_user_policy
 
     # MFA device
-    mfa_device_name    = local.dev_mfa_device_name
+    mfa_device_name    = local.devcontainer_mfa_device_name
     create_virtual_mfa = local.dev_create_virtual_mfa
 
     # Policy — rendered at stack-eval time so module gets a fully-substituted
     # policy (account_id/region placeholders resolved). The module's own
     # templatefile() path doesn't resolve from the Terragrunt working copy.
     policy_filename = local.dev_policy_filename
-    inline_policy   = templatefile("${local.repo_root}/iam/developer-identity/${local.dev_policy_filename}", merge(
+    inline_policy = templatefile("${local.repo_root}/iam/developer-identity/${local.dev_policy_filename}", merge(
       {
         account_id = local.csoc_account_id
         region     = local.region

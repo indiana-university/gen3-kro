@@ -25,7 +25,7 @@ variable "spoke_account_ids" {
 }
 
 variable "csoc_alias" {
-  description = "Base alias for all CSOC resources. All resource names are derived: cluster={csoc_alias}-csoc-cluster, vpc={csoc_alias}-csoc-vpc, roles={csoc_alias}-csoc-role, devcontainer={csoc_alias}-csoc-user"
+  description = "Base alias for all CSOC resources. All resource names are derived: cluster={csoc_alias}-csoc-cluster, vpc={csoc_alias}-csoc-vpc, roles={csoc_alias}-csoc-role, devcontainer={csoc_alias}-devcontainer-role"
   type        = string
 }
 

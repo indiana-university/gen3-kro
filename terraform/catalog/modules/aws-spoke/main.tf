@@ -28,7 +28,9 @@ locals {
 
 ################################################################################
 # Trust Policy — Account-Root + ArnLike Condition (V2)
-# ArnLike restricts callers to the CSOC source role (*-csoc-role).
+# ArnLike restricts callers to the CSOC controller role (*-csoc-role) and the
+# scoped developer devcontainer role (*-devcontainer-role) for break-glass/manual
+# spoke cleanup.
 # No ExternalId — ACK does not pass it during sts:AssumeRole.
 ################################################################################
 
@@ -47,7 +49,10 @@ data "aws_iam_policy_document" "assume_role" {
     condition {
       test     = "ArnLike"
       variable = "aws:PrincipalArn"
-      values   = ["arn:aws:iam::${var.csoc_account_id}:role/*-csoc-role"]
+      values = [
+        "arn:aws:iam::${var.csoc_account_id}:role/*-csoc-role",
+        "arn:aws:iam::${var.csoc_account_id}:role/*-devcontainer-role"
+      ]
     }
   }
 }
@@ -68,11 +73,11 @@ resource "aws_iam_role" "ack_workload" {
   tags = merge(
     var.tags,
     {
-      Name      = "${var.spoke_alias}-spoke-role"
+      Name       = "${var.spoke_alias}-spoke-role"
       SpokeAlias = var.spoke_alias
-      Cluster   = var.cluster_name
-      ManagedBy = "terraform"
-      Module    = "aws-spoke"
+      Cluster    = var.cluster_name
+      ManagedBy  = "terraform"
+      Module     = "aws-spoke"
     }
   )
 }
@@ -120,4 +125,3 @@ resource "aws_iam_role_policy" "custom_policies" {
     ]
   })
 }
-

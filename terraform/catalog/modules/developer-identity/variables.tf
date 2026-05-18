@@ -20,10 +20,10 @@ variable "iam_user_name" {
   default     = "Terraform.User"
 }
 
-variable "role_name" {
-  description = "Name of the devcontainer assume-role. Defaults to {csoc_alias}-csoc-user when called via Terragrunt."
+variable "devcontainer_role_name" {
+  description = "Full IAM role name for the devcontainer assume-role. The Terragrunt stack derives this as {csoc_alias}-{developer_identity.devcontainer_role_suffix}."
   type        = string
-  default     = "csoc-user"
+  default     = "devcontainer-role"
 }
 
 variable "role_max_session_duration" {
@@ -33,9 +33,9 @@ variable "role_max_session_duration" {
 }
 
 variable "mfa_device_name" {
-  description = "Name for the virtual MFA device. Defaults to {csoc_alias}-csoc-user-mfa when called via Terragrunt."
+  description = "Full name for the virtual MFA device. The Terragrunt stack derives this as {csoc_alias}-{developer_identity.mfa_device_suffix}."
   type        = string
-  default     = "csoc-user-mfa"
+  default     = "devcontainer-mfa"
 }
 
 variable "tags" {

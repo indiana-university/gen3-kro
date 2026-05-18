@@ -60,7 +60,7 @@ inputs = {
 
   iam_user_name = values.iam_user_name
 
-  role_name                 = values.role_name
+  devcontainer_role_name    = values.devcontainer_role_name
   role_max_session_duration = values.role_max_session_duration
   assume_requires_mfa       = values.assume_requires_mfa
   assume_principal_arns     = values.assume_principal_arns

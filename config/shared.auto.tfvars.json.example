@@ -112,6 +112,8 @@
 
   "developer_identity": {
     "iam_user_name": "<DEVELOPER_IAM_USER>",
+    "devcontainer_role_suffix": "devcontainer-role",
+    "mfa_device_suffix": "devcontainer-mfa",
     "create_virtual_mfa": true,
     "assume_requires_mfa": true,
     "attach_user_policy": true,
