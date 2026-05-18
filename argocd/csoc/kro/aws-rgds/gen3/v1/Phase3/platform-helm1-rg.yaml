@@ -287,6 +287,8 @@ spec:
                     value: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
                   - name: alb-controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['alb-controller-role-arn']}
+                  - name: alb-controller.hostNetworkEnabled
+                    value: ${infrastructureConfig.data['platform-helm-alb-host-network-enabled']}
                   - name: karpenter.awsRegion
                     value: ${infrastructureConfig.data['aws-region']}
                   - name: karpenter-crds.selectorTag
@@ -381,6 +383,8 @@ spec:
                     value: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
                   - name: alb-controller.serviceAccount.annotations.eks\.amazonaws\.com/role-arn
                     value: ${platformIamBridge.data['alb-controller-role-arn']}
+                  - name: alb-controller.hostNetworkEnabled
+                    value: ${infrastructureConfig.data['platform-helm-alb-host-network-enabled']}
                   - name: karpenter.awsRegion
                     value: ${infrastructureConfig.data['aws-region']}
                   - name: karpenter-crds.selectorTag

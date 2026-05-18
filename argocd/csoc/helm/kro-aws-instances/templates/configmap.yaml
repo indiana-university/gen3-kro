@@ -123,6 +123,7 @@ data:
   platform-helm-management-topology:                  {{ .Values.data.platformHelm.managementTopology | quote }}
   platform-helm-project:                              {{ .Values.data.platformHelm.project | quote }}
   platform-helm-alb-scheme:                           {{ .Values.data.platformHelm.albScheme | quote }}
+  platform-helm-alb-host-network-enabled:             {{ .Values.data.platformHelm.albHostNetworkEnabled | quote }}
   platform-helm-alb-controller-enabled:               {{ .Values.data.platformHelm.addons.albController | quote }}
   platform-helm-external-secrets-enabled:             {{ .Values.data.platformHelm.addons.externalSecrets | quote }}
   platform-helm-cert-manager-enabled:                 {{ .Values.data.platformHelm.addons.certManager | quote }}

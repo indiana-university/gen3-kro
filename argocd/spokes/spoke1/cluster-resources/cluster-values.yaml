@@ -38,7 +38,7 @@ karpenterNodeConfigChart:
 alb-controller:
   enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
   targetRevision: "1.13.4"
-  hostNetworkEnabled: false
+  hostNetworkEnabled: true  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-alb-host-network-enabled']}
   serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['alb-controller-role-arn']}

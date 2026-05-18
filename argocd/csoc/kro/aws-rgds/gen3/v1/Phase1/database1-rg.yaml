@@ -148,5 +148,6 @@ spec:
           aurora-port: ${infrastructureConfig.data['database-aurora-port']}
           aurora-master-username: ${infrastructureConfig.data['database-aurora-master-username']}
           aurora-database-name: ${infrastructureConfig.data['database-aurora-db-name']}
+          aurora-master-password-sm-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-aurora-master-password'] != '' ? infrastructureConfig.data['secret-name-aurora-master-password'] : 'aurora-master-password')}"
           # SM ARN for the RDS-managed master password secret (set after Aurora cluster is available)
           aurora-master-password-sm-arn: ${auroraCluster.status.?masterUserSecret.?secretARN.orValue("loading")}

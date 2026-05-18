@@ -121,13 +121,14 @@ data:
     managementTopology: "csoc-managed-argocd"
     project: gen3
     albScheme: "internet-facing"
+    albHostNetworkEnabled: "true"
     addons:
       albController: "true"
       externalSecrets: "true"
       certManager: "true"
       s3Mountpoint: "false"
       calico: "false"
-      kubeStateMetrics: "true"
+      kubeStateMetrics: "false"
       externalDns: "false"
 
 # ── KRO instance deployment ───────────────────────────────────────────────────
@@ -289,7 +290,7 @@ instances:
       valuesRepoURL: "https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: "main"
       valuesBasePath: ""
-      valuesFilename: "cluster-values.yaml"
+      valuesFilename: "cluster-resources/cluster-values.yaml"
       computeBridgeName: "compute-bridge"
       platformIamBridgeName: "platform-iam-bridge"
       spokeAccessBridgeName: "spoke-access-bridge"

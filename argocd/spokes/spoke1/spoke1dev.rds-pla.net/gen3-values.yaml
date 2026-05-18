@@ -113,14 +113,224 @@ fence:
     createK8sJwtKeysSecret: false
     createK8sGoogleAppSecrets: false
   USER_YAML: |
-    {}
+    authz:
+      anonymous_policies: []
+      all_users_policies: []
+
+      groups:
+        - name: spoke1_admins
+          policies:
+            - spoke1_admin
+            - mds_admin
+            - workspace
+            - data_upload
+            - services.sheepdog-admin
+            - indexd_admin
+            - all_programs_reader
+          users:
+            - babasanmiadeyemi@gmail.com
+            - boadeyem@iu.edu
+            - alwalsh@iu.edu
+
+      resources:
+        - name: mds_gateway
+          description: metadata service administration
+        - name: workspace
+        - name: data_file
+        - name: services
+          subresources:
+            - name: sheepdog
+              subresources:
+                - name: submission
+                  subresources:
+                    - name: program
+                    - name: project
+            - name: indexd
+              subresources:
+                - name: admin
+        - name: open
+        - name: programs
+
+      policies:
+        - id: spoke1_admin
+          description: Full administrative access across registered Arborist resources.
+          role_ids:
+            - admin
+          resource_paths:
+            - /programs
+            - /services
+            - /data_file
+            - /workspace
+            - /mds_gateway
+        - id: mds_admin
+          description: Administrative access to metadata service.
+          role_ids:
+            - mds_user
+          resource_paths:
+            - /mds_gateway
+        - id: workspace
+          description: Workspace access.
+          role_ids:
+            - workspace_user
+          resource_paths:
+            - /workspace
+        - id: data_upload
+          description: Upload raw data files to S3.
+          role_ids:
+            - file_uploader
+          resource_paths:
+            - /data_file
+        - id: services.sheepdog-admin
+          description: CRUD access to programs and projects.
+          role_ids:
+            - sheepdog_admin
+          resource_paths:
+            - /services/sheepdog/submission/program
+            - /services/sheepdog/submission/project
+        - id: indexd_admin
+          description: Full access to indexd administration paths.
+          role_ids:
+            - indexd_admin
+          resource_paths:
+            - /services/indexd/admin
+            - /programs
+        - id: all_programs_reader
+          description: Read access across all programs.
+          role_ids:
+            - guppy_reader
+            - fence_reader
+            - peregrine_reader
+            - sheepdog_reader
+            - storage_reader
+          resource_paths:
+            - /programs
+
+      roles:
+        - id: admin
+          permissions:
+            - id: admin
+              action:
+                service: '*'
+                method: '*'
+        - id: mds_user
+          permissions:
+            - id: mds_access
+              action:
+                service: mds_gateway
+                method: access
+        - id: file_uploader
+          permissions:
+            - id: file_upload
+              action:
+                service: fence
+                method: file_upload
+        - id: workspace_user
+          permissions:
+            - id: workspace_access
+              action:
+                service: jupyterhub
+                method: access
+        - id: sheepdog_admin
+          description: CRUD access to programs and projects.
+          permissions:
+            - id: sheepdog_admin_action
+              action:
+                service: sheepdog
+                method: '*'
+        - id: indexd_admin
+          description: Full access to indexd API.
+          permissions:
+            - id: indexd_admin
+              action:
+                service: indexd
+                method: '*'
+        - id: guppy_reader
+          permissions:
+            - id: guppy_reader
+              action:
+                service: guppy
+                method: read
+        - id: fence_reader
+          permissions:
+            - id: fence_reader
+              action:
+                service: fence
+                method: read
+            - id: fence_storage_reader
+              action:
+                service: fence
+                method: read-storage
+        - id: peregrine_reader
+          permissions:
+            - id: peregrine_reader
+              action:
+                service: peregrine
+                method: read
+        - id: sheepdog_reader
+          permissions:
+            - id: sheepdog_reader
+              action:
+                service: sheepdog
+                method: read
+        - id: storage_reader
+          permissions:
+            - id: storage_reader
+              action:
+                service: fence
+                method: read-storage
+            - id: storage_reader_peregrine
+              action:
+                service: peregrine
+                method: read
+            - id: storage_reader_guppy
+              action:
+                service: guppy
+                method: read
+
+    users:
+      babasanmiadeyemi@gmail.com:
+        tags:
+          name: Babasanmi Adeyemi
+        policies:
+          - spoke1_admin
+          - mds_admin
+          - workspace
+          - data_upload
+          - services.sheepdog-admin
+          - indexd_admin
+          - all_programs_reader
+      boadeyem@iu.edu:
+        tags:
+          name: Boadeyem IU
+        policies:
+          - spoke1_admin
+          - mds_admin
+          - workspace
+          - data_upload
+          - services.sheepdog-admin
+          - indexd_admin
+          - all_programs_reader
+      alwalsh@iu.edu:
+        tags:
+          name: Al Walsh
+        policies:
+          - spoke1_admin
+          - mds_admin
+          - workspace
+          - data_upload
+          - services.sheepdog-admin
+          - indexd_admin
+          - all_programs_reader
   usersync:
     usersync: true
     schedule: "*/30 * * * *"
     syncFromDbgap: false
-    userYamlS3Path: "s3://gen3-spoke1-usersync/user.yaml"
-    slack_webhook: ""
+    userYamlS3Path: "none"
+    slack_webhook: "None"
     slack_send_dbgap: false
+    env:
+      - name: HOME
+        value: /tmp
 
 guppy:
   enabled: false

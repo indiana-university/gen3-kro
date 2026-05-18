@@ -111,13 +111,14 @@ data:
     managementTopology: "csoc-managed-argocd"
     project: gen3
     albScheme: "internet-facing"
+    albHostNetworkEnabled: "true"
     addons:
       albController: "true"
       externalSecrets: "true"
       certManager: "true"
       s3Mountpoint: "true"
       calico: "true"
-      kubeStateMetrics: "true"
+      kubeStateMetrics: "false"
       externalDns: "true"
 
 # ── KRO instance toggles ──────────────────────────────────────────────────────

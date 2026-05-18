@@ -96,7 +96,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:kube-system:aws-load-balancer-controller"
                     }
                   }
                 }
@@ -177,7 +177,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:s3-csi-driver-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:kube-system:s3-csi-driver-sa"
                     }
                   }
                 }
@@ -238,7 +238,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:karpenter"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:kube-system:karpenter"
                     }
                   }
                 }
@@ -324,7 +324,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:kube-system:external-dns"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:kube-system:external-dns"
                     }
                   }
                 }

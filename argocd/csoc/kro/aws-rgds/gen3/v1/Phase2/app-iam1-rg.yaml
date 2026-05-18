@@ -109,7 +109,10 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:fence-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": [
+                        "system:serviceaccount:${schema.spec.name}:fence-sa",
+                        "system:serviceaccount:${schema.spec.name}:usersync-job"
+                      ]
                     }
                   }
                 }
@@ -172,7 +175,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:audit-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:${schema.spec.name}:audit-service-sa"
                     }
                   }
                 }
@@ -210,7 +213,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:hatchery-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:${schema.spec.name}:hatchery-service-account"
                     }
                   }
                 }
@@ -262,7 +265,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:manifestservice-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:${schema.spec.name}:manifestservice-sa"
                     }
                   }
                 }
@@ -317,7 +320,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:external-secrets-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:${schema.spec.name}:external-secrets-sa"
                     }
                   }
                 }
@@ -388,7 +391,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:aws-es-proxy-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:${schema.spec.name}:aws-es-proxy-sa"
                     }
                   }
                 }
@@ -438,7 +441,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:ssjdispatcher-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:${schema.spec.name}:ssjdispatcher-sa"
                     }
                   }
                 }
@@ -498,7 +501,7 @@ spec:
                   "Action": "sts:AssumeRoleWithWebIdentity",
                   "Condition": {
                     "StringEquals": {
-                      "${computeBridge.data['eks-oidc-issuer']}:sub": "system:serviceaccount:${schema.spec.name}:dashboard-sa"
+                      "${computeBridge.data['eks-oidc-issuer'].split('https://')[1]}:sub": "system:serviceaccount:${schema.spec.name}:dashboard-sa"
                     }
                   }
                 }

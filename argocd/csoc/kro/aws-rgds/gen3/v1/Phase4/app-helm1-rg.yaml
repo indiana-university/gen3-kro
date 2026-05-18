@@ -149,8 +149,6 @@ spec:
         - ${storageBridge.metadata.?name.orValue('null') != 'null'}
         - ${storageBridge.data['upload-bucket-name'] != ''}
         - ${storageBridge.data['upload-bucket-name'] != 'loading'}
-        - ${storageBridge.data['users-bucket-name'] != ''}
-        - ${storageBridge.data['users-bucket-name'] != 'loading'}
         - ${storageBridge.data['manifest-bucket-name'] != 'loading'}
         - ${storageBridge.data['dashboard-bucket-name'] != 'loading'}
       externalRef:
@@ -212,8 +210,6 @@ spec:
                     value: ${domainSecurityBridge.data['acm-cert-arn']}
                   - name: global.dataUploadBucket
                     value: ${storageBridge.data['upload-bucket-name']}
-                  - name: fence.usersync.userYamlS3Path
-                    value: ${'s3://' + storageBridge.data['users-bucket-name'] + '/user.yaml'}
                   - name: manifestservice.manifestserviceG3auto.bucketName
                     value: ${storageBridge.data['manifest-bucket-name']}
                   - name: dashboard.dashboardConfig.bucket
