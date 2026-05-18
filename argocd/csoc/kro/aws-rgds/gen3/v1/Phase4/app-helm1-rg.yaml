@@ -188,10 +188,17 @@ spec:
               kind: ExternalSecret
               jqPathExpressions:
                 - .status
+                - .spec.target.deletionPolicy
+                - .spec.dataFrom[].extract.metadataPolicy
+                - .spec.data[].remoteRef.metadataPolicy
+                - .spec.data[].remoteRef.conversionStrategy
+                - .spec.data[].remoteRef.decodingStrategy
             - group: external-secrets.io
               kind: PushSecret
               jqPathExpressions:
                 - .status
+                - .spec.deletionPolicy
+                - .spec.data[].conversionStrategy
           sources:
 
             - repoURL: ${schema.spec.helmChartRepoURL}
