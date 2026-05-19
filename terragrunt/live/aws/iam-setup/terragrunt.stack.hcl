@@ -22,8 +22,9 @@ locals {
   config_file = "${local.repo_root}/config/shared.auto.tfvars.json"
   config      = jsondecode(file(local.config_file))
 
-  spokes_config       = lookup(local.config, "spokes", [])
-  dev_identity_config = lookup(local.config, "developer_identity", {})
+  spokes_config         = lookup(local.config, "spokes", [])
+  retired_spokes_config = lookup(local.config, "retired_spokes", [])
+  dev_identity_config   = lookup(local.config, "developer_identity", {})
 
   ###############################################################################
   # CSOC provider — shared AWS identity for CSOC account operations
@@ -47,6 +48,10 @@ locals {
     for spoke in local.spokes_config :
     spoke if lookup(spoke, "enabled", false)
   ]
+
+  # Providers must remain available for retired spokes until Terraform removes
+  # resources that are still bound to those provider aliases in state.
+  provider_spokes = concat(local.spokes_config, local.retired_spokes_config)
 
   iam_base_path   = lookup(local.config, "iam_base_path", "iam")
   iam_policy_file = "inline-policy.json"
@@ -105,6 +110,13 @@ locals {
       profile = try(lookup(lookup(spoke, "provider", {}), "aws_profile", local.profile), local.profile)
       region  = try(lookup(lookup(spoke, "provider", {}), "region", local.region), local.region)
       roles   = lookup(local.spoke_ack_roles, spoke.alias, {})
+    }
+  }
+
+  provider_spoke_configs = {
+    for spoke in local.provider_spokes : spoke.alias => {
+      profile = try(lookup(lookup(spoke, "provider", {}), "aws_profile", local.profile), local.profile)
+      region  = try(lookup(lookup(spoke, "provider", {}), "region", local.region), local.region)
     }
   }
 
@@ -212,8 +224,10 @@ unit "aws_spoke" {
     cluster_name    = local.cluster_name
     csoc_account_id = local.csoc_account_id
 
-    # All enabled spokes — alias → { profile, region, roles }
-    spokes = local.spoke_configs
+    # Enabled spokes generate module calls; provider_spokes keeps aliases for
+    # disabled/retired spokes so Terraform can clean up state-bound resources.
+    spokes          = local.spoke_configs
+    provider_spokes = local.provider_spoke_configs
 
     tags = local.base_tags
   }

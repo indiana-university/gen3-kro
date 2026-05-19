@@ -109,6 +109,17 @@
       }
     }
   ],
+  "retired_spokes": [
+    {
+      "alias": "<RETIRED_SPOKE_ALIAS>",
+      "provider": {
+        "name": "aws",
+        "aws_profile": "<RETIRED_SPOKE_AWS_PROFILE>",
+        "region": "us-east-1",
+        "account_id": "<RETIRED_SPOKE_ACCOUNT_ID>"
+      }
+    }
+  ],
 
   "developer_identity": {
     "iam_user_name": "<DEVELOPER_IAM_USER>",

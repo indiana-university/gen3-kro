@@ -287,12 +287,8 @@
         "sts:TagSession"
       ],
       "Resource": [
-        "arn:aws:iam::${account_id}:role/*-spoke-role",
-        "arn:aws:iam::${account_id}:role/*-argocd-spoke-access",
-        "arn:aws:iam::${spoke1_account_id}:role/*-spoke-role",
-        "arn:aws:iam::${spoke1_account_id}:role/*-argocd-spoke-access",
-        "arn:aws:iam::${spoke2_account_id}:role/*-spoke-role",
-        "arn:aws:iam::${spoke2_account_id}:role/*-argocd-spoke-access"
+        "arn:aws:iam::*:role/*-spoke-role",
+        "arn:aws:iam::*:role/*-argocd-spoke-access"
       ]
     },
     {

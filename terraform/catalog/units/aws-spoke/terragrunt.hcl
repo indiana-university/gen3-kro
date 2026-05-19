@@ -2,8 +2,9 @@
 # AWS Spoke Unit — Multi-Spoke Aggregator (generate-based)
 #
 # Dynamically generates Terraform configuration (backend, versions, providers,
-# main) for every entry in the `spokes` map passed from the stack. Each spoke
-# receives its own AWS provider alias so cross-account profiles are isolated.
+# main). `provider_spokes` controls provider aliases; `spokes` controls active
+# module calls. This keeps retired provider aliases available while Terraform
+# destroys resources that are still bound to them in state.
 #
 # Input values supplied by the stack (terragrunt.stack.hcl):
 #   modules_path    — repo-relative path to terraform/catalog/modules
@@ -12,7 +13,8 @@
 #   state_key       — S3 object key for this unit's terraform.tfstate
 #   cluster_name    — CSOC EKS cluster name (for cross-account trust policy)
 #   csoc_account_id — CSOC AWS account ID (for cross-account trust policy)
-#   spokes          — map of alias → { profile, region, roles }
+#   spokes          — enabled spokes map of alias → { profile, region, roles }
+#   provider_spokes — provider alias map of alias → { profile, region }
 #   tags            — common resource tags applied to all IAM resources
 ###############################################################################
 
@@ -60,13 +62,13 @@ generate "versions" {
 }
 
 ###############################################################################
-# Providers — one aliased AWS provider per spoke
+# Providers — one aliased AWS provider per active or retired spoke
 ###############################################################################
 generate "providers" {
   path      = "providers.tf"
   if_exists = "overwrite"
   contents = join("\n", [
-    for alias, spoke_cfg in values.spokes : <<-EOT
+    for alias, spoke_cfg in values.provider_spokes : <<-EOT
       provider "aws" {
         alias   = "${alias}"
         profile = "${spoke_cfg.profile}"
