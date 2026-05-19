@@ -24,6 +24,33 @@ locals {
   active_roles = {
     for k, v in local.role_inputs : k => v if v.enabled
   }
+
+  # IAM limits an inline role policy document to 10,240 bytes. Keep the
+  # file-driven statement list split across a small number of managed policies.
+  custom_policy_chunks = merge(
+    {},
+    [
+      for role_key, config in local.active_roles : {
+        for chunk_index, statements in chunklist(lookup(config, "custom_policies", []), 8) :
+        "${role_key}-${chunk_index}" => {
+          role_key    = role_key
+          chunk_index = chunk_index
+          statements  = statements
+        }
+      }
+      if length(lookup(config, "custom_policies", [])) > 0
+    ]...
+  )
+
+  custom_policy_inline_chunks = {
+    for key, chunk in local.custom_policy_chunks :
+    key => chunk if chunk.chunk_index == 0
+  }
+
+  custom_policy_managed_chunks = {
+    for key, chunk in local.custom_policy_chunks :
+    key => chunk if chunk.chunk_index > 0
+  }
 }
 
 ################################################################################
@@ -108,20 +135,38 @@ resource "aws_iam_role_policy_attachment" "managed_policies" {
 ################################################################################
 
 resource "aws_iam_role_policy" "custom_policies" {
-  for_each = {
-    for role_key, config in local.active_roles :
-    role_key => config
-    if length(lookup(config, "custom_policies", [])) > 0
-  }
+  for_each = local.custom_policy_inline_chunks
 
   name = "${var.spoke_alias}-spoke-role-custom"
-  role = aws_iam_role.ack_workload[each.key].id
+  role = aws_iam_role.ack_workload[each.value.role_key].id
 
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
-      for stmt in each.value.custom_policies :
+      for stmt in each.value.statements :
       try(jsondecode(stmt), stmt)
     ]
   })
+}
+
+resource "aws_iam_policy" "custom_managed_policies" {
+  for_each = local.custom_policy_managed_chunks
+
+  name        = format("%s-spoke-role-custom-%02d", var.spoke_alias, each.value.chunk_index)
+  description = format("ACK spoke role custom policy chunk %02d for %s", each.value.chunk_index, var.spoke_alias)
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      for stmt in each.value.statements :
+      try(jsondecode(stmt), stmt)
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "custom_managed_policy_attachments" {
+  for_each = local.custom_policy_managed_chunks
+
+  role       = aws_iam_role.ack_workload[each.value.role_key].name
+  policy_arn = aws_iam_policy.custom_managed_policies[each.key].arn
 }

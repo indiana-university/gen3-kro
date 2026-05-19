@@ -83,14 +83,6 @@
         "elasticache:ListTagsForResource",
         "secretsmanager:ListSecrets",
         "secretsmanager:DescribeSecret",
-        "events:DescribeRule",
-        "events:ListRules",
-        "events:ListTargetsByRule",
-        "events:ListTagsForResource",
-        "lambda:GetFunction",
-        "lambda:GetFunctionConfiguration",
-        "lambda:GetPolicy",
-        "lambda:ListTags",
         "es:DescribeDomain",
         "es:DescribeDomainConfig",
         "es:ListDomainNames",
@@ -253,6 +245,21 @@
         "arn:aws:iam::*:role/*-role",
         "arn:aws:iam::*:role/*-access"
       ]
+    },
+    {
+      "Sid": "ReadEventBridgeAndLambdaForInfraGraph",
+      "Effect": "Allow",
+      "Action": [
+        "events:DescribeRule",
+        "events:ListRules",
+        "events:ListTargetsByRule",
+        "events:ListTagsForResource",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:GetPolicy",
+        "lambda:ListTags"
+      ],
+      "Resource": "*"
     },
     {
       "Sid": "ManageEventBridgeRulesForInfraGraph",
