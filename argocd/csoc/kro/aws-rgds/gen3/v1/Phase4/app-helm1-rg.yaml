@@ -88,23 +88,22 @@ spec:
           name: ${schema.spec.databaseBridgeName}
           namespace: ${schema.spec.namespace}
 
-    - id: databaseSecretMirrorBridge
+    - id: databaseSecretMirror
       includeWhen:
         - ${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true'}
       readyWhen:
-        - ${databaseSecretMirrorBridge.metadata.?name.orValue('null') != 'null'}
-        - ${databaseSecretMirrorBridge.data['mirror-secret-name'] != ''}
-        - ${databaseSecretMirrorBridge.data['mirror-secret-name'] != 'loading'}
-        - ${databaseSecretMirrorBridge.data['lambda-function-arn'] != ''}
-        - ${databaseSecretMirrorBridge.data['lambda-function-arn'] != 'loading'}
-        - ${databaseSecretMirrorBridge.data['schedule-rule-arn'] != ''}
-        - ${databaseSecretMirrorBridge.data['schedule-rule-arn'] != 'loading'}
-        - ${databaseSecretMirrorBridge.data['mirror-sync-ready'] == 'true'}
+        - ${databaseSecretMirror.metadata.?name.orValue('null') != 'null'}
+        - ${databaseSecretMirror.status.?state.orValue('') == 'ACTIVE'}
+        - ${databaseSecretMirror.status.?initialSyncCompleted.orValue('false') == 'true'}
+        - ${databaseSecretMirror.status.?lambdaFunctionARN.orValue('') != ''}
+        - ${databaseSecretMirror.status.?lambdaFunctionARN.orValue('loading') != 'loading'}
+        - ${databaseSecretMirror.status.?scheduleRuleARN.orValue('') != ''}
+        - ${databaseSecretMirror.status.?scheduleRuleARN.orValue('loading') != 'loading'}
       externalRef:
-        apiVersion: v1
-        kind: ConfigMap
+        apiVersion: kro.run/v1alpha1
+        kind: AwsGen3DatabaseSecretMirror1
         metadata:
-          name: ${schema.spec.databaseSecretMirrorBridgeName}
+          name: ${schema.spec.name}
           namespace: ${schema.spec.namespace}
 
     - id: appIamBridge
@@ -262,7 +261,7 @@ spec:
                   - name: global.postgres.externalSecret
                     value: ${databaseBridge.data['aurora-master-password-sm-name']}
                   - name: global.postgres.externalSecretMirrorReady
-                    value: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirrorBridge.data['mirror-sync-ready'] : 'disabled'}"
+                    value: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirror.status.?state.orValue('loading') : 'disabled'}"
                   - name: global.postgres.master.username
                     value: ${databaseBridge.data['aurora-master-username']}
                   - name: global.postgres.master.host
@@ -349,7 +348,7 @@ spec:
           app-health-status: ${gen3App.status.?health.?status.orValue('Unknown')}
           app-sync-status: ${gen3App.status.?sync.?status.orValue('Unknown')}
           aurora-master-password-secret-name: ${databaseBridge.data['aurora-master-password-sm-name']}
-          aurora-master-password-mirror-ready: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirrorBridge.data['mirror-sync-ready'] : 'disabled'}"
+          aurora-master-password-mirror-ready: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirror.status.?state.orValue('loading') : 'disabled'}"
           audit-g3auto-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-audit-g3auto'] != '' ? infrastructureConfig.data['secret-name-audit-g3auto'] : 'audit-g3auto')}"
           fence-config-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-config'] != '' ? infrastructureConfig.data['secret-name-fence-config'] : 'fence-config')}"
           fence-jwt-keys-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-jwt-keys'] != '' ? infrastructureConfig.data['secret-name-fence-jwt-keys'] : 'fence-jwt-keys')}"
