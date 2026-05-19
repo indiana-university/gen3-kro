@@ -25,6 +25,7 @@ spec:
       infrastructureConfigMapName: string | default="infrastructure-values"
       computeBridgeName: string | default="compute-bridge"
       storageBridgeName: string | default="storage-bridge"
+      networkSecurityBridgeName: string | default="network-security-bridge"
       appIamBridgeName: string | default="app-iam-bridge"
 
     status:
@@ -79,6 +80,18 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.storageBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: networkSecurityBridge
+      readyWhen:
+        - ${networkSecurityBridge.metadata.?name.orValue('null') != 'null'}
+        - ${networkSecurityBridge.data['database-key-arn'] != ''}
+        - ${networkSecurityBridge.data['database-key-arn'] != 'loading'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.networkSecurityBridgeName}
           namespace: ${schema.spec.namespace}
 
   # IRSA ROLES: Application service accounts
@@ -356,6 +369,28 @@ spec:
                     "Effect": "Allow",
                     "Action": ["secretsmanager:ListSecrets"],
                     "Resource": "*"
+                  }
+                ]
+              }
+            kms-secret-access: |
+              {
+                "Version": "2012-10-17",
+                "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "kms:Decrypt",
+                      "kms:DescribeKey",
+                      "kms:Encrypt",
+                      "kms:GenerateDataKey*",
+                      "kms:ReEncrypt*"
+                    ],
+                    "Resource": "${networkSecurityBridge.data['database-key-arn']}",
+                    "Condition": {
+                      "StringEquals": {
+                        "kms:ViaService": "secretsmanager.${infrastructureConfig.data['aws-region']}.amazonaws.com"
+                      }
+                    }
                   }
                 ]
               }
