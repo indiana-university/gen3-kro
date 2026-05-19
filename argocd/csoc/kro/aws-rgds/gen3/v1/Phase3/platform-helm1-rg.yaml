@@ -258,6 +258,7 @@ spec:
             gen3.io/topology: csoc-managed-argocd
           annotations:
             argocd.argoproj.io/cascade: "orphan"
+            gen3.io/platform-refresh: "2026-05-19-external-secrets-app-name"
         spec:
           project: ${schema.spec.argoCDProject}
           sources:
