@@ -43,6 +43,20 @@ It produces:
 `AwsGen3AppHelm1` then reads `platform-helm-bridge` plus the other upstream
 bridges to parameterize the `gen3-helm` Application.
 
+## Aurora Secret Mirror
+
+`infrastructure-values.yaml` includes the disabled
+`data.databaseSecretMirror` and `instances.databaseSecretMirror` blocks. To turn
+it on for spoke1, set `data.databaseSecretMirror.enabled: "true"` and
+`instances.databaseSecretMirror.enabled: true`.
+
+This keeps the RDS-managed password out of CSOC Kubernetes and out of ACK
+`Secret.spec.secretString`. Lambda sees the password in memory during sync, the
+mirror value exists in AWS Secrets Manager, and Gen3 Build later creates the
+normal Kubernetes Secret inside the spoke cluster through External Secrets. A
+one-shot initial invoke Job triggers the first sync; the EventBridge schedule
+keeps the mirror repaired afterward.
+
 ## Cluster-level-resources source model
 
 `AwsGen3PlatformHelm1` creates a parent ArgoCD `Application` that points at the

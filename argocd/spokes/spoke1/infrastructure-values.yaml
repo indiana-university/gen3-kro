@@ -74,6 +74,15 @@ data:
         promotionTier: "0"
     esoUseIrsa: "true"
 
+  databaseSecretMirror:
+    enabled: "true"
+    scheduleExpression: "rate(5 minutes)"
+    eventPatternEnabled: "false"
+    lambdaRuntime: "python3.13"
+    lambdaHandler: "rds_master_secret_mirror.handler"
+    lambdaTimeout: "60"
+    lambdaMemorySize: "128"
+
   secretNames:
     auroraMasterPassword: aurora-master-password
     auditG3Auto: audit-g3auto
@@ -137,6 +146,8 @@ instances:
   storage:
     enabled: true
   database:
+    enabled: true
+  databaseSecretMirror:
     enabled: true
   compute:
     enabled: true

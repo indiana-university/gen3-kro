@@ -254,6 +254,28 @@ ack-kms:
     featureGates:
       IAMRoleSelector: "true"
 
+ack-eventbridge:
+  enabled: false
+  namespace: ack
+  chartName: eventbridge-chart
+  chartRepository: "public.ecr.aws/aws-controllers-k8s"
+  defaultVersion: "1.2.3"
+  annotationsAppSet:
+    argocd.argoproj.io/sync-wave: "1"
+  selectorMatchLabels:
+    fleet_member: control-plane
+    ack_management_mode: self_managed
+  valuesObject:
+    serviceAccount:
+      annotations: {}
+      create: true
+      name: "ack-eventbridge-controller"
+    aws:
+      region: '{{.metadata.annotations.aws_region}}'
+    enableCARM: false
+    featureGates:
+      IAMRoleSelector: "true"
+
 ack-lambda:
   enabled: false
   namespace: ack

@@ -68,6 +68,8 @@ collected_files.txt
 # ┌─────────────────────────────────────────┐
 # │ 7. Application & Build Artifacts        │
 # └─────────────────────────────────────────┘
+.build/
+**/__pycache__/
 **/outputs/**
 **/output/**
 # old files

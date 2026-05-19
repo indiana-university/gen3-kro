@@ -18,6 +18,7 @@ the generated KRO instances in the `kro-aws-instances` chart.
 | 0 | `awsgen3messaging1` | AwsGen3Messaging1 | Produces `messaging-bridge` |
 | 1 | `awsgen3storage1` | AwsGen3Storage1 | Reads `network-security-bridge`, produces `storage-bridge` |
 | 1 | `awsgen3database1` | AwsGen3Database1 | Reads `network-security-bridge`, produces `database-bridge` |
+| 1.5 | `awsgen3databasesecretmirror1` | AwsGen3DatabaseSecretMirror1 | Reads `database-bridge`, produces `database-secret-mirror-bridge` |
 | 1 | `awsgen3compute1` | AwsGen3Compute1 | Reads `network-security-bridge`, produces `compute-bridge` |
 | 2 | `awsgen3spokeaccess1` | AwsGen3SpokeAccess1 | Reads `compute-bridge`, produces `spoke-access-bridge` |
 | 2 | `awsgen3platformiam1` | AwsGen3PlatformIAM1 | Reads `compute-bridge` + `storage-bridge`, produces `platform-iam-bridge` |
@@ -36,7 +37,8 @@ still produces exactly one bridge ConfigMap.
 NetworkSecurity1 ─── network-security-bridge ───► Storage1, Database1, Compute1
 DomainSecurity1 ──── domain-security-bridge ────► AppHelm1
 Storage1 ─────────── storage-bridge ────────────► PlatformIAM1, AppIAM1, AppHelm1
-Database1 ────────── database-bridge ───────────► AppHelm1
+Database1 ────────── database-bridge ───────────► DatabaseSecretMirror1, AppHelm1
+DatabaseSecretMirror1 ─ database-secret-mirror-bridge ─► AppHelm1 when enabled
 Compute1 ─────────── compute-bridge ────────────► SpokeAccess1, PlatformIAM1, AppIAM1, PlatformHelm1, AppHelm1
 SpokeAccess1 ─────── spoke-access-bridge ───────► PlatformHelm1
 PlatformIAM1 ─────── platform-iam-bridge ───────► PlatformHelm1
@@ -47,6 +49,37 @@ Messaging1 ───────── messaging-bridge ────────
 
 Bridge key naming: kebab-case (`vpc-id`, `nat-gateway-id`).
 Access in templates: `${networkSecurityBridge.data['vpc-id']}`.
+
+## Aurora Password Mirror
+
+`AwsGen3Database1` creates Aurora with `manageMasterUserPassword: true`, so RDS
+owns the real master password in an RDS-managed Secrets Manager secret. Gen3
+Build expects a deterministic secret name with `username`, `password`, `host`,
+and `port`, so `AwsGen3DatabaseSecretMirror1` can create an AWS-only mirror:
+
+```text
+RDS-managed master secret -> Lambda -> gen3-<spoke>-aurora-master-password -> ESO in spoke EKS
+```
+
+The RDS password is not stored in CSOC Kubernetes, KRO bridge ConfigMaps, ArgoCD
+parameters, or ACK `Secret.spec.secretString`. The Lambda reads the RDS secret
+value in memory and writes the mirror value to AWS Secrets Manager. Gen3 Build
+still materializes the mirror as a Kubernetes Secret inside the spoke EKS
+cluster because the current chart consumes database values through
+`secretKeyRef`.
+
+The RGD creates a scheduled EventBridge rule for ongoing repair/rotation and a
+one-shot non-secret invoke Job for initial creation. That Job only invokes the
+Lambda and checks the non-secret response status; it does not call
+`secretsmanager:GetSecretValue`.
+
+The Lambda package is embedded in the RGD as non-secret code bytes so the mirror
+can deploy from git alone. To regenerate the local zip after editing the source:
+
+```bash
+scripts/package-rds-master-secret-mirror.sh
+base64 -w0 .build/lambda/rds_master_secret_mirror.zip
+```
 
 ## Modifying RGDs
 

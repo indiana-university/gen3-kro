@@ -75,6 +75,13 @@ ack-kms:
       annotations:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
 
+ack-eventbridge:
+  enabled: true
+  valuesObject:
+    serviceAccount:
+      annotations:
+        eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
+
 ack-lambda:
   enabled: true
   valuesObject:

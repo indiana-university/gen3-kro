@@ -84,6 +84,14 @@ ack-kms:
       jsonPointers:
         - /spec/template/spec/containers/0/env
 
+ack-eventbridge:
+  enabled: false
+  ignoreDifferences:
+    - group: apps
+      kind: Deployment
+      jsonPointers:
+        - /spec/template/spec/containers/0/env
+
 ack-lambda:
   enabled: false
   ignoreDifferences:

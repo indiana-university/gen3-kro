@@ -27,6 +27,7 @@ spec:
       platformHelmBridgeName: string | default="platform-helm-bridge"
       computeBridgeName: string | default="compute-bridge"
       databaseBridgeName: string | default="database-bridge"
+      databaseSecretMirrorBridgeName: string | default="database-secret-mirror-bridge"
       appHelmBridgeName: string | default="apphelm-bridge"
       appIamBridgeName: string | default="app-iam-bridge"
       messagingBridgeName: string | default="messaging-bridge"
@@ -85,6 +86,25 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.databaseBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: databaseSecretMirrorBridge
+      includeWhen:
+        - ${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true'}
+      readyWhen:
+        - ${databaseSecretMirrorBridge.metadata.?name.orValue('null') != 'null'}
+        - ${databaseSecretMirrorBridge.data['mirror-secret-name'] != ''}
+        - ${databaseSecretMirrorBridge.data['mirror-secret-name'] != 'loading'}
+        - ${databaseSecretMirrorBridge.data['lambda-function-arn'] != ''}
+        - ${databaseSecretMirrorBridge.data['lambda-function-arn'] != 'loading'}
+        - ${databaseSecretMirrorBridge.data['schedule-rule-arn'] != ''}
+        - ${databaseSecretMirrorBridge.data['schedule-rule-arn'] != 'loading'}
+        - ${databaseSecretMirrorBridge.data['mirror-sync-ready'] == 'true'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.databaseSecretMirrorBridgeName}
           namespace: ${schema.spec.namespace}
 
     - id: appIamBridge
@@ -241,6 +261,8 @@ spec:
                     value: external-secrets-sa
                   - name: global.postgres.externalSecret
                     value: ${databaseBridge.data['aurora-master-password-sm-name']}
+                  - name: global.postgres.externalSecretMirrorReady
+                    value: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirrorBridge.data['mirror-sync-ready'] : 'disabled'}"
                   - name: global.postgres.master.username
                     value: ${databaseBridge.data['aurora-master-username']}
                   - name: global.postgres.master.host
@@ -327,6 +349,7 @@ spec:
           app-health-status: ${gen3App.status.?health.?status.orValue('Unknown')}
           app-sync-status: ${gen3App.status.?sync.?status.orValue('Unknown')}
           aurora-master-password-secret-name: ${databaseBridge.data['aurora-master-password-sm-name']}
+          aurora-master-password-mirror-ready: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirrorBridge.data['mirror-sync-ready'] : 'disabled'}"
           audit-g3auto-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-audit-g3auto'] != '' ? infrastructureConfig.data['secret-name-audit-g3auto'] : 'audit-g3auto')}"
           fence-config-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-config'] != '' ? infrastructureConfig.data['secret-name-fence-config'] : 'fence-config')}"
           fence-jwt-keys-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-jwt-keys'] != '' ? infrastructureConfig.data['secret-name-fence-jwt-keys'] : 'fence-jwt-keys')}"

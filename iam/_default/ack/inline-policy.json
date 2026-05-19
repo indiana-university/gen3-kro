@@ -83,6 +83,14 @@
         "elasticache:ListTagsForResource",
         "secretsmanager:ListSecrets",
         "secretsmanager:DescribeSecret",
+        "events:DescribeRule",
+        "events:ListRules",
+        "events:ListTargetsByRule",
+        "events:ListTagsForResource",
+        "lambda:GetFunction",
+        "lambda:GetFunctionConfiguration",
+        "lambda:GetPolicy",
+        "lambda:ListTags",
         "es:DescribeDomain",
         "es:DescribeDomainConfig",
         "es:ListDomainNames",
@@ -244,6 +252,43 @@
       "Resource": [
         "arn:aws:iam::*:role/*-role",
         "arn:aws:iam::*:role/*-access"
+      ]
+    },
+    {
+      "Sid": "ManageEventBridgeRulesForInfraGraph",
+      "Effect": "Allow",
+      "Action": [
+        "events:PutRule",
+        "events:DeleteRule",
+        "events:PutTargets",
+        "events:RemoveTargets",
+        "events:EnableRule",
+        "events:DisableRule",
+        "events:TagResource",
+        "events:UntagResource"
+      ],
+      "Resource": [
+        "arn:aws:events:*:*:rule/gen3-*",
+        "arn:aws:events:*:*:rule/spoke*-*"
+      ]
+    },
+    {
+      "Sid": "ManageLambdaFunctionsForInfraGraph",
+      "Effect": "Allow",
+      "Action": [
+        "lambda:CreateFunction",
+        "lambda:DeleteFunction",
+        "lambda:UpdateFunctionCode",
+        "lambda:UpdateFunctionConfiguration",
+        "lambda:TagResource",
+        "lambda:UntagResource",
+        "lambda:InvokeFunction",
+        "lambda:AddPermission",
+        "lambda:RemovePermission"
+      ],
+      "Resource": [
+        "arn:aws:lambda:*:*:function:gen3-*",
+        "arn:aws:lambda:*:*:function:spoke*-*"
       ]
     },
     {
