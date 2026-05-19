@@ -140,7 +140,6 @@ def handler(event, context):
     tags = [
         {"Key": "ManagedBy", "Value": "Gen3KRO"},
         {"Key": "gen3.io/secret-purpose", "Value": "aurora-master-password-mirror"},
-        {"Key": "gen3.io/source-secret-arn", "Value": source_secret_arn},
         {"Key": "gen3.io/mirror-ready", "Value": "true"},
     ]
     action = _ensure_mirror_secret(
