@@ -80,7 +80,7 @@ ack-eventbridge:
   valuesObject:
     deployment:
       annotations:
-        gen3.io/iam-policy-refresh: "2026-05-19-a96fe67"
+        gen3.io/iam-policy-refresh: "2026-05-19-lambda-read"
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
@@ -90,7 +90,7 @@ ack-lambda:
   valuesObject:
     deployment:
       annotations:
-        gen3.io/iam-policy-refresh: "2026-05-19-a96fe67"
+        gen3.io/iam-policy-refresh: "2026-05-19-lambda-read"
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'

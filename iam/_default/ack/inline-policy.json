@@ -254,10 +254,8 @@
         "events:ListRules",
         "events:ListTargetsByRule",
         "events:ListTagsForResource",
-        "lambda:GetFunction",
-        "lambda:GetFunctionConfiguration",
-        "lambda:GetPolicy",
-        "lambda:ListTags"
+        "lambda:Get*",
+        "lambda:List*"
       ],
       "Resource": "*"
     },
