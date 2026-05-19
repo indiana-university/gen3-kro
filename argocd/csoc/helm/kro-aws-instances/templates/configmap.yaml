@@ -134,6 +134,7 @@ data:
   platform-helm-alb-host-network-enabled:             {{ .Values.data.platformHelm.addons.albController.albHostNetworkEnabled | quote }}
   platform-helm-alb-controller-enabled:               {{ .Values.data.platformHelm.addons.albController.enabled | quote }}
   platform-helm-external-secrets-enabled:             {{ .Values.data.platformHelm.addons.externalSecrets | quote }}
+  platform-helm-external-secrets-target-revision:     {{ .Values.data.platformHelm.addons.externalSecretsTargetRevision | quote }}
   platform-helm-cert-manager-enabled:                 {{ .Values.data.platformHelm.addons.certManager | quote }}
   platform-helm-s3-mountpoint-enabled:                {{ .Values.data.platformHelm.addons.s3Mountpoint | quote }}
   platform-helm-calico-enabled:                       {{ .Values.data.platformHelm.addons.calico | quote }}

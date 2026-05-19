@@ -298,6 +298,8 @@ spec:
                     value: ${platformIamBridge.data['karpenter-role-arn']}
                   - name: external-secrets.enabled
                     value: ${infrastructureConfig.data['platform-helm-external-secrets-enabled']}
+                  - name: external-secrets.targetRevision
+                    value: ${infrastructureConfig.data['platform-helm-external-secrets-target-revision']}
                   - name: cert-manager.enabled
                     value: ${infrastructureConfig.data['platform-helm-cert-manager-enabled']}
                   - name: aws-s3-mountpoint.enabled
@@ -394,6 +396,8 @@ spec:
                     value: ${platformIamBridge.data['karpenter-role-arn']}
                   - name: external-secrets.enabled
                     value: ${infrastructureConfig.data['platform-helm-external-secrets-enabled']}
+                  - name: external-secrets.targetRevision
+                    value: ${infrastructureConfig.data['platform-helm-external-secrets-target-revision']}
                   - name: cert-manager.enabled
                     value: ${infrastructureConfig.data['platform-helm-cert-manager-enabled']}
                   - name: aws-s3-mountpoint.enabled
