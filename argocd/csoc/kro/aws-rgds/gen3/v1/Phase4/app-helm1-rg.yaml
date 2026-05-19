@@ -321,6 +321,9 @@ spec:
             name: ${platformHelmBridge.data['argocd-cluster-name']} # spoke cluster registered in CSOC ArgoCD
             namespace: ${schema.spec.name}
           syncPolicy:
+            automated:
+              prune: true
+              selfHeal: true
             retry:
               limit: 5
             syncOptions:
