@@ -97,6 +97,14 @@ data:
     wtsG3Auto: wts-g3auto
     wtsOidcClient: wts-oidc-client
 
+  secretActions:
+    auditG3Auto: update
+    fenceGoogleAppCreds: update
+    fenceGoogleStorageCreds: update
+    indexdServiceCreds: update
+    metadataG3Auto: update
+    wtsG3Auto: update
+
   compute:
     kubernetesVersion: "1.35"
     autoModeEnabled: "true"

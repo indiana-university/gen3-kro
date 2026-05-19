@@ -110,6 +110,12 @@ data:
   secret-name-manifestservice-g3auto:              {{ .Values.data.secretNames.manifestserviceG3Auto | quote }}
   secret-name-wts-g3auto:                          {{ .Values.data.secretNames.wtsG3Auto | quote }}
   secret-name-wts-oidc-client:                     {{ .Values.data.secretNames.wtsOidcClient | quote }}
+  secret-action-audit-g3auto:                      {{ .Values.data.secretActions.auditG3Auto | quote }}
+  secret-action-fence-google-app-creds:            {{ .Values.data.secretActions.fenceGoogleAppCreds | quote }}
+  secret-action-fence-google-storage-creds:        {{ .Values.data.secretActions.fenceGoogleStorageCreds | quote }}
+  secret-action-indexd-service-creds:              {{ .Values.data.secretActions.indexdServiceCreds | quote }}
+  secret-action-metadata-g3auto:                   {{ .Values.data.secretActions.metadataG3Auto | quote }}
+  secret-action-wts-g3auto:                        {{ .Values.data.secretActions.wtsG3Auto | quote }}
   # Compute
   compute-kubernetes-version:                       {{ .Values.data.compute.kubernetesVersion | quote }}
   compute-auto-mode-enabled:                        {{ .Values.data.compute.autoModeEnabled | quote }}

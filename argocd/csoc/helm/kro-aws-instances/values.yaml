@@ -103,6 +103,18 @@ data:
     wtsG3Auto: wts-g3auto
     wtsOidcClient: wts-oidc-client
 
+  # ── Secret bootstrap action overrides ─────────────────────────────────
+  # Empty string preserves the action stored in the local gen3-secret-bootstrap
+  # Secret. Set to update/none/delete to drive non-secret action choices from
+  # Git while keeping secret payloads out of the repository.
+  secretActions:
+    auditG3Auto: ""
+    fenceGoogleAppCreds: ""
+    fenceGoogleStorageCreds: ""
+    indexdServiceCreds: ""
+    metadataG3Auto: ""
+    wtsG3Auto: ""
+
   # ── Compute ───────────────────────────────────────────────────────────
   compute:
     kubernetesVersion: "1.35"

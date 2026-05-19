@@ -110,7 +110,7 @@ fence:
     fenceGoogleStorageCredsSecret: gen3-spoke1-fence-google-storage-creds-secret
     fenceSshKeys: gen3-spoke1-fence-ssh-keys
     createK8sFenceConfigSecret: false
-    createK8sJwtKeysSecret: false
+    createK8sJwtKeysSecret: true
     createK8sGoogleAppSecrets: false
   USER_YAML: |
     authz:
