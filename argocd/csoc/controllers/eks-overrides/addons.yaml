@@ -78,6 +78,9 @@ ack-kms:
 ack-eventbridge:
   enabled: true
   valuesObject:
+    deployment:
+      annotations:
+        gen3.io/iam-policy-refresh: "2026-05-19-a96fe67"
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
@@ -85,6 +88,9 @@ ack-eventbridge:
 ack-lambda:
   enabled: true
   valuesObject:
+    deployment:
+      annotations:
+        gen3.io/iam-policy-refresh: "2026-05-19-a96fe67"
     serviceAccount:
       annotations:
         eks.amazonaws.com/role-arn: '{{.metadata.annotations.ack_self_managed_role_arn}}'
