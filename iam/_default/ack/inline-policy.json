@@ -20,6 +20,14 @@
         "ec2:DescribeNetworkInterfaces",
         "ec2:DescribeAvailabilityZones",
         "ec2:DescribeTags",
+        "elasticloadbalancing:DescribeLoadBalancers",
+        "elasticloadbalancing:DescribeLoadBalancerAttributes",
+        "elasticloadbalancing:DescribeListeners",
+        "elasticloadbalancing:DescribeRules",
+        "elasticloadbalancing:DescribeTargetGroups",
+        "elasticloadbalancing:DescribeTargetGroupAttributes",
+        "elasticloadbalancing:DescribeTargetHealth",
+        "elasticloadbalancing:DescribeTags",
         "s3:ListAllMyBuckets",
         "s3:GetBucketLocation",
         "s3:GetBucketVersioning",
@@ -122,6 +130,19 @@
       "Resource": "*"
     },
     {
+      "Sid": "ManageElasticLoadBalancingCleanup",
+      "Effect": "Allow",
+      "Action": [
+        "elasticloadbalancing:DeleteLoadBalancer",
+        "elasticloadbalancing:DeleteListener",
+        "elasticloadbalancing:DeleteRule",
+        "elasticloadbalancing:DeleteTargetGroup",
+        "elasticloadbalancing:DeregisterTargets",
+        "elasticloadbalancing:RemoveTags"
+      ],
+      "Resource": "*"
+    },
+    {
       "Sid": "ManageS3BucketsForInfraGraph",
       "Effect": "Allow",
       "Action": [
@@ -163,7 +184,10 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:RequestTag/ManagedBy": ["ack", "Kro"]
+          "aws:RequestTag/ManagedBy": [
+            "ack",
+            "Kro"
+          ]
         }
       }
     },
@@ -181,7 +205,10 @@
       "Resource": "*",
       "Condition": {
         "StringEquals": {
-          "aws:ResourceTag/ManagedBy": ["ack", "Kro"]
+          "aws:ResourceTag/ManagedBy": [
+            "ack",
+            "Kro"
+          ]
         }
       }
     },
@@ -255,6 +282,7 @@
         "StringLike": {
           "iam:AWSServiceName": [
             "eks.amazonaws.com",
+            "elasticloadbalancing.amazonaws.com",
             "rds.amazonaws.com",
             "elasticache.amazonaws.com",
             "opensearchservice.amazonaws.com",
