@@ -23,6 +23,7 @@ spec:
       name: csoc-kro
       annotations:
         argocd.argoproj.io/sync-wave: "10"
+        gen3.io/refresh-token: "2026-05-19-bridge-guard"
     spec:
       project: default
       source:
