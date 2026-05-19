@@ -31,6 +31,6 @@ instances:
 Only non-secret values go in this chart. The RDS password is read by Lambda from
 the RDS-managed Secrets Manager secret and written to the deterministic mirror
 secret that Gen3 Build already references with `global.postgres.externalSecret`.
-Do not set ACK `Secret.spec.secretString` for this flow. The Lambda zip is
-embedded in the RGD as non-secret code bytes, initial creation is handled by a
-one-shot Lambda invoke Job, and EventBridge keeps the mirror fresh afterward.
+Do not set ACK `Secret.spec.secretString` for this flow. The Lambda zip is a
+non-secret S3 artifact in the spoke logging bucket, initial creation is handled
+by a one-shot Lambda invoke Job, and EventBridge keeps the mirror fresh afterward.

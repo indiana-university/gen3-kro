@@ -73,12 +73,12 @@ one-shot non-secret invoke Job for initial creation. That Job only invokes the
 Lambda and checks the non-secret response status; it does not call
 `secretsmanager:GetSecretValue`.
 
-The Lambda package is embedded in the RGD as non-secret code bytes so the mirror
-can deploy from git alone. To regenerate the local zip after editing the source:
+The Lambda package is a non-secret S3 artifact read from the spoke logging
+bucket. To regenerate and upload the zip after editing the source:
 
 ```bash
 scripts/package-rds-master-secret-mirror.sh
-base64 -w0 .build/lambda/rds_master_secret_mirror.zip
+S3_BUCKET=gen3-spoke1-logging scripts/package-rds-master-secret-mirror.sh
 ```
 
 ## Modifying RGDs
