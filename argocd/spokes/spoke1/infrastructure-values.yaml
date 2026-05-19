@@ -163,7 +163,7 @@ instances:
     enabled: true
   ## Phase 5
   appHelm:
-    enabled: false
+    enabled: true
   ## Secret bootstrap (disabled for full cleanup + instance recompile from updated RGD)
   secretBootstrap:
     enabled: true
