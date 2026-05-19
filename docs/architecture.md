@@ -37,7 +37,7 @@ Deployment is split to avoid the spoke-role and CSOC-OIDC dependency loop.
 | 2 | Container/WSL | Terraform | CSOC VPC, EKS, ArgoCD, ACK/ArgoCD roles, bootstrap AppSet |
 | 3 | ArgoCD | GitOps | Controllers, RGDs, CARM resources, spoke instances |
 
-Spoke roles trust the CSOC account root plus an `ArnLike` condition for `*-csoc-role`, so they can be created before the exact CSOC role ARN exists.
+Spoke roles trust the CSOC account root plus an `ArnLike` condition for `*-csoc-role` and `*-devcontainer-role`, so they can be created before the exact CSOC role ARNs exist.
 
 ## Terraform Modules
 
@@ -89,7 +89,7 @@ ACK pod
         └── AWS APIs in spoke account
 ```
 
-The spoke role trust uses the CSOC account root as the principal and restricts the real caller with `aws:PrincipalArn = arn:aws:iam::<CSOC>:role/*-csoc-role`.
+The spoke role trust uses the CSOC account root as the principal and restricts the real caller with `aws:PrincipalArn = arn:aws:iam::<CSOC>:role/*-csoc-role` for ACK and `arn:aws:iam::<CSOC>:role/*-devcontainer-role` for scoped manual spoke cleanup.
 
 ## Local CSOC
 

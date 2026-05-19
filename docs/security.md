@@ -40,7 +40,7 @@ CSOC Account
 
 | Role | Trust | Purpose |
 |------|-------|---------|
-| `<spoke-alias>-spoke-role` | CSOC account root + ArnLike `*-csoc-role` | ACK cross-account resource management |
+| `<spoke-alias>-spoke-role` | CSOC account root + ArnLike `*-csoc-role` / `*-devcontainer-role` | ACK cross-account resource management and scoped manual spoke cleanup |
 | `<namespace>-argocd-spoke-access` | CSOC account root | ArgoCD controller authentication to spoke EKS; created by RGD |
 
 No IAM users or long-lived access keys are used for cross-account operations. All credentials are short-lived session tokens obtained via `sts:AssumeRole`.
@@ -63,7 +63,10 @@ No IAM users or long-lived access keys are used for cross-account operations. Al
       "Action": "sts:AssumeRole",
       "Condition": {
         "ArnLike": {
-          "aws:PrincipalArn": "arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-csoc-role"
+          "aws:PrincipalArn": [
+            "arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-csoc-role",
+            "arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-devcontainer-role"
+          ]
         }
       }
     }
@@ -83,10 +86,11 @@ The `arn:aws:iam::<CSOC>:root` principal is used instead of a direct role ARN be
 
 ```
 arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-csoc-role
+arn:aws:iam::<CSOC_ACCOUNT_ID>:role/*-devcontainer-role
 ```
 
 - Wildcards are intentional — the role naming convention is enforced by Terraform, not by IAM.
-- This pattern would allow any role matching `*-csoc-role` in the CSOC account. Ensure that naming convention is not used for unrelated roles.
+- These patterns allow roles matching `*-csoc-role` or `*-devcontainer-role` in the CSOC account. Ensure those naming conventions are not used for unrelated roles.
 
 > **Note:** `ExternalId` is not used. ACK does not pass an ExternalId during `sts:AssumeRole`. Caller restriction relies on the `ArnLike` condition alone.
 
@@ -186,7 +190,8 @@ This section describes the complete trust chain that enables ACK controllers run
 │ 5. Spoke Workload Role (Spoke Account)                                   │
 │    Trust policy validates two conditions:                                │
 │    a. Principal: CSOC account root (arn:aws:iam::<CSOC>:root)          │
-│    b. ArnLike: aws:PrincipalArn matches *-csoc-role                    │
+│    b. ArnLike: aws:PrincipalArn matches *-csoc-role or                 │
+│       *-devcontainer-role                                              │
 │    Permissions: Manages VPC, EKS, RDS, ElastiCache, KMS, S3, etc.     │
 │                                                                          │
 │ 6. Spoke Resource Management                                             │
@@ -200,7 +205,7 @@ This section describes the complete trust chain that enables ACK controllers run
 | Property | Mechanism |
 |----------|-----------|
 | No long-lived keys | OIDC → IRSA provides short-lived JWTs; all IAM credentials are session tokens |
-| Caller restriction | `ArnLike` condition on spoke trust policy limits callers to `*-csoc-role` roles |
+| Caller restriction | `ArnLike` condition on spoke trust policy limits callers to `*-csoc-role` and `*-devcontainer-role` roles |
 | Blast radius containment | Each spoke role has its own inline policy — permissions can be scoped per account |
 | Credential timeout | Both the IRSA token (pod identity) and assumed-role sessions have 1h TTL |
 

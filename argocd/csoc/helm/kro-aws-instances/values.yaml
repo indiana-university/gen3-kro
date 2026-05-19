@@ -120,10 +120,11 @@ data:
   platformHelm:
     managementTopology: "csoc-managed-argocd"
     project: gen3
-    albScheme: "internet-facing"
-    albHostNetworkEnabled: "true"
     addons:
-      albController: "true"
+      albController:
+        enabled: "true"
+        albScheme: "internet-facing"
+        albHostNetworkEnabled: "true"
       externalSecrets: "true"
       certManager: "true"
       s3Mountpoint: "false"

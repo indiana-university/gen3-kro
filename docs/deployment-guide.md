@@ -131,7 +131,7 @@ terragrunt stack run apply
 
 This creates:
 - Virtual MFA device in AWS IAM
-- `{csoc_alias}-csoc-user` IAM role with MFA-required trust policy
+- `{csoc_alias}-devcontainer-role` IAM role with MFA-required trust policy
 - Inline assume-role policy attached to your IAM user
 - `outputs/mfa-setup-instructions.txt` — MFA seed and activation command
 - `outputs/aws-config-snippet.ini` — AWS profile block to copy to `~/.aws/config`
@@ -156,7 +156,7 @@ Wait for **two consecutive tokens** from your authenticator, then run:
 # From outputs/mfa-setup-instructions.txt — exact command with your values:
 aws iam enable-mfa-device \
   --user-name <YOUR_IAM_USERNAME> \
-  --serial-number arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-csoc-user-mfa \
+  --serial-number arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-devcontainer-mfa \
   --authentication-code-1 <FIRST_CODE> \
   --authentication-code-2 <SECOND_CODE> \
   --profile <YOUR_ADMIN_PROFILE>
@@ -181,9 +181,9 @@ cat outputs/aws-config-snippet.ini
 Snippet content for reference:
 ```ini
 [profile eks-devcontainer]
-role_arn = arn:aws:iam::<ACCOUNT_ID>:role/<CSOC_ALIAS>-csoc-user
+role_arn = arn:aws:iam::<ACCOUNT_ID>:role/<CSOC_ALIAS>-devcontainer-role
 source_profile = <YOUR_ADMIN_PROFILE>
-mfa_serial = arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-csoc-user-mfa
+mfa_serial = arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-devcontainer-mfa
 region = us-east-1
 output = yaml
 duration_seconds = 43200
@@ -197,7 +197,7 @@ under `[csoc]`. The devcontainer mounts **only** that directory (not all of `~/.
 
 **Option A — MFA (developer-identity role, recommended):**
 ```bash
-# Assumes {csoc_alias}-csoc-user role using MFA → temporary credentials (12h)
+# Assumes the {csoc_alias}-devcontainer-role IAM role using MFA → temporary credentials (12h)
 bash scripts/mfa-session.sh <MFA_CODE>
 ```
 
@@ -222,7 +222,7 @@ devcontainer open .
 
 The `container-init.sh` runs automatically and validates credentials. A successful init shows:
 ```
-AWS identity: arn:aws:sts::<account>:assumed-role/<CSOC_ALIAS>-csoc-user/...
+AWS identity: arn:aws:sts::<account>:assumed-role/<CSOC_ALIAS>-devcontainer-role/...
 Using temporary credentials (assumed-role) — good
 ```
 

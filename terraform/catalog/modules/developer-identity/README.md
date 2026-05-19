@@ -3,7 +3,7 @@
 One-time bootstrap module that creates:
 
 1. A **virtual MFA device** for the IAM user
-2. A **scoped IAM role** (`{csoc_alias}-csoc-user`) with least-privilege permissions
+2. A **scoped IAM role** (`{csoc_alias}-devcontainer-role`) with least-privilege permissions
 3. An **assume-role policy** on the IAM user
 
 After setup, the devcontainer uses **short-lived, MFA-gated, scoped credentials** instead of
@@ -29,7 +29,7 @@ static IAM access keys.
 │           ▼                                             │  │                          │
 │  ┌──────────────────────────────────┐                   │  │ Expires after 12h        │
 │  │ IAM Role:                        │                   │  └──────────────────────────┘
-│  │  {csoc_alias}-csoc-user          │                   │
+│  │  {csoc_alias}-devcontainer-role  │                   │
 │  │                                  │                   │
 │  │  Trust: Terraform.User + MFA     │                   │
 │  │  Perms: project-scoped only      │                   │
@@ -91,7 +91,7 @@ aws iam enable-mfa-device \
 
 ```ini
 [profile eks-devcontainer]
-role_arn = arn:aws:iam::<CSOC_ACCOUNT_ID>:role/<CSOC_ALIAS>-csoc-user
+role_arn = arn:aws:iam::<CSOC_ACCOUNT_ID>:role/<CSOC_ALIAS>-devcontainer-role
 source_profile = <your-base-aws-profile>
 mfa_serial = arn:aws:iam::<CSOC_ACCOUNT_ID>:mfa/<YOUR_IAM_USERNAME>-virtual-mfa
 region = us-east-1

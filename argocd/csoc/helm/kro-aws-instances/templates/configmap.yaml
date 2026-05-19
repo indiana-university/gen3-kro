@@ -122,9 +122,9 @@ data:
   # Platform Helm (spoke cluster add-on toggles) — consumed by platform-helm1-rg.yaml
   platform-helm-management-topology:                  {{ .Values.data.platformHelm.managementTopology | quote }}
   platform-helm-project:                              {{ .Values.data.platformHelm.project | quote }}
-  platform-helm-alb-scheme:                           {{ .Values.data.platformHelm.albScheme | quote }}
-  platform-helm-alb-host-network-enabled:             {{ .Values.data.platformHelm.albHostNetworkEnabled | quote }}
-  platform-helm-alb-controller-enabled:               {{ .Values.data.platformHelm.addons.albController | quote }}
+  platform-helm-alb-scheme:                           {{ .Values.data.platformHelm.addons.albController.albScheme | quote }}
+  platform-helm-alb-host-network-enabled:             {{ .Values.data.platformHelm.addons.albController.albHostNetworkEnabled | quote }}
+  platform-helm-alb-controller-enabled:               {{ .Values.data.platformHelm.addons.albController.enabled | quote }}
   platform-helm-external-secrets-enabled:             {{ .Values.data.platformHelm.addons.externalSecrets | quote }}
   platform-helm-cert-manager-enabled:                 {{ .Values.data.platformHelm.addons.certManager | quote }}
   platform-helm-s3-mountpoint-enabled:                {{ .Values.data.platformHelm.addons.s3Mountpoint | quote }}

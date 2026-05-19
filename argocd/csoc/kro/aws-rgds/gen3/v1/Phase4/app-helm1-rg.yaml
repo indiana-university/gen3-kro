@@ -174,8 +174,10 @@ spec:
             app.kubernetes.io/managed-by: kro
             gen3.io/tier: application
             gen3.io/spoke: ${schema.spec.name}
+          finalizers:
+            - resources-finalizer.argocd.argoproj.io
           annotations:
-            argocd.argoproj.io/cascade: "orphan"
+            argocd.argoproj.io/cascade: "foreground"
         spec:
           project: ${schema.spec.argoCDProject}
           ignoreDifferences:
