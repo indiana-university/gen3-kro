@@ -138,7 +138,7 @@ data:
         albScheme: "internet-facing"
         albHostNetworkEnabled: "true"
       externalSecrets: "true"
-      externalSecretsTargetRevision: "2.1.0"
+      externalSecretsTargetRevision: "0.16.2"
       certManager: "true"
       s3Mountpoint: "false"
       calico: "false"
