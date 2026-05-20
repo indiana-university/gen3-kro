@@ -56,7 +56,7 @@ collected_files.txt
 **/*.tfworkspace
 **/.terraform/**
 **/.terragrunt*/**
-**/.terraform.lock.hcl
+
 # override & lock files
 **/override.tf
 **/override.tf.json
