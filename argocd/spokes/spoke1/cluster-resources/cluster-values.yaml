@@ -8,16 +8,16 @@
 # ────────────────────────────────────────────────────────────────────────────────────────────
 
 # ── Cluster Metadata ─────────────────────────────────────────────────────────────────────────
-cluster: "spoke1"  # [RGD] platform-helm1: ${schema.spec.name}
-project: gen3      # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-project']}
+cluster: ""  # [RGD] platform-helm1: ${schema.spec.name}
+project: ""      # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-project']}
 
 # AWS account number that this cluster lives in
-accountNumber: "xxxxxxxxxxxx"  # [RGD] platform-helm1: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+accountNumber: ""  # [RGD] platform-helm1: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
 
 # EKS cluster endpoints
 eksClusterEndpoint: ""   # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']}
 destinationServer: ""    # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']} (csoc-managed topology only)
-eksClusterName: "spoke1" # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-name']}
+eksClusterName: "" # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-name']}
 
 # This is universal for all of our configuration; values files live in the same repo/branch
 configuration:
@@ -146,8 +146,7 @@ external-dns:
   awsRegion: "us-east-1"
   zoneType: "public"                    # "public" | "private"
   policy: "sync"                         # "sync" (create+delete) | "upsert-only" (create only)
-  domainFilters:                         # [RGD] platform-helm1: ${infrastructureConfig.data['dns-hosted-zone-name']}
-    - rds-pla.net                        # placeholder; overridden at runtime with actual hosted zone name
+  domainFilters: []                         # [RGD] platform-helm1: ${infrastructureConfig.data['dns-hosted-zone-name']}
   serviceAccount:
     annotations:
       eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['external-dns-role-arn']}

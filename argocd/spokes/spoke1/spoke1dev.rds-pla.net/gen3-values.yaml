@@ -7,8 +7,8 @@
 global:
   aws:
     enabled: true
-    region: us-east-1  # [RGD] app-helm1: ${infrastructureConfig.data['aws-region']}
-    scheme: internet-facing  # [RGD] app-helm1: ${platformHelmBridge.data['platform-helm-alb-scheme']}
+    region: ""  # [RGD] app-helm1: ${infrastructureConfig.data['aws-region']}
+    scheme: ""  # [RGD] app-helm1: ${platformHelmBridge.data['platform-helm-alb-scheme']}
     account: ""  # [RGD] app-helm1: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
     wafv2:
       enabled: false  # [RGD] app-helm1: ${domainSecurityBridge.data['waf-enabled']}
@@ -19,8 +19,8 @@ global:
       roleArn: ""  # [RGD] app-helm1: ${appIamBridge.data['external-secrets-role-arn']}
   dev: false
   clusterName: ""  # [RGD] app-helm1: ${computeBridge.data['eks-cluster-name']}
-  environment: spoke1  # [RGD] app-helm1: ${schema.spec.namespace}
-  hostname: spoke1dev.rds-pla.net  # [RGD] app-helm1: ${domainSecurityBridge.data['hostname']}
+  environment: ""  # [RGD] app-helm1: ${schema.spec.namespace}
+  hostname: ""  # [RGD] app-helm1: ${domainSecurityBridge.data['hostname']}
   revproxyArn: ""  # [RGD] app-helm1: ${domainSecurityBridge.data['acm-cert-arn']}
   dataUploadBucket: ""  # [RGD] app-helm1: ${storageBridge.data['upload-bucket-name']}
   externalSecrets:
@@ -28,10 +28,10 @@ global:
     pushSecret: true  # enables automatic DB credential push to AWS Secrets Manager for all 15 supporting services
   postgres:
     dbCreate: true
-    externalSecret: gen3-spoke1-aurora-master-password  # [RGD] app-helm1: ${databaseBridge.data['aurora-master-password-sm-name']}
+    externalSecret: ""  # [RGD] app-helm1: ${databaseBridge.data['aurora-master-password-sm-name']}
     master:
       host: ""  # [RGD] app-helm1: ${databaseBridge.data['aurora-cluster-endpoint']}
-      port: "5432"  # [RGD] app-helm1: ${databaseBridge.data['aurora-port']}
+      port: ""  # [RGD] app-helm1: ${databaseBridge.data['aurora-port']}
   dictionaryUrl: "https://dictionary.ardac.org/2.2.2/schema.json"
   portalApp: gitops
   publicDataSets: false
@@ -65,7 +65,7 @@ audit:
     createK8sAuditSecret: false
   server:
     sqs:
-      region: us-east-1  # [RGD] app-helm1: ${infrastructureConfig.data['aws-region']}
+      region: ""  # [RGD] app-helm1: ${infrastructureConfig.data['aws-region']}
       url: ""  # [RGD] app-helm1: ${messagingBridge.data['audit-sqs-url']}
 
 aws-es-proxy:
@@ -382,7 +382,7 @@ revproxy:
   enabled: true
   ingress:
     aws:
-      group: spoke1  # [RGD] app-helm1: ${schema.spec.name}
+      group: ""  # [RGD] app-helm1: ${schema.spec.name}
 
 sheepdog:
   enabled: true
