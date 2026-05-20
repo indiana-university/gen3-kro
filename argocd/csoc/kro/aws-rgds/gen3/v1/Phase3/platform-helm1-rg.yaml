@@ -24,7 +24,7 @@ spec:
       helmChartTargetRevision: string | default="main"
       valuesRepoURL: string | default="https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: string | default="main"
-      valuesBasePath: string | default="" # defaults to "argocd/spokes/<namespace>" if not set
+      configurationBasePath: string | default="" # defaults to "argocd/spokes/<namespace>" if not set
       valuesFilename: string | default="cluster-resources/cluster-values.yaml"
       computeBridgeName: string | default="compute-bridge"
       platformIamBridgeName: string | default="platform-iam-bridge"
@@ -268,7 +268,7 @@ spec:
               helm:
                 releaseName: cluster-level-resources
                 valueFiles:
-                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/${schema.spec.valuesFilename}"
+                  - "$values/${schema.spec.configurationBasePath != '' ? schema.spec.configurationBasePath : 'argocd/spokes/' + schema.spec.namespace}/${schema.spec.valuesFilename}"
                 parameters:
                   - name: cluster
                     value: ${schema.spec.name}
@@ -282,6 +282,12 @@ spec:
                     value: ${computeBridge.data['eks-cluster-name']}
                   - name: accountNumber
                     value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                  - name: configuration.configurationRepo
+                    value: ${schema.spec.valuesRepoURL}
+                  - name: configuration.configurationRevision
+                    value: ${schema.spec.valuesRevision}
+                  - name: configuration.configurationBasePath
+                    value: "${(schema.spec.configurationBasePath != '' ? schema.spec.configurationBasePath : 'argocd/spokes/' + schema.spec.namespace) + (size(schema.spec.valuesFilename.split('/')) > 1 ? '/' + schema.spec.valuesFilename.split('/').slice(0, size(schema.spec.valuesFilename.split('/')) - 1).join('/') : '')}"
                   - name: crossplane-crds.region
                     value: ${infrastructureConfig.data['aws-region']}
                   - name: alb-controller.enabled
@@ -368,7 +374,7 @@ spec:
               helm:
                 releaseName: cluster-level-resources
                 valueFiles:
-                  - "$values/${schema.spec.valuesBasePath != '' ? schema.spec.valuesBasePath : 'argocd/spokes/' + schema.spec.namespace}/${schema.spec.valuesFilename}"
+                  - "$values/${schema.spec.configurationBasePath != '' ? schema.spec.configurationBasePath : 'argocd/spokes/' + schema.spec.namespace}/${schema.spec.valuesFilename}"
                 parameters:
                   - name: cluster
                     value: ${schema.spec.name}
@@ -380,6 +386,12 @@ spec:
                     value: ${computeBridge.data['eks-cluster-name']}
                   - name: accountNumber
                     value: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+                  - name: configuration.configurationRepo
+                    value: ${schema.spec.valuesRepoURL}
+                  - name: configuration.configurationRevision
+                    value: ${schema.spec.valuesRevision}
+                  - name: configuration.configurationBasePath
+                    value: "${(schema.spec.configurationBasePath != '' ? schema.spec.configurationBasePath : 'argocd/spokes/' + schema.spec.namespace) + (size(schema.spec.valuesFilename.split('/')) > 1 ? '/' + schema.spec.valuesFilename.split('/').slice(0, size(schema.spec.valuesFilename.split('/')) - 1).join('/') : '')}"
                   - name: crossplane-crds.region
                     value: ${infrastructureConfig.data['aws-region']}
                   - name: alb-controller.enabled

@@ -331,7 +331,7 @@ instances:
       helmChartTargetRevision: "main"
       valuesRepoURL: "https://github.com/indiana-university/gen3-kro.git"
       valuesRevision: "main"
-      valuesBasePath: ""
+      configurationBasePath: ""
       valuesFilename: "cluster-resources/cluster-values.yaml"
       computeBridgeName: "compute-bridge"
       platformIamBridgeName: "platform-iam-bridge"
