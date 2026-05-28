@@ -74,10 +74,6 @@ data:
         promotionTier: "0"
     esoUseIrsa: "true"
 
-  databaseSecretMirror:
-    enabled: "true"
-    cronSchedule: "*/1 * * * *"
-
   secretNames:
     auroraMasterPassword: aurora-master-password
     auditG3Auto: audit-g3auto
@@ -150,8 +146,6 @@ instances:
   storage:
     enabled: false
   database:
-    enabled: false
-  databaseSecretMirror:
     enabled: false
   compute:
     enabled: false

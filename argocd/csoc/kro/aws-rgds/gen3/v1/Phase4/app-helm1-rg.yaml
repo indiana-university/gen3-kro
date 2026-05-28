@@ -27,7 +27,6 @@ spec:
       platformHelmBridgeName: string | default="platform-helm-bridge"
       computeBridgeName: string | default="compute-bridge"
       databaseBridgeName: string | default="database-bridge"
-      databaseSecretMirrorBridgeName: string | default="database-secret-mirror-bridge"
       appHelmBridgeName: string | default="apphelm-bridge"
       appIamBridgeName: string | default="app-iam-bridge"
       messagingBridgeName: string | default="messaging-bridge"
@@ -79,6 +78,8 @@ spec:
         - ${databaseBridge.data['aurora-cluster-endpoint'] != 'loading'}
         - ${databaseBridge.data['aurora-master-password-sm-name'] != ''}
         - ${databaseBridge.data['aurora-master-password-sm-name'] != 'loading'}
+        - ${databaseBridge.data['aurora-master-password-sm-arn'] != ''}
+        - ${databaseBridge.data['aurora-master-password-sm-arn'] != 'loading'}
         - ${databaseBridge.data['aurora-master-username'] != ''}
         - ${databaseBridge.data['aurora-port'] != ''}
       externalRef:
@@ -86,24 +87,6 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.databaseBridgeName}
-          namespace: ${schema.spec.namespace}
-
-    - id: databaseSecretMirror
-      includeWhen:
-        - ${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true'}
-      readyWhen:
-        - ${databaseSecretMirror.metadata.?name.orValue('null') != 'null'}
-        - ${databaseSecretMirror.status.?state.orValue('') == 'ACTIVE'}
-        - ${databaseSecretMirror.status.?initialSyncCompleted.orValue('false') == 'true'}
-        - ${databaseSecretMirror.status.?lambdaFunctionARN.orValue('') != ''}
-        - ${databaseSecretMirror.status.?lambdaFunctionARN.orValue('loading') != 'loading'}
-        - ${databaseSecretMirror.status.?scheduleRuleARN.orValue('') != ''}
-        - ${databaseSecretMirror.status.?scheduleRuleARN.orValue('loading') != 'loading'}
-      externalRef:
-        apiVersion: kro.run/v1alpha1
-        kind: AwsGen3DatabaseSecretMirror1
-        metadata:
-          name: ${schema.spec.name}
           namespace: ${schema.spec.namespace}
 
     - id: appIamBridge
@@ -260,8 +243,8 @@ spec:
                     value: external-secrets-sa
                   - name: global.postgres.externalSecret
                     value: ${databaseBridge.data['aurora-master-password-sm-name']}
-                  - name: global.postgres.externalSecretMirrorReady
-                    value: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirror.status.?state.orValue('loading') : 'disabled'}"
+                  - name: global.postgres.externalSecretRemoteKey
+                    value: ${databaseBridge.data['aurora-master-password-sm-arn']}
                   - name: global.postgres.master.username
                     value: ${databaseBridge.data['aurora-master-username']}
                   - name: global.postgres.master.host
@@ -351,7 +334,7 @@ spec:
           app-health-status: ${gen3App.status.?health.?status.orValue('Unknown')}
           app-sync-status: ${gen3App.status.?sync.?status.orValue('Unknown')}
           aurora-master-password-secret-name: ${databaseBridge.data['aurora-master-password-sm-name']}
-          aurora-master-password-mirror-ready: "${infrastructureConfig.data['database-secret-mirror-enabled'] == 'true' ? databaseSecretMirror.status.?state.orValue('loading') : 'disabled'}"
+          aurora-master-password-secret-arn: ${databaseBridge.data['aurora-master-password-sm-arn']}
           audit-g3auto-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-audit-g3auto'] != '' ? infrastructureConfig.data['secret-name-audit-g3auto'] : 'audit-g3auto')}"
           fence-config-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-config'] != '' ? infrastructureConfig.data['secret-name-fence-config'] : 'fence-config')}"
           fence-jwt-keys-secret-name: "${schema.spec.name + '-' + schema.spec.namespace + '-' + (infrastructureConfig.data['secret-name-fence-jwt-keys'] != '' ? infrastructureConfig.data['secret-name-fence-jwt-keys'] : 'fence-jwt-keys')}"

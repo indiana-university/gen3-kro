@@ -29,6 +29,7 @@ global:
   postgres:
     dbCreate: true
     externalSecret: ""  # [RGD] app-helm1: ${databaseBridge.data['aurora-master-password-sm-name']}
+    externalSecretRemoteKey: ""  # [RGD] app-helm1: ${databaseBridge.data['aurora-master-password-sm-arn']}
     master:
       host: ""  # [RGD] app-helm1: ${databaseBridge.data['aurora-cluster-endpoint']}
       port: ""  # [RGD] app-helm1: ${databaseBridge.data['aurora-port']}

@@ -87,14 +87,6 @@ data:
   database-aurora-instance-azs:             {{ join "," $auroraInstanceAzs | quote }}
   database-aurora-instance-promotion-tiers: {{ join "," $auroraInstancePromotionTiers | quote }}
   database-eso-use-irsa:                   {{ .Values.data.database.esoUseIrsa | quote }}
-  # Database secret mirror
-  database-secret-mirror-enabled:                       {{ .Values.data.databaseSecretMirror.enabled | quote }}
-  database-secret-mirror-schedule-expression:           {{ .Values.data.databaseSecretMirror.scheduleExpression | quote }}
-  database-secret-mirror-event-pattern-enabled:         {{ .Values.data.databaseSecretMirror.eventPatternEnabled | quote }}
-  database-secret-mirror-lambda-runtime:                {{ .Values.data.databaseSecretMirror.lambdaRuntime | quote }}
-  database-secret-mirror-lambda-handler:                {{ .Values.data.databaseSecretMirror.lambdaHandler | quote }}
-  database-secret-mirror-lambda-timeout:                {{ .Values.data.databaseSecretMirror.lambdaTimeout | quote }}
-  database-secret-mirror-lambda-memory-size:            {{ .Values.data.databaseSecretMirror.lambdaMemorySize | quote }}
   # AWS Secrets Manager name suffixes. RGDs/AppHelm publish them as
   # <global.name>-<global.namespace>-<suffix>, falling back to hardcoded
   # service suffixes if a value is blank.

@@ -5,7 +5,9 @@
 #   aws-es-proxy, ssjdispatcher, dashboard
 #
 # OIDC data read from compute-bridge (no separate oidc-bridge dependency).
-# Platform addon roles (alb, s3-csi, karpenter, external-dns) → AwsGen3PlatformIAM1
+# Platform addon roles (alb, s3-csi, karpenter, external-dns) → AwsGen3PlatformIAM1.
+# The external-secrets role reads the RDS-managed database secret ARN published
+# by database-bridge.
 
 apiVersion: kro.run/v1alpha1
 kind: ResourceGraphDefinition
@@ -26,6 +28,7 @@ spec:
       computeBridgeName: string | default="compute-bridge"
       storageBridgeName: string | default="storage-bridge"
       networkSecurityBridgeName: string | default="network-security-bridge"
+      databaseBridgeName: string | default="database-bridge"
       appIamBridgeName: string | default="app-iam-bridge"
 
     status:
@@ -92,6 +95,18 @@ spec:
         kind: ConfigMap
         metadata:
           name: ${schema.spec.networkSecurityBridgeName}
+          namespace: ${schema.spec.namespace}
+
+    - id: databaseBridge
+      readyWhen:
+        - ${databaseBridge.metadata.?name.orValue('null') != 'null'}
+        - ${databaseBridge.data['aurora-master-password-sm-arn'] != ''}
+        - ${databaseBridge.data['aurora-master-password-sm-arn'] != 'loading'}
+      externalRef:
+        apiVersion: v1
+        kind: ConfigMap
+        metadata:
+          name: ${schema.spec.databaseBridgeName}
           namespace: ${schema.spec.namespace}
 
   # IRSA ROLES: Application service accounts
@@ -344,6 +359,14 @@ spec:
               {
                 "Version": "2012-10-17",
                 "Statement": [
+                  {
+                    "Effect": "Allow",
+                    "Action": [
+                      "secretsmanager:GetSecretValue",
+                      "secretsmanager:DescribeSecret"
+                    ],
+                    "Resource": "${databaseBridge.data['aurora-master-password-sm-arn']}"
+                  },
                   {
                     "Effect": "Allow",
                     "Action": [

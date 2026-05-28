@@ -18,7 +18,6 @@ the generated KRO instances in the `kro-aws-instances` chart.
 | 0 | `awsgen3messaging1` | AwsGen3Messaging1 | Produces `messaging-bridge` |
 | 1 | `awsgen3storage1` | AwsGen3Storage1 | Reads `network-security-bridge`, produces `storage-bridge` |
 | 1 | `awsgen3database1` | AwsGen3Database1 | Reads `network-security-bridge`, produces `database-bridge` |
-| 1.5 | `awsgen3databasesecretmirror1` | AwsGen3DatabaseSecretMirror1 | Reads `database-bridge`, produces `database-secret-mirror-bridge` |
 | 1 | `awsgen3compute1` | AwsGen3Compute1 | Reads `network-security-bridge`, produces `compute-bridge` |
 | 2 | `awsgen3spokeaccess1` | AwsGen3SpokeAccess1 | Reads `compute-bridge`, produces `spoke-access-bridge` |
 | 2 | `awsgen3platformiam1` | AwsGen3PlatformIAM1 | Reads `compute-bridge` + `storage-bridge`, produces `platform-iam-bridge` |
@@ -37,8 +36,7 @@ still produces exactly one bridge ConfigMap.
 NetworkSecurity1 ─── network-security-bridge ───► Storage1, Database1, Compute1
 DomainSecurity1 ──── domain-security-bridge ────► AppHelm1
 Storage1 ─────────── storage-bridge ────────────► PlatformIAM1, AppIAM1, AppHelm1
-Database1 ────────── database-bridge ───────────► DatabaseSecretMirror1, AppHelm1
-DatabaseSecretMirror1 ─ database-secret-mirror-bridge ─► AppHelm1 when enabled
+Database1 ────────── database-bridge ───────────► AppIAM1, AppHelm1
 Compute1 ─────────── compute-bridge ────────────► SpokeAccess1, PlatformIAM1, AppIAM1, PlatformHelm1, AppHelm1
 SpokeAccess1 ─────── spoke-access-bridge ───────► PlatformHelm1
 PlatformIAM1 ─────── platform-iam-bridge ───────► PlatformHelm1
@@ -50,36 +48,24 @@ Messaging1 ───────── messaging-bridge ────────
 Bridge key naming: kebab-case (`vpc-id`, `nat-gateway-id`).
 Access in templates: `${networkSecurityBridge.data['vpc-id']}`.
 
-## Aurora Password Mirror
+## Aurora Password Delivery
 
 `AwsGen3Database1` creates Aurora with `manageMasterUserPassword: true`, so RDS
-owns the real master password in an RDS-managed Secrets Manager secret. Gen3
-Build expects a deterministic secret name with `username`, `password`, `host`,
-and `port`, so `AwsGen3DatabaseSecretMirror1` can create an AWS-only mirror:
+owns the real master password in an RDS-managed Secrets Manager secret. The
+`database-bridge` publishes the RDS secret ARN, endpoint, port, username, and the
+deterministic spoke target Secret name.
 
-```text
-RDS-managed master secret -> Lambda -> gen3-<spoke>-aurora-master-password -> ESO in spoke EKS
-```
+`AwsGen3AppIAM1` grants the spoke `external-secrets-sa` role
+`secretsmanager:GetSecretValue` and `secretsmanager:DescribeSecret` on that exact
+RDS-managed secret ARN. `AwsGen3AppHelm1` then passes:
 
-The RDS password is not stored in CSOC Kubernetes, KRO bridge ConfigMaps, ArgoCD
-parameters, or ACK `Secret.spec.secretString`. The Lambda reads the RDS secret
-value in memory and writes the mirror value to AWS Secrets Manager. Gen3 Build
-still materializes the mirror as a Kubernetes Secret inside the spoke EKS
-cluster because the current chart consumes database values through
-`secretKeyRef`.
+- `global.postgres.externalSecret`: deterministic Kubernetes target Secret name
+- `global.postgres.externalSecretRemoteKey`: RDS-managed Secrets Manager ARN
+- `global.postgres.master.host` and `global.postgres.master.port`: non-secret DB metadata
 
-The RGD creates a scheduled EventBridge rule for ongoing repair/rotation and a
-one-shot non-secret invoke Job for initial creation. That Job only invokes the
-Lambda and checks the non-secret response status; it does not call
-`secretsmanager:GetSecretValue`.
-
-The Lambda package is a non-secret S3 artifact read from the spoke logging
-bucket. To regenerate and upload the zip after editing the source:
-
-```bash
-scripts/package-rds-master-secret-mirror.sh
-S3_BUCKET=gen3-spoke1-logging scripts/package-rds-master-secret-mirror.sh
-```
+Gen3 Build renders one `ExternalSecret` in the spoke. ESO reads the RDS-managed
+secret directly and templates host/port into the resulting Kubernetes Secret
+that existing Gen3 workloads consume.
 
 ## Modifying RGDs
 

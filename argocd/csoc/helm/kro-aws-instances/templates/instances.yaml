@@ -7,11 +7,10 @@
 #  Wave 20  Storage1         → reads network-security-bridge → produces storage-bridge
 #  Wave 26  SecretBootstrap1 → seeds 5 AWS SM secrets from gen3-secret-bootstrap K8s Secret
 #  Wave 27  Database1        → reads network-security-bridge → database-bridge
-#  Wave 28  DatabaseSecretMirror1 → reads database-bridge → database-secret-mirror-bridge
 #  Wave 20  Compute1         → reads network-security-bridge → compute-bridge (EKS + IAM + OpenSearch)
 #  Wave 25  SpokeAccess1     → reads compute-bridge  → produces spoke-access-bridge
 #  Wave 25  PlatformIAM1     → reads compute-bridge + storage-bridge → platform-iam-bridge
-#  Wave 25  AppIAM1          → reads compute-bridge + storage-bridge → app-iam-bridge
+#  Wave 28  AppIAM1          → reads compute-bridge + storage-bridge + database-bridge → app-iam-bridge
 #  Wave 30  PlatformHelm1    → reads compute-bridge + platform-iam-bridge + spoke-access-bridge
 #  Wave 34  SecretDependent1 → seeds 3 infra-dependent AWS SM secrets from gen3-secret-bootstrap
 #  Wave 35  AppHelm1         → reads infrastructure bridges and passes values through
@@ -23,7 +22,6 @@
 {{ include "gen3kro.instance" (list . .Values.instances.storage          "AwsGen3Storage")         }}
 {{ include "gen3kro.instance" (list . .Values.instances.secretBootstrap  "AwsGen3SecretBootstrap") }}
 {{ include "gen3kro.instance" (list . .Values.instances.database         "AwsGen3Database")        }}
-{{ include "gen3kro.instance" (list . .Values.instances.databaseSecretMirror "AwsGen3DatabaseSecretMirror") }}
 {{ include "gen3kro.instance" (list . .Values.instances.compute          "AwsGen3Compute")         }}
 {{ include "gen3kro.instance" (list . .Values.instances.spokeAccess      "AwsGen3SpokeAccess")     }}
 {{ include "gen3kro.instance" (list . .Values.instances.platformIam      "AwsGen3PlatformIAM")     }}
