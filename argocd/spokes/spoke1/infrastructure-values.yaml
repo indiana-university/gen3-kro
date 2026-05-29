@@ -127,8 +127,8 @@ data:
       externalSecretsTargetRevision: "0.16.2"
       certManager: "true"
       s3Mountpoint: "true"
-      calico: "true"
-      kubeStateMetrics: "false"
+      calico: "false" # EKS Automode - always disabled
+      kubeStateMetrics: "false" # EKS Automode - always disabled
       externalDns: "true"
 
 # ── KRO instance toggles ──────────────────────────────────────────────────────

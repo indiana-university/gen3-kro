@@ -128,7 +128,6 @@ data:
   # ── Platform Helm (spoke cluster add-on toggles) ───────────────────────
   # NOTE: Core k8s add-ons (vpc-cni, kube-proxy, coreDNS, ebs-csi-driver, karpenter)
   # are NOT controlled via ConfigMap. Set them in cluster-values.yaml directly.
-  # Auto Mode forces these to "false" via hardcoded RGD parameters.
   platformHelm:
     managementTopology: "csoc-managed-argocd"
     project: gen3
@@ -140,10 +139,10 @@ data:
       externalSecrets: "true"
       externalSecretsTargetRevision: "0.16.2"
       certManager: "true"
-      s3Mountpoint: "false"
-      calico: "false"
-      kubeStateMetrics: "false"
-      externalDns: "false"
+      s3Mountpoint: "false" # EKS Automode - always disabled
+      calico: "false" # EKS Automode - always disabled
+      kubeStateMetrics: "false" # EKS Automode - always disabled
+      externalDns: "false" # EKS Automode - always disabled
 
 # ── KRO instance deployment ───────────────────────────────────────────────────
 # Each block controls one KRO CR instance.

@@ -399,7 +399,7 @@ ssjdispatcher:
     sqsUrl: ""  # [RGD] app-helm1: ${messagingBridge.data['ssjdispatcher-sqs-url']}
 
 wts:
-  enabled: true
+  enabled: false
   externalSecrets:
     dbcreds: gen3-spoke1-wts-creds
     wtsG3auto: gen3-spoke1-wts-g3auto
