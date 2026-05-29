@@ -8,16 +8,16 @@
 # ────────────────────────────────────────────────────────────────────────────────────────────
 
 # ── Cluster Metadata ─────────────────────────────────────────────────────────────────────────
-cluster: ""  # [RGD] platform-helm1: ${schema.spec.name}
-project: ""  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-project']}
+# cluster: ""  # [RGD] platform-helm1: ${schema.spec.name}
+# project: ""  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-project']}
 
 # AWS account number that this cluster lives in
-accountNumber: ""  # [RGD] platform-helm1: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
+# accountNumber: ""  # [RGD] platform-helm1: ${spokeNamespace.metadata.annotations['services.k8s.aws/owner-account-id']}
 
 # EKS cluster endpoints
-eksClusterEndpoint: ""   # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']}
-destinationServer: ""    # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']} (csoc-managed topology only)
-eksClusterName: ""  # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-name']}
+# eksClusterEndpoint: ""   # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']}
+# destinationServer: ""    # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-endpoint']} (csoc-managed topology only)
+# eksClusterName: ""  # [RGD] platform-helm1: ${computeBridge.data['eks-cluster-name']}
 
 # This is universal for all of our configuration; values files live in the same repo/branch
 configuration:
@@ -36,12 +36,12 @@ karpenterNodeConfigChart:
 
 # AWS Load Balancer Controller — manages ALB/NLB ingress resources
 alb-controller:
-  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
+  # enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-alb-controller-enabled']}
   targetRevision: "1.13.4"
-  hostNetworkEnabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-alb-host-network-enabled']}
-  serviceAccount:
-    annotations:
-      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['alb-controller-role-arn']}
+  # hostNetworkEnabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-alb-host-network-enabled']}
+  # serviceAccount:  # [RGD] platform-helm1: sets annotations.eks.amazonaws.com/role-arn
+  #   annotations: {}
+  #     eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['alb-controller-role-arn']}
   configuration:
     enabled: false
 
@@ -54,24 +54,24 @@ argo-events:
 
 # AWS S3 Mountpoint CSI Driver — mount S3 buckets as volumes
 aws-s3-mountpoint:
-  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-s3-mountpoint-enabled']}
+  # enabled: false  # EKS Automode - always disabled; [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-s3-mountpoint-enabled']}
   targetRevision: "2.2.0"
-  serviceAccount:
-    annotations:
-      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['s3-csi-driver-role-arn']}
+  # serviceAccount:  # [RGD] platform-helm1: sets annotations.eks.amazonaws.com/role-arn
+  #   annotations: {}
+  #     eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['s3-csi-driver-role-arn']}
   configuration:
     enabled: false
 
 # Cert-Manager — automates TLS certificate provisioning
 cert-manager:
-  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-cert-manager-enabled']}
+  # enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-cert-manager-enabled']}
   targetRevision: "v1.17.2"
   configuration:
     enabled: false
 
 # Calico — network policy enforcement engine
 calico:
-  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-calico-enabled']}
+  # enabled: false  # EKS Automode - always disabled; [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-calico-enabled']}
   targetRevision: "v3.30.3"
   configuration:
     enabled: false
@@ -134,22 +134,22 @@ ebs-csi-driver:
 
 # External Secrets Operator — syncs secrets from AWS Secrets Manager
 external-secrets:
-  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-external-secrets-enabled']}
+  # enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-external-secrets-enabled']}
   targetRevision: "0.9.13"
   configuration:
     enabled: false
 
 # ExternalDNS — automatically manages Route53 DNS records
 external-dns:
-  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-external-dns-enabled']}
+  # enabled: false  # EKS Automode - always disabled; [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-external-dns-enabled']}
   targetRevision: "1.15.2"
   awsRegion: "us-east-1"
   zoneType: "public"                    # "public" | "private"
   policy: "sync"                         # "sync" (create+delete) | "upsert-only" (create only)
-  domainFilters: []                      # [RGD] platform-helm1: ${infrastructureConfig.data['dns-hosted-zone-name']}
-  serviceAccount:
-    annotations:
-      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['external-dns-role-arn']}
+  # domainFilters: []                      # [RGD] platform-helm1: ${infrastructureConfig.data['dns-hosted-zone-name']}
+  # serviceAccount:  # [RGD] platform-helm1: sets annotations.eks.amazonaws.com/role-arn
+  #   annotations: {}
+  #     eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['external-dns-role-arn']}
   configuration:
     enabled: false
 
@@ -172,9 +172,9 @@ karpenter:
   enabled: false
   awsRegion: "us-east-1"
   targetRevision: 1.0.8
-  serviceAccount:
-    annotations:
-      eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['karpenter-role-arn']}
+  # serviceAccount:  # [RGD] platform-helm1: sets annotations.eks.amazonaws.com/role-arn
+  #   annotations: {}
+  #     eks.amazonaws.com/role-arn: ""  # [RGD] platform-helm1: ${platformIamBridge.data['karpenter-role-arn']}
   configuration:
     enabled: false
   resources:
@@ -318,7 +318,7 @@ kube-proxy:
 
 # kube-state-metrics — exposes K8s object metrics for Prometheus
 kube-state-metrics:
-  enabled: false  # [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-kube-state-metrics-enabled']}
+  # enabled: false  # EKS Automode - always disabled; [RGD] platform-helm1: ${infrastructureConfig.data['platform-helm-kube-state-metrics-enabled']}
   configuration:
     enabled: false
   targetRevision: 6.3.0
