@@ -334,7 +334,7 @@ spec:
             automated:
               selfHeal: true
               allowEmpty: true
-              prune: true
+              prune: false
             retry:
               limit: 5
               backoff:
@@ -438,7 +438,7 @@ spec:
             automated:
               selfHeal: true
               allowEmpty: true
-              prune: true
+              prune: false
             retry:
               limit: 5
               backoff:
