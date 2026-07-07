@@ -42,11 +42,9 @@
 
   // Orchestration flags: setup | init | apply | connect (blank = no-op)
   //   "setup"                      — env dirs, AWS cred validation, script copies
-  //   "setup init"                 — + terraform init (via install.sh)
-  //   "setup init apply"           — + terraform apply + connect (via install.sh)
   //   "setup connect"              — env setup + connect to existing cluster (no TF)
-  //   "setup init apply connect"   — full pipeline + reconnect
-  "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup init apply connect",
+  // Infrastructure init/apply is explicit and operator-triggered.
+  "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup",
 
   // Re-establish kubeconfig + ArgoCD port-forward on every container start.
   // postCreateCommand only runs once at container creation; this ensures the
