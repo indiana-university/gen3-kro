@@ -144,7 +144,7 @@ PYEOF
 # ── Helper: auto-discover active instances from rendered kro-aws-instances chart
 # Outputs lines of "kind|instance-name|namespace"
 discover_instances() {
-  python3 - "${INSTANCES_CHART}" "${INFRA_DIR}/infrastucture-values.yaml" <<'PYEOF'
+  python3 - "${INSTANCES_CHART}" "${INFRA_DIR}/infrastructure-values.yaml" <<'PYEOF'
 import os, re, subprocess, sys
 
 chart_dir, values_file = sys.argv[1], sys.argv[2]
@@ -454,13 +454,13 @@ section_ack_controllers() {
 # ─────────────────────────────────────────────────────────────────────────────
 section_instances() {
   log_banner "SECTION 3 — KRO Instance Status"
-  log_info "Auto-discovering instances from ${INFRA_DIR}/infrastucture-values.yaml"
+  log_info "Auto-discovering instances from ${INFRA_DIR}/infrastructure-values.yaml"
 
   local entries
   readarray -t entries < <(discover_instances)
 
   if [[ ${#entries[@]} -eq 0 ]]; then
-    log_warn "No active instances rendered from ${INFRA_DIR}/infrastucture-values.yaml"
+    log_warn "No active instances rendered from ${INFRA_DIR}/infrastructure-values.yaml"
   fi
 
   local found_any=0

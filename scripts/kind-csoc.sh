@@ -55,7 +55,7 @@
 #
 # Fleet values directory (local Kind):
 #   argocd/spokes/spoke1/
-#     infrastucture-values.yaml  — per-spoke KRO instance values
+#     infrastructure-values.yaml  — per-spoke KRO instance values
 #     cluster-resources/         — PlatformHelm1 values
 #     <hostname>/                — AppHelm1 values
 ###############################################################################
@@ -556,8 +556,8 @@ YAML
 ###############################################################################
 discover_spoke_namespaces() {
   {
-    [[ -f "${FLEET_DIR}/infrastucture-values.yaml" ]] && \
-      grep -h '^\s*#*\s*namespace:' "${FLEET_DIR}/infrastucture-values.yaml" 2>/dev/null || true
+    [[ -f "${FLEET_DIR}/infrastructure-values.yaml" ]] && \
+      grep -h '^\s*#*\s*namespace:' "${FLEET_DIR}/infrastructure-values.yaml" 2>/dev/null || true
     for dir in infrastructure cluster-resources applications tests; do
       local scan_dir="${FLEET_DIR}/${dir}"
       [[ -d "$scan_dir" ]] || continue
