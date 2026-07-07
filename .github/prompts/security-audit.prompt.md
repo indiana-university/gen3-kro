@@ -20,7 +20,7 @@ Perform a comprehensive security review of the repository, covering:
 2. **IAM least privilege** — review:
    - `iam/` directory inline policies for wildcard actions or resources
    - ACK IAM role trust policies in RGDs for overly broad conditions
-   - IRSA role bindings in `argocd/addons/addons.yaml`
+   - IRSA role bindings in `argocd/csoc/controllers/*-overrides/addons.yaml`
 
 3. **S3 security** — verify all S3 bucket RGD templates have:
    - `blockPublicAcls: true`

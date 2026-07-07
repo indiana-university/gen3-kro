@@ -215,6 +215,7 @@ resource "helm_release" "bootstrap" {
 
   values = [
     yamlencode({
+      bootstrapDependencyToken = var.bootstrap_dependency_token
       resources = [
         yamlencode(local.bootstrap_applicationset_manifest)
       ]

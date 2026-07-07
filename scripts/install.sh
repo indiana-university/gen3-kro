@@ -9,10 +9,10 @@
 #   config/shared.auto.tfvars.json — single source of truth (copy from .example)
 #
 # Usage:
-#   bash install.sh              # Defaults to 'apply' + connect to cluster
+#   bash install.sh              # Defaults to 'plan' (no changes)
 #   bash install.sh init         # terraform init only
 #   bash install.sh plan         # terraform plan (no changes)
-#   bash install.sh apply        # terraform apply + connect (default)
+#   bash install.sh apply        # terraform apply + connect
 #
 # All output is logged to outputs/logs/install-<action>-<timestamp>.log
 ###############################################################################
@@ -36,14 +36,14 @@ TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
 ###############################################################################
 # Parse action
 ###############################################################################
-ACTION="${1:-apply}"
+ACTION="${1:-plan}"
 case "$ACTION" in
   init|plan|apply) ;;
   *)
     echo "Usage: bash install.sh [init|plan|apply]"
     echo "  init   — terraform init"
-    echo "  plan   — terraform plan (no changes)"
-    echo "  apply  — terraform apply + connect (default)"
+    echo "  plan   — terraform plan (no changes, default)"
+    echo "  apply  — terraform apply + connect"
     exit 1
     ;;
 esac

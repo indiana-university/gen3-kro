@@ -9,19 +9,19 @@
 #   bash container-init.sh                       # No-op
 #   bash container-init.sh setup                 # Env setup only
 #   bash container-init.sh setup init            # Env setup + terraform init
-#   bash container-init.sh setup init apply      # Full pipeline
+#   bash container-init.sh setup init apply      # Compatibility Terraform path
 #   bash container-init.sh setup connect         # Env setup + connect to existing cluster
 #   bash container-init.sh init apply            # Skip setup if already configured
 #
 # Stages:
 #   setup   — dirs, script copies, AWS cred validation, env file, MCP, codex
-#   init    — push SSM secrets + terraform init (via install.sh init)
-#   apply   — terraform apply + connect to cluster (via install.sh apply)
+#   init    — compatibility path: push repo secrets + terraform init
+#   apply   — compatibility path: terraform apply + connect
 #   connect — kubeconfig update + ArgoCD port-forward (no TF dependency)
 #
 # Configure in devcontainer.json → postCreateCommand:
 #   "bash scripts/container-init.sh setup"            # Dev: env only
-#   "bash scripts/container-init.sh setup init apply" # CI/Fresh: full pipeline
+#   "bash scripts/container-init.sh setup connect"    # Existing cluster connect
 ###############################################################################
 set -euo pipefail
 
@@ -719,7 +719,7 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
           echo "  ✗ Port-forward failed to start (see $PF_LOG)"
         fi
       else
-        echo "  Cluster not reachable — skipping ArgoCD setup (deploy first with: bash scripts/install.sh apply)"
+        echo "  Cluster not reachable — skipping ArgoCD setup (deploy first with: bash scripts/csoc-stack.sh apply)"
       fi
   fi
 

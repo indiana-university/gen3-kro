@@ -101,6 +101,7 @@ docs/decisions-needed.md
 # Config directory — real files ignored, examples & README tracked
 config/*
 !config/README.md
+!config/AGENTS.md
 !config/*.example
 !config/ssm-repo-secrets/
 config/ssm-repo-secrets/*

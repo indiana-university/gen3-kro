@@ -83,3 +83,9 @@ variable "stack_dir" {
   type        = string
   default     = ""
 }
+
+variable "bootstrap_dependency_token" {
+  description = "Opaque dependency token used by wrapper modules to order Argo CD install before bootstrap resources"
+  type        = string
+  default     = ""
+}

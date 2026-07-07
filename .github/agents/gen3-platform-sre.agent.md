@@ -51,7 +51,7 @@ kubectl get events -A --sort-by=.metadata.creationTimestamp | tail -20
 ### Rotate MFA Credentials (Local CSOC)
 ```bash
 bash scripts/mfa-session.sh
-bash scripts/kind-local-test.sh inject-creds
+bash scripts/kind-csoc.sh inject-creds
 ```
 
 ### Force ArgoCD Sync

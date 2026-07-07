@@ -9,8 +9,7 @@ Step-by-step procedures for deploying, managing, and tearing down the EKS Cluste
 - [Prerequisites](#prerequisites)
 - [Initial Setup](#initial-setup)
 - [Phase 0 — Developer Identity Bootstrap (One-Time)](#phase-0--developer-identity-bootstrap-one-time)
-- [Phase 1 — Spoke IAM Roles (Host)](#phase-1--spoke-iam-roles-host)
-- [Phase 2 — CSOC Cluster (Container)](#phase-2--csoc-cluster-container)
+- [CSOC Stack Deployment](#csoc-stack-deployment)
 - [Verification](#verification)
 - [Accessing ArgoCD](#accessing-argocd)
 - [Ongoing Operations](#ongoing-operations)
@@ -27,7 +26,7 @@ Step-by-step procedures for deploying, managing, and tearing down the EKS Cluste
 | Tool | Where | Purpose |
 |------|-------|---------|
 | AWS CLI v2 | Host | MFA session, account access |
-| Terragrunt | Host | Phase 1 spoke IAM deployment |
+| Terragrunt | Host or container | CSOC environment orchestration |
 | Docker | Host | Dev container runtime |
 | VS Code + Dev Containers | Host | Container environment |
 | `jq`, `yq` | Container (pre-installed) | Config parsing |
@@ -47,7 +46,8 @@ Step-by-step procedures for deploying, managing, and tearing down the EKS Cluste
 
 ### Terraform Backend
 
-The S3 backend bucket must exist before running Terraform. Backend config (bucket, key, region) is extracted by `install.sh` from `config/shared.auto.tfvars.json`.
+The S3 backend bucket must exist before running Terragrunt/Terraform. Backend
+config is read from `config/shared.auto.tfvars.json`.
 
 ### Workspace Location (WSL ext4)
 
@@ -121,12 +121,13 @@ bash scripts/mfa-session.sh <MFA_CODE>
 
 ### Step 1 — Create the IAM resources
 
-Developer identity is now part of the Terragrunt IAM stack. Ensure `developer_identity` fields are populated in `config/shared.auto.tfvars.json`, then run:
+Developer identity can be applied independently through the prerequisite IAM
+stack. This stack contains only `developer_identity`; it does not create the CSOC
+cluster, spoke IAM roles, or in-cluster bootstrap resources.
 
 ```bash
-cd terragrunt/live/aws/iam-setup
-terragrunt stack run init
-terragrunt stack run apply
+bash scripts/prereq-iam.sh plan
+bash scripts/prereq-iam.sh apply
 ```
 
 This creates:
@@ -228,81 +229,61 @@ Using temporary credentials (assumed-role) — good
 
 ---
 
-## Phase 1 — Spoke IAM Roles (Host)
+## CSOC Stack Deployment
 
-Run Terragrunt **on the HOST** to create spoke workload IAM roles. These must exist before Phase 2 because ArgoCD needs them to assume for cross-account provisioning.
+Run Terragrunt from the host or devcontainer after credentials are available.
+The stack creates developer identity, CSOC AWS foundation, spoke IAM, and
+in-cluster bootstrap in dependency order.
 
 ```bash
-# From repo root on HOST
-cd terragrunt/live/aws/iam-setup
+# From repo root
+bash scripts/csoc-stack.sh plan
+bash scripts/csoc-stack.sh apply
+```
 
-# Preview what will be created
+### What the Stack Creates
+
+- CSOC VPC, EKS cluster, OIDC provider, ACK source role, and Argo CD role.
+- Per-spoke IAM roles using the exact CSOC source role ARN when foundation
+  outputs are available.
+- Argo CD namespace, service accounts, Helm release, repo secrets, cluster
+  secrets, and bootstrap ApplicationSet.
+
+The deprecated compatibility paths remain available until state migration is
+complete:
+
+```bash
+cd terragrunt/live/aws/iam-setup
 terragrunt stack run plan
 
-# Apply (creates ACK workload roles in each spoke account)
-terragrunt stack run apply
-```
-
-### What Phase 1 Creates
-
-In each spoke account:
-- IAM role `<spoke-alias>-spoke-role`
-- Trust policy: `arn:aws:iam::<CSOC_ACCOUNT>:root` (account-root, always valid)
-- Inline policy from `iam/<spoke-alias>/ack/inline-policy.json` (or `iam/_default/` fallback)
-
-### Verify Phase 1
-
-```bash
-# Confirm roles exist in each spoke account
-aws iam get-role \
-  --role-name spoke1-spoke-role \
-  --profile spoke1-admin
-
-aws iam get-role \
-  --role-name spoke2-spoke-role \
-  --profile spoke2-admin
-```
-
----
-
-## Phase 2 — CSOC Cluster (Container)
-
-Run inside the **dev container** (VS Code Dev Containers or `docker run`).
-
-### Initialize Terraform Backend
-
-```bash
-# Inside container
-bash scripts/install.sh init
-```
-
-This command:
-1. Runs `terraform init` with backend config extracted from `config/shared.auto.tfvars.json`
-
-### Plan
-
-```bash
 bash scripts/install.sh plan
 ```
 
-Review the plan output. Key resources expected:
-- `module.csoc_cluster.module.aws_csoc` — VPC, EKS cluster, IAM roles
-- `module.csoc_cluster.module.argocd_bootstrap` — K8s secrets, Helm release
+### State Migration
 
-### Apply
+State migration is a backend-state operation only. Do not run `terraform apply`
+to migrate state.
+
+Prerequisites:
+
+- `terraform`, `terragrunt`, `aws`, and `jq` are installed.
+- AWS credentials can access the configured S3 backend.
+- `bash scripts/install.sh plan` has been reviewed.
+- `bash scripts/csoc-stack.sh plan` has been reviewed.
+- Both plans show no creates, replacements, deletes, or unintended updates.
+
+Execute the guarded migration:
 
 ```bash
-bash scripts/install.sh apply
+CONFIRM_STATE_MIGRATION=yes bash scripts/state-migration.sh
 ```
 
-This command:
-1. Runs `terraform apply -auto-approve`
-2. Updates kubeconfig with EKS cluster credentials
-3. Outputs the ArgoCD admin password to `outputs/argocd-password.txt`
+After migration, rerun:
 
-Total resources: ~89 (VPC, EKS, IAM, ArgoCD, K8s secrets, Helm releases).
-
-**Expected duration:** 20–30 minutes (EKS cluster creation is the longest step at ~15 min).
+```bash
+bash scripts/csoc-stack.sh plan
+bash scripts/install.sh plan
+```
 
 ---
 
@@ -443,8 +424,8 @@ argocd app get fleet --show-operation
 1. Add spoke config to `config/shared.auto.tfvars.json` under `spokes` array
 2. Create `iam/<new-spoke-alias>/ack/inline-policy.json` (or rely on `_default`)
 3. Add spoke values in `argocd/spokes/<new-spoke>/`
-4. Run Phase 1 on HOST: `cd terragrunt/live/aws/iam-setup && terragrunt stack run apply`
-5. Run Phase 2: `bash scripts/install.sh apply`
+4. Run `bash scripts/csoc-stack.sh plan`
+5. Review the plan, then run `bash scripts/csoc-stack.sh apply`
 
 ### Updating Addon Values
 
@@ -468,7 +449,7 @@ Edit `argocd/spokes/<spoke>/infrastructure-values.yaml` and push. ArgoCD will re
 2. Delete and recreate the ArgoCD git repo secret:
    ```bash
    kubectl delete secret argocd-repo-<cluster-name> -n argocd
-   bash scripts/install.sh apply   # re-creates the secret from Secrets Manager
+   bash scripts/csoc-stack.sh apply   # re-creates the secret from Secrets Manager
    ```
 
 ### Renewing MFA Session
@@ -499,16 +480,16 @@ kubectl get vpc,cluster -A   # verify gone
 ### Step 2: Destroy CSOC Infrastructure
 
 ```bash
-# Inside container
-bash scripts/destroy.sh
+# From repo root
+bash scripts/csoc-stack.sh destroy
 ```
 
-This runs `terraform destroy` and cleans up kubeconfig entries.
+This runs the Terragrunt stack destroy flow for the CSOC split-state layout.
 
 ### Step 3: Destroy Spoke IAM Roles
 
 ```bash
-# On HOST
+# Deprecated compatibility path for pre-migration IAM state
 cd terragrunt/live/aws/iam-setup
 terragrunt stack run destroy
 ```

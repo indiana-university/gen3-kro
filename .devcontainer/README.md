@@ -104,7 +104,7 @@ The script writes temporary credentials to `~/.aws/eks-devcontainer/credentials`
 `devcontainer.json` runs a single post-create command:
 
 ```bash
-bash scripts/container-init.sh setup init apply connect
+bash scripts/container-init.sh setup
 ```
 
 ### Stage Reference
@@ -114,8 +114,8 @@ Each positional flag is opt-in. With no flags, the script is a safe no-op.
 | Stage | What it does |
 |-------|-------------|
 | `setup` | Create dirs (`~/.kube`, output dirs), clean previous runs, validate AWS creds, write `~/.container-env` (sets `TF_DATA_DIR`, `AWS_REGION`, etc.), copy deploy scripts to env dir, copy `.mcp/mcp.json` → `.vscode/mcp.json`, configure Codex sandbox, mark git safe directory |
-| `init` | Generate + push SSM repo secrets to AWS Secrets Manager, then run `install.sh init` (terraform init with backend config) |
-| `apply` | Run `install.sh apply` (terraform apply + connect to cluster) |
+| `init` | Compatibility path: generate + push SSM repo secrets to AWS Secrets Manager, then run `install.sh init` |
+| `apply` | Compatibility path: run `install.sh apply` |
 | `connect` | Read `config/shared.auto.tfvars.json` for cluster name/region, run `aws eks update-kubeconfig`, retrieve ArgoCD admin password, start `kubectl port-forward` for ArgoCD UI on port 8080 |
 
 ### Common stage combinations
@@ -129,11 +129,9 @@ Each positional flag is opt-in. With no flags, the script is a safe no-op.
 // Dev: setup + connect to an existing cluster (no Terraform)
 "bash scripts/container-init.sh setup connect"
 
-// CI / Fresh deploy: full pipeline
-"bash scripts/container-init.sh setup init apply connect"
-
-// Re-apply after setup was already done
-"bash scripts/container-init.sh init apply"
+// Deploy infrastructure explicitly from a terminal:
+// bash scripts/csoc-stack.sh plan
+// bash scripts/csoc-stack.sh apply
 ```
 
 All stages log to `outputs/logs/container-init-<timestamp>.log`.
@@ -143,7 +141,7 @@ All stages log to `outputs/logs/container-init-<timestamp>.log`.
 All user-editable configuration lives in `config/shared.auto.tfvars.json`. This file drives:
 
 - Terraform variables (auto-loaded by filename convention)
-- `install.sh` / `destroy.sh` backend config extraction
+- Terragrunt stack evaluation and compatibility script backend extraction
 - `container-init.sh` cluster name + region resolution (for the `connect` stage)
 
 Copy from the example and populate before first use:
@@ -190,14 +188,14 @@ code .
 # Re-authenticate (on HOST, when credentials expire)
 bash scripts/mfa-session.sh <MFA_CODE>
 
-# Inside the container — plan changes
-bash scripts/install.sh plan
+# Inside the container — plan changes through Terragrunt
+bash scripts/csoc-stack.sh plan
 
-# Inside the container — apply changes
-bash scripts/install.sh apply
+# Inside the container — apply changes explicitly
+bash scripts/csoc-stack.sh apply
 
-# Inside the container — destroy stack
-bash scripts/destroy.sh
+# Inside the container — destroy stack explicitly
+bash scripts/csoc-stack.sh destroy
 
 # Reconnect to cluster (after container restart)
 bash scripts/container-init.sh connect
@@ -207,7 +205,7 @@ helm template argocd/charts/application-sets/
 helm template argocd/charts/resource-groups/
 ```
 
-> **Important:** Always use `install.sh` / `destroy.sh` for Terraform operations — never run `terraform init/plan/apply/destroy` directly.
+> **Important:** Use `scripts/csoc-stack.sh` for the preferred Terragrunt-first workflow. `install.sh` / `destroy.sh` remain compatibility paths until state migration is complete.
 
 ### ArgoCD UI
 

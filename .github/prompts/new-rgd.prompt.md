@@ -19,11 +19,11 @@ argument-hint: 'Component name (e.g. "database2", "messaging2", "waf1")'
 1. Determine the versioned name:
    - `metadata.name`: lowercase, no hyphens (e.g., `awsgen3${input:componentName}`)
    - `kind`: CamelCase (e.g., `AwsGen3${input:componentName}`)
-   - Filename: `argocd/csoc-eks/charts/aws-rgds-v1/templates/awsgen3${input:componentName}-rg.yaml`
+   - Filename: `argocd/csoc/kro/aws-rgds/gen3/awsgen3${input:componentName}-rg.yaml`
 
 2. Read existing RGDs for patterns — start with the closest match:
    ```bash
-   ls argocd/csoc-eks/charts/aws-rgds-v1/templates/
+   ls argocd/csoc/kro/aws-rgds/gen3/
    ```
 
 3. Scaffold the RGD with:
@@ -33,7 +33,7 @@ argument-hint: 'Component name (e.g. "database2", "messaging2", "waf1")'
    - `externalRef` blocks for each upstream bridge (from `dependsOn`)
    - Output bridge ConfigMap named `<component>Bridge`
 
-4. Create a test instance in `argocd/local-kind/test/infrastructure/`:
+4. Create a test instance in the relevant spoke overlay under `argocd/spokes/`:
    ```yaml
    apiVersion: kro.run/v1alpha1
    kind: AwsGen3${input:componentName}

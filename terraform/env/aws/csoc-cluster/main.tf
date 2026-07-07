@@ -3,8 +3,9 @@
 #
 # Single module call into the csoc-cluster catalog composite module.
 # All provider, backend, and version configuration lives here.
-# Business logic (aws-csoc + argocd-bootstrap composition) lives in the
-# catalog module at terraform/catalog/modules/csoc-cluster/.
+# Business logic lives in the catalog compatibility wrapper at
+# terraform/catalog/modules/csoc-cluster/, which delegates to the split
+# foundation and in-cluster bootstrap modules.
 ################################################################################
 
 module "csoc_cluster" {

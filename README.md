@@ -45,7 +45,7 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 - **Multi-account management** — Single CSOC cluster provisions infrastructure across multiple AWS accounts
 - **GitOps-driven** — ArgoCD ApplicationSets reconcile all cluster addons and infrastructure
 - **KRO + ACK** — Kubernetes Resource Orchestrator composes ACK resources into reusable infrastructure templates
-- **Two-phase deployment** — Host-side Terragrunt for spoke IAM, container-side Terraform for CSOC EKS + ArgoCD
+- **Terragrunt-first deployment** — Terragrunt orchestrates CSOC foundation, spoke IAM, and in-cluster bootstrap; Terraform implements modules
 - **Sync wave ordering** — Deterministic deployment: KRO → ACK → RGDs → Instances → Workloads
 
 ## Repository Structure
@@ -67,10 +67,10 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 ├── terraform/
 │   ├── env/aws/csoc-cluster/        # Root module (single entry point)
 │   └── catalog/
-│       ├── modules/                 #   csoc-cluster, aws-csoc, argocd-bootstrap,
-│       │                            #   aws-spoke, developer-identity
-│       └── units/                   #   Terragrunt unit wrappers (aws-spoke, developer-identity)
-├── terragrunt/live/aws/             # Spoke IAM Terragrunt stack (host-only, iam-setup/)
+│       ├── modules/                 #   aws-csoc-foundation, csoc-in-cluster-bootstrap,
+│       │                            #   csoc-cluster compatibility wrapper, aws-spoke
+│       └── units/                   #   Terragrunt unit wrappers
+├── terragrunt/live/aws/             # CSOC stack plus deprecated iam-setup compatibility stack
 ├── outputs/                         # Generated artifacts (gitignored)
 └── third-party-licenses/            # Bundled license files
 ```
@@ -82,7 +82,7 @@ See [docs/architecture.md](docs/architecture.md) for detailed architecture docum
 | Tool | Version | Purpose |
 |------|---------|---------|
 | Terraform | 1.13.5 | Infrastructure provisioning (pre-installed in container) |
-| Terragrunt | 0.99.1 | Spoke IAM role management (host-side only) |
+| Terragrunt | 0.99.1 | Environment orchestration and dependency ordering |
 | AWS CLI v2 | 2.32.0 | Cloud authentication and management |
 | kubectl | 1.35.1 | Kubernetes cluster interaction |
 | Helm | 3.16.1 | Chart templating and validation |
@@ -114,25 +114,31 @@ bash scripts/mfa-session.sh --no-mfa
 
 Credentials are written to `~/.aws/eks-devcontainer/credentials [csoc]`.
 
-### 3. Deploy Spoke IAM Roles (Host)
+### 3. Plan CSOC Stack
 
 ```bash
-cd terragrunt/live/aws/iam-setup
-terragrunt stack run init
-terragrunt stack run apply
+bash scripts/csoc-stack.sh plan
 ```
 
-### 4. Deploy CSOC Cluster (Container)
+Review the generated Terragrunt/Terraform plan. The stack order is developer
+identity, CSOC AWS foundation, spoke IAM, then in-cluster bootstrap.
+
+For first-time credential bootstrapping without creating the CSOC cluster or
+spoke resources, use the prerequisite IAM-only stack:
 
 ```bash
-# Inside dev container or WSL with AWS credentials
-bash scripts/install.sh apply
+bash scripts/prereq-iam.sh plan
+bash scripts/prereq-iam.sh apply
 ```
 
-This single command:
-1. Runs `terraform init` with backend config extracted from `config/shared.auto.tfvars.json`
-2. Runs `terraform apply` — creates EKS cluster, VPC, ArgoCD, ACK roles, bootstrap ApplicationSet
-3. Configures kubeconfig and retrieves ArgoCD admin password
+### 4. Apply CSOC Stack
+
+```bash
+bash scripts/csoc-stack.sh apply
+```
+
+This creates the AWS foundation, tightens spoke IAM through foundation outputs,
+then bootstraps Argo CD into the named CSOC cluster.
 
 ### 5. Verify
 
@@ -183,18 +189,32 @@ See [docs/local-csoc-guide.md](docs/local-csoc-guide.md) for the full guide.
 
 | Phase | Context | Tool | What |
 |-------|---------|------|------|
-| **Phase 1** | Host machine | Terragrunt | Spoke ACK workload IAM roles (cross-account) |
-| **Phase 2** | Container/WSL | Terraform | CSOC EKS cluster + VPC + ArgoCD + bootstrap |
+| **Foundation** | Host or devcontainer | Terragrunt + Terraform | CSOC VPC, EKS, OIDC, and IAM roles |
+| **Spoke IAM** | Host or devcontainer | Terragrunt + Terraform | Spoke ACK workload IAM roles with CSOC role trust |
+| **Bootstrap** | Host or devcontainer | Terragrunt + Terraform | Argo CD install, repo secrets, cluster secrets, bootstrap ApplicationSet |
+
+The old `terraform/env/aws/csoc-cluster` root and
+`terragrunt/live/aws/iam-setup` stack remain compatibility paths until state
+migration is complete.
+
+State migration is state-only and must not create resources:
+
+```bash
+CONFIRM_STATE_MIGRATION=yes bash scripts/state-migration.sh
+```
+
+Run it only after no-apply plans for both the compatibility root and the new
+CSOC stack have been reviewed and show no creates, replacements, or deletes.
 
 See [docs/deployment-guide.md](docs/deployment-guide.md) for detailed deployment procedures.
 
 ## Teardown
 
 ```bash
-# Destroy CSOC cluster and all Terraform-managed resources
-bash scripts/destroy.sh
+# Destroy CSOC stack and all Terraform-managed resources
+bash scripts/csoc-stack.sh destroy
 
-# Destroy spoke IAM roles (from host)
+# Deprecated compatibility path for pre-migration IAM state
 cd terragrunt/live/aws/iam-setup
 terragrunt stack run destroy
 ```
@@ -219,7 +239,7 @@ terragrunt stack run destroy
 - **IAM policies** — file-driven: `iam/<spoke>/ack/inline-policy.json` with `iam/_default/` fallback
 - **Sync waves** — enforce deployment ordering (negative = first, higher = later)
 - **Management modes** — `self_managed` (Helm via ArgoCD) or `aws_managed` (EKS Capabilities)
-- **Single root module** — `terraform/env/aws/csoc-cluster/` calls composite `csoc-cluster` module
+- **Compatibility wrapper** — `terraform/env/aws/csoc-cluster/` still calls `csoc-cluster` until state migration completes
 
 ## License
 

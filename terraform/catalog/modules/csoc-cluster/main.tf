@@ -1,14 +1,15 @@
 ################################################################################
 # CSOC Cluster Composite Module
 #
-# Composes aws-csoc and argocd-bootstrap catalog modules into a single
-# deployable unit. Intended to be called from terraform/env/aws/csoc-cluster/.
+# Compatibility wrapper that composes the split AWS foundation and in-cluster
+# bootstrap modules into the existing deployable unit. Intended to be called
+# from terraform/env/aws/csoc-cluster/ until state migration is complete.
 ################################################################################
 
-# ─── CSOC EKS Cluster + VPC + ACK/ArgoCD/KRO ─────────────────────────────────
+# ─── CSOC AWS Foundation: VPC, EKS, OIDC, IAM, AWS capabilities ──────────────
 
-module "aws_csoc" {
-  source = "../aws-csoc"
+module "aws_csoc_foundation" {
+  source = "../aws-csoc-foundation"
 
   # AWS
   aws_profile       = var.aws_profile
@@ -47,7 +48,8 @@ module "aws_csoc" {
   # Addons
   addons = var.addons
 
-  # ArgoCD Bootstrap — ensures namespace is created before bootstrap secrets
+  # Argo CD Bootstrap metadata only. In-cluster resources are managed by the
+  # csoc_in_cluster_bootstrap module below.
   argocd_bootstrap_enabled = var.argocd_bootstrap_enabled
 
   # Controller management
@@ -83,28 +85,37 @@ module "aws_csoc" {
   tags = var.tags
 }
 
-# ─── ArgoCD Bootstrap (cluster secret, repo secrets, ApplicationSet) ─────────
+# ─── CSOC In-Cluster Bootstrap: Argo CD install and first GitOps seed ─────────
 
-module "argocd_bootstrap" {
-  source = "../argocd-bootstrap"
+module "csoc_in_cluster_bootstrap" {
+  source = "../csoc-in-cluster-bootstrap"
 
   # Toggle
-  enabled = var.argocd_bootstrap_enabled
+  enabled = var.argocd_bootstrap_enabled || var.enable_argocd_self_managed || var.enable_argocd_capability
 
-  # Cluster connectivity — wired directly from aws_csoc outputs
+  # Cluster connectivity — wired directly from foundation outputs
   aws_profile                        = var.aws_profile
   region                             = var.region
-  cluster_name                       = module.aws_csoc.cluster_name
-  cluster_endpoint                   = module.aws_csoc.cluster_endpoint
-  cluster_certificate_authority_data = module.aws_csoc.cluster_certificate_authority_data
+  cluster_name                       = module.aws_csoc_foundation.cluster_name
+  cluster_endpoint                   = module.aws_csoc_foundation.cluster_endpoint
+  cluster_certificate_authority_data = module.aws_csoc_foundation.cluster_certificate_authority_data
+  foundation_dependency_token        = module.aws_csoc_foundation.foundation_ready_token
+  csoc_account_id                    = module.aws_csoc_foundation.csoc_account_id
 
-  # ArgoCD config — uses module output to enforce namespace-creation dependency
-  argocd_namespace           = module.aws_csoc.argocd_namespace
-  argocd_cluster_secret_name = var.argocd_cluster_secret_name
-  argocd_cluster_labels      = module.aws_csoc.argocd_cluster_labels_base
-  argocd_cluster_annotations = module.aws_csoc.argocd_cluster_annotations_base
-  ack_self_managed_role_arn  = module.aws_csoc.ack_csoc_role_arn
-  spoke_account_ids          = module.aws_csoc.spoke_account_ids
+  # Argo CD install
+  argocd_namespace              = module.aws_csoc_foundation.argocd_namespace
+  argocd_chart_version          = var.argocd_chart_version
+  argocd_chart_repository       = var.argocd_chart_repository
+  argocd_values                 = var.argocd_values
+  enable_argocd_self_managed    = var.enable_argocd_self_managed
+  enable_argocd_capability      = var.enable_argocd_capability
+  argocd_self_managed_role_arn  = module.aws_csoc_foundation.argocd_self_managed_role_arn
+  argocd_bootstrap_enabled      = var.argocd_bootstrap_enabled
+  argocd_cluster_secret_name    = var.argocd_cluster_secret_name
+  argocd_cluster_labels         = module.aws_csoc_foundation.argocd_cluster_labels_base
+  argocd_cluster_annotations    = module.aws_csoc_foundation.argocd_cluster_annotations_base
+  ack_self_managed_role_arn     = module.aws_csoc_foundation.ack_csoc_role_arn
+  spoke_account_ids             = module.aws_csoc_foundation.spoke_account_ids
 
   # Secrets Manager repos
   ssm_repo_secret_names = var.ssm_repo_secret_names

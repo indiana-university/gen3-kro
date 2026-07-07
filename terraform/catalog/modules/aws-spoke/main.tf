@@ -54,32 +54,73 @@ locals {
 }
 
 ################################################################################
-# Trust Policy — Account-Root + ArnLike Condition (V2)
-# ArnLike restricts callers to the CSOC controller role (*-csoc-role) and the
-# scoped developer devcontainer role (*-devcontainer-role) for break-glass/manual
-# spoke cleanup.
-# No ExternalId — ACK does not pass it during sts:AssumeRole.
+# Trust Policy
+#
+# Preferred mode uses the exact CSOC source role ARN from the foundation unit.
+# Compatibility mode keeps the old account-root plus ArnLike trust until state
+# migration can remove the deprecated IAM setup path.
 ################################################################################
 
 data "aws_iam_policy_document" "assume_role" {
   for_each = local.active_roles
 
-  statement {
-    effect  = "Allow"
-    actions = ["sts:AssumeRole"]
+  dynamic "statement" {
+    for_each = var.csoc_source_role_arn != "" ? [1] : []
 
-    principals {
-      type        = "AWS"
-      identifiers = ["arn:aws:iam::${var.csoc_account_id}:root"]
+    content {
+      sid     = "ExactCSOCSourceRole"
+      effect  = "Allow"
+      actions = ["sts:AssumeRole"]
+
+      principals {
+        type        = "AWS"
+        identifiers = [var.csoc_source_role_arn]
+      }
     }
+  }
 
-    condition {
-      test     = "ArnLike"
-      variable = "aws:PrincipalArn"
-      values = [
-        "arn:aws:iam::${var.csoc_account_id}:role/*-csoc-role",
-        "arn:aws:iam::${var.csoc_account_id}:role/*-devcontainer-role"
-      ]
+  dynamic "statement" {
+    for_each = var.csoc_source_role_arn == "" ? [1] : []
+
+    content {
+      sid     = "CompatibilityCSOCRolePattern"
+      effect  = "Allow"
+      actions = ["sts:AssumeRole"]
+
+      principals {
+        type        = "AWS"
+        identifiers = ["arn:aws:iam::${var.csoc_account_id}:root"]
+      }
+
+      condition {
+        test     = "ArnLike"
+        variable = "aws:PrincipalArn"
+        values = concat(
+          ["arn:aws:iam::${var.csoc_account_id}:role/*-csoc-role"],
+          var.allow_devcontainer_assume_role ? ["arn:aws:iam::${var.csoc_account_id}:role/*-devcontainer-role"] : []
+        )
+      }
+    }
+  }
+
+  dynamic "statement" {
+    for_each = var.csoc_source_role_arn != "" && var.allow_devcontainer_assume_role ? [1] : []
+
+    content {
+      sid     = "DevcontainerManualCleanup"
+      effect  = "Allow"
+      actions = ["sts:AssumeRole"]
+
+      principals {
+        type        = "AWS"
+        identifiers = ["arn:aws:iam::${var.csoc_account_id}:root"]
+      }
+
+      condition {
+        test     = "ArnLike"
+        variable = "aws:PrincipalArn"
+        values   = ["arn:aws:iam::${var.csoc_account_id}:role/*-devcontainer-role"]
+      }
     }
   }
 }

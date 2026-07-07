@@ -8,6 +8,18 @@ variable "csoc_account_id" {
   type        = string
 }
 
+variable "csoc_source_role_arn" {
+  description = "Exact CSOC source role ARN allowed to assume spoke workload roles. If empty, falls back to account-root plus ArnLike compatibility trust."
+  type        = string
+  default     = ""
+}
+
+variable "allow_devcontainer_assume_role" {
+  description = "Whether to retain devcontainer role trust for manual cleanup operations"
+  type        = bool
+  default     = true
+}
+
 variable "roles" {
   description = "Map of ACK IAM roles to create in the spoke account. Key is role key, value is configuration object."
   type = map(object({

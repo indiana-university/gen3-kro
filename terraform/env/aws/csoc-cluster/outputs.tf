@@ -39,6 +39,11 @@ output "ack_csoc_role_arn" {
   value       = module.csoc_cluster.ack_csoc_role_arn
 }
 
+output "argocd_self_managed_role_arn" {
+  description = "ARN of the self-managed Argo CD IAM role"
+  value       = module.csoc_cluster.argocd_self_managed_role_arn
+}
+
 output "argocd_cluster_annotations_base" {
   description = "Base ArgoCD cluster secret annotations"
   value       = module.csoc_cluster.argocd_cluster_annotations_base
@@ -47,6 +52,11 @@ output "argocd_cluster_annotations_base" {
 output "argocd_cluster_labels_base" {
   description = "Base ArgoCD cluster secret labels"
   value       = module.csoc_cluster.argocd_cluster_labels_base
+}
+
+output "foundation_ready_token" {
+  description = "Opaque dependency token for downstream bootstrap ordering"
+  value       = module.csoc_cluster.foundation_ready_token
 }
 
 output "git_repository_secret_names" {

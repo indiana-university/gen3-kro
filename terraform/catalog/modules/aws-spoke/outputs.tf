@@ -17,3 +17,8 @@ output "spoke_alias" {
   description = "Spoke alias used for this module"
   value       = var.spoke_alias
 }
+
+output "trust_mode" {
+  description = "Trust mode used for spoke role assume policy"
+  value       = var.csoc_source_role_arn != "" ? "exact-csoc-role" : "compatibility-pattern"
+}

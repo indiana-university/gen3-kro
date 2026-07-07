@@ -29,33 +29,40 @@ Spoke accounts
 
 ## Deployment Model
 
-Deployment is split to avoid the spoke-role and CSOC-OIDC dependency loop.
+Deployment is Terragrunt-first. Terraform implements modules; Terragrunt
+orchestrates environment ordering so the CSOC role exists before spoke IAM is
+planned.
 
 | Phase | Context | Tool | Creates |
 |-------|---------|------|---------|
-| 1 | Host | Terragrunt | Spoke workload IAM roles |
-| 2 | Container/WSL | Terraform | CSOC VPC, EKS, ArgoCD, ACK/ArgoCD roles, bootstrap AppSet |
-| 3 | ArgoCD | GitOps | Controllers, RGDs, CARM resources, spoke instances |
+| 1 | Host or container | Terragrunt + Terraform | Developer identity |
+| 2 | Host or container | Terragrunt + Terraform | CSOC VPC, EKS, OIDC, CSOC IAM roles |
+| 3 | Host or container | Terragrunt + Terraform | Spoke workload IAM roles |
+| 4 | Host or container | Terragrunt + Terraform | Argo CD install and bootstrap AppSet |
+| 5 | ArgoCD | GitOps | Controllers, RGDs, CARM resources, spoke instances |
 
-Spoke roles trust the CSOC account root plus an `ArnLike` condition for `*-csoc-role` and `*-devcontainer-role`, so they can be created before the exact CSOC role ARNs exist.
+Spoke roles prefer exact trust to the CSOC source role ARN emitted by the
+foundation unit. The account-root plus `ArnLike` trust remains as a compatibility
+fallback for the deprecated IAM setup stack and state migration window.
 
 ## Terraform Modules
 
 ```text
-terraform/env/aws/csoc-cluster
-└── terraform/catalog/modules/csoc-cluster
-    ├── aws-csoc
+terragrunt/live/aws/csoc
+└── terraform/catalog/units
+    ├── csoc-foundation -> terraform/catalog/modules/aws-csoc-foundation
     │   ├── VPC + EKS
     │   ├── ACK source role
     │   ├── ArgoCD role
-    │   └── ArgoCD Helm install
-    └── argocd-bootstrap
-        ├── ArgoCD cluster secret
-        ├── Git repo secret
-        └── bootstrap ApplicationSet
+    │   └── optional AWS-managed capabilities
+    ├── spoke-iam -> terraform/catalog/modules/aws-spoke
+    └── csoc-in-cluster-bootstrap -> terraform/catalog/modules/csoc-in-cluster-bootstrap
+        ├── ArgoCD namespace, service accounts, and Helm install
+        └── argocd-bootstrap submodule for repo/cluster secrets and AppSet
 ```
 
-Host-side Terragrunt units in `terragrunt/live/aws/iam-setup` create spoke IAM before the CSOC cluster is applied.
+`terraform/catalog/modules/csoc-cluster` remains as the compatibility wrapper for
+the old plain Terraform root until state migration is complete.
 
 ## ArgoCD Chain
 
@@ -89,7 +96,9 @@ ACK pod
         └── AWS APIs in spoke account
 ```
 
-The spoke role trust uses the CSOC account root as the principal and restricts the real caller with `aws:PrincipalArn = arn:aws:iam::<CSOC>:role/*-csoc-role` for ACK and `arn:aws:iam::<CSOC>:role/*-devcontainer-role` for scoped manual spoke cleanup.
+The preferred spoke role trust uses the exact `{csoc_alias}-csoc-role` ARN as
+principal. The devcontainer role can remain trusted for scoped manual cleanup if
+that operator path is required.
 
 ## Local CSOC
 

@@ -18,19 +18,17 @@ argument-hint: 'Test number and feature being tested (e.g. "9 cross-namespace-re
 
 1. Check existing tests for the next available number:
    ```bash
-   ls argocd/csoc-eks/charts/aws-rgds-v1/templates/ | grep krotest
+   ls argocd/csoc/kro/aws-rgds/test/ | grep krotest
    ```
 
 2. Create the RGD at:
-   `argocd/csoc-eks/charts/aws-rgds-v1/templates/krotest${input:testNum}-${input:feature}-rg.yaml`
+   `argocd/csoc/kro/aws-rgds/test/krotest${input:testNum}-${input:feature}-rg.yaml`
 
-3. Create test instances in:
-   - `argocd/local-kind/test/tests/` (if `usesAWS: no`)
-   - `argocd/local-kind/test/infrastructure/` (if `usesAWS: yes`)
+3. Create local test instances in an appropriate spoke overlay under `argocd/spokes/`.
 
 4. Instance naming convention: `kro-${input:feature}-<variant>` (e.g., `kro-cross-namespace-basic`)
 
 5. After creating the files, add an entry to the KRO Capability Tests table in
-   `.github/copilot-instructions.md`.
+   `argocd/csoc/kro/aws-rgds/test/README.md`.
 
-6. Reference the existing test files (krotest01 through krotest08) for patterns.
+6. Reference the existing test files and `argocd/csoc/kro/AGENTS.md` for patterns.
