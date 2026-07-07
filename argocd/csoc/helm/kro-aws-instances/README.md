@@ -1,6 +1,6 @@
 # kro-aws-instances
 
-Helm chart for per-spoke KRO instance delivery. The `fleet-instances` ApplicationSet renders this chart once per spoke using `argocd/spokes/<spoke>/infrastucture-values.yaml`.
+Helm chart for per-spoke KRO instance delivery. The `fleet-instances` ApplicationSet renders this chart once per spoke using `argocd/spokes/<spoke>/infrastructure-values.yaml`.
 
 It creates:
 

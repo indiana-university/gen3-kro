@@ -55,7 +55,7 @@ Controller ApplicationSets merge values in this order:
 2. `argocd/csoc/controllers/<cluster_type>-overrides/addons.yaml`
 3. optional `argocd/spokes/<spoke>/addons/<chart>/values.yaml`
 
-Fleet instances use `argocd/csoc/helm/kro-aws-instances` plus `argocd/spokes/{{.name}}/infrastucture-values.yaml`, where `{{.name}}` is the ArgoCD cluster generator name.
+Fleet instances use `argocd/csoc/helm/kro-aws-instances` plus `argocd/spokes/{{.name}}/infrastructure-values.yaml`, where `{{.name}}` is the ArgoCD cluster generator name.
 
 ## Cluster Secret Contract
 
@@ -82,5 +82,5 @@ helm template csoc-controllers argocd/csoc/helm/csoc-controllers \
   -f argocd/csoc/controllers/eks-overrides/addons.yaml
 
 helm template kro-aws-instances argocd/csoc/helm/kro-aws-instances \
-  -f argocd/spokes/spoke1/infrastucture-values.yaml
+  -f argocd/spokes/spoke1/infrastructure-values.yaml
 ```

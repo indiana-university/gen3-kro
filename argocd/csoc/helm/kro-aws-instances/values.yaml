@@ -1,6 +1,6 @@
 # Default values for kro-aws-instances chart.
 # Controls: (1) infrastructure-values ConfigMap data, (2) KRO instance deployment.
-# Per-spoke overrides live in argocd/spokes/<spoke>/infrastucture-values.yaml
+# Per-spoke overrides live in argocd/spokes/<spoke>/infrastructure-values.yaml
 #
 # ⚠️  WARNING: global.name and global.namespace are baked into ALL AWS resource
 #    names and namespaces. Do NOT change them after the first deploy.

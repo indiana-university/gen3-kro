@@ -5,7 +5,7 @@
 # Application.
 #
 # Values root path:
-#   spokes/{{.name}}/infrastucture-values.yaml
+#   spokes/{{.name}}/infrastructure-values.yaml
 #
 # Matched by cluster secrets with enable_infra_instances: "true".
 # Deployment ordering: argocd sync-wave + RGD readyWhen bridge externalRefs.

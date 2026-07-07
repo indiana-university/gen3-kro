@@ -38,7 +38,7 @@ bash scripts/kind-csoc.sh connect
 |------|---------|
 | `argocd/csoc/kro/` | RGDs synced by `csoc-kro` |
 | `argocd/csoc/controllers/kind-overrides/addons.yaml` | Local controller enablement |
-| `argocd/spokes/spoke1/infrastucture-values.yaml` | Local spoke instance values |
+| `argocd/spokes/spoke1/infrastructure-values.yaml` | Local spoke instance values |
 
 The local fleet cluster secret uses ArgoCD cluster name `spoke1`, so `fleet-instances` reads `argocd/spokes/spoke1`.
 
@@ -58,4 +58,4 @@ kubectl get resourcegraphdefinitions
 kubectl get awsgen3networksecurity1,awsgen3compute1 -A
 ```
 
-RGD edits go under `argocd/csoc/kro/`. Instance edits go in `argocd/spokes/spoke1/infrastucture-values.yaml`.
+RGD edits go under `argocd/csoc/kro/`. Instance edits go in `argocd/spokes/spoke1/infrastructure-values.yaml`.

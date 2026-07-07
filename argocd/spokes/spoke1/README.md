@@ -8,7 +8,7 @@ chart with these values.
 
 ```text
 argocd/spokes/spoke1/
-├── infrastucture-values.yaml     # kro-aws-instances override values
+├── infrastructure-values.yaml    # kro-aws-instances override values
 ├── cluster-resources/
 │   └── core-cluster-addons.yaml  # PlatformHelm1 $values file
 └── spoke1dev.rds-pla.net/
@@ -19,7 +19,7 @@ argocd/spokes/spoke1/
 
 | Wave | Resource | File | Purpose |
 |------|----------|------|---------|
-| 14 | `ConfigMap/infrastructure-values` | `infrastucture-values.yaml` | Shared infrastructure inputs |
+| 14 | `ConfigMap/infrastructure-values` | `infrastructure-values.yaml` | Shared infrastructure inputs |
 | 15-35 | `AwsGen3*1` instances | rendered from `kro-aws-instances` | Network/security, storage, database, compute, IAM, platform Helm, app Helm |
 
 ## Important topology

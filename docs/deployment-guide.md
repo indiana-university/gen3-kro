@@ -381,7 +381,7 @@ kubectl get awsgen3networksecurity1,awsgen3compute1 -A
 
 # Or render the spoke KRO instances that ArgoCD applies
 helm template kro-aws-instances argocd/csoc/helm/kro-aws-instances \
-  -f argocd/spokes/spoke1/infrastucture-values.yaml | grep '^kind:'
+  -f argocd/spokes/spoke1/infrastructure-values.yaml | grep '^kind:'
 
 # Check instance status
 kubectl describe vpc spoke1-vpc -n spoke1
@@ -454,13 +454,13 @@ Edit the appropriate values file:
 |-------|-------------|
 | Controller defaults | `argocd/csoc/controllers/values.yaml` |
 | Cluster-type controller overrides | `argocd/csoc/controllers/<cluster_type>-overrides/addons.yaml` |
-| Spoke instances | `argocd/spokes/<spoke>/infrastucture-values.yaml` |
+| Spoke instances | `argocd/spokes/<spoke>/infrastructure-values.yaml` |
 
 Push to git — ArgoCD will reconcile automatically.
 
 ### KRO Instance Changes
 
-Edit `argocd/spokes/<spoke>/infrastucture-values.yaml` and push. ArgoCD will reconcile the `kro-aws-instances` chart, which cascades through KRO to ACK resources.
+Edit `argocd/spokes/<spoke>/infrastructure-values.yaml` and push. ArgoCD will reconcile the `kro-aws-instances` chart, which cascades through KRO to ACK resources.
 
 ### Rotating Git Credentials
 
@@ -491,7 +491,7 @@ bash scripts/mfa-session.sh --no-mfa            # Option B: admin static creds
 
 ```bash
 helm template kro-aws-instances argocd/csoc/helm/kro-aws-instances \
-  -f argocd/spokes/spoke1/infrastucture-values.yaml | kubectl delete -f -
+  -f argocd/spokes/spoke1/infrastructure-values.yaml | kubectl delete -f -
 # Wait for ACK to delete spoke resources (VPCs, EKS clusters, RDS...)
 kubectl get vpc,cluster -A   # verify gone
 ```
