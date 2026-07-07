@@ -43,6 +43,10 @@ if [[ ! -d "$STACK_DIR" ]]; then
   exit 1
 fi
 
+# Terragrunt stacks execute Terraform roots. A global TF_DATA_DIR can point
+# those roots at stale backend metadata, so keep metadata under each unit.
+unset TF_DATA_DIR
+
 cd "$STACK_DIR"
 
 case "$ACTION" in

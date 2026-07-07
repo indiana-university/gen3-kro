@@ -15,7 +15,13 @@ LEGACY_ROOT="${REPO_ROOT}/terraform/env/aws/csoc-cluster"
 CSOC_STACK="${REPO_ROOT}/terragrunt/live/aws/csoc"
 IAM_SETUP_STACK="${REPO_ROOT}/terragrunt/live/aws/iam-setup"
 WORK_DIR="${REPO_ROOT}/outputs/state-migration"
+STATE_CLI_DIR="${WORK_DIR}/terraform-state-cli"
 CONFIRM="${CONFIRM_STATE_MIGRATION:-}"
+
+# This script moves state across several Terraform roots. A global TF_DATA_DIR
+# would make those roots reuse backend metadata, which can pull or push the
+# wrong backend. Keep Terraform metadata under each root instead.
+unset TF_DATA_DIR
 
 usage() {
   cat <<USAGE
@@ -27,8 +33,13 @@ Required preconditions:
   - terraform, terragrunt, aws, and jq are installed.
   - AWS credentials can access the configured S3 backend.
   - The legacy compatibility root plan has been reviewed.
-  - The new Terragrunt CSOC stack plan has been reviewed.
-  - Those plans show no creates, deletes, replacements, or unintended updates.
+  - No Terraform or Terragrunt apply/destroy is running for these states.
+  - The state addresses below have been reviewed for the target environment.
+
+Required post-migration validation:
+  - Run the new Terragrunt CSOC stack plan.
+  - Run the legacy compatibility root plan.
+  - Both plans should show no creates, deletes, replacements, or unintended updates.
 
 Destination state keys:
   - csoc/foundation/terraform.tfstate
@@ -56,7 +67,11 @@ json_value() {
 state_has_address() {
   local state_file="$1"
   local address="$2"
-  terraform state list -state="$state_file" | grep -Fxq "$address"
+
+  env -u TF_DATA_DIR terraform -chdir="$STATE_CLI_DIR" state list -state="$state_file" | awk -v addr="$address" '
+    $0 == addr || index($0, addr ".") == 1 || index($0, addr "[") == 1 { found = 1 }
+    END { exit(found ? 0 : 1) }
+  '
 }
 
 move_if_present() {
@@ -72,7 +87,7 @@ move_if_present() {
 
   if state_has_address "$source_state" "$from"; then
     echo "MOVE: $from -> $to"
-    terraform state mv \
+    env -u TF_DATA_DIR terraform -chdir="$STATE_CLI_DIR" state mv \
       -state="$source_state" \
       -state-out="$dest_state" \
       "$from" \
@@ -82,13 +97,39 @@ move_if_present() {
   fi
 }
 
-pull_state() {
+move_all_addresses() {
+  local source_state="$1"
+  local dest_state="$2"
+  local address
+  local moved=0
+
+  while IFS= read -r address; do
+    move_if_present "$source_state" "$dest_state" "$address" "$address"
+    moved=1
+  done < <(env -u TF_DATA_DIR terraform -chdir="$STATE_CLI_DIR" state list -state="$source_state")
+
+  if [[ "$moved" -eq 0 ]]; then
+    echo "SKIP: no source addresses present in $source_state"
+  fi
+}
+
+pull_terraform_state() {
   local unit_dir="$1"
   local output_file="$2"
 
   (
     cd "$unit_dir"
-    terraform state pull > "$output_file"
+    env -u TF_DATA_DIR terraform state pull > "$output_file"
+  )
+}
+
+pull_terragrunt_state() {
+  local unit_dir="$1"
+  local output_file="$2"
+
+  (
+    cd "$unit_dir"
+    env -u TF_DATA_DIR terragrunt state pull > "$output_file"
   )
 }
 
@@ -113,23 +154,33 @@ PY
 STATE
 }
 
-pull_state_or_empty() {
+pull_terragrunt_state_or_empty() {
   local unit_dir="$1"
   local output_file="$2"
 
-  if ! pull_state "$unit_dir" "$output_file"; then
+  if ! pull_terragrunt_state "$unit_dir" "$output_file"; then
     echo "WARN: no remote state found for $unit_dir; using empty local destination state."
     empty_state "$output_file"
   fi
 }
 
-push_state() {
+push_terraform_state() {
   local unit_dir="$1"
   local input_file="$2"
 
   (
     cd "$unit_dir"
-    terraform state push "$input_file"
+    env -u TF_DATA_DIR terraform state push "$input_file"
+  )
+}
+
+push_terragrunt_state() {
+  local unit_dir="$1"
+  local input_file="$2"
+
+  (
+    cd "$unit_dir"
+    env -u TF_DATA_DIR terragrunt state push "$input_file"
   )
 }
 
@@ -173,7 +224,9 @@ if [[ -z "$BACKEND_BUCKET" || -z "$BACKEND_REGION" || -z "$AWS_PROFILE_NAME" ]];
 fi
 
 mkdir -p "$WORK_DIR"
+mkdir -p "$STATE_CLI_DIR"
 chmod 700 "$WORK_DIR" 2>/dev/null || true
+chmod 700 "$STATE_CLI_DIR" 2>/dev/null || true
 
 echo ">>> Validating backend access"
 aws sts get-caller-identity --profile "$AWS_PROFILE_NAME" >/dev/null
@@ -182,6 +235,12 @@ aws s3api head-bucket --bucket "$BACKEND_BUCKET" --profile "$AWS_PROFILE_NAME" >
 echo ">>> Generating Terragrunt stack units"
 (
   cd "$CSOC_STACK"
+  terragrunt stack generate
+)
+
+echo ">>> Generating legacy IAM setup stack units"
+(
+  cd "$IAM_SETUP_STACK"
   terragrunt stack generate
 )
 
@@ -195,42 +254,47 @@ LEGACY_SPOKE_UNIT="${IAM_SETUP_GENERATED}/aws-spoke"
 require_generated_unit "$FOUNDATION_UNIT"
 require_generated_unit "$BOOTSTRAP_UNIT"
 require_generated_unit "$SPOKE_IAM_UNIT"
+require_generated_unit "$LEGACY_SPOKE_UNIT"
 
 echo ">>> Initializing source and destination backends"
 bash "${REPO_ROOT}/scripts/install.sh" init
 (
   cd "$FOUNDATION_UNIT"
-  terraform init -reconfigure
+  env -u TF_DATA_DIR terragrunt init -reconfigure -input=false
 )
 (
   cd "$BOOTSTRAP_UNIT"
-  terraform init -reconfigure
+  env -u TF_DATA_DIR terragrunt init -reconfigure -input=false
 )
 (
   cd "$SPOKE_IAM_UNIT"
-  terraform init -reconfigure
+  env -u TF_DATA_DIR terragrunt init -reconfigure -input=false
 )
 
-if [[ -d "$LEGACY_SPOKE_UNIT" ]]; then
-  (
-    cd "$LEGACY_SPOKE_UNIT"
-    terraform init -reconfigure
-  )
-else
-  echo "WARN: legacy spoke IAM generated unit not found; spoke state copy will be skipped."
-fi
+(
+  cd "$LEGACY_SPOKE_UNIT"
+  env -u TF_DATA_DIR terragrunt init -reconfigure -input=false
+)
 
 TIMESTAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 LEGACY_STATE="${WORK_DIR}/legacy-csoc-${TIMESTAMP}.tfstate"
 FOUNDATION_STATE="${WORK_DIR}/foundation-${TIMESTAMP}.tfstate"
 BOOTSTRAP_STATE="${WORK_DIR}/bootstrap-${TIMESTAMP}.tfstate"
 SPOKE_STATE="${WORK_DIR}/spoke-iam-${TIMESTAMP}.tfstate"
+LEGACY_SPOKE_STATE="${WORK_DIR}/legacy-spoke-iam-${TIMESTAMP}.tfstate"
+LEGACY_SPOKE_STATE_PRESENT=false
 
 echo ">>> Pulling backend states to local migration workspace"
-pull_state "$LEGACY_ROOT" "$LEGACY_STATE"
-pull_state_or_empty "$FOUNDATION_UNIT" "$FOUNDATION_STATE"
-pull_state_or_empty "$BOOTSTRAP_UNIT" "$BOOTSTRAP_STATE"
-pull_state_or_empty "$SPOKE_IAM_UNIT" "$SPOKE_STATE"
+pull_terraform_state "$LEGACY_ROOT" "$LEGACY_STATE"
+pull_terragrunt_state_or_empty "$FOUNDATION_UNIT" "$FOUNDATION_STATE"
+pull_terragrunt_state_or_empty "$BOOTSTRAP_UNIT" "$BOOTSTRAP_STATE"
+pull_terragrunt_state_or_empty "$SPOKE_IAM_UNIT" "$SPOKE_STATE"
+if pull_terragrunt_state "$LEGACY_SPOKE_UNIT" "$LEGACY_SPOKE_STATE"; then
+  LEGACY_SPOKE_STATE_PRESENT=true
+else
+  echo "WARN: no legacy spoke IAM state found; spoke IAM migration will be empty."
+  empty_state "$LEGACY_SPOKE_STATE"
+fi
 
 echo ">>> Moving CSOC foundation addresses"
 move_if_present "$LEGACY_STATE" "$FOUNDATION_STATE" "module.csoc_cluster.module.aws_csoc.module.eks" "module.eks"
@@ -260,20 +324,23 @@ move_if_present "$LEGACY_STATE" "$BOOTSTRAP_STATE" "module.csoc_cluster.module.a
 move_if_present "$LEGACY_STATE" "$BOOTSTRAP_STATE" "module.csoc_cluster.module.aws_csoc.helm_release.argocd" "helm_release.argocd"
 move_if_present "$LEGACY_STATE" "$BOOTSTRAP_STATE" "module.csoc_cluster.module.argocd_bootstrap" "module.argocd_bootstrap"
 
-if [[ -d "$LEGACY_SPOKE_UNIT" ]]; then
-  echo ">>> Copying spoke IAM state into CSOC spoke-iam state key"
-  pull_state "$LEGACY_SPOKE_UNIT" "$SPOKE_STATE"
-else
-  echo ">>> Skipping spoke IAM state copy"
-fi
+echo ">>> Moving spoke IAM addresses"
+move_all_addresses "$LEGACY_SPOKE_STATE" "$SPOKE_STATE"
 
 echo ">>> Pushing destination states"
-push_state "$FOUNDATION_UNIT" "$FOUNDATION_STATE"
-push_state "$BOOTSTRAP_UNIT" "$BOOTSTRAP_STATE"
-push_state "$SPOKE_IAM_UNIT" "$SPOKE_STATE"
+push_terragrunt_state "$FOUNDATION_UNIT" "$FOUNDATION_STATE"
+push_terragrunt_state "$BOOTSTRAP_UNIT" "$BOOTSTRAP_STATE"
+push_terragrunt_state "$SPOKE_IAM_UNIT" "$SPOKE_STATE"
 
 echo ">>> Pushing legacy CSOC source state with moved resources removed"
-push_state "$LEGACY_ROOT" "$LEGACY_STATE"
+push_terraform_state "$LEGACY_ROOT" "$LEGACY_STATE"
+
+if [[ "$LEGACY_SPOKE_STATE_PRESENT" == "true" ]]; then
+  echo ">>> Pushing legacy spoke IAM source state with moved resources removed"
+  push_terragrunt_state "$LEGACY_SPOKE_UNIT" "$LEGACY_SPOKE_STATE"
+else
+  echo ">>> Skipping legacy spoke IAM source push; no legacy state was pulled"
+fi
 
 echo ">>> State migration complete."
 echo "Next required no-apply validation:"

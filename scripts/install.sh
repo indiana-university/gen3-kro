@@ -116,12 +116,15 @@ validate_prerequisites() {
     die "shared.auto.tfvars.json is not valid JSON."
   fi
 
-  # AWS credentials — use AWS_PROFILE (set by devcontainer) or fall back to 'csoc'
+  # AWS credentials: prefer AWS_PROFILE when explicitly set, otherwise use the
+  # shared config profile so init/plan/apply are aligned with provider config.
   # KNOWN LIMITATION: sts:GetCallerIdentity succeeds even with expired MFA sessions
   # if the underlying IAM user credentials are still valid. This can give a false
   # positive — terraform plan/apply may still fail on actual API calls.
   # See docs/platform-status.md R2 for details and future improvement plan.
-  local profile="${AWS_PROFILE:-csoc}"
+  local configured_profile profile
+  configured_profile="$(jq -r '.aws_profile // empty' "$CONFIG_FILE")"
+  profile="${AWS_PROFILE:-${configured_profile:-csoc}}"
   if aws sts get-caller-identity --profile "$profile" &>/dev/null; then
     log "  AWS credentials valid (profile: ${profile})"
   else
@@ -146,31 +149,30 @@ terraform_init() {
   cd "$WORK_DIR"
 
   # Extract backend config from the shared JSON
-  local backend_bucket backend_key backend_region
+  local backend_bucket backend_key backend_region backend_profile
   backend_bucket="$(jq -r '.backend_bucket // empty' "$CONFIG_FILE")"
   backend_key="$(jq -r '.backend_key // empty' "$CONFIG_FILE")"
   backend_region="$(jq -r '.backend_region // empty' "$CONFIG_FILE")"
+  backend_profile="$(jq -r '.aws_profile // empty' "$CONFIG_FILE")"
 
   if [[ -z "$backend_bucket" || -z "$backend_key" || -z "$backend_region" ]]; then
     die "backend_bucket, backend_key, and backend_region must be set in ${CONFIG_FILE}"
   fi
 
-  # TF_DATA_DIR (set by container-init.sh) redirects .terraform/ to a container-
-  # local ext4 path. Check there first, then fall back to in-tree .terraform.
-  local tf_dir="${TF_DATA_DIR:-${WORK_DIR}/.terraform}"
-
-  # Only re-init if .terraform directory doesn't exist or 'init' action forces it.
-  if [[ "$ACTION" == "init" || ! -d "$tf_dir" ]]; then
-    log "  Backend: bucket=${backend_bucket} key=${backend_key} region=${backend_region}"
-    log "  TF_DATA_DIR: ${TF_DATA_DIR:-<not set>}"
-    terraform init \
-      -reconfigure \
-      -backend-config="bucket=${backend_bucket}" \
-      -backend-config="key=${backend_key}" \
-      -backend-config="region=${backend_region}"
-  else
-    log "  .terraform directory exists (${tf_dir}) — skipping init (use 'init' action to force)"
+  # TF_DATA_DIR may be shared across roots inside the devcontainer, so directory
+  # existence alone does not prove this root's backend has been initialized.
+  log "  Backend: bucket=${backend_bucket} key=${backend_key} region=${backend_region}"
+  log "  TF_DATA_DIR: ${TF_DATA_DIR:-<not set>}"
+  local backend_args=(
+    -reconfigure \
+    -backend-config="bucket=${backend_bucket}" \
+    -backend-config="key=${backend_key}" \
+    -backend-config="region=${backend_region}"
+  )
+  if [[ -n "$backend_profile" ]]; then
+    backend_args+=("-backend-config=profile=${backend_profile}")
   fi
+  terraform init "${backend_args[@]}"
 
   log ">>> [Step 1] Init complete."
 }

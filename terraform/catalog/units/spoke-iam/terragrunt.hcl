@@ -12,7 +12,7 @@ terraform {
 dependency "csoc_foundation" {
   config_path = values.csoc_foundation_path
 
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan"]
+  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "state"]
   mock_outputs = {
     ack_csoc_role_arn = ""
     cluster_name      = values.cluster_name
@@ -58,7 +58,7 @@ generate "providers" {
   contents = join("\n", [
     for alias, spoke_cfg in values.provider_spokes : <<-EOT
       provider "aws" {
-        alias   = "${alias}"
+        alias   = "${replace(alias, "-", "_")}"
         profile = "${spoke_cfg.profile}"
         region  = "${spoke_cfg.region}"
       }
@@ -82,16 +82,16 @@ generate "main" {
     [
       for alias, spoke_cfg in values.spokes : <<-EOT
         module "aws_spoke_${replace(alias, "-", "_")}" {
-          source                        = "${get_repo_root()}/${values.modules_path}/aws-spoke"
-          cluster_name                  = local.cluster_name
-          csoc_account_id               = local.csoc_account_id
-          csoc_source_role_arn          = local.csoc_source_role_arn
+          source                         = "${get_repo_root()}/${values.modules_path}/aws-spoke"
+          cluster_name                   = local.cluster_name
+          csoc_account_id                = local.csoc_account_id
+          csoc_source_role_arn           = local.csoc_source_role_arn
           allow_devcontainer_assume_role = ${values.allow_devcontainer_assume_role}
-          spoke_alias                   = "${alias}"
-          roles                         = ${jsonencode(spoke_cfg.roles)}
-          tags                          = ${jsonencode(values.tags)}
+          spoke_alias                    = "${alias}"
+          roles                          = ${jsonencode(spoke_cfg.roles)}
+          tags                           = ${jsonencode(values.tags)}
           providers = {
-            aws = aws.${alias}
+            aws = aws.${replace(alias, "-", "_")}
           }
         }
       EOT

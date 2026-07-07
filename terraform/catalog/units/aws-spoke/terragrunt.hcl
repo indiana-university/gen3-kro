@@ -70,7 +70,7 @@ generate "providers" {
   contents = join("\n", [
     for alias, spoke_cfg in values.provider_spokes : <<-EOT
       provider "aws" {
-        alias   = "${alias}"
+        alias   = "${replace(alias, "-", "_")}"
         profile = "${spoke_cfg.profile}"
         region  = "${spoke_cfg.region}"
       }
@@ -94,7 +94,7 @@ generate "main" {
         roles           = ${jsonencode(spoke_cfg.roles)}
         tags            = ${jsonencode(values.tags)}
         providers = {
-          aws = aws.${alias}
+          aws = aws.${replace(alias, "-", "_")}
         }
       }
     EOT

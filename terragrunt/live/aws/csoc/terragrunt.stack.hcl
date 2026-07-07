@@ -91,16 +91,24 @@ locals {
 
   spoke_configs = {
     for spoke in local.spokes : spoke.alias => {
-      profile = try(lookup(lookup(spoke, "provider", {}), "aws_profile", local.profile), local.profile)
-      region  = try(lookup(lookup(spoke, "provider", {}), "region", local.region), local.region)
-      roles   = lookup(local.spoke_ack_roles, spoke.alias, {})
+      profile = (
+        local.csoc_account_id != "" && lookup(lookup(spoke, "provider", {}), "account_id", "") == local.csoc_account_id
+        ? local.profile
+        : try(lookup(lookup(spoke, "provider", {}), "aws_profile", local.profile), local.profile)
+      )
+      region = try(lookup(lookup(spoke, "provider", {}), "region", local.region), local.region)
+      roles  = lookup(local.spoke_ack_roles, spoke.alias, {})
     }
   }
 
   provider_spoke_configs = {
     for spoke in local.provider_spokes : spoke.alias => {
-      profile = try(lookup(lookup(spoke, "provider", {}), "aws_profile", local.profile), local.profile)
-      region  = try(lookup(lookup(spoke, "provider", {}), "region", local.region), local.region)
+      profile = (
+        local.csoc_account_id != "" && lookup(lookup(spoke, "provider", {}), "account_id", "") == local.csoc_account_id
+        ? local.profile
+        : try(lookup(lookup(spoke, "provider", {}), "aws_profile", local.profile), local.profile)
+      )
+      region = try(lookup(lookup(spoke, "provider", {}), "region", local.region), local.region)
     }
   }
 

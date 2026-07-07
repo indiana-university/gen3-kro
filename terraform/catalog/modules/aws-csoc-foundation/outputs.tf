@@ -84,8 +84,8 @@ output "foundation_ready_token" {
     try(aws_iam_role.ack_csoc_source[0].arn, null),
     try(aws_iam_role.argocd_self_managed[0].arn, null),
     try(aws_iam_role.argocd_controller[0].arn, null),
-    try(aws_eks_capability.argocd[0].id, null),
-    try(aws_eks_capability.ack[0].id, null),
-    try(aws_eks_capability.kro[0].id, null)
+    try(aws_eks_capability.argocd[0].arn, null),
+    try(aws_eks_capability.ack[0].arn, null),
+    try(aws_eks_capability.kro[0].arn, null)
   ]))
 }

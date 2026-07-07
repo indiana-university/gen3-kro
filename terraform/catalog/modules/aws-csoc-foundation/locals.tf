@@ -9,7 +9,7 @@ locals {
   vpc_name         = "${local.name}-csoc-vpc"
   environment      = var.environment
   fleet_member     = "control-plane"
-  region           = data.aws_region.current.id
+  region           = data.aws_region.current.region
   cluster_version  = var.kubernetes_version
   argocd_namespace = var.argocd_namespace
   ack_namespace    = var.ack_namespace

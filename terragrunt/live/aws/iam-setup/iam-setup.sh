@@ -34,5 +34,9 @@ command -v terragrunt >/dev/null 2>&1 || die "terragrunt is not installed."
 
 echo "Using config: ${CONFIG_FILE}"
 
+# Terragrunt stacks execute multiple Terraform roots. A global TF_DATA_DIR makes
+# those roots share backend metadata and local locks, so keep metadata per unit.
+unset TF_DATA_DIR
+
 cd "${STACK_DIR}"
 exec terragrunt stack run "${ACTION}"

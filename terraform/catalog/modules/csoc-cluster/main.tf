@@ -103,19 +103,19 @@ module "csoc_in_cluster_bootstrap" {
   csoc_account_id                    = module.aws_csoc_foundation.csoc_account_id
 
   # Argo CD install
-  argocd_namespace              = module.aws_csoc_foundation.argocd_namespace
-  argocd_chart_version          = var.argocd_chart_version
-  argocd_chart_repository       = var.argocd_chart_repository
-  argocd_values                 = var.argocd_values
-  enable_argocd_self_managed    = var.enable_argocd_self_managed
-  enable_argocd_capability      = var.enable_argocd_capability
-  argocd_self_managed_role_arn  = module.aws_csoc_foundation.argocd_self_managed_role_arn
-  argocd_bootstrap_enabled      = var.argocd_bootstrap_enabled
-  argocd_cluster_secret_name    = var.argocd_cluster_secret_name
-  argocd_cluster_labels         = module.aws_csoc_foundation.argocd_cluster_labels_base
-  argocd_cluster_annotations    = module.aws_csoc_foundation.argocd_cluster_annotations_base
-  ack_self_managed_role_arn     = module.aws_csoc_foundation.ack_csoc_role_arn
-  spoke_account_ids             = module.aws_csoc_foundation.spoke_account_ids
+  argocd_namespace             = module.aws_csoc_foundation.argocd_namespace
+  argocd_chart_version         = var.argocd_chart_version
+  argocd_chart_repository      = var.argocd_chart_repository
+  argocd_values                = var.argocd_values
+  enable_argocd_self_managed   = var.enable_argocd_self_managed
+  enable_argocd_capability     = var.enable_argocd_capability
+  argocd_self_managed_role_arn = module.aws_csoc_foundation.argocd_self_managed_role_arn
+  argocd_bootstrap_enabled     = var.argocd_bootstrap_enabled
+  argocd_cluster_secret_name   = var.argocd_cluster_secret_name
+  argocd_cluster_labels        = module.aws_csoc_foundation.argocd_cluster_labels_base
+  argocd_cluster_annotations   = module.aws_csoc_foundation.argocd_cluster_annotations_base
+  ack_self_managed_role_arn    = module.aws_csoc_foundation.ack_csoc_role_arn
+  spoke_account_ids            = module.aws_csoc_foundation.spoke_account_ids
 
   # Secrets Manager repos
   ssm_repo_secret_names = var.ssm_repo_secret_names

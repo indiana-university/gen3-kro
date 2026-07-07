@@ -8,16 +8,16 @@ module "external_secrets_pod_identity" {
 
   name = "external-secrets"
 
-  attach_external_secrets_policy        = true
-  external_secrets_kms_key_arns         = ["arn:aws:kms:${local.region}:*:key/${local.cluster_info.cluster_name}/*"]
+  attach_external_secrets_policy = true
+  external_secrets_kms_key_arns  = ["arn:aws:kms:${local.region}:*:key/${local.cluster_info.cluster_name}/*"]
   external_secrets_secrets_manager_arns = [
     "arn:aws:secretsmanager:${local.region}:*:secret:${local.cluster_info.cluster_name}/*",
     "arn:aws:secretsmanager:${local.region}:*:secret:spoke*",
     "arn:aws:secretsmanager:${local.region}:*:secret:gen3-*",
   ]
-  external_secrets_ssm_parameter_arns   = ["arn:aws:ssm:${local.region}:*:parameter/${local.cluster_info.cluster_name}/*"]
-  external_secrets_create_permission    = false
-  attach_custom_policy                  = true
+  external_secrets_ssm_parameter_arns = ["arn:aws:ssm:${local.region}:*:parameter/${local.cluster_info.cluster_name}/*"]
+  external_secrets_create_permission  = false
+  attach_custom_policy                = true
   policy_statements = [
     {
       sid       = "ecr"
