@@ -15,10 +15,10 @@ Rules:
 
 - AWS foundation modules must not use Kubernetes or Helm providers.
 - In-cluster bootstrap modules target an existing named cluster.
-- Preserve migration phases in `plan/migration-roadmap.md`.
-- Keep the compatibility wrapper until the module split and state migration are
-  complete.
-- Use Terragrunt dependency outputs for role ARN and cluster metadata handoff.
+- Keep cluster, controller IAM, spoke access, Argo CD install, and GitOps
+  bootstrap ownership separate.
+- Use Terragrunt dependency outputs within a stack and fixed S3 state outputs
+  across stacks.
 
 Do not commit secrets, real account IDs, ARNs with account IDs, tfstate, tfplan
 files, generated `.terragrunt-stack` content, outputs, or local credentials.

@@ -37,8 +37,8 @@ deliberate, reviewed, and environment-specific.
 
 - Use `rg` for search.
 - Keep edits scoped to the subsystem you are changing.
-- Preserve the migration phases in `plan/migration-roadmap.md`; do not skip the
-  compatibility-wrapper or state-migration phases.
+- Keep the implemented split-state ownership documented in `plan/` and do not
+  reintroduce compatibility wrappers or combined Terraform roots.
 - Keep generated artifacts out of tracked source.
 - Use ASCII in new docs unless a file already requires non-ASCII.
 
@@ -59,4 +59,3 @@ helm template kro-aws-instances argocd/csoc/helm/kro-aws-instances \
 
 For AGENTS/instruction-only changes, `git diff --check` plus the explicit
 search commands in the relevant plan are sufficient.
-

@@ -7,7 +7,7 @@
 # Produces a comprehensive report of infrastructure resources in a spoke
 # namespace, organized by deployment phase and dependency order.
 #
-# Output: stdout + outputs/namespaced-reports/<namespace>-report.ansi
+# Output: stdout + outputs/YYYY-MM-DD/<namespace>-report.ansi
 # ============================================================================
 set -euo pipefail
 
@@ -33,7 +33,7 @@ if [[ $# -lt 1 ]]; then
   echo "Example: $0 spoke1"
   echo ""
   echo "Options:"
-  echo "  --no-save   Skip saving report to outputs/reports/"
+  echo "  --no-save   Skip saving the dated report"
   echo "  -t          Append timestamp to output filename"
   exit 1
 fi
@@ -58,8 +58,9 @@ fi
 # ── Report output setup ───────────────────────────────────────────────────
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
+OUTPUT_ROOT="${REPO_ROOT}/outputs"
+source "${REPO_ROOT}/scripts/lib/output-paths.sh"
 RGD_DIR="${REPO_ROOT}/argocd/csoc/kro/aws-rgds/gen3/v1"
-REPORT_DIR="$REPO_ROOT/outputs/reports"
 REPORT_FILENAME="${NAMESPACE}-report"
 if [[ "${ADD_TIMESTAMP}" == true ]]; then
   REPORT_FILENAME="${REPORT_FILENAME}-$(date '+%Y%m%d-%H%M%S')"

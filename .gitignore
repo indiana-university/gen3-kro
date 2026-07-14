@@ -85,7 +85,6 @@ collected_files.txt
 outputs.txt
 
 # Generated shell scripts (local_file resources from Terraform)
-**/connect-csoc.sh
 **/port-forward.sh
 terragrunt/**/*.sh
 !terragrunt/live/aws/iam-setup/iam-setup.sh

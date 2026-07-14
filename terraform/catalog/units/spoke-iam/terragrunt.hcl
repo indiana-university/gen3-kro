@@ -1,100 +1,99 @@
-###############################################################################
-# Spoke IAM Unit
-#
-# Creates per-spoke ACK workload roles after CSOC foundation exists. The exact
-# CSOC source role ARN is read from the foundation dependency when available.
-###############################################################################
-
 terraform {
   source = get_original_terragrunt_dir()
-}
-
-dependency "csoc_foundation" {
-  config_path = values.csoc_foundation_path
-
-  mock_outputs_allowed_terraform_commands = ["init", "validate", "plan", "state"]
-  mock_outputs = {
-    ack_csoc_role_arn = ""
-    cluster_name      = values.cluster_name
-    csoc_account_id   = values.csoc_account_id
-  }
 }
 
 generate "backend" {
   path      = "backend.tf"
   if_exists = "overwrite"
-  contents  = <<-EOF
-    terraform {
-      backend "s3" {
-        bucket  = "${values.state_bucket}"
-        key     = "${values.state_key}"
-        region  = "${values.region}"
-        profile = "${values.csoc_profile}"
-        encrypt = true
-      }
-    }
-  EOF
+  contents  = <<EOF
+terraform {
+  backend "s3" {
+    bucket       = "${values.state_bucket}"
+    key          = "${values.state_key}"
+    region       = "${values.backend_region}"
+    profile      = "${values.backend_profile}"
+    encrypt      = true
+    use_lockfile = true
+  }
+}
+EOF
 }
 
 generate "versions" {
   path      = "versions.tf"
   if_exists = "overwrite"
-  contents  = <<-EOF
-    terraform {
-      required_version = ">= 1.3"
-      required_providers {
-        aws = {
-          source  = "hashicorp/aws"
-          version = ">= 5.0"
-        }
-      }
+  contents  = <<EOF
+terraform {
+  required_version = ">= 1.10.0"
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = ">= 5.0"
     }
-  EOF
+  }
+}
+EOF
 }
 
-generate "providers" {
-  path      = "providers.tf"
+generate "provider" {
+  path      = "provider.tf"
   if_exists = "overwrite"
-  contents = join("\n", [
-    for alias, spoke_cfg in values.provider_spokes : <<-EOT
-      provider "aws" {
-        alias   = "${replace(alias, "-", "_")}"
-        profile = "${spoke_cfg.profile}"
-        region  = "${spoke_cfg.region}"
-      }
-    EOT
-  ])
+  contents  = <<EOF
+provider "aws" {
+  profile = "${values.spoke_profile}"
+  region  = "${values.spoke_region}"
+}
+EOF
 }
 
 generate "main" {
   path      = "main.tf"
   if_exists = "overwrite"
-  contents = join("\n", concat(
-    [
-      <<-EOT
-        locals {
-          csoc_source_role_arn = "${try(coalesce(dependency.csoc_foundation.outputs.ack_csoc_role_arn, ""), "")}"
-          csoc_account_id      = "${try(coalesce(dependency.csoc_foundation.outputs.csoc_account_id, values.csoc_account_id), values.csoc_account_id)}"
-          cluster_name         = "${try(coalesce(dependency.csoc_foundation.outputs.cluster_name, values.cluster_name), values.cluster_name)}"
-        }
-      EOT
-    ],
-    [
-      for alias, spoke_cfg in values.spokes : <<-EOT
-        module "aws_spoke_${replace(alias, "-", "_")}" {
-          source                         = "${get_repo_root()}/${values.modules_path}/aws-spoke"
-          cluster_name                   = local.cluster_name
-          csoc_account_id                = local.csoc_account_id
-          csoc_source_role_arn           = local.csoc_source_role_arn
-          allow_devcontainer_assume_role = ${values.allow_devcontainer_assume_role}
-          spoke_alias                    = "${alias}"
-          roles                          = ${jsonencode(spoke_cfg.roles)}
-          tags                           = ${jsonencode(values.tags)}
-          providers = {
-            aws = aws.${replace(alias, "-", "_")}
-          }
-        }
-      EOT
-    ]
-  ))
+  contents  = <<EOF
+data "terraform_remote_state" "controller_iam" {
+  backend = "s3"
+  config = {
+    bucket  = "${values.state_bucket}"
+    key     = "${values.controller_state_key}"
+    region  = "${values.backend_region}"
+    profile = "${values.backend_profile}"
+  }
+}
+
+module "spoke" {
+  source = "${get_repo_root()}/${values.modules_path}/aws-spoke-iam"
+
+  cluster_name                   = "${values.cluster_name}"
+  csoc_account_id                = "${values.csoc_account_id}"
+  csoc_source_role_arn           = data.terraform_remote_state.controller_iam.outputs.ack_csoc_role_arn
+  allow_devcontainer_assume_role = ${values.allow_devcontainer_assume_role}
+  spoke_alias                    = "${values.spoke_alias}"
+  roles                          = ${jsonencode(values.roles)}
+  tags                           = ${jsonencode(values.tags)}
+}
+
+output "spoke_alias" {
+  value = module.spoke.spoke_alias
+}
+
+output "account_id" {
+  value = module.spoke.account_id
+}
+
+output "role_arns" {
+  value = module.spoke.role_arns
+}
+
+output "role_names" {
+  value = module.spoke.role_names
+}
+
+output "primary_role_arn" {
+  value = try(module.spoke.role_arns["ack-controller"], "")
+}
+
+output "trust_mode" {
+  value = module.spoke.trust_mode
+}
+EOF
 }

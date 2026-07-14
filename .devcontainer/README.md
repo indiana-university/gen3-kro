@@ -50,13 +50,14 @@ Shell aliases are pre-configured: `k` → kubectl, `tf` → terraform, `tg` → 
 
 | Variable | Value | Description |
 |----------|-------|-------------|
-| `REPO_ROOT` | `/workspaces/eks-cluster-mgmt` | Repository root inside container |
+| `REPO_ROOT` | `/workspaces/<repo>` | Repository root inside container |
 | `AWS_PROFILE` | `csoc` | AWS CLI profile selector |
 | `AWS_REGION` | from `config/shared.auto.tfvars.json` | Set by `container-init.sh` at runtime |
 | `AWS_DEFAULT_REGION` | same as `AWS_REGION` | Set by `container-init.sh` at runtime |
-| `TF_DATA_DIR` | `/home/vscode/.terraform-data` | Redirects `.terraform/` to ext4 to avoid Windows DrvFs chmod failures |
 
-`AWS_REGION`, `AWS_DEFAULT_REGION`, and `TF_DATA_DIR` are written to `~/.container-env` by the `setup` stage and sourced in `.bashrc` for all subsequent terminals.
+`AWS_REGION` and `AWS_DEFAULT_REGION` are written to `~/.container-env` by the
+`setup` stage and sourced in `.bashrc` for subsequent terminals. Terraform data
+directories remain local to each generated Terragrunt unit.
 
 ## Credential Mount
 
@@ -101,10 +102,11 @@ The script writes temporary credentials to `~/.aws/eks-devcontainer/credentials`
 
 ## Post-Create Lifecycle
 
-`devcontainer.json` runs a single post-create command:
+`devcontainer.json` runs setup once after creation and reconnects on each start:
 
 ```bash
 bash scripts/container-init.sh setup
+bash scripts/container-init.sh connect
 ```
 
 ### Stage Reference
@@ -113,9 +115,7 @@ Each positional flag is opt-in. With no flags, the script is a safe no-op.
 
 | Stage | What it does |
 |-------|-------------|
-| `setup` | Create dirs (`~/.kube`, output dirs), clean previous runs, validate AWS creds, write `~/.container-env` (sets `TF_DATA_DIR`, `AWS_REGION`, etc.), copy deploy scripts to env dir, copy `.mcp/mcp.json` → `.vscode/mcp.json`, configure Codex sandbox, mark git safe directory |
-| `init` | Compatibility path: generate + push SSM repo secrets to AWS Secrets Manager, then run `install.sh init` |
-| `apply` | Compatibility path: run `install.sh apply` |
+| `setup` | Create local directories, validate AWS credentials, write non-secret environment values, configure MCP/Codex, and mark the repository as safe |
 | `connect` | Read `config/shared.auto.tfvars.json` for cluster name/region, run `aws eks update-kubeconfig`, retrieve ArgoCD admin password, start `kubectl port-forward` for ArgoCD UI on port 8080 |
 
 ### Common stage combinations
@@ -126,22 +126,23 @@ Each positional flag is opt-in. With no flags, the script is a safe no-op.
 // Dev: environment setup only (no Terraform)
 "bash scripts/container-init.sh setup"
 
-// Dev: setup + connect to an existing cluster (no Terraform)
-"bash scripts/container-init.sh setup connect"
+// Reconnect to an existing cluster on container start (no Terraform)
+"bash scripts/container-init.sh connect"
 
 // Deploy infrastructure explicitly from a terminal:
-// bash scripts/csoc-stack.sh plan
-// bash scripts/csoc-stack.sh apply
+// bash terragrunt/live/aws/csoc-core/stack.sh plan
+// bash terragrunt/live/aws/csoc-core/stack.sh apply
 ```
 
-All stages log to `outputs/logs/container-init-<timestamp>.log`.
+All stages log to `outputs/YYYY-MM-DD/container-init.log`. Repeated runs
+on the same UTC date overwrite that day's log.
 
 ## Config Source of Truth
 
 All user-editable configuration lives in `config/shared.auto.tfvars.json`. This file drives:
 
 - Terraform variables (auto-loaded by filename convention)
-- Terragrunt stack evaluation and compatibility script backend extraction
+- Terragrunt stack evaluation
 - `container-init.sh` cluster name + region resolution (for the `connect` stage)
 
 Copy from the example and populate before first use:
@@ -165,14 +166,15 @@ cp config/shared.auto.tfvars.json.example config/shared.auto.tfvars.json
 
 ```bash
 # 1. Clone the repo (inside WSL on Windows)
-git clone <repo-url> ~/src/eks-cluster-mgmt
-cd ~/src/eks-cluster-mgmt
+git clone <repo-url> ~/src/gen3-kro
+cd ~/src/gen3-kro
 
 # 2. Copy and populate config
 cp config/shared.auto.tfvars.json.example config/shared.auto.tfvars.json
 
-# 3. (If using developer-identity module for first time)
-#    cd terraform/env/developer-identity && terraform apply
+# 3. (If using developer identity for the first time)
+#    bash terragrunt/live/aws/prereq-iam/stack.sh plan
+#    bash terragrunt/live/aws/prereq-iam/stack.sh apply
 #    Register MFA device per outputs/mfa-setup-instructions.txt
 
 # 4. Authenticate on the HOST
@@ -189,23 +191,26 @@ code .
 bash scripts/mfa-session.sh <MFA_CODE>
 
 # Inside the container — plan changes through Terragrunt
-bash scripts/csoc-stack.sh plan
+bash terragrunt/live/aws/csoc-core/stack.sh plan
 
 # Inside the container — apply changes explicitly
-bash scripts/csoc-stack.sh apply
+bash terragrunt/live/aws/csoc-core/stack.sh apply
 
 # Inside the container — destroy stack explicitly
-bash scripts/csoc-stack.sh destroy
+bash terragrunt/live/aws/csoc-core/stack.sh destroy
 
 # Reconnect to cluster (after container restart)
 bash scripts/container-init.sh connect
 
 # Validate Helm charts
-helm template argocd/charts/application-sets/
-helm template argocd/charts/resource-groups/
+helm template csoc-controllers argocd/csoc/helm/csoc-controllers \
+  -f argocd/csoc/controllers/values.yaml \
+  -f argocd/csoc/controllers/eks-overrides/addons.yaml
 ```
 
-> **Important:** Use `scripts/csoc-stack.sh` for the preferred Terragrunt-first workflow. `install.sh` / `destroy.sh` remain compatibility paths until state migration is complete.
+> **Important:** Use the `stack.sh` in each `terragrunt/live/aws/<stack>/`
+> directory for infrastructure operations. `container-init.sh` only prepares the
+> development environment and connects to an existing cluster.
 
 ### ArgoCD UI
 
@@ -214,7 +219,7 @@ After the `connect` stage completes, the ArgoCD UI is available at:
 ```
 https://localhost:8080
 Username: admin
-Password: (see outputs/argocd-password.txt)
+Password: (available in $ARGOCD_ADMIN_PASSWORD)
 ```
 
 Port 8080 is forwarded from container to host via `forwardPorts`.
@@ -253,7 +258,9 @@ Run `mfa-session.sh` on the **host** before starting the container. The script w
 
 ### Permission / chmod errors on Terraform init
 
-`TF_DATA_DIR` is set to `/home/vscode/.terraform-data` (container-local ext4) to avoid `chmod`/`rename` failures when the workspace is on a Windows DrvFs bind-mount. If you still see errors, ensure the repo is cloned to a native Linux filesystem (WSL ext4), not `/mnt/c/...`.
+Run initialization through the appropriate live `stack.sh` so each generated
+unit keeps independent Terraform metadata. On Windows, keep the repository on a
+native WSL filesystem rather than `/mnt/c/...`.
 
 ### Container build failures
 

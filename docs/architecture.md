@@ -35,34 +35,32 @@ planned.
 
 | Phase | Context | Tool | Creates |
 |-------|---------|------|---------|
-| 1 | Host or container | Terragrunt + Terraform | Developer identity |
-| 2 | Host or container | Terragrunt + Terraform | CSOC VPC, EKS, OIDC, CSOC IAM roles |
-| 3 | Host or container | Terragrunt + Terraform | Spoke workload IAM roles |
-| 4 | Host or container | Terragrunt + Terraform | Argo CD install and bootstrap AppSet |
-| 5 | ArgoCD | GitOps | Controllers, RGDs, CARM resources, spoke instances |
+| 1 | Host or container | Terragrunt + Terraform | Operator access |
+| 2 | Host or container | Terragrunt + Terraform | CSOC VPC, EKS, and OIDC |
+| 3 | Host or container | Terragrunt + Terraform | Controller IAM and Argo CD install |
+| 4 | Host or container | Terragrunt + Terraform | Per-spoke IAM and CSOC spoke access |
+| 5 | Host or container | Terragrunt + Terraform | GitOps and fleet bootstrap |
+| 6 | ArgoCD | GitOps | Controllers, RGDs, CARM resources, spoke instances |
 
 Spoke roles prefer exact trust to the CSOC source role ARN emitted by the
-foundation unit. The account-root plus `ArnLike` trust remains as a compatibility
-fallback for the deprecated IAM setup stack and state migration window.
+controller IAM state. Direct devcontainer trust is disabled unless explicitly
+enabled for manual cleanup.
 
 ## Terraform Modules
 
 ```text
-terragrunt/live/aws/csoc
-└── terraform/catalog/units
-    ├── csoc-foundation -> terraform/catalog/modules/aws-csoc-foundation
-    │   ├── VPC + EKS
-    │   ├── ACK source role
-    │   ├── ArgoCD role
-    │   └── optional AWS-managed capabilities
-    ├── spoke-iam -> terraform/catalog/modules/aws-spoke
-    └── csoc-in-cluster-bootstrap -> terraform/catalog/modules/csoc-in-cluster-bootstrap
-        ├── ArgoCD namespace, service accounts, and Helm install
-        └── argocd-bootstrap submodule for repo/cluster secrets and AppSet
+terragrunt/live/aws/
+├── prereq-iam
+│   └── operator-access -> aws-operator-access-iam
+├── csoc-core
+│   ├── csoc-cluster -> aws-csoc-cluster
+│   ├── csoc-controller-iam -> aws-csoc-controller-iam
+│   └── argocd-install -> k8s-argocd-install
+└── fleet
+    ├── spoke-iam-<alias> -> aws-spoke-iam
+    ├── csoc-spoke-access -> aws-csoc-spoke-access
+    └── argocd-gitops-bootstrap -> argocd-gitops-bootstrap
 ```
-
-`terraform/catalog/modules/csoc-cluster` remains as the compatibility wrapper for
-the old plain Terraform root until state migration is complete.
 
 ## ArgoCD Chain
 

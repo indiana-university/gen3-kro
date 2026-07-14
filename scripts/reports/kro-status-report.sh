@@ -10,19 +10,20 @@
 #      NOTE: cluster-resources/ and applications/ subdirs are not yet scanned
 #   4. ACK-managed AWS resources (all namespaces from infrastructure/ and tests/)
 #   5. ArgoCD Application health
+#   6. Workloads in the selected spoke cluster
 #
 # Fleet values directory layout:
 #   argocd/spokes/spoke1/       (local Kind default)
 #   argocd/spokes/<cluster>/    (EKS spoke; use --cluster <name>)
 #
-# Output is always written to outputs/reports/<name>.ansi (ANSI colours preserved).
+# Output is written to outputs/YYYY-MM-DD/<name>.ansi.
 # Filename is derived from flags; existing files are overwritten unless -ts is used.
 #
 # Usage:
 #   bash scripts/reports/kro-status-report.sh                      # → kro-status.ansi
 #   bash scripts/reports/kro-status-report.sh --cluster spoke1     # → kro-status-cluster-spoke1.ansi
 #   bash scripts/reports/kro-status-report.sh --ns spoke1          # → kro-status-ns-spoke1.ansi
-#   bash scripts/reports/kro-status-report.sh --section kro        # kro | ack | instances | argocd
+#   bash scripts/reports/kro-status-report.sh --section kro        # kro | ack | instances | argocd | workloads
 #   bash scripts/reports/kro-status-report.sh --instance <name>    # filter to one instance
 #   bash scripts/reports/kro-status-report.sh --json ./snap.json   # also emit JSON snapshot
 #   bash scripts/reports/kro-status-report.sh -ts                  # append timestamp to filename
@@ -33,6 +34,8 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_ROOT:-$(cd "${SCRIPT_DIR}/../.." && pwd)}"
+OUTPUT_ROOT="${REPO_DIR}/outputs"
+source "${REPO_DIR}/scripts/lib/output-paths.sh"
 
 ADDONS_FILE="${REPO_DIR}/argocd/csoc/controllers/values.yaml"
 INSTANCES_CHART="${REPO_DIR}/argocd/csoc/helm/kro-aws-instances"
@@ -42,7 +45,7 @@ INFRA_DIR="${REPO_DIR}/argocd/spokes/spoke1"
 FILTER_CLUSTER=""
 FILTER_NS=""
 FILTER_INSTANCE=""
-FILTER_SECTION=""   # kro | instances | ack | argocd | (empty = all)
+FILTER_SECTION=""   # kro | instances | ack | argocd | workloads | (empty = all)
 JSON_OUT=""
 ADD_TIMESTAMP=0
 
@@ -55,7 +58,7 @@ while [[ $# -gt 0 ]]; do
     --json)      JSON_OUT="$2";        shift 2 ;;
     -ts)         ADD_TIMESTAMP=1;      shift ;;
     -h|--help)
-      sed -n '4,23p' "$0" | sed -E 's/^#( |$)//'
+      sed -n '4,29p' "$0" | sed -E 's/^#( |$)//'
       exit 0 ;;
     *) echo "Unknown argument: $1"; exit 1 ;;
   esac
@@ -78,7 +81,7 @@ _build_output_path() {
   [[ -n "${FILTER_NS}" ]]        && name+="-ns-${FILTER_NS}"
   [[ -n "${FILTER_INSTANCE}" ]]  && name+="-instance-${FILTER_INSTANCE}"
   [[ "${ADD_TIMESTAMP}" -eq 1 ]] && name+="-$(date '+%Y%m%d-%H%M%S')"
-  echo "${REPO_DIR}/outputs/reports/${name}.ansi"
+  echo "${REPORT_DIR}/${name}.ansi"
 }
 
 FILE_OUT="$(_build_output_path)"
@@ -586,6 +589,56 @@ section_argocd() {
 }
 
 # ─────────────────────────────────────────────────────────────────────────────
+# SECTION 6 — Spoke Cluster Workloads
+# ─────────────────────────────────────────────────────────────────────────────
+section_spoke_workloads() {
+  log_banner "SECTION 6 — Spoke Cluster Workloads"
+
+  local spoke_alias="${FILTER_CLUSTER:-${FILTER_NS:-spoke1}}"
+  local spoke_context=""
+
+  if kubectl config get-contexts -o name 2>/dev/null | grep -qx "${spoke_alias}" &&
+    kubectl cluster-info --context "${spoke_alias}" &>/dev/null; then
+    spoke_context="${spoke_alias}"
+  else
+    local candidate
+    candidate=$(kubectl config get-contexts -o name 2>/dev/null | grep "^${spoke_alias}" | head -1 || true)
+    if [[ -n "${candidate}" ]] && kubectl cluster-info --context "${candidate}" &>/dev/null; then
+      spoke_context="${candidate}"
+    fi
+  fi
+
+  if [[ -n "${spoke_context}" ]]; then
+    log_info "Using kubeconfig context: ${spoke_context}"
+    echo ""
+    kubectl get deployments --all-namespaces --context "${spoke_context}" \
+      -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,READY:.status.readyReplicas,DESIRED:.spec.replicas,AVAILABLE:.status.availableReplicas' \
+      2>/dev/null || log_warn "Unable to list spoke deployments"
+    echo ""
+    kubectl get pods --all-namespaces --context "${spoke_context}" \
+      -o custom-columns='NAMESPACE:.metadata.namespace,NAME:.metadata.name,STATUS:.status.phase,READY:.status.containerStatuses[*].ready,RESTARTS:.status.containerStatuses[*].restartCount' \
+      2>/dev/null || log_warn "Unable to list spoke pods"
+    echo ""
+    return
+  fi
+
+  log_warn "No reachable kubeconfig context for ${spoke_alias}; showing Argo CD resource status"
+  kubectl get applications.argoproj.io -n argocd -o json 2>/dev/null | jq -r --arg spoke "${spoke_alias}" '
+    .items[] |
+    select(
+      (.metadata.labels.fleet_spoke // "") == $spoke or
+      (.spec.destination.name // "" | startswith($spoke))
+    ) |
+    "\n  " + .metadata.name,
+    ((.status.resources // [])[] |
+      "    " + .kind + "/" + .name +
+      "  sync=" + (.status // "Unknown") +
+      "  health=" + (.health.status // "N/A"))
+  ' || log_warn "Unable to read Argo CD application resources"
+  echo ""
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
 # JSON dump helper
 # ─────────────────────────────────────────────────────────────────────────────
 dump_json() {
@@ -649,6 +702,7 @@ main() {
       print_empty_section "SECTION 3 — KRO Instance Status"
       print_empty_section "SECTION 4 — ACK-Managed AWS Resources (by namespace)"
       print_empty_section "SECTION 5 — ArgoCD Application Health"
+      print_empty_section "SECTION 6 — Spoke Cluster Workloads"
       ;;
     ack)
       print_empty_section "SECTION 1 — KRO Controller"
@@ -656,6 +710,7 @@ main() {
       print_empty_section "SECTION 3 — KRO Instance Status"
       section_ack_resources
       print_empty_section "SECTION 5 — ArgoCD Application Health"
+      print_empty_section "SECTION 6 — Spoke Cluster Workloads"
       ;;
     instances)
       print_empty_section "SECTION 1 — KRO Controller"
@@ -663,6 +718,7 @@ main() {
       section_instances
       print_empty_section "SECTION 4 — ACK-Managed AWS Resources (by namespace)"
       print_empty_section "SECTION 5 — ArgoCD Application Health"
+      print_empty_section "SECTION 6 — Spoke Cluster Workloads"
       ;;
     argocd)
       print_empty_section "SECTION 1 — KRO Controller"
@@ -670,6 +726,15 @@ main() {
       print_empty_section "SECTION 3 — KRO Instance Status"
       print_empty_section "SECTION 4 — ACK-Managed AWS Resources (by namespace)"
       section_argocd
+      print_empty_section "SECTION 6 — Spoke Cluster Workloads"
+      ;;
+    workloads)
+      print_empty_section "SECTION 1 — KRO Controller"
+      print_empty_section "SECTION 2 — ACK Controllers"
+      print_empty_section "SECTION 3 — KRO Instance Status"
+      print_empty_section "SECTION 4 — ACK-Managed AWS Resources (by namespace)"
+      print_empty_section "SECTION 5 — ArgoCD Application Health"
+      section_spoke_workloads
       ;;
     "")
       section_kro
@@ -677,8 +742,9 @@ main() {
       section_instances
       section_ack_resources
       section_argocd
+      section_spoke_workloads
       ;;
-    *) log_error "Unknown section '${FILTER_SECTION}'. Valid: kro | ack | instances | argocd"; exit 1 ;;
+    *) log_error "Unknown section '${FILTER_SECTION}'. Valid: kro | ack | instances | argocd | workloads"; exit 1 ;;
   esac
 
   dump_json

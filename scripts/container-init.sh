@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 ###############################################################################
-# Dev Container Init Script — Flag-based Orchestration (V2 — Plain Terraform)
+# Dev Container Init Script — Flag-based Tooling Setup
 #
 # Runs as postCreateCommand. Each stage is opt-in via positional flags.
 # With no flags, nothing runs (safe no-op).
@@ -8,30 +8,26 @@
 # Usage:
 #   bash container-init.sh                       # No-op
 #   bash container-init.sh setup                 # Env setup only
-#   bash container-init.sh setup init            # Env setup + terraform init
-#   bash container-init.sh setup init apply      # Compatibility Terraform path
-#   bash container-init.sh setup connect         # Env setup + connect to existing cluster
-#   bash container-init.sh init apply            # Skip setup if already configured
+#   bash container-init.sh connect               # Connect to an existing cluster
 #
 # Stages:
-#   setup   — dirs, script copies, AWS cred validation, env file, MCP, codex
-#   init    — compatibility path: push repo secrets + terraform init
-#   apply   — compatibility path: terraform apply + connect
+#   setup   — dirs, AWS cred validation, env file, MCP, codex
 #   connect — kubeconfig update + ArgoCD port-forward (no TF dependency)
 #
 # Configure in devcontainer.json → postCreateCommand:
 #   "bash scripts/container-init.sh setup"            # Dev: env only
-#   "bash scripts/container-init.sh setup connect"    # Existing cluster connect
+# Configure in devcontainer.json → postStartCommand:
+#   "bash scripts/container-init.sh connect"          # Existing cluster connect
 ###############################################################################
 set -euo pipefail
 
-REPO_DIR="${REPO_ROOT:-/workspaces/eks-cluster-mgmt}"
-ENV_DIR="${REPO_DIR}/terraform/env/aws/csoc-cluster"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)"
+REPO_DIR="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd -P)}"
 OUTPUTS_DIR="${REPO_DIR}/outputs"
-LOG_DIR="${OUTPUTS_DIR}/logs"
-mkdir -p "$LOG_DIR"
-TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
-LOG_FILE="${LOG_DIR}/container-init-${TIMESTAMP}.log"
+OUTPUT_ROOT="$OUTPUTS_DIR"
+source "${SCRIPT_DIR}/lib/output-paths.sh"
+LOG_FILE="${LOG_DIR}/container-init.log"
+ARGOCD_PASSWORD_FILE="${OUTPUTS_DIR}/argocd-password.txt"
 
 ###############################################################################
 # Credential tier tracking — set during setup, read by downstream stages
@@ -44,7 +40,7 @@ CRED_TIER="tier4"
 CRED_IDENTITY=""
 CRED_EXPIRY_UTC=""
 CRED_REMAINING_S="-1"
-CRED_REPORT_FILE="${OUTPUTS_DIR}/credential-report.txt"
+CRED_REPORT_FILE="${REPORT_DIR}/credential-report.txt"
 
 ###############################################################################
 # validate_credentials — Tiered credential security check
@@ -73,14 +69,15 @@ validate_credentials() {
     echo ""
     if [[ ! -f "${REPO_DIR}/outputs/aws-config-snippet.ini" ]]; then
       echo "    FIRST-TIME SETUP REQUIRED:"
-      echo "      1. Run: cd terraform/env/developer-identity && terraform apply"
-      echo "      2. Register MFA device (see outputs/mfa-setup-instructions.txt)"
+      echo "      1. Review prerequisite IAM: bash scripts/terragrunt-stack.sh prereq-iam plan"
+      echo "      2. Apply after review: bash scripts/terragrunt-stack.sh prereq-iam apply"
+      echo "      3. Register MFA device (see outputs/mfa-setup-instructions.txt)"
       echo ""
     fi
     echo "    Option A (recommended):  bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)"
     echo "    Option B (less secure):  bash scripts/mfa-session.sh --no-mfa    (on HOST)"
     echo ""
-    echo "    Downstream stages (init/apply) will be BLOCKED."
+    echo "    The connect stage will be BLOCKED."
     _write_credential_report
     return 1
   fi
@@ -122,7 +119,7 @@ validate_credentials() {
     echo "      Option A (recommended):  bash scripts/mfa-session.sh <MFA_CODE>"
     echo "      Option B (less secure):  bash scripts/mfa-session.sh --no-mfa"
     echo ""
-    echo "    Downstream stages (init/apply) will be BLOCKED."
+    echo "    The connect stage will be BLOCKED."
     _write_credential_report
     return 1
   fi
@@ -275,7 +272,8 @@ UPGRADE INSTRUCTIONS:
   From Tier 2/3/4 to Tier 1:
     Run on HOST: bash scripts/mfa-session.sh <MFA_CODE>
   From Tier 4 (first time):
-    1. cd terraform/env/developer-identity && terraform apply
+    1. bash scripts/terragrunt-stack.sh prereq-iam plan
+       bash scripts/terragrunt-stack.sh prereq-iam apply
     2. Register MFA device (see outputs/mfa-setup-instructions.txt)
     3. bash scripts/mfa-session.sh <MFA_CODE>
 
@@ -288,8 +286,8 @@ REPORT
 ###############################################################################
 # _credential_warning — Print credential status banner (pre/post stage)
 #
-# Usage: _credential_warning "before" "apply"
-#        _credential_warning "after"  "apply"
+# Usage: _credential_warning "before" "connect"
+#        _credential_warning "after"  "connect"
 ###############################################################################
 _credential_warning() {
   local timing="$1" stage="$2"
@@ -351,12 +349,20 @@ _require_valid_credentials() {
 ###############################################################################
 declare -A STAGES=()
 for arg in "$@"; do
+  case "$arg" in
+    setup|connect) ;;
+    *)
+      echo "ERROR: Unknown stage: $arg" >&2
+      echo "Usage: bash container-init.sh [setup] [connect]" >&2
+      exit 1
+      ;;
+  esac
   STAGES["$arg"]=1
 done
 
 if [[ ${#STAGES[@]} -eq 0 ]]; then
   echo "=== Dev Container Init ==="
-  echo "  No stages requested. Usage: bash container-init.sh [setup] [init] [apply]"
+  echo "  No stages requested. Usage: bash container-init.sh [setup] [connect]"
   echo "  Nothing to do."
   exit 0
 fi
@@ -367,31 +373,21 @@ trap 'echo "" >&2; echo "  ✗ [container-init] Command failed at line $LINENO" 
 
 echo "=== Dev Container Init ==="
 echo "  REPO_DIR:  $REPO_DIR"
-echo "  ENV_DIR:   $ENV_DIR"
 echo "  Log:       $LOG_FILE"
 echo "  Stages:    $*"
 echo ""
 
 ###############################################################################
-# STAGE: setup — Environment, dirs, script copies, AWS creds, MCP, codex
+# STAGE: setup — Environment, dirs, AWS creds, MCP, codex
 ###############################################################################
 if [[ -n "${STAGES[setup]:-}" ]]; then
   echo ">>> [setup] Starting environment setup..."
 
-  # ── 0. Clean generated files from previous runs ────────────────────────
-  echo "  Cleaning generated files from previous runs..."
-  rm -rf "${ENV_DIR}/.terraform" "${ENV_DIR}/.terraform.lock.hcl" 2>/dev/null || true
-  rm -f  "${ENV_DIR}/install.sh" "${ENV_DIR}/destroy.sh" 2>/dev/null || true
-  rm -f  "${OUTPUTS_DIR}/connect-csoc.sh" 2>/dev/null || true
-
   # ── 1. Required directories ───────────────────────────────────────────────
-  # ~/.kube is NOT mounted — created empty; connect-csoc.sh populates it later
+  # ~/.kube is not mounted; the connect stage writes the kubeconfig.
   mkdir -p /home/vscode/.kube /home/vscode/.aws 2>/dev/null || true
-  mkdir -p "${OUTPUTS_DIR}/logs" "${OUTPUTS_DIR}/argo" "${OUTPUTS_DIR}/ssm-repo-secrets" 2>/dev/null || true
+  mkdir -p "${LOG_DIR}" "${REPORT_DIR}" "${OUTPUTS_DIR}/ssm-repo-secrets" 2>/dev/null || true
   mkdir -p "${REPO_DIR}/config/ssm-repo-secrets" 2>/dev/null || true
-
-  # Workdir ownership: on Windows bind-mounts, chown can fail; don't break setup
-  sudo chown -R vscode:vscode /workspaces 2>/dev/null || true
 
   # ── 2. Git safe directory ─────────────────────────────────────────────────
   git config --global --add safe.directory "${REPO_DIR}" || true
@@ -418,12 +414,10 @@ if [[ -n "${STAGES[setup]:-}" ]]; then
   fi
   CSOC_REGION="${CSOC_REGION:-${AWS_DEFAULT_REGION:-${AWS_REGION:-us-east-1}}}"
 
-  # ── 5. Write ~/.container-env with correct env vars ───────────────────────
-  # TF_DATA_DIR redirects .terraform/ and .terraform.lock.hcl to a container-
-  # local ext4 path so that git-clone chmod and lock-file rename succeed even
-  # when the workspace is on a Windows bind-mount (DrvFs/NTFS).
-  TF_DATA_DIR="/home/vscode/.terraform-data"
-  mkdir -p "${TF_DATA_DIR}"
+  # ── 5. Write ~/.container-env with non-secret environment values ──────────
+  # A shared TF_DATA_DIR is unsafe because every Terragrunt unit owns separate
+  # backend metadata. Remove the directory created by older container versions.
+  rm -rf /home/vscode/.terraform-data 2>/dev/null || true
 
   ENV_FILE="/home/vscode/.container-env"
   cat > "$ENV_FILE" <<EOF
@@ -432,8 +426,9 @@ export REPO_ROOT="${REPO_DIR}"
 export AWS_PROFILE="${CSOC_PROFILE}"
 export AWS_REGION="${CSOC_REGION}"
 export AWS_DEFAULT_REGION="${CSOC_REGION}"
-export TF_DATA_DIR="${TF_DATA_DIR}"
 EOF
+
+  chmod 600 "$ENV_FILE"
 
   echo "  Wrote ${ENV_FILE}"
 
@@ -452,22 +447,7 @@ EOF
   # shellcheck disable=SC1090
   source "$ENV_FILE"
 
-  # ── 7. Copy deploy scripts to ENV_DIR for convenience ─────────────────────
-  # Allows: cd terraform/env/aws/csoc-cluster && bash install.sh
-  if [[ -d "$ENV_DIR" ]]; then
-    echo "  Copying install.sh and destroy.sh to ${ENV_DIR}/"
-    cp -f "${REPO_DIR}/scripts/install.sh" "${ENV_DIR}/install.sh" 2>/dev/null \
-      || echo "  WARNING: Could not copy install.sh to ${ENV_DIR}/ (non-fatal)"
-    cp -f "${REPO_DIR}/scripts/destroy.sh" "${ENV_DIR}/destroy.sh" 2>/dev/null \
-      || echo "  WARNING: Could not copy destroy.sh to ${ENV_DIR}/ (non-fatal)"
-    # chmod may fail on Windows bind-mounts — non-fatal
-    chmod +x "${ENV_DIR}/install.sh" "${ENV_DIR}/destroy.sh" 2>/dev/null || true
-  else
-    echo "  WARNING: Env directory not found: ${ENV_DIR}"
-    echo "  Skipping script copy."
-  fi
-
-  # ── 8. MCP config ───────────────────────────────────────────────────────────
+  # ── 7. MCP config ───────────────────────────────────────────────────────────
   # Copy from .mcp/ source-of-truth to .vscode/mcp.json for VS Code pickup.
   # Write failures on Windows bind-mounts are non-fatal.
   if [[ -f "${REPO_DIR}/.mcp/mcp.json" ]]; then
@@ -477,7 +457,7 @@ EOF
       || echo "  WARNING: Could not copy .mcp/mcp.json (non-fatal)"
   elif [[ ! -f "${REPO_DIR}/.vscode/mcp.json" ]]; then
     mkdir -p "${REPO_DIR}/.vscode" 2>/dev/null || true
-    cat > "${REPO_DIR}/.vscode/mcp.json" <<'JSON' 2>/dev/null || true
+    cat > "${REPO_DIR}/.vscode/mcp.json" <<JSON 2>/dev/null || true
 {
   "servers": {
     "context7": {
@@ -490,7 +470,7 @@ EOF
       "command": "uvx",
       "args": ["awslabs.aws-api-mcp-server@latest"],
       "env": {
-        "AWS_REGION": "us-east-1"
+        "AWS_REGION": "${CSOC_REGION}"
       }
     }
   },
@@ -502,7 +482,7 @@ JSON
       || echo "  WARNING: Could not create .vscode/mcp.json (non-fatal)"
   fi
 
-  # ── 9. Codex sandbox config (restricted container workaround) ────────────
+  # ── 8. Codex sandbox config (restricted container workaround) ────────────
   mkdir -p /home/vscode/.codex 2>/dev/null || true
   CODEX_CONFIG="/home/vscode/.codex/config.toml"
   touch "${CODEX_CONFIG}" 2>/dev/null || true
@@ -519,93 +499,6 @@ JSON
 fi
 
 ###############################################################################
-# STAGE: init — Push SSM secrets + terraform init
-###############################################################################
-if [[ -n "${STAGES[init]:-}" ]]; then
-  echo ">>> [init] Starting init stage..."
-
-  # Ensure env is loaded (in case setup was skipped but ran previously)
-  [[ -f /home/vscode/.container-env ]] && source /home/vscode/.container-env
-
-  # ── Credential gate: block on Tier 3/4 ──────────────────────────────────────
-  if ! _require_valid_credentials "init"; then
-    # Fall through — skip init but don't abort the script
-    echo ">>> [init] SKIPPED (invalid credentials)."
-    echo ""
-  else
-  _credential_warning "before" "init"
-
-  # ── Push SSM repo secrets before init ─────────────────────────────────────
-  # Runs before terraform init so that SSM secrets exist when Terraform
-  # validates data sources. Gracefully skips if scripts don't exist.
-  GENERATE_SCRIPT="${REPO_DIR}/scripts/ssm-repo-secrets/generate-ssm-payload.sh"
-  PUSH_SCRIPT="${REPO_DIR}/scripts/ssm-repo-secrets/push-ssm-secrets.sh"
-
-  if [[ -x "$GENERATE_SCRIPT" || -f "$GENERATE_SCRIPT" ]]; then
-    echo ">>> [init] Generating SSM repo secret payloads..."
-    bash "$GENERATE_SCRIPT" || echo "  WARNING: SSM payload generation failed (non-fatal)"
-
-    if [[ -x "$PUSH_SCRIPT" || -f "$PUSH_SCRIPT" ]]; then
-      echo ">>> [init] Pushing SSM repo secrets to AWS Secrets Manager..."
-      bash "$PUSH_SCRIPT" || echo "  WARNING: SSM secret push failed (non-fatal)"
-    fi
-  else
-    echo ">>> [init] No generate-ssm-payload.sh found — skipping SSM secrets push."
-  fi
-
-  # ── Run terraform init via install.sh ─────────────────────────────────────
-  echo ">>> [init] Running install.sh init..."
-  _init_rc=0
-  bash "${REPO_DIR}/scripts/install.sh" init || _init_rc=$?
-  if [[ $_init_rc -ne 0 ]]; then
-    echo ""
-    echo "  ✗ [init] install.sh init exited with code ${_init_rc}"
-    echo "    Common causes: missing backend config, expired credentials,"
-    echo "    or unconfigured config/shared.auto.tfvars.json."
-    echo "    Check: ${LOG_FILE}"
-    echo ""
-  fi
-
-  _credential_warning "after" "init"
-  echo ">>> [init] Complete (exit code: ${_init_rc})."
-  echo ""
-  fi  # end credential gate
-fi
-
-###############################################################################
-# STAGE: apply — terraform apply + connect to cluster
-###############################################################################
-if [[ -n "${STAGES[apply]:-}" ]]; then
-  echo ">>> [apply] Starting apply stage..."
-
-  # Ensure env is loaded
-  [[ -f /home/vscode/.container-env ]] && source /home/vscode/.container-env
-
-  # ── Credential gate: block on Tier 3/4 ──────────────────────────────────────
-  if ! _require_valid_credentials "apply"; then
-    echo ">>> [apply] SKIPPED (invalid credentials)."
-    echo ""
-  else
-  _credential_warning "before" "apply"
-
-  # ── Run terraform apply via install.sh ────────────────────────────────────
-  echo ">>> [apply] Running install.sh apply..."
-  _apply_rc=0
-  bash "${REPO_DIR}/scripts/install.sh" apply || _apply_rc=$?
-  if [[ $_apply_rc -ne 0 ]]; then
-    echo ""
-    echo "  ✗ [apply] install.sh apply exited with code ${_apply_rc}"
-    echo "    Re-run manually: bash scripts/install.sh apply"
-    echo "    Check: ${LOG_FILE}"
-    echo ""
-  fi
-
-  _credential_warning "after" "apply"
-  echo ">>> [apply] Complete (exit code: ${_apply_rc})."
-  echo ""
-  fi  # end credential gate
-fi
-###############################################################################
 # STAGE: connect — kubeconfig + ArgoCD port-forward (no TF dependency)
 #
 # Safe to call on every container start — only acts when the cluster is
@@ -617,7 +510,10 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
   # Ensure env is loaded
   [[ -f /home/vscode/.container-env ]] && source /home/vscode/.container-env
 
-  # Credential gate: block on Tier 3/4
+  # Validate on every start because host-mounted sessions may have changed.
+  validate_credentials || true
+
+  # Credential gate: block on Tier 3/4.
   if ! _require_valid_credentials "connect"; then
     echo ">>> [connect] SKIPPED (invalid credentials)."
     echo ""
@@ -687,14 +583,18 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
 
         if [[ -n "$ARGOCD_PASSWORD" ]]; then
           echo "  ✓ ArgoCD admin password retrieved"
+          printf '%s\n' "$ARGOCD_PASSWORD" > "$ARGOCD_PASSWORD_FILE"
+          chmod 600 "$ARGOCD_PASSWORD_FILE"
           # Export to .container-env so all new terminals pick it up
           ENV_FILE="/home/vscode/.container-env"
           # Remove any previous ARGOCD_ADMIN_PASSWORD line, then append
           sed -i '/^export ARGOCD_ADMIN_PASSWORD=/d' "$ENV_FILE" 2>/dev/null || true
-          echo "export ARGOCD_ADMIN_PASSWORD=\"${ARGOCD_PASSWORD}\"" >> "$ENV_FILE"
+          printf 'export ARGOCD_ADMIN_PASSWORD=%q\n' "$ARGOCD_PASSWORD" >> "$ENV_FILE"
+          chmod 600 "$ENV_FILE"
           # Export for this session immediately
           export ARGOCD_ADMIN_PASSWORD="$ARGOCD_PASSWORD"
         else
+          rm -f "$ARGOCD_PASSWORD_FILE"
           echo "  ✗ ArgoCD password not yet available (ArgoCD may still be deploying)"
         fi
 
@@ -704,7 +604,7 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
           sleep 1
         fi
 
-        PF_LOG="${OUTPUTS_DIR}/port-forward.log"
+        PF_LOG="${LOG_DIR}/port-forward.log"
         nohup kubectl port-forward -n argocd svc/argocd-server 8080:443 \
           --context "$CLUSTER_NAME" > "$PF_LOG" 2>&1 &
         PF_PID=$!
@@ -719,7 +619,7 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
           echo "  ✗ Port-forward failed to start (see $PF_LOG)"
         fi
       else
-        echo "  Cluster not reachable — skipping ArgoCD setup (deploy first with: bash scripts/csoc-stack.sh apply)"
+        echo "  Cluster not reachable - deploy core first with scripts/terragrunt-stack.sh csoc-core"
       fi
   fi
 
@@ -767,5 +667,5 @@ echo ""
 echo "=== Dev Container Init — All requested stages complete! ==="
 }
 
-main "$@" 2>&1 | tee -a "$LOG_FILE"
+main "$@" 2>&1 | tee "$LOG_FILE"
 exit "${PIPESTATUS[0]}"

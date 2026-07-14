@@ -54,6 +54,16 @@
       "Resource": "*"
     },
     {
+      "Sid": "MFATagManagement",
+      "Effect": "Allow",
+      "Action": [
+        "iam:ListMFADeviceTags",
+        "iam:TagMFADevice",
+        "iam:UntagMFADevice"
+      ],
+      "Resource": "arn:aws:iam::${account_id}:mfa/*"
+    },
+    {
       "Sid": "VPCNetworking",
       "Effect": "Allow",
       "Action": [

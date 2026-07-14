@@ -91,7 +91,6 @@ Edit `config/shared.auto.tfvars.json`. Key fields to fill in:
   "csoc_alias": "rds-gen3",
 
   "backend_bucket": "my-tfstate-bucket",
-  "backend_key": "csoc-cluster/terraform.tfstate",
   "backend_region": "us-east-1",
 
   "spokes": [
@@ -100,7 +99,10 @@ Edit `config/shared.auto.tfvars.json`. Key fields to fill in:
 }
 ```
 
-See `config/shared.auto.tfvars.json.example` for the full schema with all available options.
+Terragrunt units own their state keys; `backend_bucket` and `backend_region`
+select the shared backend location. See
+`config/shared.auto.tfvars.json.example` for the full schema with all available
+options.
 
 ### 3. Establish MFA Session (Host)
 
@@ -126,8 +128,8 @@ stack. This stack contains only `developer_identity`; it does not create the CSO
 cluster, spoke IAM roles, or in-cluster bootstrap resources.
 
 ```bash
-bash scripts/prereq-iam.sh plan
-bash scripts/prereq-iam.sh apply
+bash scripts/terragrunt-stack.sh prereq-iam plan
+bash scripts/terragrunt-stack.sh prereq-iam apply
 ```
 
 This creates:
@@ -221,7 +223,9 @@ Cmd+Shift+P → Dev Containers: Reopen in Container
 devcontainer open .
 ```
 
-The `container-init.sh` runs automatically and validates credentials. A successful init shows:
+`container-init.sh setup` runs once after creation and validates credentials.
+`container-init.sh connect` runs on each start and reconnects only when the
+cluster already exists. A successful credential check shows:
 ```
 AWS identity: arn:aws:sts::<account>:assumed-role/<CSOC_ALIAS>-devcontainer-role/...
 Using temporary credentials (assumed-role) — good
@@ -232,58 +236,56 @@ Using temporary credentials (assumed-role) — good
 ## CSOC Stack Deployment
 
 Run Terragrunt from the host or devcontainer after credentials are available.
-The stack creates developer identity, CSOC AWS foundation, spoke IAM, and
-in-cluster bootstrap in dependency order.
+Use the prerequisite, core, and fleet stack entrypoints independently in
+dependency order.
 
 ```bash
 # From repo root
-bash scripts/csoc-stack.sh plan
-bash scripts/csoc-stack.sh apply
+bash scripts/terragrunt-stack.sh csoc-core plan
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan
 ```
 
 ### What the Stack Creates
 
-- CSOC VPC, EKS cluster, OIDC provider, ACK source role, and Argo CD role.
-- Per-spoke IAM roles using the exact CSOC source role ARN when foundation
-  outputs are available.
-- Argo CD namespace, service accounts, Helm release, repo secrets, cluster
-  secrets, and bootstrap ApplicationSet.
+- The core stack creates VPC/EKS, controller IAM, and the Argo CD installation.
+- The fleet stack creates one selected spoke's IAM, exact CSOC assume-role
+  access, repository secrets, fleet secrets, and the bootstrap ApplicationSet.
 
-The deprecated compatibility paths remain available until state migration is
-complete:
+### State Ownership
 
-```bash
-cd terragrunt/live/aws/iam-setup
-terragrunt stack run plan
+The retired single-root Terraform deployment path had no resources in its
+backend state and has been removed. Current state ownership is split by
+Terragrunt unit:
 
-bash scripts/install.sh plan
-```
+| Unit | State key |
+|------|-----------|
+| Operator access | `prereq/operator-access/terraform.tfstate` |
+| CSOC cluster | `csoc/cluster/terraform.tfstate` |
+| Controller IAM | `csoc/controller-iam/terraform.tfstate` |
+| Per-spoke IAM | `spokes/<alias>/iam/terraform.tfstate` |
+| CSOC spoke access | `csoc/spoke-access/terraform.tfstate` |
+| Argo CD install | `csoc/argocd-install/terraform.tfstate` |
+| GitOps bootstrap | `csoc/gitops-bootstrap/terraform.tfstate` |
 
-### State Migration
+Review each core or fleet plan before any apply. Empty state for a
+unit means Terraform will propose creates for that unit; do not apply until that
+is expected for the target environment.
 
-State migration is a backend-state operation only. Do not run `terraform apply`
-to migrate state.
-
-Prerequisites:
-
-- `terraform`, `terragrunt`, `aws`, and `jq` are installed.
-- AWS credentials can access the configured S3 backend.
-- `bash scripts/install.sh plan` has been reviewed.
-- `bash scripts/csoc-stack.sh plan` has been reviewed.
-- Both plans show no creates, replacements, deletes, or unintended updates.
-
-Execute the guarded migration:
+Apply and verify individual units in dependency order:
 
 ```bash
-CONFIRM_STATE_MIGRATION=yes bash scripts/state-migration.sh
+bash scripts/terragrunt-stack.sh csoc-core plan csoc-cluster
+bash scripts/terragrunt-stack.sh csoc-core apply csoc-cluster
+bash scripts/terragrunt-stack.sh csoc-core plan csoc-controller-iam
+bash scripts/terragrunt-stack.sh csoc-core plan argocd-install
+
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan spoke-iam
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan csoc-spoke-access
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan argocd-gitops-bootstrap
 ```
 
-After migration, rerun:
-
-```bash
-bash scripts/csoc-stack.sh plan
-bash scripts/install.sh plan
-```
+Run the same unit plan after each apply and require zero changes before moving
+to the next unit.
 
 ---
 
@@ -292,7 +294,8 @@ bash scripts/install.sh plan
 ### Cluster Connectivity
 
 ```bash
-# Kubeconfig is updated automatically by install.sh
+# Kubeconfig is updated by the connect stage
+bash scripts/container-init.sh connect
 kubectl get nodes
 kubectl get ns
 ```
@@ -374,13 +377,13 @@ kubectl describe vpc spoke1-vpc -n spoke1
 
 ### Port-Forward Method
 
-Run the generated connection script:
+Run the devcontainer connection stage:
 
 ```bash
-bash outputs/connect-csoc.sh
+bash scripts/container-init.sh connect
 ```
 
-This script:
+This stage:
 1. Refreshes kubeconfig for `{csoc_alias}-csoc-cluster`
 2. Port-forwards ArgoCD server to `localhost:8080`
 3. Opens the UI at `https://localhost:8080`
@@ -388,13 +391,15 @@ This script:
 ### Credentials
 
 - **Username:** `admin`
-- **Password:** Contents of `outputs/argocd-password.txt`
+- **Password:** `$ARGOCD_ADMIN_PASSWORD` in the container environment
 
 ```bash
-cat outputs/argocd-password.txt
+printf '%s\n' "$ARGOCD_ADMIN_PASSWORD"
 ```
 
-> The ArgoCD admin password is the initial bcrypt hash from the `argocd-initial-admin-secret`. It is retrieved and saved by `install.sh` during apply.
+> The ArgoCD admin password is read from `argocd-initial-admin-secret` by
+> `bash scripts/container-init.sh connect` and exported into the container
+> environment when available.
 
 ### ArgoCD CLI
 
@@ -402,7 +407,7 @@ cat outputs/argocd-password.txt
 # Login
 argocd login localhost:8080 \
   --username admin \
-  --password "$(cat outputs/argocd-password.txt)" \
+  --password "$ARGOCD_ADMIN_PASSWORD" \
   --insecure
 
 # List applications
@@ -424,8 +429,8 @@ argocd app get fleet --show-operation
 1. Add spoke config to `config/shared.auto.tfvars.json` under `spokes` array
 2. Create `iam/<new-spoke-alias>/ack/inline-policy.json` (or rely on `_default`)
 3. Add spoke values in `argocd/spokes/<new-spoke>/`
-4. Run `bash scripts/csoc-stack.sh plan`
-5. Review the plan, then run `bash scripts/csoc-stack.sh apply`
+4. Run `bash scripts/terragrunt-stack.sh csoc-core plan`
+5. Review the plan, then run `bash scripts/terragrunt-stack.sh csoc-core apply`
 
 ### Updating Addon Values
 
@@ -449,7 +454,7 @@ Edit `argocd/spokes/<spoke>/infrastructure-values.yaml` and push. ArgoCD will re
 2. Delete and recreate the ArgoCD git repo secret:
    ```bash
    kubectl delete secret argocd-repo-<cluster-name> -n argocd
-   bash scripts/csoc-stack.sh apply   # re-creates the secret from Secrets Manager
+   TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet apply
    ```
 
 ### Renewing MFA Session
@@ -481,17 +486,17 @@ kubectl get vpc,cluster -A   # verify gone
 
 ```bash
 # From repo root
-bash scripts/csoc-stack.sh destroy
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet destroy
+bash scripts/terragrunt-stack.sh csoc-core destroy
 ```
 
 This runs the Terragrunt stack destroy flow for the CSOC split-state layout.
 
-### Step 3: Destroy Spoke IAM Roles
+### Step 3: Destroy Developer Identity Prerequisites
 
 ```bash
-# Deprecated compatibility path for pre-migration IAM state
-cd terragrunt/live/aws/iam-setup
-terragrunt stack run destroy
+# Only when intentionally removing the devcontainer IAM bootstrap path
+bash scripts/terragrunt-stack.sh prereq-iam destroy
 ```
 
 ---

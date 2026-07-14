@@ -34,9 +34,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 OUTPUTS_DIR="${REPO_ROOT}/outputs"
-LOG_DIR="${OUTPUTS_DIR}/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="${LOG_DIR}/ssm-generate-$(date +%Y%m%d-%H%M%S).log"
+OUTPUT_ROOT="$OUTPUTS_DIR"
+source "${REPO_ROOT}/scripts/lib/output-paths.sh"
+LOG_FILE="${LOG_DIR}/ssm-generate.log"
 
 main() {
 INPUT_FILE="${1:-${REPO_ROOT}/config/ssm-repo-secrets/input.json}"
@@ -249,5 +249,5 @@ echo ""
 echo "Next step: run push-ssm-secrets.sh to create/update secrets in AWS Secrets Manager"
 }
 
-main "$@" 2>&1 | tee -a "$LOG_FILE"
+main "$@" 2>&1 | tee "$LOG_FILE"
 exit "${PIPESTATUS[0]}"

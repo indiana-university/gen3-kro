@@ -48,7 +48,7 @@ For every RGD change:
 After creating or editing an RGD:
 ```bash
 # Validate YAML syntax
-python3 -c "import yaml; yaml.safe_load(open('argocd/charts/resource-groups/templates/<name>-rg.yaml'))"
+python3 -c "import yaml; yaml.safe_load(open('argocd/csoc/kro/aws-rgds/gen3/v1/<phase>/<name>-rg.yaml'))"
 
 # Check ArgoCD picked up the change
 kubectl get application -n argocd kro-local-rgs -o yaml | grep -A3 syncResult

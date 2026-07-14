@@ -64,9 +64,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 OUTPUTS_DIR="${REPO_DIR}/outputs"
-LOG_DIR="${OUTPUTS_DIR}/logs"
+OUTPUT_ROOT="$OUTPUTS_DIR"
+source "${SCRIPT_DIR}/lib/output-paths.sh"
 CONFIG_DIR="${REPO_DIR}/config"
 ENV_FILE="${CONFIG_DIR}/local.env"
+ARGOCD_PASSWORD_FILE="${OUTPUTS_DIR}/argocd-password.txt"
 
 mkdir -p "$LOG_DIR" "$CONFIG_DIR"
 
@@ -124,7 +126,7 @@ CRED_TIER="tier4"
 CRED_IDENTITY=""
 CRED_EXPIRY_UTC=""
 CRED_REMAINING_S="-1"
-CRED_REPORT_FILE="${OUTPUTS_DIR}/credential-report.txt"
+CRED_REPORT_FILE="${REPORT_DIR}/credential-report.txt"
 
 ###############################################################################
 # Parse flags into associative array (same pattern as gen3-kro container-init)
@@ -834,12 +836,15 @@ stage_connect() {
 
   if [[ -n "$argocd_password" ]]; then
     log_success "ArgoCD admin password retrieved"
+    printf '%s\n' "$argocd_password" > "$ARGOCD_PASSWORD_FILE"
+    chmod 600 "$ARGOCD_PASSWORD_FILE"
     if [[ -f "$ENV_FILE" ]]; then
       sed -i '/^export ARGOCD_ADMIN_PASSWORD=/d' "$ENV_FILE" 2>/dev/null || true
       echo "export ARGOCD_ADMIN_PASSWORD=\"${argocd_password}\"" >> "$ENV_FILE"
     fi
     export ARGOCD_ADMIN_PASSWORD="$argocd_password"
   else
+    rm -f "$ARGOCD_PASSWORD_FILE"
     log_warn "ArgoCD password not yet available (ArgoCD may still be deploying)"
   fi
 
@@ -849,7 +854,7 @@ stage_connect() {
     sleep 1
   fi
 
-  local pf_log="${OUTPUTS_DIR}/port-forward.log"
+  local pf_log="${LOG_DIR}/port-forward.log"
   nohup kubectl port-forward -n "$ARGOCD_NAMESPACE" svc/argocd-server 8080:80 \
     --address 0.0.0.0 \
     --context "$KIND_CONTEXT" > "$pf_log" 2>&1 &
@@ -1024,6 +1029,6 @@ main() {
 }
 
 TIMESTAMP="$(date +%Y%m%d-%H%M%S)"
-LOG_FILE="${LOG_DIR}/kind-csoc-${TIMESTAMP}.log"
-main 2>&1 | tee -a "$LOG_FILE"
+LOG_FILE="${LOG_DIR}/kind-csoc.log"
+main 2>&1 | tee "$LOG_FILE"
 exit "${PIPESTATUS[0]}"

@@ -18,9 +18,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 OUTPUTS_DIR="${REPO_ROOT}/outputs"
-LOG_DIR="${OUTPUTS_DIR}/logs"
-mkdir -p "$LOG_DIR"
-LOG_FILE="${LOG_DIR}/ssm-push-$(date +%Y%m%d-%H%M%S).log"
+OUTPUT_ROOT="$OUTPUTS_DIR"
+source "${REPO_ROOT}/scripts/lib/output-paths.sh"
+LOG_FILE="${LOG_DIR}/ssm-push.log"
 
 main() {
 OUTPUT_FILE="${REPO_ROOT}/outputs/ssm-repo-secrets/output.json"
@@ -117,5 +117,5 @@ done
 echo "=== Done: $REPO_COUNT secret(s) pushed to AWS Secrets Manager ==="
 }
 
-main "$@" 2>&1 | tee -a "$LOG_FILE"
+main "$@" 2>&1 | tee "$LOG_FILE"
 exit "${PIPESTATUS[0]}"
