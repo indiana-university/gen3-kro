@@ -389,8 +389,13 @@ if [[ -n "${STAGES[setup]:-}" ]]; then
   mkdir -p "${LOG_DIR}" "${REPORT_DIR}" "${OUTPUTS_DIR}/ssm-repo-secrets" 2>/dev/null || true
   mkdir -p "${REPO_DIR}/config/ssm-repo-secrets" 2>/dev/null || true
 
-  # ── 2. Git safe directory ─────────────────────────────────────────────────
+  # ── 2. Git safe directory + cross-platform ownership fixes ─────────────────
+  # safe.directory suppresses "dubious ownership" errors on NTFS/WSL mounts.
+  # fileMode false prevents spurious permission-bit diffs (NTFS ignores chmod).
+  # autocrlf false prevents CRLF contamination; .gitattributes handles eol.
   git config --global --add safe.directory "${REPO_DIR}" || true
+  git config core.fileMode false || true
+  git config core.autocrlf false || true
 
   # ── 3. Validate AWS credentials — Tiered security check ───────────────────
   # Tries most secure credential type first (Tier 1: MFA assumed-role),

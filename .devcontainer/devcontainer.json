@@ -14,14 +14,21 @@
   // Array form bypasses cmd.exe on Windows (which has a different `find` command)
   // and invokes bash directly (Git Bash on Windows, /bin/bash on Linux/Mac).
   // The || true ensures the container builds even if chmod is unavailable.
-  "initializeCommand": ["bash", "-c", "find '${localWorkspaceFolder}/scripts' '${localWorkspaceFolder}/terragrunt/live/aws' -name '*.sh' -exec chmod +x {} + 2>/dev/null || true"],
+  // Fix script permissions on the host before the workspace is mounted.
+  // Uses -path guards so missing optional directories are silently skipped.
+  // chmod is a no-op on NTFS mounts but git core.fileMode=false (set by
+  // container-init.sh) prevents spurious mode-bit diffs inside the container.
+  "initializeCommand": ["bash", "-c", "find '${localWorkspaceFolder}/scripts' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; { [ -d '${localWorkspaceFolder}/terragrunt/live/aws' ] && find '${localWorkspaceFolder}/terragrunt/live/aws' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; }; true"],
 
   // ── Credential mounts ────────────────────────────────────────────────
   // Mount ~/.aws from host so Terraform/AWS CLI picks up the pre-assumed credentials
   // written by scripts/mfa-session.sh (profile: csoc in ~/.aws/credentials).
   // ~/.kube is not mounted; container-init.sh generates kubeconfig at runtime.
+  // Keep Codex config, authentication, logs, and chat sessions in a Docker
+  // volume so they survive devcontainer rebuilds on this Docker host.
   "mounts": [
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached"
+    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached",
+    "source=gen3-kro-codex,target=/home/vscode/.codex,type=volume"
   ],
 
   "remoteUser": "vscode",
@@ -37,7 +44,8 @@
   //   Tier 3/4:       Invalid/expired or missing — downstream stages blocked
   "containerEnv": {
     "REPO_ROOT":   "/workspaces/${localWorkspaceFolderBasename}",
-    "AWS_PROFILE": "csoc"
+    "AWS_PROFILE": "csoc",
+    "CODEX_HOME":  "/home/vscode/.codex"
   },
 
   // Lifecycle flags: setup | connect (blank = no-op)
