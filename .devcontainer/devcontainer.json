@@ -18,17 +18,20 @@
   // Uses -path guards so missing optional directories are silently skipped.
   // chmod is a no-op on NTFS mounts but git core.fileMode=false (set by
   // container-init.sh) prevents spurious mode-bit diffs inside the container.
-  "initializeCommand": ["bash", "-c", "find '${localWorkspaceFolder}/scripts' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; { [ -d '${localWorkspaceFolder}/terragrunt/live/aws' ] && find '${localWorkspaceFolder}/terragrunt/live/aws' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; }; true"],
+  "initializeCommand": ["bash", "-c", "mkdir -p \"${USERPROFILE:-$HOME}/.codex/sessions\"; find '${localWorkspaceFolder}/scripts' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; { [ -d '${localWorkspaceFolder}/terragrunt/live/aws' ] && find '${localWorkspaceFolder}/terragrunt/live/aws' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; }; true"],
 
   // ── Credential mounts ────────────────────────────────────────────────
   // Mount ~/.aws from host so Terraform/AWS CLI picks up the pre-assumed credentials
   // written by scripts/mfa-session.sh (profile: csoc in ~/.aws/credentials).
   // ~/.kube is not mounted; container-init.sh generates kubeconfig at runtime.
-  // Keep Codex config, authentication, logs, and chat sessions in a Docker
-  // volume so they survive devcontainer rebuilds on this Docker host.
+  // Keep project-local Codex state private while sharing only portable chat
+  // artifacts between devcontainers on this Docker host. Host transcripts are
+  // read-only and imported by codex-history.sh; host auth/config are not mounted.
   "mounts": [
-    "source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached",
-    "source=gen3-kro-codex,target=/home/vscode/.codex,type=volume"
+    "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached",
+    "source=gen3-kro-codex,target=/home/vscode/.codex,type=volume",
+    "source=codex-devcontainer-history,target=/home/vscode/.codex-history,type=volume",
+    "source=${localEnv:USERPROFILE}/.codex/sessions,target=/mnt/codex-host-sessions,type=bind,readonly"
   ],
 
   "remoteUser": "vscode",
@@ -45,17 +48,18 @@
   "containerEnv": {
     "REPO_ROOT":   "/workspaces/${localWorkspaceFolderBasename}",
     "AWS_PROFILE": "csoc",
-    "CODEX_HOME":  "/home/vscode/.codex"
+    "CODEX_HOME":  "/home/vscode/.codex",
+    "CODEX_HISTORY_HOME": "/home/vscode/.codex-history"
   },
 
   // Lifecycle flags: setup | connect (blank = no-op)
   // Terragrunt init/plan/apply is explicit through each live stack's stack.sh.
-  "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup",
+  "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/.devcontainer/codex-history.sh && bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup",
 
   // Re-establish kubeconfig + ArgoCD port-forward on every container start.
   // postCreateCommand only runs once at container creation; this ensures the
   // port-forward survives container restarts and VS Code reconnects.
-  "postStartCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh connect",
+  "postStartCommand": "bash /workspaces/${localWorkspaceFolderBasename}/.devcontainer/codex-history.sh && bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh connect",
 
   "customizations": {
     "vscode": {

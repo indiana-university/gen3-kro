@@ -181,8 +181,8 @@ fi
 
 # ─── Resolve credentials directory (WSL-aware) ────────────────────────────
 # devcontainer.json mounts:
-#   source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws/eks-devcontainer
-# On Windows that resolves to C:\Users\<user>\.aws\eks-devcontainer (USERPROFILE).
+#   source=${localEnv:USERPROFILE}/.aws/eks-devcontainer
+# On Windows/WSL that resolves to the Windows profile used by Docker Desktop.
 # When this script runs inside WSL, $HOME is the Linux home (/home/<user>), which
 # is a DIFFERENT path — Docker Desktop cannot mount it. Detect WSL and prefer
 # the Windows home directory so the mounted path matches.

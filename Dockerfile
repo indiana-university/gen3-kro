@@ -152,9 +152,9 @@ ENTRYPOINT ["/usr/bin/tini", "--"]
 USER vscode
 WORKDIR /workspaces
 
-# Seed the Codex state directory with vscode ownership. On first use, Docker
-# copies this ownership into the named volume mounted at this path.
-RUN mkdir -p /home/vscode/.codex
+# Seed Codex state and history directories with vscode ownership. On first use,
+# Docker copies this ownership into the named volumes mounted at these paths.
+RUN mkdir -p /home/vscode/.codex /home/vscode/.codex-history
 
 # Aliases and startup banner
 RUN echo 'alias k=kubectl' >> /home/vscode/.bashrc \

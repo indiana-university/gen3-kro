@@ -6,6 +6,7 @@ Development container configuration for the **eks-cluster-mgmt** platform — a 
 
 ```
 .devcontainer/
+├── codex-history.sh     # Imports and links persistent local Codex transcripts
 ├── devcontainer.json    # Main configuration (cross-platform)
 └── README.md            # This file
 ```
@@ -24,6 +25,7 @@ This devcontainer follows the principle of least privilege:
 | `--security-opt=no-new-privileges` | Prevents SUID/SGID privilege escalation inside container |
 | Scoped credential mount | Only `~/.aws/eks-devcontainer` is mounted — not all of `~/.aws` |
 | `~/.kube` not mounted | Created empty at runtime; `connect` stage populates it |
+| Split Codex persistence | Host transcripts are read-only; host Codex config and authentication are not mounted |
 | AI agent sandbox disabled | Required for agents to run terraform/kubectl/helm — the only intentional relaxation |
 
 ## Pre-installed Tools
@@ -69,14 +71,24 @@ Host:      ~/.aws/eks-devcontainer/   →   Container: /home/vscode/.aws/
 
 This means only credentials written to `~/.aws/eks-devcontainer/` on the host are visible inside the container. Host profiles, static keys, and other credentials are never exposed.
 
-### Cross-platform mount source
+### Windows/WSL mount source
 
-The mount source uses `${localEnv:HOME}${localEnv:USERPROFILE}` so it resolves on both Linux/macOS (`HOME`) and Windows (`USERPROFILE`):
+This repository's Windows/WSL workflow uses `USERPROFILE` for scoped host
+mounts. Do not concatenate `HOME` and `USERPROFILE`: both are populated in WSL,
+which produces an invalid path. `mfa-session.sh` resolves this same Windows
+profile directory before writing credentials.
 
 ```json
 "mounts": [
-  "source=${localEnv:HOME}${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached"
+  "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached"
 ]
+```
+
+For a native Linux or macOS host, launch VS Code with `USERPROFILE` mapped to
+the local home directory before opening the devcontainer:
+
+```bash
+USERPROFILE="$HOME" code .
 ```
 
 ### How credentials get there
@@ -100,6 +112,55 @@ The script writes temporary credentials to `~/.aws/eks-devcontainer/credentials`
 | `~/.kube` | Created empty inside the container; the `connect` stage runs `aws eks update-kubeconfig` to populate it |
 | `~/.azure`, `~/.config/gcloud` | Not used by this EKS-only project |
 
+## Codex Chat History
+
+Codex stores local transcripts under `$CODEX_HOME/sessions`. A newly created
+Docker volume starts empty, so mounting only `/home/vscode/.codex` preserves
+future container chats but does not import chats that already exist on the
+host. Directly bind-mounting the entire host `.codex` directory is also a poor
+fit here: the host and Linux container have different ownership, paths,
+credential stores, platform configuration, SQLite state, and IPC sockets.
+
+This devcontainer separates portable transcripts from machine-specific state:
+
+| Path | Storage | Purpose |
+|------|---------|---------|
+| `/home/vscode/.codex` | `gen3-kro-codex` volume | Per-project config, login cache, databases, logs, plugins, and IPC |
+| `/home/vscode/.codex-history` | `codex-devcontainer-history` volume | Shared transcript files for devcontainers using the same Docker daemon |
+| `/mnt/codex-host-sessions` | Read-only host bind mount | Source for importing existing host transcripts |
+
+`.devcontainer/codex-history.sh` runs at container creation and start. It
+imports only `*.jsonl` transcript files, retains a backup if it migrates an
+existing container session directory, and links `$CODEX_HOME/sessions` to the
+shared history volume. It never imports `auth.json`, `config.toml`, SQLite
+databases, caches, or IPC sockets.
+
+Important behavior:
+
+- Rebuild the devcontainer after changing `.devcontainer/devcontainer.json`;
+  restarting the old container does not add new mounts.
+- The history is local to the current Docker daemon. It is not cloud sync and
+  does not follow you to another machine or a replaced Docker data store.
+- Host sessions record host workspace paths while container sessions use
+  `/workspaces/...`. Use `codex resume --all` when the default current-directory
+  filter does not show an imported session.
+- Do not resume the same session concurrently in two containers; both processes
+  would append to the same transcript file.
+- Other devcontainers can share these transcripts by mounting the same
+  `codex-devcontainer-history` volume and linking their own
+  `$CODEX_HOME/sessions` to its `sessions` directory. Keep their config,
+  authentication, SQLite, cache, and IPC state in separate volumes.
+- Do not remove the `codex-devcontainer-history` Docker volume unless you intend
+  to remove the container-side copy of the chat transcripts.
+
+To confirm persistence from inside the container:
+
+```bash
+echo "$CODEX_HOME"
+readlink -f "$CODEX_HOME/sessions"
+codex resume --all
+```
+
 ## Post-Create Lifecycle
 
 `devcontainer.json` runs setup once after creation and reconnects on each start:
@@ -115,7 +176,7 @@ Each positional flag is opt-in. With no flags, the script is a safe no-op.
 
 | Stage | What it does |
 |-------|-------------|
-| `setup` | Create local directories, validate AWS credentials, write non-secret environment values, configure MCP/Codex, and mark the repository as safe |
+| `setup` | Import persistent Codex transcripts, create local directories, validate AWS credentials, write non-secret environment values, configure MCP/Codex, and mark the repository as safe |
 | `connect` | Read `config/shared.auto.tfvars.json` for cluster name/region, run `aws eks update-kubeconfig`, retrieve ArgoCD admin password, start `kubectl port-forward` for ArgoCD UI on port 8080 |
 
 ### Common stage combinations
