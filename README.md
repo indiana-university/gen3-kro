@@ -13,9 +13,9 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 │  │                    EKS Cluster ({csoc_alias}-csoc-cluster)       │  │
 │  │                                                               │  │
 │  │  ┌──────────┐  ┌──────────────┐  ┌────────────────────────┐  │  │
-│  │  │  ArgoCD  │  │ KRO          │  │ ACK Controllers (18x)  │  │  │
-│  │  │  Server  │→ │ Controller   │→ │ ec2, eks, iam, rds,    │  │  │
-│  │  │          │  │              │  │ s3, route53, ...        │  │  │
+│  │  │  ArgoCD  │  │ KRO          │  │ ACK Controllers        │  │  │
+│  │  │  Server  │→ │ Controller   │→ │ cloudtrail, ec2, efs,  │  │  │
+│  │  │          │  │              │  │ eks, iam, rds, s3, ... │  │  │
 │  │  └──────────┘  └──────────────┘  └───────────┬────────────┘  │  │
 │  │       │                                       │               │  │
 │  │       │ ApplicationSets                       │ Cross-account │  │
@@ -51,25 +51,25 @@ Multi-account EKS platform using a **CSOC** (Cybersecurity Operations Center) cl
 ## Repository Structure
 
 ```
-├── .devcontainer/                   # VS Code DevContainer (EKS workflow)
+├── .devcontainer/                   # Dev Container configuration and Dockerfile
 ├── argocd/                          # GitOps configuration
 │   ├── bootstrap/                   #   Entry-point ArgoCD ApplicationSets
 │   ├── csoc/                        #   CSOC controllers, Helm charts, KRO RGDs
 │   │   ├── controllers/             #     Controller ApplicationSet values
-│   │   ├── helm/                    #     Charts used by bootstrap AppSets
-│   │   └── kro/                     #     Recursively synced ResourceGraphDefinitions
+│   │   ├── helm/                    #     Charts: csoc-controllers, kro-aws-instances, multi-account
+│   │   └── kro/aws-rgds/            #     ResourceGraphDefinitions (gen3/, test/)
 │   └── spokes/                      #   Per-spoke KRO instance and workload values
 ├── config/                          # User config files (gitignored except examples)
-├── docs/                            # Documentation, diagrams, design reports
-├── iam/                             # Per-spoke IAM inline policies
-├── references/                      # Upstream reference repos (gen3-helm, kro, etc.)
+├── docs/                            # Architecture, deployment, security documentation
+├── iam/                             # Per-spoke and operator-role IAM policy sources
+├── plan/                            # Architecture decisions, migration roadmap, target operating model
+├── references/                      # Upstream reference repos (gen3-helm, gen3-gitops, gen3-build, awesome-copilot)
 ├── scripts/                         # Deployment and orchestration scripts
 ├── terraform/
 │   └── catalog/
-│       ├── modules/                 #   cluster, controller IAM, per-spoke IAM,
-│       │                            #   Argo CD install and GitOps bootstrap modules
-│       └── units/                   #   Terragrunt unit wrappers
-├── terragrunt/live/aws/             # prereq-iam, csoc-core, and fleet stacks
+│       ├── modules/                 #   7 Terraform modules (cluster, IAM, ArgoCD install, gitops bootstrap)
+│       └── units/                   #   7 Terragrunt unit wrappers
+├── terragrunt/live/aws/             # operators-iam, csoc-cluster-core, and spoke-fleet-update stacks
 ├── outputs/                         # Generated artifacts (gitignored)
 └── third-party-licenses/            # Bundled license files
 ```
@@ -78,103 +78,176 @@ See [docs/architecture.md](docs/architecture.md) for detailed architecture docum
 
 ## Prerequisites
 
+### Host (install before opening the container)
+
 | Tool | Version | Purpose |
-|------|---------|---------|
-| Terraform | 1.13.5 | Infrastructure provisioning (pre-installed in container) |
-| Terragrunt | 0.99.1 | Environment orchestration and dependency ordering |
+|------|---------|--------|
+| Docker | latest | Dev container runtime |
+| VS Code + Dev Containers extension | latest | Container environment |
+| AWS CLI v2 | 2.x | `mfa-session.sh` credential writing |
+| Terragrunt | 1.1.1 | Required only when running Terragrunt stacks outside the container |
+
+### Container (pre-installed in devcontainer)
+
+| Tool | Version | Purpose |
+|------|---------|--------|
+| Terraform | 1.15.8 | Infrastructure provisioning |
+| Terragrunt | 1.1.1 | Environment orchestration |
 | AWS CLI v2 | 2.32.0 | Cloud authentication and management |
 | kubectl | 1.35.1 | Kubernetes cluster interaction |
 | Helm | 3.16.1 | Chart templating and validation |
 | jq | system | JSON processing |
-| Docker | latest | Dev container runtime (host-side) |
+| yq | 4.44.3 | YAML processing |
+| kustomize | 5.7.1 | Kubernetes manifest overlays |
+| ArgoCD CLI | latest | ArgoCD operations |
+| k9s | latest | Kubernetes TUI |
 
 ## Quick Start
 
 > **Windows users:** The repository must live on a native Linux filesystem (WSL ext4, e.g. `~/src/eks-cluster-mgmt`), **not** `/mnt/c/...`. See [docs/deployment-guide.md](docs/deployment-guide.md).
 
-### 1. Configure Variables
+### AWS Prerequisites (must exist before first run)
+
+The following AWS resources must be created manually before Terragrunt can run:
+
+| Resource | Account | Purpose |
+|----------|---------|---------|
+| S3 bucket | CSOC | Terraform remote state backend — set `backend_bucket` in config |
+| IAM user | CSOC | Your operator identity used as the MFA source profile |
+| GitHub App | GitHub | ArgoCD git authentication (**private repos only** — skip if your GitOps repo is public) |
+
+The S3 bucket requires versioning enabled and a bucket policy that allows the
+operator IAM role (`{csoc_alias}-csoc-operator-infrastructure-admin`) to
+read/write objects.
+For private repos, the GitHub App needs read access to all repos listed in
+`config/ssm-repo-secrets/input.json`. See [scripts/ssm-repo-secrets/README.md](scripts/ssm-repo-secrets/README.md).
+
+### Step 0 — Operator IAM Bootstrap (one-time per operator)
+
+This step references an existing IAM user and creates function-specific,
+MFA-gated operator roles. Terraform may manage a virtual MFA device but never
+the IAM user.
+
+**a. Copy and populate the config file:**
 
 ```bash
-# Copy the single config file (all variables + backend config)
 cp config/shared.auto.tfvars.json.example config/shared.auto.tfvars.json
-
-# Fill in your AWS profiles, cluster name, VPC CIDRs, spoke account IDs, etc.
 ```
 
-### 2. Authenticate (Host)
+Minimum fields to fill before running `operators-iam`:
 
-```bash
-# Option A: Assume CSOC role with MFA (recommended)
-bash scripts/mfa-session.sh <MFA_CODE>
-
-# Option B: Copy static credentials from source profile (no MFA)
-bash scripts/mfa-session.sh --no-mfa
+```json
+{
+  "backend_bucket":  "my-terraform-state-bucket",
+  "backend_region":  "us-east-1",
+  "region":          "us-east-1",
+  "aws_profile":     "<YOUR_ADMIN_AWS_PROFILE>",
+  "csoc_account_id": "<CSOC_ACCOUNT_ID>",
+  "csoc_alias":      "rds-gen3"
+}
 ```
 
-Credentials are written to `~/.aws/eks-devcontainer/credentials [csoc]`.
-
-### 3. Plan CSOC Stack
+**b. Review and create operator IAM:**
 
 ```bash
-bash scripts/terragrunt-stack.sh csoc-core plan
+bash scripts/terragrunt-stack.sh operators-iam plan   # review first
+bash scripts/terragrunt-stack.sh operators-iam apply
 ```
 
-Review the generated Terragrunt/Terraform plan. Operate prerequisite IAM, CSOC
-core, and fleet through their separate live entrypoints.
+After apply, run `bash scripts/operator-profile.sh` to write structured
+non-secret role/MFA mappings. See
+[scripts/terragrunt-stack.md](scripts/terragrunt-stack.md) for stack/command
+reference.
 
-For first-time credential bootstrapping without creating the CSOC cluster or
-spoke resources, use the prerequisite IAM-only stack:
+**c. Register and activate a newly created virtual MFA device** using the
+sensitive `mfa_enrollment` output, then select a role with
+`bash scripts/mfa-session.sh <MFA_CODE> --role-key infrastructure-admin`.
+
+### Step 1 — Populate Config
+
+Complete all remaining fields in `config/shared.auto.tfvars.json`. Groups to fill in:
+VPC CIDRs, GitHub org/repo, ArgoCD chart version, SSM secret names (private repos only),
+and spoke account aliases. See `config/shared.auto.tfvars.json.example` for the full schema.
+
+### Step 2 — Push SSM Repo Secrets (private repos only)
+
+> Skip this step if your GitOps repo is public.
+
+ArgoCD needs GitHub App credentials in AWS Secrets Manager before the fleet
+stack runs. See [scripts/ssm-repo-secrets/README.md](scripts/ssm-repo-secrets/README.md)
+for the full input schema and push workflow.
 
 ```bash
-bash scripts/terragrunt-stack.sh prereq-iam plan
-bash scripts/terragrunt-stack.sh prereq-iam apply
+cp config/ssm-repo-secrets/input.json.example config/ssm-repo-secrets/input.json
+# Fill in GitHub App credentials, then:
+bash scripts/ssm-repo-secrets/generate-ssm-payload.sh
+bash scripts/ssm-repo-secrets/push-ssm-secrets.sh
 ```
 
-### 4. Apply CSOC Stack
+### Step 3 — Authenticate (Host)
+
+Run on the **host** before opening the devcontainer (or before each 12-hour
+session expiry). See [scripts/mfa-session.md](scripts/mfa-session.md) for
+options, error reference, and how auto-detection of role/serial works.
 
 ```bash
-bash scripts/terragrunt-stack.sh csoc-core apply
+bash scripts/mfa-session.sh <MFA_CODE>       # MFA assumed-role (recommended)
+bash scripts/mfa-session.sh --no-mfa         # Copy admin profile credentials
 ```
 
-This creates the CSOC VPC/EKS cluster, controller IAM, and Argo CD installation.
-Spoke IAM, CSOC spoke access, and GitOps registration remain in the fleet stack.
+### Step 4 — Open the Devcontainer
 
-### 5. Verify
+In VS Code: `Cmd/Ctrl+Shift+P` → **Dev Containers: Reopen in Container**
+
+The container mounts `~/.aws/eks-devcontainer` and sets `AWS_PROFILE=csoc`
+automatically. See [scripts/container-init.md](scripts/container-init.md) for
+what the init script validates and how credential tiers are reported.
+
+### Step 5 — Plan and Apply CSOC Stack
 
 ```bash
-kubectl get pods -n argocd          # All pods Running
+bash scripts/terragrunt-stack.sh csoc-cluster-core plan
+bash scripts/terragrunt-stack.sh csoc-cluster-core apply
+```
+
+Creates the CSOC VPC/EKS cluster, controller IAM, and Argo CD installation.
+See [scripts/terragrunt-stack.md](scripts/terragrunt-stack.md) for unit-level
+targeting and state key reference.
+
+### Step 6 — Apply Fleet Stack
+
+```bash
+TG_SPOKE_ALIAS=spoke1 bash scripts/terragrunt-stack.sh spoke-fleet-update plan
+TG_SPOKE_ALIAS=spoke1 bash scripts/terragrunt-stack.sh spoke-fleet-update apply
+```
+
+Creates per-spoke IAM, CSOC assume-role access, and the bootstrap
+ApplicationSet that registers the spoke with ArgoCD.
+
+### Step 7 — Verify
+
+```bash
+kubectl get pods -n argocd             # All pods Running
 kubectl get applicationsets -n argocd  # Bootstrap ApplicationSet exists
 kubectl get applications -n argocd     # Bootstrap Application created
+kubectl get rgd                        # ResourceGraphDefinitions registered
 ```
 
 ## Local CSOC Quick Start (Host-Based Kind)
 
 Use the local CSOC for RGD authoring and KRO capability testing without EKS overhead.
 **No container needed** — runs entirely on the host.
-
-### Prerequisites
-
-Install on host: `kind` 0.27.0, `kubectl`, `helm`, `aws` CLI v2, `docker`.
-
-### 1. Authenticate
+See [scripts/kind-csoc.md](scripts/kind-csoc.md) for stage reference and bootstrap
+wave ordering, or [docs/local-csoc-guide.md](docs/local-csoc-guide.md) for the
+full walkthrough.
 
 ```bash
-bash scripts/mfa-session.sh <MFA_CODE>
+bash scripts/mfa-session.sh <MFA_CODE>         # Refresh credentials on host
+bash scripts/kind-csoc.sh create install       # Create cluster + full stack
+bash scripts/kind-csoc.sh inject-creds         # Refresh ACK creds if needed
 ```
 
-### 2. Create Cluster + Install Stack
-
-```bash
-bash scripts/kind-csoc.sh create install
-```
-
-### 3. Inject Credentials
-
-```bash
-bash scripts/kind-csoc.sh inject-creds
-```
-
-### 4. Verify
+Verify:
 
 ```bash
 kubectl get pods --all-namespaces   # All pods Running
@@ -182,59 +255,27 @@ kubectl get application -n argocd   # ArgoCD applications synced
 kubectl get rgd                     # ResourceGraphDefinitions registered
 ```
 
-See [docs/local-csoc-guide.md](docs/local-csoc-guide.md) for the full guide.
-
 ## Deployment Phases
 
 | Phase | Context | Tool | What |
 |-------|---------|------|------|
-| **Core** | Host or devcontainer | Terragrunt + Terraform | CSOC VPC/EKS, controller IAM, and Argo CD install |
-| **Fleet IAM** | Host or devcontainer | Terragrunt + Terraform | Per-spoke ACK IAM and exact CSOC assume-role access |
-| **GitOps bootstrap** | Host or devcontainer | Terragrunt + Terraform | Repo secrets, cluster secrets, and bootstrap ApplicationSet |
+| **operators-iam** | Host | Terragrunt + Terraform | Existing-user MFA and function-specific operator roles |
+| **csoc-cluster-core** | Host or devcontainer | Terragrunt + Terraform | CSOC VPC/EKS, controller IAM, and Argo CD install |
+| **spoke-fleet-update** | Host or devcontainer | Terragrunt + Terraform | Per-spoke IAM, cross-account trust, and GitOps bootstrap |
 
-The old single-root Terraform deployment path has been retired because its
-backend state is empty. Current deployment ownership is through the split
-Terragrunt units:
-
-- `prereq/operator-access/terraform.tfstate` for operator IAM
-- `csoc/cluster/terraform.tfstate` for VPC and EKS
-- `csoc/controller-iam/terraform.tfstate` for controller access
-- `spokes/<alias>/iam/terraform.tfstate` for each spoke
-- `csoc/spoke-access/terraform.tfstate` for exact assume-spoke access
-- `csoc/argocd-install/terraform.tfstate` for the Argo CD release
-- `csoc/gitops-bootstrap/terraform.tfstate` for fleet registration
-
-See [docs/deployment-guide.md](docs/deployment-guide.md) for detailed deployment procedures.
-
-The shared Terragrunt entrypoint writes timestamp-free, color-free action logs
-under `outputs/YYYY-MM-DD/terragrunt/<stack>/`. Terragrunt orchestration goes to
-`<action>-core.log`, while Terraform output goes to one
-`<action>-<unit>.log` per generated unit. Full-stack actions also create the
-native Terragrunt `<action>-report.json`; successful plans retain native plan
-files under `plan-files/`. Repeated actions overwrite only that action's files
-on the same UTC date. Container initialization, credential reporting, and port
-forwarding write directly under the dated directory.
-
-`outputs/argocd-password.txt` remains undated because connection tooling
-consumes it as current state.
-
-Plan one unit at a time for rollout and rollback, for example:
-
-```bash
-bash scripts/terragrunt-stack.sh csoc-core plan csoc-cluster
-TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan spoke-iam
-```
+For per-unit state keys, log paths, and unit-level targeting, see
+[scripts/terragrunt-stack.md](scripts/terragrunt-stack.md).
+For full step-by-step procedures, see [docs/deployment-guide.md](docs/deployment-guide.md).
 
 ## Teardown
 
 ```bash
 # Destroy CSOC stack and all Terraform-managed resources
-bash scripts/terragrunt-stack.sh csoc-core destroy
-TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet destroy
+bash scripts/terragrunt-stack.sh csoc-cluster-core destroy
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh spoke-fleet-update destroy
 
-# Destroy developer identity prerequisites only when intentionally removing
-# the devcontainer IAM bootstrap path
-bash scripts/terragrunt-stack.sh prereq-iam destroy
+# Destroy operator IAM only when intentionally removing all managed operator access
+bash scripts/terragrunt-stack.sh operators-iam destroy
 ```
 
 ## Documentation
@@ -247,6 +288,16 @@ bash scripts/terragrunt-stack.sh prereq-iam destroy
 | [Security Model](docs/security.md) | IAM, cross-account trust, credentials |
 | [ArgoCD Configuration](argocd/README.md) | GitOps structure and conventions |
 | [Contributing](CONTRIBUTING.md) | Branching, code quality, PR process |
+
+### Script Reference
+
+| Script | Description |
+|--------|-------------|
+| [scripts/mfa-session.md](scripts/mfa-session.md) | Write devcontainer AWS credentials (host) |
+| [scripts/container-init.md](scripts/container-init.md) | Devcontainer setup and credential tiers |
+| [scripts/terragrunt-stack.md](scripts/terragrunt-stack.md) | Terragrunt stack/unit reference and log paths |
+| [scripts/kind-csoc.md](scripts/kind-csoc.md) | Local Kind CSOC stages and bootstrap order |
+| [scripts/ssm-repo-secrets/README.md](scripts/ssm-repo-secrets/README.md) | GitHub App credentials → AWS Secrets Manager |
 
 ## Project Conventions
 

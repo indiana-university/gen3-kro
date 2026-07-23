@@ -4,7 +4,7 @@
 
 resource "aws_iam_role" "kro_controller" {
   count = local.kro_aws_managed && var.enable_kro_capability ? 1 : 0
-  name  = "${local.name}-kro-controller"
+  name  = "${local.name}-kro-controller-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -61,7 +61,7 @@ resource "aws_eks_capability" "kro" {
 
 resource "aws_iam_role" "argocd_controller" {
   count = local.argocd_aws_managed && var.enable_argocd_capability ? 1 : 0
-  name  = "${local.name}-argocd-role"
+  name  = "${local.name}-argocd-controller-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"

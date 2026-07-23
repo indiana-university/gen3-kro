@@ -16,7 +16,7 @@
     "node_pools": ["general-purpose"]
   },
   "cluster_endpoint_public_access": true,
-  "enable_cluster_creator_admin_permissions": true,
+  "enable_cluster_creator_admin_permissions": false,
 
   "vpc_cidr": "10.0.0.0/16",
   "enable_nat_gateway": true,
@@ -111,16 +111,38 @@
     }
   ],
 
-  "developer_identity": {
-    "iam_user_name": "<DEVELOPER_IAM_USER>",
-    "devcontainer_role_suffix": "devcontainer-role",
-    "mfa_device_suffix": "devcontainer-mfa",
-    "create_virtual_mfa": true,
-    "assume_requires_mfa": true,
-    "attach_user_policy": true,
-    "policy_filename": "gen3-test-developer.json",
-    "role_max_session_duration": 43200,
-    "allow_devcontainer_assume_role": false
+  "aws_csoc_operator_iam": {
+    "default_role_key": "infrastructure-admin",
+    "users": {
+      "primary": {
+        "name": "<EXISTING_OPERATOR_IAM_USER>",
+        "manage_virtual_mfa": true,
+        "mfa_device_name": "<EXISTING_MFA_DEVICE_NAME>",
+        "attach_assume_role_policy": true
+      }
+    },
+    "roles": {
+      "infrastructure-admin": {
+        "enabled": true,
+        "assigned_user_keys": ["primary"],
+        "principal_arns": [],
+        "require_mfa": true,
+        "max_session_duration": 43200,
+        "policy_filename": "infrastructure-admin.json",
+        "eks_access_policy_name": "AmazonEKSClusterAdminPolicy",
+        "allow_spoke_access": true
+      },
+      "platform-operator": {
+        "enabled": false,
+        "assigned_user_keys": [],
+        "principal_arns": [],
+        "require_mfa": true,
+        "max_session_duration": 43200,
+        "policy_filename": "platform-operator.json",
+        "eks_access_policy_name": "AmazonEKSAdminPolicy",
+        "allow_spoke_access": false
+      }
+    }
   },
 
   "iam_base_path": "iam"

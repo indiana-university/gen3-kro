@@ -1,151 +1,100 @@
 # Target Operating Model
 
-## Design Principles
+## Ownership model
 
-- Terragrunt owns environments and dependency ordering.
-- Terraform owns reusable resource modules.
-- Terraform AWS modules do not reach into Kubernetes.
-- Terraform in-cluster modules assume the cluster already exists and is named.
-- Argo CD owns continuous reconciliation after the first bootstrap.
-- KRO plus ACK own spoke infrastructure and Gen3 application infrastructure.
-- Shell scripts provide operator ergonomics, not hidden orchestration state.
-
-## Proposed Module Layout
+The catalog enforces an exact one-to-one boundary: a unit named `X` wraps only
+the root module named `X`. The canonical names are:
 
 ```text
-terraform/catalog/modules/
-  aws-csoc-foundation/          # AWS-only VPC, EKS, CSOC IAM, OIDC, outputs
-  csoc-in-cluster-bootstrap/    # K8s/Helm bootstrap into an existing named cluster
-  aws-spoke/                    # Existing spoke ACK workload roles
-  developer-identity/           # Existing personal/devcontainer identity
-  argocd-bootstrap/             # Retained as a csoc-in-cluster-bootstrap submodule
-  csoc-cluster/                 # Compatibility wrapper until state migration
-
-terragrunt/live/aws/csoc/
-  terragrunt.stack.hcl          # Orchestrates all CSOC units and dependencies
+aws-csoc-operator-iam
+aws-csoc-cluster
+aws-csoc-controller-iam
+gitops-argocd-install
+aws-spoke-access-iam
+aws-csoc-to-spoke-access
+gitops-argocd-bootstrap
 ```
 
-The current `terraform/catalog/modules/aws-csoc` can be split rather than
-rewritten. Move AWS-only resources into `aws-csoc-foundation`; move
-`kubernetes_namespace_v1`, Argo CD service accounts, `helm_release.argocd`, repo
-secrets, cluster secrets, fleet secrets, and bootstrap Helm release into the
-in-cluster module.
-
-## Terragrunt Unit Responsibilities
-
-| Unit | Depends on | Creates | State key |
-| --- | --- | --- | --- |
-| `developer_identity` | none | Devcontainer role, optional MFA device, user assume policy | `iam-setup/developer-identity/terraform.tfstate` |
-| `csoc_foundation` | optional `developer_identity` | CSOC VPC, EKS, OIDC, CSOC ACK role, Argo CD role, optional capability roles | `csoc/foundation/terraform.tfstate` |
-| `spoke_iam` | `csoc_foundation` | Per-spoke ACK workload roles with trust to exact CSOC role ARN where possible | `csoc/spoke-iam/terraform.tfstate` |
-| `csoc_in_cluster_bootstrap` | `csoc_foundation`, `spoke_iam` | Argo CD install, repo secrets, cluster/fleet secrets, bootstrap ApplicationSet | `csoc/in-cluster-bootstrap/terraform.tfstate` |
-
-This order removes the current reason to create spoke roles before the CSOC role
-exists. The initial CSOC cluster can be created without controllers. Then spoke
-IAM can trust the actual CSOC source role. Then Argo CD can deploy ACK/KRO with
-the needed cross-account roles already present.
-
-## Terraform Module Boundaries
-
-### `aws-csoc-foundation`
-
-Should create:
-
-- VPC, public/private subnets, route tables, NAT configuration.
-- EKS cluster and node/Auto Mode configuration.
-- OIDC provider.
-- CSOC ACK source IAM role.
-- Argo CD IAM role for spoke access and AWS reads.
-- External Secrets pod identity role if it is a CSOC-cluster foundation concern.
-- Optional AWS-managed EKS capability roles/resources.
-- Outputs needed by downstream units: cluster name, endpoint, CA, OIDC issuer,
-  OIDC provider ARN, CSOC account ID, role ARNs, baseline cluster secret labels
-  and annotations.
-
-Should not create:
-
-- Kubernetes namespaces.
-- Kubernetes service accounts.
-- Helm releases.
-- Argo CD cluster/repository secrets.
-- Local workstation files.
-
-### `csoc-in-cluster-bootstrap`
-
-Should accept either direct cluster connection outputs or just
-`cluster_name`/`region` plus `data.aws_eks_cluster` and
-`data.aws_eks_cluster_auth`.
-
-Should create:
-
-- Argo CD namespace.
-- Argo CD service accounts with role annotations.
-- Argo CD Helm release.
-- Argo CD repository secrets from Secrets Manager data.
-- CSOC cluster secret and per-spoke fleet cluster secrets.
-- First bootstrap ApplicationSet.
-
-Should not create:
-
-- VPC/EKS/IAM foundation resources.
-- Spoke IAM roles.
-- Gen3/KRO infrastructure instances.
-
-## GitOps Boundary
-
-After `csoc-in-cluster-bootstrap`, reconciliation belongs to Argo CD:
-
-- `argocd/bootstrap/csoc-controllers.yaml` deploys KRO, ACK, External Secrets.
-- `argocd/bootstrap/csoc-kro.yaml` deploys RGDs from plain YAML.
-- `argocd/bootstrap/multi-account.yaml` deploys namespace/CARM/secret-writer
-  wiring.
-- `argocd/bootstrap/fleet-instances.yaml` deploys per-spoke KRO instances.
-
-Do not move these resources into Terraform. Terraform should only seed the
-control loop.
-
-## Config Model
-
-Keep one human-editable environment file only if it gets a schema and typed
-projections. Recommended direction:
+Terragrunt retains the three operator-facing stacks:
 
 ```text
-config/environments/<env>.json        # human-edited source
-outputs/generated/<env>/foundation.tfvars.json
-outputs/generated/<env>/spoke-iam.json
-outputs/generated/<env>/bootstrap.tfvars.json
+operators-iam
+└── aws-csoc-operator-iam
+
+csoc-cluster-core
+├── aws-csoc-cluster
+├── aws-csoc-controller-iam
+└── gitops-argocd-install
+
+spoke-fleet-update
+├── aws-spoke-access-iam-<alias>  # generated instance of the canonical unit
+├── aws-csoc-to-spoke-access
+└── gitops-argocd-bootstrap
 ```
 
-Terragrunt can read the source config and pass narrowed inputs to each unit.
-Terraform roots should not need sink variables for keys they do not consume.
+The `spoke-fleet-update` wrapper accepts `aws-spoke-access-iam` and resolves the selected
+alias to `aws-spoke-access-iam-<alias>`.
 
-## Operator Entry Points
+## Dependency and data flow
 
-Recommended commands:
+1. `aws-csoc-operator-iam` exports role maps, per-user role maps, MFA metadata,
+   EKS access-entry data, and the exact subset of roles approved for spokes.
+2. `aws-csoc-cluster` consumes operator EKS entries and exports cluster/OIDC
+   metadata.
+3. `aws-csoc-controller-iam` consumes cluster metadata and exports functional
+   controller role ARNs.
+4. `gitops-argocd-install` consumes cluster and Argo CD controller identity.
+5. Each `aws-spoke-access-iam` consumes the ACK controller ARN and approved
+   operator role ARNs.
+6. `aws-csoc-to-spoke-access` consumes ACK controller and spoke role ARNs.
+7. `gitops-argocd-bootstrap` consumes cluster, controller, install, spoke, and
+   cross-account readiness outputs.
 
-```bash
-bash scripts/mfa-session.sh <MFA_CODE>
-cd terragrunt/live/aws/csoc
-terragrunt stack run plan
-terragrunt stack run apply
-bash scripts/container-init.sh setup connect
-```
+Mocks may construct deterministic values for non-apply commands only. Normal
+handoff uses outputs rather than reconstructed names.
 
-Devcontainer defaults should become `setup connect` or just `setup`. Applying
-infrastructure should be explicit.
+## Physical names
 
-## State and Locking
+- Cluster and VPC: `<csoc_alias>-csoc-cluster`,
+  `<csoc_alias>-csoc-vpc`.
+- Controller roles: `<csoc_alias>-ack-controller-role`,
+  `<csoc_alias>-argocd-controller-role`,
+  `<csoc_alias>-kro-controller-role`, and
+  `<csoc_alias>-external-secrets-role`.
+- Spoke roles: `<spoke_alias>-<role_key>-access-role`.
+- CSOC spoke policy: `<csoc_alias>-ack-assume-spoke-roles`.
+- Operator roles: `<csoc_alias>-csoc-operator-<role_key>`.
+- Bootstrap chart, release, and ApplicationSet:
+  `gitops-argocd-bootstrap`.
 
-Use separate state per unit. Add state locking through the selected backend
-standard, either S3 lockfile support or DynamoDB locking. Keep state keys stable
-and document import/move steps before splitting the current state.
+Protocol-facing Argo CD names remain stable: namespace/release `argocd`,
+standard service accounts, repository secrets, and cluster secrets.
 
-## IAM Trust Target
+## Operator IAM contract
 
-Target trust for spoke workload roles:
+Users are keyed by stable aliases and always refer to existing IAM users.
+Roles are keyed by function and specify enabled state, assigned users, exact
+external principals, MFA, session duration, permission JSON, EKS access policy,
+and spoke eligibility.
 
-- Prefer exact `arn:aws:iam::<csoc-account>:role/<csoc-alias>-csoc-role`.
-- Keep the devcontainer role trust only if manual cleanup is a required
-  operator path.
-- If bootstrap still needs wildcard trust during migration, make it temporary
-  and track a later hardening step.
+An enabled role must have at least one exact principal. User keys, physical
+names, session duration, and JSON policies are validated. Each user has one
+aggregate `sts:AssumeRole` policy. Terraform may manage virtual MFA devices but
+never IAM users.
+
+The default role is `infrastructure-admin`. Session tooling selects a role with
+`--role-key`, reads non-secret structured outputs, and writes no profile files
+unless the explicit profile-generation command is run.
+
+## Deployment order
+
+After operator migration, first deployment is:
+
+1. `aws-csoc-cluster`
+2. `aws-csoc-controller-iam`
+3. `gitops-argocd-install`
+4. one `aws-spoke-access-iam-<alias>` per spoke
+5. `aws-csoc-to-spoke-access`
+6. `gitops-argocd-bootstrap`
+
+Argo CD, KRO, and ACK own post-bootstrap reconciliation.

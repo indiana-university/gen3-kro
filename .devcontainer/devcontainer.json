@@ -1,65 +1,39 @@
 {
   "name": "gen3-kro",
+  "remoteUser": "vscode",
+  "containerUser": "vscode",
+  "updateRemoteUserUID": true,
+
   "build": {
     "dockerfile": "../Dockerfile",
     "context": ".."
   },
 
-  // Use the standard devcontainers workspace path (repo is mounted under /workspaces/<repo>)
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
-  // Fix script permissions on the host before the workspace is mounted.
-  // The workspace bind-mount preserves host file ownership (root in Codespaces),
-  // and --security-opt=no-new-privileges blocks sudo inside the container.
-  // Array form bypasses cmd.exe on Windows (which has a different `find` command)
-  // and invokes bash directly (Git Bash on Windows, /bin/bash on Linux/Mac).
-  // The || true ensures the container builds even if chmod is unavailable.
-  // Fix script permissions on the host before the workspace is mounted.
-  // Uses -path guards so missing optional directories are silently skipped.
-  // chmod is a no-op on NTFS mounts but git core.fileMode=false (set by
-  // container-init.sh) prevents spurious mode-bit diffs inside the container.
   "initializeCommand": ["bash", "-c", "mkdir -p \"${USERPROFILE:-$HOME}/.codex/sessions\"; find '${localWorkspaceFolder}/scripts' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; { [ -d '${localWorkspaceFolder}/terragrunt/live/aws' ] && find '${localWorkspaceFolder}/terragrunt/live/aws' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; }; true"],
 
-  // ── Credential mounts ────────────────────────────────────────────────
-  // Mount ~/.aws from host so Terraform/AWS CLI picks up the pre-assumed credentials
-  // written by scripts/mfa-session.sh (profile: csoc in ~/.aws/credentials).
-  // ~/.kube is not mounted; container-init.sh generates kubeconfig at runtime.
-  // Keep project-local Codex state private while sharing only portable chat
-  // artifacts between devcontainers on this Docker host. Host transcripts are
-  // read-only and imported by codex-history.sh; host auth/config are not mounted.
   "mounts": [
-    "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached",
-    "source=gen3-kro-codex,target=/home/vscode/.codex,type=volume",
-    "source=codex-devcontainer-history,target=/home/vscode/.codex-history,type=volume",
-    "source=${localEnv:USERPROFILE}/.codex/sessions,target=/mnt/codex-host-sessions,type=bind,readonly"
+    "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,readonly,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.codex,target=/home/vscode/.codex,type=bind,consistency=delegated"
   ],
 
-  "remoteUser": "vscode",
 
-  // KUBECONFIG is not set; container-init.sh writes the default kubeconfig.
-  // AWS_PROFILE selects the profile from the mounted ~/.aws/credentials file.
-  // Run `bash scripts/mfa-session.sh <MFA_CODE>` on the host BEFORE starting the container.
-  // The script writes temporary credentials to ~/.aws/credentials under [csoc].
-  //
-  // Credential tiers (validated by container-init.sh):
-  //   Tier 1 (BEST):  MFA assumed-role — temporary, scoped, MFA-gated
-  //   Tier 2 (OK):    Static IAM user — long-lived, broader access
-  //   Tier 3/4:       Invalid/expired or missing — downstream stages blocked
   "containerEnv": {
     "REPO_ROOT":   "/workspaces/${localWorkspaceFolderBasename}",
-    "AWS_PROFILE": "csoc",
-    "CODEX_HOME":  "/home/vscode/.codex",
-    "CODEX_HISTORY_HOME": "/home/vscode/.codex-history"
+    "AWS_PROFILE": "csoc"
   },
 
   // Lifecycle flags: setup | connect (blank = no-op)
   // Terragrunt init/plan/apply is explicit through each live stack's stack.sh.
-  "postCreateCommand": "bash /workspaces/${localWorkspaceFolderBasename}/.devcontainer/codex-history.sh && bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup",
+  // Fix any root-owned files left from previous root-run sessions, then run
+  // normal setup. sudo works because --security-opt=no-new-privileges is unset.
+  "postCreateCommand": "sudo chown -R vscode:vscode /workspaces 2>/dev/null || true && bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup",
 
   // Re-establish kubeconfig + ArgoCD port-forward on every container start.
   // postCreateCommand only runs once at container creation; this ensures the
   // port-forward survives container restarts and VS Code reconnects.
-  "postStartCommand": "bash /workspaces/${localWorkspaceFolderBasename}/.devcontainer/codex-history.sh && bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh connect",
+  "postStartCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh connect",
 
   "customizations": {
     "vscode": {
@@ -99,10 +73,9 @@
   // • No --privileged — no features require privileged mode
   // • No --network=host — use forwardPorts for ArgoCD UI instead (also
   //   fixes Docker Desktop on Windows where host networking doesn't work)
-  // • --security-opt=no-new-privileges prevents SUID/SGID escalation
-  "runArgs": [
-    "--security-opt=no-new-privileges"
-  ],
+  // • --security-opt=no-new-privileges is intentionally omitted: it blocks
+  //   the set uid sudo binary used by postCreateCommand for ownership fixes.
+  "runArgs": [],
 
   // Forward ArgoCD port-forward (8080) from container → host.
   "forwardPorts": [8080],

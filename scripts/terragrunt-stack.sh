@@ -9,9 +9,9 @@ usage() {
 Usage: bash scripts/terragrunt-stack.sh <stack> <command> [unit]
 
 Stacks:
-  prereq-iam
-  csoc-core
-  fleet
+  operators-iam
+  csoc-cluster-core
+  spoke-fleet-update
 
 Commands:
   generate  Generate Terragrunt stack units
@@ -33,7 +33,7 @@ COMMAND="$2"
 UNIT_NAME="${3:-}"
 
 case "$STACK_NAME" in
-  prereq-iam|csoc-core|fleet) ;;
+  operators-iam|csoc-cluster-core|spoke-fleet-update) ;;
   *)
     echo "FATAL: unknown Terragrunt stack: ${STACK_NAME}" >&2
     usage >&2
@@ -66,7 +66,7 @@ STACK_DIR="${REPO_ROOT}/terragrunt/live/aws/${STACK_NAME}"
 # Each generated unit owns its Terraform metadata and backend selection.
 unset TF_DATA_DIR
 
-if [[ "$STACK_NAME" == "fleet" && "$UNIT_NAME" == "spoke-iam" ]]; then
+if [[ "$STACK_NAME" == "spoke-fleet-update" && "$UNIT_NAME" == "aws-spoke-access-iam" ]]; then
   SPOKE_ALIAS="${TG_SPOKE_ALIAS:-}"
   if [[ -z "$SPOKE_ALIAS" ]]; then
     SPOKE_ALIAS="$(jq -r '[.spokes[] | select(.enabled == true)] | if length == 1 then .[0].alias else empty end' "${REPO_ROOT}/config/shared.auto.tfvars.json")"
@@ -75,7 +75,7 @@ if [[ "$STACK_NAME" == "fleet" && "$UNIT_NAME" == "spoke-iam" ]]; then
     echo "FATAL: set TG_SPOKE_ALIAS when more than one spoke is enabled." >&2
     exit 1
   }
-  UNIT_NAME="spoke-iam-${SPOKE_ALIAS}"
+  UNIT_NAME="aws-spoke-access-iam-${SPOKE_ALIAS}"
 fi
 
 terragrunt_clean() {

@@ -6,8 +6,8 @@ Development container configuration for the **eks-cluster-mgmt** platform — a 
 
 ```
 .devcontainer/
-├── codex-history.sh     # Imports and links persistent local Codex transcripts
-├── devcontainer.json    # Main configuration (cross-platform)
+├── devcontainer.json    # Primary container configuration
+├── devcontainer2.json   # Secondary container with separate AWS credentials
 └── README.md            # This file
 ```
 
@@ -23,7 +23,7 @@ This devcontainer follows the principle of least privilege:
 | No Docker socket mount | Docker CLI not required by any scripts or modules |
 | No `--network=host` | Scoped `forwardPorts: [8080]` for ArgoCD UI |
 | `--security-opt=no-new-privileges` | Prevents SUID/SGID privilege escalation inside container |
-| Scoped credential mount | Only `~/.aws/eks-devcontainer` is mounted — not all of `~/.aws` |
+| Scoped credential mounts | Each container sees only its selected credential directory, mounted read-only |
 | `~/.kube` not mounted | Created empty at runtime; `connect` stage populates it |
 | Split Codex persistence | Host transcripts are read-only; host Codex config and authentication are not mounted |
 | AI agent sandbox disabled | Required for agents to run terraform/kubectl/helm — the only intentional relaxation |
@@ -32,8 +32,8 @@ This devcontainer follows the principle of least privilege:
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Terraform | 1.13.5 | Infrastructure as code |
-| Terragrunt | 0.99.1 | Terraform wrapper for DRY configurations |
+| Terraform | 1.15.8 | Infrastructure as code |
+| Terragrunt | 1.1.1 | Terraform wrapper for DRY configurations |
 | kubectl | 1.35.1 | Kubernetes CLI |
 | Helm | 3.16.1 | Package manager for Kubernetes |
 | AWS CLI | 2.32.0 | AWS API access |
@@ -63,13 +63,17 @@ directories remain local to each generated Terragrunt unit.
 
 ## Credential Mount
 
-The devcontainer mounts a **scoped** subdirectory — not the entire `~/.aws`:
+Each configuration mounts a different **scoped** subdirectory—not the entire
+host `~/.aws`:
 
-```
-Host:      ~/.aws/eks-devcontainer/   →   Container: /home/vscode/.aws/
-```
+| Configuration | Host directory | Container directory |
+| --- | --- | --- |
+| `devcontainer.json` | `~/.aws/eks-devcontainer/` | `/home/vscode/.aws/` |
+| `devcontainer2.json` | `~/.aws/eks-devcontainer-2/` | `/home/vscode/.aws/` |
 
-This means only credentials written to `~/.aws/eks-devcontainer/` on the host are visible inside the container. Host profiles, static keys, and other credentials are never exposed.
+Both bind mounts are read-only inside the container. Refresh or replace
+`credentials`, optional `config`, and `.session-meta` files from the host.
+Neither container can rewrite its host credential directory.
 
 ### Windows/WSL mount source
 
@@ -80,7 +84,7 @@ profile directory before writing credentials.
 
 ```json
 "mounts": [
-  "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,consistency=cached"
+  "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,readonly,consistency=cached"
 ]
 ```
 
@@ -103,7 +107,30 @@ bash scripts/mfa-session.sh <MFA_CODE>
 bash scripts/mfa-session.sh --no-mfa
 ```
 
-The script writes temporary credentials to `~/.aws/eks-devcontainer/credentials` under the `[csoc]` profile. The container's `AWS_PROFILE=csoc` picks them up automatically.
+The script writes temporary credentials to
+`~/.aws/eks-devcontainer/credentials` under the `[csoc]` profile. The primary
+container's `AWS_PROFILE=csoc` picks them up automatically.
+
+For the secondary container, place its independent `[csoc]` credentials in
+`~/.aws/eks-devcontainer-2/credentials`. If that file uses another profile
+name, change `AWS_PROFILE` in `devcontainer2.json` to match.
+
+### Running the secondary container
+
+A bind mount cannot be swapped on an already running container. Use the same
+Dockerfile/image with a separate container instance:
+
+```bash
+devcontainer up \
+  --workspace-folder . \
+  --config .devcontainer/devcontainer2.json
+```
+
+The primary and secondary configurations can mount the same repository, but
+they will also see each other's source edits, `.terragrunt-stack` directories,
+plans, and other generated workspace files. Do not run Terraform or Terragrunt
+concurrently from both instances. Use a separate clone or Git worktree when
+concurrent infrastructure work is required.
 
 ### Not mounted (intentionally)
 
@@ -191,8 +218,8 @@ Each positional flag is opt-in. With no flags, the script is a safe no-op.
 "bash scripts/container-init.sh connect"
 
 // Deploy infrastructure explicitly from a terminal:
-// bash terragrunt/live/aws/csoc-core/stack.sh plan
-// bash terragrunt/live/aws/csoc-core/stack.sh apply
+// bash scripts/terragrunt-stack.sh csoc-cluster-core plan
+// bash scripts/terragrunt-stack.sh csoc-cluster-core apply
 ```
 
 All stages log to `outputs/YYYY-MM-DD/container-init.log`. Repeated runs
@@ -233,10 +260,11 @@ cd ~/src/gen3-kro
 # 2. Copy and populate config
 cp config/shared.auto.tfvars.json.example config/shared.auto.tfvars.json
 
-# 3. (If using developer identity for the first time)
-#    bash terragrunt/live/aws/prereq-iam/stack.sh plan
-#    bash terragrunt/live/aws/prereq-iam/stack.sh apply
-#    Register MFA device per outputs/mfa-setup-instructions.txt
+# 3. Plan and apply operator IAM explicitly
+bash scripts/terragrunt-stack.sh operators-iam plan
+bash scripts/terragrunt-stack.sh operators-iam apply
+# If this is a new user with a new virtual MFA device, enroll it from the
+# sensitive mfa_enrollment Terraform output.
 
 # 4. Authenticate on the HOST
 bash scripts/mfa-session.sh <MFA_CODE>     # or: --no-mfa
@@ -252,13 +280,13 @@ code .
 bash scripts/mfa-session.sh <MFA_CODE>
 
 # Inside the container — plan changes through Terragrunt
-bash terragrunt/live/aws/csoc-core/stack.sh plan
+bash scripts/terragrunt-stack.sh csoc-cluster-core plan
 
 # Inside the container — apply changes explicitly
-bash terragrunt/live/aws/csoc-core/stack.sh apply
+bash scripts/terragrunt-stack.sh csoc-cluster-core apply
 
 # Inside the container — destroy stack explicitly
-bash terragrunt/live/aws/csoc-core/stack.sh destroy
+bash scripts/terragrunt-stack.sh csoc-cluster-core destroy
 
 # Reconnect to cluster (after container restart)
 bash scripts/container-init.sh connect
@@ -269,9 +297,9 @@ helm template csoc-controllers argocd/csoc/helm/csoc-controllers \
   -f argocd/csoc/controllers/eks-overrides/addons.yaml
 ```
 
-> **Important:** Use the `stack.sh` in each `terragrunt/live/aws/<stack>/`
-> directory for infrastructure operations. `container-init.sh` only prepares the
-> development environment and connects to an existing cluster.
+> **Important:** Use `scripts/terragrunt-stack.sh` for infrastructure
+> operations. `container-init.sh` only prepares the development environment and
+> connects to an existing cluster.
 
 ### ArgoCD UI
 
@@ -315,7 +343,9 @@ Port 8080 is forwarded from container to host via `forwardPorts`.
 WARNING: ~/.aws/credentials not found.
 ```
 
-Run `mfa-session.sh` on the **host** before starting the container. The script writes to `~/.aws/eks-devcontainer/credentials`, which the container bind-mounts.
+Populate the selected credential directory on the **host** before starting the
+container. The primary uses `~/.aws/eks-devcontainer/credentials`; the
+secondary uses `~/.aws/eks-devcontainer-2/credentials`.
 
 ### Permission / chmod errors on Terraform init
 

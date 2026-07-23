@@ -2,7 +2,7 @@ module "eks" {
   #checkov:skip=CKV_TF_1:We are using version control for those modules
   #checkov:skip=CKV_TF_2:We are using version control for those modules
   source  = "terraform-aws-modules/eks/aws"
-  version = "21.15.1"
+  version = "21.24.0"
 
   name                   = local.cluster_name
   kubernetes_version     = local.cluster_version
@@ -12,6 +12,20 @@ module "eks" {
   subnet_ids = module.vpc.private_subnets
 
   enable_cluster_creator_admin_permissions = var.enable_cluster_creator_admin_permissions
+
+  access_entries = {
+    for role_key, entry in var.operator_access_entries : role_key => {
+      principal_arn = entry.principal_arn
+      policy_associations = {
+        operator = {
+          policy_arn = entry.access_policy_arn
+          access_scope = {
+            type = "cluster"
+          }
+        }
+      }
+    }
+  }
 
   compute_config = var.cluster_compute_config
 
@@ -26,7 +40,7 @@ module "eks" {
 ################################################################################
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
-  version = "6.6.0"
+  version = "6.6.1"
 
   name = local.vpc_name
   cidr = local.vpc_cidr

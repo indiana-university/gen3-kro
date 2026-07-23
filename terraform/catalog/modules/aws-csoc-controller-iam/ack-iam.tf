@@ -4,7 +4,7 @@
 
 resource "aws_iam_role" "ack_csoc_source" {
   count = local.ack_role_enabled ? 1 : 0
-  name  = "${local.name}-csoc-role"
+  name  = "${local.name}-ack-controller-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -40,7 +40,8 @@ resource "aws_iam_role" "ack_csoc_source" {
   })
 
   tags = merge(local.tags, {
-    RoleType = "csoc-role"
+    Module   = "aws-csoc-controller-iam"
+    RoleType = "ack-controller"
   })
 }
 

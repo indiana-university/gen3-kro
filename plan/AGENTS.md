@@ -8,9 +8,11 @@ separation work.
 ## Rules
 
 - Keep plan documents decision-oriented and implementable.
-- Preserve migration ordering: baseline, module split, Terragrunt stack, state
-  migration, IAM/operator hardening, documentation cleanup.
-- Do not rewrite the plan to skip the compatibility wrapper or state migration.
+- Preserve the recorded migration ordering and actual live status: backend
+  migration, parallel IAM cutover, authorized retired-resource cleanup, then
+  first deployment.
+- Do not reintroduce migration-only compatibility resources after an
+  environment has crossed the recorded state-address moves.
 - When repo reality changes, update the assessment, target model, and roadmap
   together so they do not contradict each other.
 - Do not include real account IDs, ARNs with account IDs, secrets, tfstate,

@@ -67,11 +67,12 @@ validate_credentials() {
     echo "  ✗ TIER 4 — NO CREDENTIALS"
     echo "    ~/.aws/credentials not found."
     echo ""
-    if [[ ! -f "${REPO_DIR}/outputs/aws-config-snippet.ini" ]]; then
+    if [[ ! -f "${REPO_DIR}/outputs/aws-csoc-operator-iam.json" ]]; then
       echo "    FIRST-TIME SETUP REQUIRED:"
-      echo "      1. Review prerequisite IAM: bash scripts/terragrunt-stack.sh prereq-iam plan"
-      echo "      2. Apply after review: bash scripts/terragrunt-stack.sh prereq-iam apply"
-      echo "      3. Register MFA device (see outputs/mfa-setup-instructions.txt)"
+      echo "      1. Review prerequisite IAM: bash scripts/terragrunt-stack.sh operators-iam plan"
+      echo "      2. Apply after review: bash scripts/terragrunt-stack.sh operators-iam apply"
+      echo "      3. Register the MFA device from the sensitive enrollment output"
+      echo "      4. Generate role mappings: bash scripts/operator-profile.sh"
       echo ""
     fi
     echo "    Option A (recommended):  bash scripts/mfa-session.sh <MFA_CODE>  (on HOST)"
@@ -272,10 +273,11 @@ UPGRADE INSTRUCTIONS:
   From Tier 2/3/4 to Tier 1:
     Run on HOST: bash scripts/mfa-session.sh <MFA_CODE>
   From Tier 4 (first time):
-    1. bash scripts/terragrunt-stack.sh prereq-iam plan
-       bash scripts/terragrunt-stack.sh prereq-iam apply
-    2. Register MFA device (see outputs/mfa-setup-instructions.txt)
-    3. bash scripts/mfa-session.sh <MFA_CODE>
+    1. bash scripts/terragrunt-stack.sh operators-iam plan
+       bash scripts/terragrunt-stack.sh operators-iam apply
+    2. Register the MFA device from the sensitive enrollment output
+    3. bash scripts/operator-profile.sh
+    4. bash scripts/mfa-session.sh <MFA_CODE> [--role-key ROLE_KEY]
 
 ###############################################################################
 REPORT
@@ -624,7 +626,7 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
           echo "  ✗ Port-forward failed to start (see $PF_LOG)"
         fi
       else
-        echo "  Cluster not reachable - deploy core first with scripts/terragrunt-stack.sh csoc-core"
+        echo "  Cluster not reachable - deploy core first with scripts/terragrunt-stack.sh csoc-cluster-core"
       fi
   fi
 

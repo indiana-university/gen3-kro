@@ -66,7 +66,16 @@ variable "cluster_endpoint_public_access" {
 variable "enable_cluster_creator_admin_permissions" {
   description = "Whether the cluster creator receives administrator access"
   type        = bool
-  default     = true
+  default     = false
+}
+
+variable "operator_access_entries" {
+  description = "Explicit CSOC operator role access entries keyed by operator role function."
+  type = map(object({
+    principal_arn     = string
+    access_policy_arn = string
+  }))
+  default = {}
 }
 
 variable "cluster_compute_config" {

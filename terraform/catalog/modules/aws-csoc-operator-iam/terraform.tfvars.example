@@ -1,0 +1,23 @@
+users = {
+  primary = {
+    name                      = "EXISTING_IAM_USER_NAME"
+    manage_virtual_mfa        = true
+    mfa_device_name           = "CSOC_ALIAS-operator-primary-mfa"
+    attach_assume_role_policy = true
+  }
+}
+
+roles = {
+  infrastructure-admin = {
+    enabled               = true
+    name                  = "CSOC_ALIAS-csoc-operator-infrastructure-admin"
+    assigned_user_keys    = ["primary"]
+    require_mfa           = true
+    max_session_duration  = 43200
+    permissions_policy    = "{\"Version\":\"2012-10-17\",\"Statement\":[]}"
+    eks_access_policy_arn = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+    allow_spoke_access    = true
+  }
+}
+
+default_role_key = "infrastructure-admin"

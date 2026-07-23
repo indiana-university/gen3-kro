@@ -10,6 +10,7 @@ locals {
     {
       Blueprint   = local.name
       Environment = var.environment
+      Module      = "aws-csoc-cluster"
     },
     var.tags
   )

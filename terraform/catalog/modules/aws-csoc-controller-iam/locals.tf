@@ -22,6 +22,7 @@ locals {
     {
       Blueprint   = local.name
       Environment = var.environment
+      Module      = "aws-csoc-controller-iam"
     },
     var.tags
   )

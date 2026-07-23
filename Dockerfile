@@ -1,25 +1,23 @@
 # gen3-kro Development Container
 # Ubuntu 24.04 with tools for Terraform, Kubernetes, AWS, GitOps, and MCP runtimes
 
-# UV_VERSION must be defined before the first FROM when used in COPY --from below.
-ARG UV_VERSION=0.10.2
-
-# Pull uv/uvx binaries in a separate stage to avoid ARG expansion in --from.
-FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uvbin
-
-FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
-
-ENV DEBIAN_FRONTEND=noninteractive
-
 # Set versions for consistency
-ARG TERRAFORM_VERSION=1.13.5
-ARG TERRAGRUNT_VERSION=0.99.1
+ARG UV_VERSION=0.10.2
+ARG TERRAFORM_VERSION=1.15.8
+ARG TERRAGRUNT_VERSION=1.1.1
 ARG KUBECTL_VERSION=1.35.1
 ARG HELM_VERSION=3.16.1
 ARG AWS_CLI_VERSION=2.32.0
 ARG YQ_VERSION=4.44.3
 
-# Base dependencies (includes Node/NPM for npx + Python for uvx-based tools).
+# Use noninteractive frontend for apt-get to avoid prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
+
+# Pull binaries in a separate stage to avoid ARG expansion in --from.
+FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uvbin
+FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+
+# Base dependencies
 # Includes sandbox binaries used by AI terminal runners in local/container mode.
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
@@ -55,7 +53,6 @@ RUN curl -fsSL --retry 3 --retry-delay 2 \
     && yq --version
 
 # Install uv + uvx (reliable container method)
-# Uses the distroless image that contains only /uv and /uvx. :contentReference[oaicite:1]{index=1}
 COPY --from=uvbin /uv /uvx /usr/local/bin/
 RUN chmod +x /usr/local/bin/uv /usr/local/bin/uvx \
     && uv --version \

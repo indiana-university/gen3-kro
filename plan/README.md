@@ -1,44 +1,41 @@
 # CSOC Provisioning Separation Plan
 
-This folder records a repo-level review and a proposed separation of function for
-the current Gen3 KRO/CSOC platform.
+This directory is the architectural source of truth for the implemented
+Terragrunt/Terraform separation and its live migration.
 
-## Recommendation
+## Operating decision
 
-Use Terragrunt as the environment orchestrator for CSOC infrastructure,
-including IAM, and keep Terraform as the module implementation language.
-Split the current CSOC Terraform stack into two primary module concerns:
+Terragrunt orchestrates the three environments and seven independently
+stateful units. Terraform implements one same-named root module per unit. AWS
+foundation modules use only AWS providers; the two GitOps bootstrap modules
+target an existing cluster through Kubernetes and Helm providers.
 
-1. AWS foundation module: VPC, EKS, OIDC, CSOC IAM roles, Secrets Manager access
-   policy, and any AWS-managed EKS capability roles. This module should not use
-   the Kubernetes or Helm providers.
-2. In-cluster bootstrap module: Argo CD namespace/service accounts, Argo CD Helm
-   install, repository secrets, cluster/fleet secrets, and the first bootstrap
-   ApplicationSet. This module should target a pre-named/pre-created cluster.
+The canonical boundaries are:
 
-After that bootstrap boundary, Argo CD should continue to own controllers,
-ResourceGraphDefinitions, multi-account wiring, and per-spoke KRO instances.
-KRO plus ACK should continue to model spoke infrastructure and Gen3 application
-dependencies.
+```text
+aws-csoc-operator-iam
+aws-csoc-cluster
+aws-csoc-controller-iam
+gitops-argocd-install
+aws-spoke-access-iam
+aws-csoc-to-spoke-access
+gitops-argocd-bootstrap
+```
+
+After bootstrap, Argo CD, KRO, and ACK own continuous reconciliation.
 
 ## Documents
 
 | Document | Purpose |
 | --- | --- |
-| [repo-assessment.md](repo-assessment.md) | Current-state review of repo structure, languages, tools, coupling points, and risks. |
-| [target-operating-model.md](target-operating-model.md) | Proposed ownership boundaries, module layout, execution order, and tool responsibilities. |
-| [migration-roadmap.md](migration-roadmap.md) | Step-by-step migration plan with acceptance criteria and rollback notes. |
+| [repo-assessment.md](repo-assessment.md) | Implemented ownership, deployment baseline, operator model, and live checks. |
+| [target-operating-model.md](target-operating-model.md) | Canonical contracts, data flow, names, and deployment order. |
+| [migration-roadmap.md](migration-roadmap.md) | Backend migration, parallel IAM cutover, cleanup, and acceptance gates. |
 
-## Highest-Value Changes
+## Migration principle
 
-- Move the plain Terraform CSOC environment under Terragrunt orchestration.
-- Split AWS-only foundation from in-cluster bootstrap.
-- Create direct Terragrunt dependencies between CSOC role creation and spoke IAM
-  role trust policies so the spoke role trust can eventually tighten from
-  wildcard role-name conditions to exact role ARNs.
-- Stop auto-applying infrastructure from devcontainer lifecycle hooks by default.
-- Add a schema and layer-specific rendering for `config/shared.auto.tfvars.json`
-  or replace it with explicit environment configs.
-- Standardize the `infrastructure-values.yaml` spelling across docs, scripts,
-  comments, and Helm references.
-
+Only the deployed operator state changes backend key. Its old resources first
+move to transitional addresses while a new `infrastructure-admin` role is
+created in parallel. The old role is retired only after a fresh new-role
+session succeeds. The other six boundaries begin at canonical state keys after
+the live backend confirms their old states are absent or empty.

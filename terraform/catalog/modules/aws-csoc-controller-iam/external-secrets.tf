@@ -4,9 +4,9 @@
 module "external_secrets_pod_identity" {
   count   = local.enable_external_secrets ? 1 : 0
   source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "~> 1.4.0"
+  version = "2.8.1"
 
-  name = "external-secrets"
+  name = "${local.name}-external-secrets-role"
 
   attach_external_secrets_policy = true
   external_secrets_kms_key_arns  = ["arn:aws:kms:${local.region}:*:key/${var.cluster_name}/*"]

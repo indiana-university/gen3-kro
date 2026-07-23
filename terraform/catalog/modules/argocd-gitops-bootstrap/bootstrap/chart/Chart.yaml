@@ -1,5 +1,0 @@
-apiVersion: v2
-name: argocd-bootstrap
-description: Raw resource chart for ArgoCD bootstrap manifests
-type: application
-version: 1.0.0

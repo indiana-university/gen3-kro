@@ -4,7 +4,7 @@
 
 resource "aws_iam_role" "argocd_self_managed" {
   count = local.argocd_self_managed && var.enable_argocd_self_managed ? 1 : 0
-  name  = "${local.name}-argocd-role"
+  name  = "${local.name}-argocd-controller-role"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -31,7 +31,7 @@ resource "aws_iam_role" "argocd_self_managed" {
 
 resource "aws_iam_role_policy" "argocd_inline" {
   count = local.argocd_self_managed && var.enable_argocd_self_managed && length(aws_iam_role.argocd_self_managed) > 0 ? 1 : 0
-  name  = "${local.name}-argocd-inline"
+  name  = "${local.name}-argocd-controller-permissions"
   role  = aws_iam_role.argocd_self_managed[0].id
 
   policy = jsonencode({

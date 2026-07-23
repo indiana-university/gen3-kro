@@ -8,7 +8,7 @@ Step-by-step procedures for deploying, managing, and tearing down the EKS Cluste
 
 - [Prerequisites](#prerequisites)
 - [Initial Setup](#initial-setup)
-- [Phase 0 — Developer Identity Bootstrap (One-Time)](#phase-0--developer-identity-bootstrap-one-time)
+- [Phase 0 — Operator IAM Bootstrap (One-Time)](#phase-0--operator-iam-bootstrap-one-time)
 - [CSOC Stack Deployment](#csoc-stack-deployment)
 - [Verification](#verification)
 - [Accessing ArgoCD](#accessing-argocd)
@@ -116,50 +116,46 @@ bash scripts/mfa-session.sh <MFA_CODE>
 
 ---
 
-## Phase 0 — Developer Identity Bootstrap (One-Time)
+## Phase 0 — Operator IAM Bootstrap (One-Time)
 
-> **Run once per developer** — creates a virtual MFA device and scoped devcontainer role in AWS IAM.
-> Skip if these already exist. Results are stored in `outputs/` and are gitignored.
+> Run once per operator. The stack references an existing IAM user, optionally
+> manages its virtual MFA device, and creates function-specific operator roles.
+> It never creates or deletes IAM users.
 
-### Step 1 — Create the IAM resources
+The deployed environment already uses the canonical backend key. New
+environments start there directly.
 
-Developer identity can be applied independently through the prerequisite IAM
-stack. This stack contains only `developer_identity`; it does not create the CSOC
-cluster, spoke IAM roles, or in-cluster bootstrap resources.
+### Step 1 — Review and create IAM resources
+
+Operator access is independently stateful in `aws-csoc-operator-iam`. Review
+the plan before applying it:
 
 ```bash
-bash scripts/terragrunt-stack.sh prereq-iam plan
-bash scripts/terragrunt-stack.sh prereq-iam apply
+bash scripts/terragrunt-stack.sh operators-iam plan
+bash scripts/terragrunt-stack.sh operators-iam apply
 ```
 
-This creates:
-- Virtual MFA device in AWS IAM
-- `{csoc_alias}-devcontainer-role` IAM role with MFA-required trust policy
-- Inline assume-role policy attached to your IAM user
-- `outputs/mfa-setup-instructions.txt` — MFA seed and activation command
-- `outputs/aws-config-snippet.ini` — AWS profile block to copy to `~/.aws/config`
+The initial configuration creates
+`<csoc_alias>-csoc-operator-infrastructure-admin`, attaches one aggregate
+assume-role policy to the configured existing user, and preserves or creates
+the configured virtual MFA device. `platform-operator` remains disabled until
+it has a user or exact external principal.
 
 ### Step 2 — Register MFA device with your authenticator
 
-Open `outputs/mfa-setup-instructions.txt` and follow the instructions:
-
-```bash
-cat outputs/mfa-setup-instructions.txt
-```
-
-Add the account to your authenticator app (Google Authenticator, Authy, 1Password) using:
-- **Method A:** Enter the Base32 seed manually
-- **Method B:** Use a QR code generator with the `otpauth://` URI in the file
+For a newly created device, retrieve the sensitive `mfa_enrollment` output
+directly from the reviewed unit. Do not redirect it to a tracked file. Add the
+seed or QR payload to an authenticator. Existing registered devices need no
+enrollment step.
 
 ### Step 3 — Activate the MFA device
 
 Wait for **two consecutive tokens** from your authenticator, then run:
 
 ```bash
-# From outputs/mfa-setup-instructions.txt — exact command with your values:
 aws iam enable-mfa-device \
   --user-name <YOUR_IAM_USERNAME> \
-  --serial-number arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-devcontainer-mfa \
+  --serial-number arn:aws:iam::<ACCOUNT_ID>:mfa/<MFA_DEVICE_NAME> \
   --authentication-code-1 <FIRST_CODE> \
   --authentication-code-2 <SECOND_CODE> \
   --profile <YOUR_ADMIN_PROFILE>
@@ -167,41 +163,30 @@ aws iam enable-mfa-device \
 
 Success = zero output (exit 0). If you get `InvalidAuthenticationCode`, wait one cycle and try again.
 
-### Step 4 — (Optional) Add snippet to `~/.aws/config` for direct CLI use
-
-> **Not required for devcontainer access.** `mfa-session.sh` reads `role_arn`, `source_profile`,
-> and `mfa_serial` directly from `outputs/aws-config-snippet.ini`. Skip this step unless you want
-> to use the `eks-devcontainer` profile with the AWS CLI on the HOST without running `mfa-session.sh`.
+### Step 4 — Generate non-secret operator mappings
 
 ```bash
-# Review the generated snippet
-cat outputs/aws-config-snippet.ini
-
-# Optionally append to host ~/.aws/config for direct CLI use
->> ~/.aws/config cat outputs/aws-config-snippet.ini
+bash scripts/operator-profile.sh
 ```
 
-Snippet content for reference:
-```ini
-[profile eks-devcontainer]
-role_arn = arn:aws:iam::<ACCOUNT_ID>:role/<CSOC_ALIAS>-devcontainer-role
-source_profile = <YOUR_ADMIN_PROFILE>
-mfa_serial = arn:aws:iam::<ACCOUNT_ID>:mfa/<CSOC_ALIAS>-devcontainer-mfa
-region = us-east-1
-output = yaml
-duration_seconds = 43200
-```
+This explicit command writes ignored
+`outputs/aws-csoc-operator-iam.json` mode 0600. It contains the source profile,
+default role key, role ARNs, and MFA device ARNs only. Terraform does not
+create workstation profile files.
 
 ### Step 5 — Write devcontainer credentials (HOST)
 
-`mfa-session.sh` auto-detects `role_arn`, `source_profile`, and `mfa_serial` from
-`outputs/aws-config-snippet.ini` and writes credentials to `~/.aws/eks-devcontainer/credentials`
-under `[csoc]`. The devcontainer mounts **only** that directory (not all of `~/.aws`).
+`mfa-session.sh` selects a role from the structured output and writes temporary
+credentials to `~/.aws/eks-devcontainer/credentials` under `[csoc]`. The
+devcontainer mounts only that directory.
 
-**Option A — MFA (developer-identity role, recommended):**
+**Option A — MFA role session (recommended):**
 ```bash
-# Assumes the {csoc_alias}-devcontainer-role IAM role using MFA → temporary credentials (12h)
+# Defaults to infrastructure-admin.
 bash scripts/mfa-session.sh <MFA_CODE>
+
+# Select another enabled role assigned to the user.
+bash scripts/mfa-session.sh <MFA_CODE> --role-key platform-operator
 ```
 
 **Option B — No MFA (copy admin profile credentials directly):**
@@ -227,7 +212,7 @@ devcontainer open .
 `container-init.sh connect` runs on each start and reconnects only when the
 cluster already exists. A successful credential check shows:
 ```
-AWS identity: arn:aws:sts::<account>:assumed-role/<CSOC_ALIAS>-devcontainer-role/...
+AWS identity: arn:aws:sts::<account>:assumed-role/<CSOC_ALIAS>-csoc-operator-infrastructure-admin/...
 Using temporary credentials (assumed-role) — good
 ```
 
@@ -236,36 +221,35 @@ Using temporary credentials (assumed-role) — good
 ## CSOC Stack Deployment
 
 Run Terragrunt from the host or devcontainer after credentials are available.
-Use the prerequisite, core, and fleet stack entrypoints independently in
+Use the prerequisite, core, and spoke-fleet-update stack entrypoints independently in
 dependency order.
 
 ```bash
 # From repo root
-bash scripts/terragrunt-stack.sh csoc-core plan
-TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan
+bash scripts/terragrunt-stack.sh csoc-cluster-core plan
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh spoke-fleet-update plan
 ```
 
 ### What the Stack Creates
 
 - The core stack creates VPC/EKS, controller IAM, and the Argo CD installation.
-- The fleet stack creates one selected spoke's IAM, exact CSOC assume-role
+- The spoke-fleet-update stack creates one selected spoke's IAM, exact CSOC assume-role
   access, repository secrets, fleet secrets, and the bootstrap ApplicationSet.
 
 ### State Ownership
 
-The retired single-root Terraform deployment path had no resources in its
-backend state and has been removed. Current state ownership is split by
-Terragrunt unit:
+Operator IAM is the only currently populated state. The other six boundaries
+begin directly at the canonical keys below:
 
 | Unit | State key |
 |------|-----------|
-| Operator access | `prereq/operator-access/terraform.tfstate` |
-| CSOC cluster | `csoc/cluster/terraform.tfstate` |
-| Controller IAM | `csoc/controller-iam/terraform.tfstate` |
-| Per-spoke IAM | `spokes/<alias>/iam/terraform.tfstate` |
-| CSOC spoke access | `csoc/spoke-access/terraform.tfstate` |
-| Argo CD install | `csoc/argocd-install/terraform.tfstate` |
-| GitOps bootstrap | `csoc/gitops-bootstrap/terraform.tfstate` |
+| Operator access | `prereq/aws-csoc-operator-iam/terraform.tfstate` |
+| CSOC cluster | `csoc/aws-csoc-cluster/terraform.tfstate` |
+| Controller IAM | `csoc/aws-csoc-controller-iam/terraform.tfstate` |
+| Per-spoke IAM | `spokes/<alias>/aws-spoke-access-iam/terraform.tfstate` |
+| CSOC spoke access | `csoc/aws-csoc-to-spoke-access/terraform.tfstate` |
+| Argo CD install | `csoc/gitops-argocd-install/terraform.tfstate` |
+| GitOps bootstrap | `csoc/gitops-argocd-bootstrap/terraform.tfstate` |
 
 Review each core or fleet plan before any apply. Empty state for a
 unit means Terraform will propose creates for that unit; do not apply until that
@@ -274,14 +258,14 @@ is expected for the target environment.
 Apply and verify individual units in dependency order:
 
 ```bash
-bash scripts/terragrunt-stack.sh csoc-core plan csoc-cluster
-bash scripts/terragrunt-stack.sh csoc-core apply csoc-cluster
-bash scripts/terragrunt-stack.sh csoc-core plan csoc-controller-iam
-bash scripts/terragrunt-stack.sh csoc-core plan argocd-install
+bash scripts/terragrunt-stack.sh csoc-cluster-core plan aws-csoc-cluster
+bash scripts/terragrunt-stack.sh csoc-cluster-core apply aws-csoc-cluster
+bash scripts/terragrunt-stack.sh csoc-cluster-core plan aws-csoc-controller-iam
+bash scripts/terragrunt-stack.sh csoc-cluster-core plan gitops-argocd-install
 
-TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan spoke-iam
-TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan csoc-spoke-access
-TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet plan argocd-gitops-bootstrap
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh spoke-fleet-update plan aws-spoke-access-iam
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh spoke-fleet-update plan aws-csoc-to-spoke-access
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh spoke-fleet-update plan gitops-argocd-bootstrap
 ```
 
 Run the same unit plan after each apply and require zero changes before moving
@@ -429,8 +413,8 @@ argocd app get fleet --show-operation
 1. Add spoke config to `config/shared.auto.tfvars.json` under `spokes` array
 2. Create `iam/<new-spoke-alias>/ack/inline-policy.json` (or rely on `_default`)
 3. Add spoke values in `argocd/spokes/<new-spoke>/`
-4. Run `bash scripts/terragrunt-stack.sh csoc-core plan`
-5. Review the plan, then run `bash scripts/terragrunt-stack.sh csoc-core apply`
+4. Run `bash scripts/terragrunt-stack.sh csoc-cluster-core plan`
+5. Review the plan, then run `bash scripts/terragrunt-stack.sh csoc-cluster-core apply`
 
 ### Updating Addon Values
 
@@ -454,7 +438,7 @@ Edit `argocd/spokes/<spoke>/infrastructure-values.yaml` and push. ArgoCD will re
 2. Delete and recreate the ArgoCD git repo secret:
    ```bash
    kubectl delete secret argocd-repo-<cluster-name> -n argocd
-   TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet apply
+   TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh spoke-fleet-update apply
    ```
 
 ### Renewing MFA Session
@@ -486,17 +470,17 @@ kubectl get vpc,cluster -A   # verify gone
 
 ```bash
 # From repo root
-TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh fleet destroy
-bash scripts/terragrunt-stack.sh csoc-core destroy
+TG_SPOKE_ALIAS=<alias> bash scripts/terragrunt-stack.sh spoke-fleet-update destroy
+bash scripts/terragrunt-stack.sh csoc-cluster-core destroy
 ```
 
 This runs the Terragrunt stack destroy flow for the CSOC split-state layout.
 
-### Step 3: Destroy Developer Identity Prerequisites
+### Step 3: Destroy Operator IAM Prerequisites
 
 ```bash
 # Only when intentionally removing the devcontainer IAM bootstrap path
-bash scripts/terragrunt-stack.sh prereq-iam destroy
+bash scripts/terragrunt-stack.sh operators-iam destroy
 ```
 
 ---
@@ -545,11 +529,11 @@ Check the ACK source role ARN in the cluster secret annotation:
 kubectl get secret <CSOC_ALIAS>-csoc-cluster-secret -n argocd -o jsonpath='{.metadata.annotations}'
 ```
 
-Verify the spoke workload role trust policy allows the source role:
+Verify the spoke access-role trust policy allows the ACK controller role:
 
 ```bash
 aws iam get-role \
-  --role-name spoke1-spoke-role \
+  --role-name spoke1-ack-controller-access-role \
   --query 'Role.AssumeRolePolicyDocument' \
   --profile spoke1-admin
 ```

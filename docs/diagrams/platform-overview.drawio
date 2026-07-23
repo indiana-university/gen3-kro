@@ -48,7 +48,7 @@
             <mxPoint x="-2" y="3" as="offset" />
           </mxGeometry>
         </mxCell>
-        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;fontColor=#000033;fontStyle=1;container=0;" value="ACK CSOC Role&#xa;(for all ACKs)" vertex="1">
+        <mxCell id="12" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;fontColor=#000033;fontStyle=1;container=0;" value="ACK Controller Role&#xa;{csoc_alias}-ack-controller-role" vertex="1">
           <mxGeometry height="63.57" width="160" x="404.24" y="522.45" as="geometry" />
         </mxCell>
         <mxCell id="e7" edge="1" parent="1" source="11" style="endArrow=open;endFill=0;dashed=1;fontSize=16;fontStyle=0;strokeColor=#000000;" target="12" value="trusts">
@@ -105,7 +105,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;fontStyle=1;container=0;fontColor=#000000;" value="ACK Workload Role" vertex="1">
+        <mxCell id="21" parent="1" style="rounded=1;whiteSpace=wrap;fillColor=#f8cecc;strokeColor=#b85450;fontSize=16;fontStyle=1;container=0;fontColor=#000000;" value="Spoke ACK Access Role&#xa;{spoke_alias}-ack-controller-access-role" vertex="1">
           <mxGeometry height="46.15384615384615" width="140" x="1185" y="531.1630769230768" as="geometry" />
         </mxCell>
         <mxCell id="PQ7jGN4jRIADbkALC906-114" edge="1" parent="1" source="9" style="edgeStyle=orthogonalEdgeStyle;endArrow=block;endFill=1;dashed=1;fontSize=16;strokeColor=#BD7000;fontStyle=0;strokeWidth=2;entryX=0;entryY=0.5;entryDx=0;entryDy=0;exitX=1;exitY=0.25;exitDx=0;exitDy=0;fillColor=#f0a30a;" target="PQ7jGN4jRIADbkALC906-122" value="deploys">

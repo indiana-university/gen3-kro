@@ -9,7 +9,7 @@
     </mxCell>
 
     <!-- CSOC Stack -->
-    <mxCell id="root" value="terragrunt/live/aws/&#xa;(prereq, core, fleet)" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+    <mxCell id="root" value="terragrunt/live/aws/&#xa;(operators-iam, csoc-cluster-core, spoke-fleet-update)" style="rounded=1;whiteSpace=wrap;fillColor=#e1d5e7;strokeColor=#9673a6;fontSize=12;fontStyle=1;" vertex="1" parent="1">
       <mxGeometry x="400" y="60" width="340" height="70" as="geometry" />
     </mxCell>
 
@@ -28,21 +28,21 @@
     </mxCell>
 
     <!-- Argo CD install and GitOps bootstrap -->
-    <mxCell id="argocd_boot" value="k8s-argocd-install + argocd-gitops-bootstrap&#xa;&#xa;Creates:&#xa;• Argo CD namespace/service accounts&#xa;• Argo CD Helm release&#xa;• repo and cluster secrets&#xa;• bootstrap ApplicationSet&#xa;&#xa;Separate install and fleet states" style="rounded=1;whiteSpace=wrap;align=left;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
+    <mxCell id="argocd_boot" value="gitops-argocd-install + gitops-argocd-bootstrap&#xa;&#xa;Creates:&#xa;• Argo CD namespace/service accounts&#xa;• Argo CD Helm release&#xa;• repo and cluster secrets&#xa;• bootstrap ApplicationSet&#xa;&#xa;Separate install and fleet states" style="rounded=1;whiteSpace=wrap;align=left;fillColor=#d5e8d4;strokeColor=#82b366;fontSize=10;" vertex="1" parent="1">
       <mxGeometry x="700" y="360" width="360" height="200" as="geometry" />
     </mxCell>
 
-    <!-- aws-spoke-iam (separate track) -->
-    <mxCell id="aws_spoke" value="terraform/catalog/modules/aws-spoke-iam/&#xa;&#xa;Creates:&#xa;• ACK workload IAM role per spoke&#xa;• Exact CSOC role trust&#xa;• Inline IAM policies from iam/ files&#xa;&#xa;One state per spoke" style="rounded=1;whiteSpace=wrap;align=left;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
+    <!-- aws-spoke-access-iam (separate track) -->
+    <mxCell id="aws_spoke" value="terraform/catalog/modules/aws-spoke-access-iam/&#xa;&#xa;Creates:&#xa;• ACK workload IAM role per spoke&#xa;• Exact CSOC role trust&#xa;• Inline IAM policies from iam/ files&#xa;&#xa;One state per spoke" style="rounded=1;whiteSpace=wrap;align=left;fillColor=#f8cecc;strokeColor=#b85450;fontSize=10;" vertex="1" parent="1">
       <mxGeometry x="40" y="60" width="300" height="185" as="geometry" />
     </mxCell>
 
     <!-- Spoke units -->
-    <mxCell id="tg_units" value="terraform/catalog/units/spoke-iam/&#xa;(spoke IAM unit)" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="1">
+    <mxCell id="tg_units" value="terraform/catalog/units/aws-spoke-access-iam/&#xa;(spoke IAM unit)" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#666666;fontSize=10;" vertex="1" parent="1">
       <mxGeometry x="40" y="300" width="300" height="60" as="geometry" />
     </mxCell>
 
-    <mxCell id="tg_stack" value="terragrunt/live/aws/prereq-iam/&#xa;(developer identity only)" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;" vertex="1" parent="1">
+    <mxCell id="tg_stack" value="terragrunt/live/aws/operators-iam/&#xa;(operator IAM only)" style="rounded=1;whiteSpace=wrap;fillColor=#f5f5f5;strokeColor=#999999;fontSize=10;" vertex="1" parent="1">
       <mxGeometry x="40" y="420" width="300" height="60" as="geometry" />
     </mxCell>
 

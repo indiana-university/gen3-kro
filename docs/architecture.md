@@ -42,24 +42,24 @@ planned.
 | 5 | Host or container | Terragrunt + Terraform | GitOps and fleet bootstrap |
 | 6 | ArgoCD | GitOps | Controllers, RGDs, CARM resources, spoke instances |
 
-Spoke roles prefer exact trust to the CSOC source role ARN emitted by the
-controller IAM state. Direct devcontainer trust is disabled unless explicitly
-enabled for manual cleanup.
+Spoke roles trust the exact CSOC controller role ARN emitted by controller IAM.
+Optional manual access trusts only the exact operator role ARNs exported by
+operator IAM.
 
 ## Terraform Modules
 
 ```text
 terragrunt/live/aws/
-├── prereq-iam
-│   └── operator-access -> aws-operator-access-iam
-├── csoc-core
-│   ├── csoc-cluster -> aws-csoc-cluster
-│   ├── csoc-controller-iam -> aws-csoc-controller-iam
-│   └── argocd-install -> k8s-argocd-install
-└── fleet
-    ├── spoke-iam-<alias> -> aws-spoke-iam
-    ├── csoc-spoke-access -> aws-csoc-spoke-access
-    └── argocd-gitops-bootstrap -> argocd-gitops-bootstrap
+├── operators-iam
+│   └── aws-csoc-operator-iam -> aws-csoc-operator-iam
+├── csoc-cluster-core
+│   ├── aws-csoc-cluster -> aws-csoc-cluster
+│   ├── aws-csoc-controller-iam -> aws-csoc-controller-iam
+│   └── gitops-argocd-install -> gitops-argocd-install
+└── spoke-fleet-update
+    ├── aws-spoke-access-iam-<alias> -> aws-spoke-access-iam
+    ├── aws-csoc-to-spoke-access -> aws-csoc-to-spoke-access
+    └── gitops-argocd-bootstrap -> gitops-argocd-bootstrap
 ```
 
 ## ArgoCD Chain
@@ -89,14 +89,14 @@ See `argocd/README.md` for the GitOps file contract.
 
 ```text
 ACK pod
-└── IRSA -> {csoc_alias}-csoc-role
-    └── sts:AssumeRole -> <spoke>-spoke-role
+└── IRSA -> {csoc_alias}-ack-controller-role
+    └── sts:AssumeRole -> <spoke>-ack-controller-access-role
         └── AWS APIs in spoke account
 ```
 
-The preferred spoke role trust uses the exact `{csoc_alias}-csoc-role` ARN as
-principal. The devcontainer role can remain trusted for scoped manual cleanup if
-that operator path is required.
+The spoke trust also accepts the exact subset of enabled operator roles whose
+configuration sets `allow_spoke_access`. It never trusts account root or a
+wildcard role-name pattern.
 
 ## Local CSOC
 
