@@ -11,35 +11,29 @@
 
   "workspaceFolder": "/workspaces/${localWorkspaceFolderBasename}",
 
-  "initializeCommand": ["bash", "-c", "mkdir -p \"${USERPROFILE:-$HOME}/.codex/sessions\"; find '${localWorkspaceFolder}/scripts' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; { [ -d '${localWorkspaceFolder}/terragrunt/live/aws' ] && find '${localWorkspaceFolder}/terragrunt/live/aws' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; }; true"],
+  "initializeCommand": ["bash", "-c", "mkdir -p \"${USERPROFILE:-$HOME}/.aws/jayadeyemi\" \"${USERPROFILE:-$HOME}/.codex/sessions\"; find '${localWorkspaceFolder}/scripts' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; { [ -d '${localWorkspaceFolder}/terragrunt/live/aws' ] && find '${localWorkspaceFolder}/terragrunt/live/aws' \\( -name '*.sh' \\) -exec chmod +x {} + 2>/dev/null; }; true"],
 
   "mounts": [
-    "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,readonly,consistency=cached",
+    "source=${localEnv:USERPROFILE}/.aws/jayadeyemi,target=/home/vscode/.aws,type=bind,readonly,consistency=cached",
     "source=${localEnv:USERPROFILE}/.codex,target=/home/vscode/.codex,type=bind,consistency=delegated"
   ],
 
 
   "containerEnv": {
-    "REPO_ROOT":   "/workspaces/${localWorkspaceFolderBasename}",
-    "AWS_PROFILE": "csoc"
+    "REPO_ROOT":                   "/workspaces/${localWorkspaceFolderBasename}",
+    "AWS_PROFILE":                 "operator",
+    "AWS_SHARED_CREDENTIALS_FILE": "/home/vscode/.aws/credentials",
+    "AWS_CONFIG_FILE":             "/home/vscode/.aws/config"
   },
 
-  // Lifecycle flags: setup | connect (blank = no-op)
-  // Terragrunt init/plan/apply is explicit through each live stack's stack.sh.
-  // Fix any root-owned files left from previous root-run sessions, then run
-  // normal setup. sudo works because --security-opt=no-new-privileges is unset.
-  "postCreateCommand": "sudo chown -R vscode:vscode /workspaces 2>/dev/null || true && bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup",
 
-  // Re-establish kubeconfig + ArgoCD port-forward on every container start.
-  // postCreateCommand only runs once at container creation; this ensures the
-  // port-forward survives container restarts and VS Code reconnects.
+  "postCreateCommand": "sudo chown -R vscode:vscode /workspaces 2>/dev/null || true && bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh setup",
   "postStartCommand": "bash /workspaces/${localWorkspaceFolderBasename}/scripts/container-init.sh connect",
 
   "customizations": {
     "vscode": {
       "settings": {
         "terminal.integrated.defaultProfile.linux": "bash",
-        // AI agents need unsandboxed terminal to run terraform/kubectl/helm/argocd
         "chat.tools.terminal.sandbox.enabled": false,
         "chat.instructionsFilesLocations": {
           ".github/instructions": true
@@ -69,26 +63,17 @@
     }
   },
 
-  // ── Security hardening ───────────────────────────────────────────────
-  // • No --privileged — no features require privileged mode
-  // • No --network=host — use forwardPorts for ArgoCD UI instead (also
-  //   fixes Docker Desktop on Windows where host networking doesn't work)
-  // • --security-opt=no-new-privileges is intentionally omitted: it blocks
-  //   the set uid sudo binary used by postCreateCommand for ownership fixes.
   "runArgs": [],
 
-  // Forward ArgoCD port-forward (8080) from container → host.
   "forwardPorts": [8080],
 
-  // ── Features ─────────────────────────────────────────────────────────
-  // Docker CLI is not included — no scripts or modules use it.
   "features": {
     "ghcr.io/devcontainers/features/common-utils:2": {
       "installZsh": true,
       "installOhMyZsh": true,
       "upgradePackages": true
     },
-    "ghcr.io/devcontainers/features/git:1": {
+    "ghcr.io/devcontainers/features/git:1.3.8": {
       "version": "latest"
     }
   }

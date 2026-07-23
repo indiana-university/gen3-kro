@@ -50,5 +50,5 @@ Using temporary credentials (assumed-role) — good
 
 ## Prerequisites
 
-`~/.aws/eks-devcontainer/credentials [csoc]` must be written before the
+`~/.aws/jayadeyemi/credentials [badeyemi_tf]` must be written before the
 container starts. See [mfa-session.md](mfa-session.md).

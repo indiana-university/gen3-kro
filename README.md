@@ -199,7 +199,8 @@ bash scripts/mfa-session.sh --no-mfa         # Copy admin profile credentials
 
 In VS Code: `Cmd/Ctrl+Shift+P` → **Dev Containers: Reopen in Container**
 
-The container mounts `~/.aws/eks-devcontainer` and sets `AWS_PROFILE=csoc`
+The container mounts `~/.aws/jayadeyemi` read-only and sets
+`AWS_PROFILE=badeyemi_tf`
 automatically. See [scripts/container-init.md](scripts/container-init.md) for
 what the init script validates and how credential tiers are reported.
 

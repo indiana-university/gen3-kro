@@ -1,7 +1,7 @@
 # mfa-session.sh
 
 Writes short-lived AWS credentials for one function-specific operator role to
-`~/.aws/eks-devcontainer/credentials [csoc]`. Run it on the host before
+`~/.aws/jayadeyemi/credentials [badeyemi_tf]`. Run it on the host before
 opening or rebuilding the devcontainer.
 
 ## Usage

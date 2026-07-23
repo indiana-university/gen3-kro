@@ -49,7 +49,7 @@
 # AWS Credentials:
 #   ACK controllers use REAL AWS APIs (no LocalStack).
 #   Credentials come from ~/.aws/credentials.
-#   AWS_PROFILE=csoc.
+#   AWS_PROFILE=badeyemi_tf.
 #   Run `scripts/mfa-session.sh <MFA_CODE>` on HOST to refresh.
 #   install stage auto-injects creds; run $0 inject-creds to refresh later
 #
@@ -148,7 +148,7 @@ fi
 validate_credentials() {
   local creds_file="${HOME}/.aws/credentials"
   local meta_file="${HOME}/.aws/.session-meta"
-  local profile="${AWS_PROFILE:-csoc}"
+  local profile="${AWS_PROFILE:-badeyemi_tf}"
 
   echo "  ── Credential Security Check ──"
   echo ""
@@ -316,7 +316,7 @@ export KIND_CLUSTER_NAME="${KIND_CLUSTER_NAME}"
 export KIND_CONTEXT="${KIND_CONTEXT}"
 export KUBECONFIG="${KUBECONFIG_PATH}"
 export REPO_DIR="${REPO_DIR}"
-export AWS_PROFILE="${AWS_PROFILE:-csoc}"
+export AWS_PROFILE="${AWS_PROFILE:-badeyemi_tf}"
 export AWS_DEFAULT_REGION="us-east-1"
 export CRED_TIER="${CRED_TIER}"
 EOF
@@ -384,7 +384,7 @@ stage_inject_creds() {
     return 1
   fi
 
-  local profile="${AWS_PROFILE:-csoc}"
+  local profile="${AWS_PROFILE:-badeyemi_tf}"
   local creds_file="${HOME}/.aws/credentials"
 
   # Extract credentials from the mounted file
@@ -663,7 +663,7 @@ stage_install() {
 
   # Fetch AWS account ID at runtime (never stored in git)
   local aws_account_id
-  aws_account_id="$(aws sts get-caller-identity --profile "${AWS_PROFILE:-csoc}" --output text --query 'Account' 2>/dev/null || true)"
+  aws_account_id="$(aws sts get-caller-identity --profile "${AWS_PROFILE:-badeyemi_tf}" --output text --query 'Account' 2>/dev/null || true)"
   if [[ -z "${aws_account_id}" ]]; then
     log_warn "Could not determine AWS account ID — cluster secrets will lack aws_account_id annotation"
   else
@@ -1011,7 +1011,7 @@ main() {
   echo "  Cluster:     ${KIND_CLUSTER_NAME}"
   echo "  Context:     ${KIND_CONTEXT}"
   echo "  Kubeconfig:  ${KUBECONFIG_PATH}"
-  echo "  AWS Profile: ${AWS_PROFILE:-csoc}"
+  echo "  AWS Profile: ${AWS_PROFILE:-badeyemi_tf}"
   echo "  Stages:      ${!STAGES[*]}"
   echo ""
 

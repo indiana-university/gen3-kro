@@ -40,7 +40,8 @@ Install on the host (not the devcontainer):
 | `aws` CLI v2 | 2.x |
 | `docker` | any recent |
 
-AWS credentials at `~/.aws/credentials [csoc]` must be valid before `install`.
+AWS credentials at `~/.aws/jayadeyemi/credentials [badeyemi_tf]` must be
+valid before `install`.
 Run `bash scripts/mfa-session.sh <MFA_CODE>` on the host to refresh.
 
 ## Bootstrap Order (mirrors EKS CSOC)

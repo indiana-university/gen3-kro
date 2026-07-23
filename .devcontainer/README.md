@@ -6,8 +6,7 @@ Development container configuration for the **eks-cluster-mgmt** platform — a 
 
 ```
 .devcontainer/
-├── devcontainer.json    # Primary container configuration
-├── devcontainer2.json   # Secondary container with separate AWS credentials
+├── devcontainer.json    # Container configuration
 └── README.md            # This file
 ```
 
@@ -23,7 +22,7 @@ This devcontainer follows the principle of least privilege:
 | No Docker socket mount | Docker CLI not required by any scripts or modules |
 | No `--network=host` | Scoped `forwardPorts: [8080]` for ArgoCD UI |
 | `--security-opt=no-new-privileges` | Prevents SUID/SGID privilege escalation inside container |
-| Scoped credential mounts | Each container sees only its selected credential directory, mounted read-only |
+| Scoped credential mount | The container sees only `~/.aws/jayadeyemi`, mounted read-only |
 | `~/.kube` not mounted | Created empty at runtime; `connect` stage populates it |
 | Split Codex persistence | Host transcripts are read-only; host Codex config and authentication are not mounted |
 | AI agent sandbox disabled | Required for agents to run terraform/kubectl/helm — the only intentional relaxation |
@@ -53,7 +52,7 @@ Shell aliases are pre-configured: `k` → kubectl, `tf` → terraform, `tg` → 
 | Variable | Value | Description |
 |----------|-------|-------------|
 | `REPO_ROOT` | `/workspaces/<repo>` | Repository root inside container |
-| `AWS_PROFILE` | `csoc` | AWS CLI profile selector |
+| `AWS_PROFILE` | `badeyemi_tf` | AWS CLI profile selector |
 | `AWS_REGION` | from `config/shared.auto.tfvars.json` | Set by `container-init.sh` at runtime |
 | `AWS_DEFAULT_REGION` | same as `AWS_REGION` | Set by `container-init.sh` at runtime |
 
@@ -63,17 +62,10 @@ directories remain local to each generated Terragrunt unit.
 
 ## Credential Mount
 
-Each configuration mounts a different **scoped** subdirectory—not the entire
-host `~/.aws`:
-
-| Configuration | Host directory | Container directory |
-| --- | --- | --- |
-| `devcontainer.json` | `~/.aws/eks-devcontainer/` | `/home/vscode/.aws/` |
-| `devcontainer2.json` | `~/.aws/eks-devcontainer-2/` | `/home/vscode/.aws/` |
-
-Both bind mounts are read-only inside the container. Refresh or replace
-`credentials`, optional `config`, and `.session-meta` files from the host.
-Neither container can rewrite its host credential directory.
+The configuration mounts only the scoped host directory
+`~/.aws/jayadeyemi/` at `/home/vscode/.aws/`. The bind mount is read-only
+inside the container. Refresh or replace `credentials`, optional `config`, and
+`.session-meta` files from the host.
 
 ### Windows/WSL mount source
 
@@ -84,7 +76,7 @@ profile directory before writing credentials.
 
 ```json
 "mounts": [
-  "source=${localEnv:USERPROFILE}/.aws/eks-devcontainer,target=/home/vscode/.aws,type=bind,readonly,consistency=cached"
+  "source=${localEnv:USERPROFILE}/.aws/jayadeyemi,target=/home/vscode/.aws,type=bind,readonly,consistency=cached"
 ]
 ```
 
@@ -108,29 +100,8 @@ bash scripts/mfa-session.sh --no-mfa
 ```
 
 The script writes temporary credentials to
-`~/.aws/eks-devcontainer/credentials` under the `[csoc]` profile. The primary
-container's `AWS_PROFILE=csoc` picks them up automatically.
-
-For the secondary container, place its independent `[csoc]` credentials in
-`~/.aws/eks-devcontainer-2/credentials`. If that file uses another profile
-name, change `AWS_PROFILE` in `devcontainer2.json` to match.
-
-### Running the secondary container
-
-A bind mount cannot be swapped on an already running container. Use the same
-Dockerfile/image with a separate container instance:
-
-```bash
-devcontainer up \
-  --workspace-folder . \
-  --config .devcontainer/devcontainer2.json
-```
-
-The primary and secondary configurations can mount the same repository, but
-they will also see each other's source edits, `.terragrunt-stack` directories,
-plans, and other generated workspace files. Do not run Terraform or Terragrunt
-concurrently from both instances. Use a separate clone or Git worktree when
-concurrent infrastructure work is required.
+`~/.aws/jayadeyemi/credentials` under the `[badeyemi_tf]` profile. The
+container uses `AWS_PROFILE=badeyemi_tf`.
 
 ### Not mounted (intentionally)
 
@@ -343,14 +314,13 @@ Port 8080 is forwarded from container to host via `forwardPorts`.
 WARNING: ~/.aws/credentials not found.
 ```
 
-Populate the selected credential directory on the **host** before starting the
-container. The primary uses `~/.aws/eks-devcontainer/credentials`; the
-secondary uses `~/.aws/eks-devcontainer-2/credentials`.
+Populate `~/.aws/jayadeyemi/credentials` on the **host** before starting the
+container. It must contain the `[badeyemi_tf]` profile.
 
 ### Permission / chmod errors on Terraform init
 
-Run initialization through the appropriate live `stack.sh` so each generated
-unit keeps independent Terraform metadata. On Windows, keep the repository on a
+Run initialization through `scripts/terragrunt-stack.sh` so each generated unit
+keeps independent Terraform metadata. On Windows, keep the repository on a
 native WSL filesystem rather than `/mnt/c/...`.
 
 ### Container build failures

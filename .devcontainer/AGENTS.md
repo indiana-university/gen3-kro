@@ -9,9 +9,8 @@ deployment orchestrator.
 
 - Keep Terraform, Terragrunt, AWS CLI, kubectl, Helm, yq, uv, and Node tooling
   versioned in the Dockerfile.
-- Mount only a scoped credential directory into `/home/vscode/.aws`: the
-  primary container uses `~/.aws/eks-devcontainer`, and the secondary
-  `devcontainer2.json` configuration uses `~/.aws/eks-devcontainer-2`.
+- Mount only the scoped `~/.aws/jayadeyemi` credential directory into
+  `/home/vscode/.aws`. The current container profile is `badeyemi_tf`.
 - Every host AWS credential-directory mount must be read-only inside its
   container. Refresh credentials from the host, never from inside a container.
 - Do not mount host `~/.kube`.
@@ -41,10 +40,9 @@ deployment orchestrator.
 - `postCreateCommand` may prepare the environment and validate credentials.
   `postStartCommand` may reconnect to an existing cluster. Neither may create,
   apply, or destroy infrastructure.
-- The host writes credentials under the scoped primary or secondary credential
-  directory; each container sees only its selected directory as
-  `/home/vscode/.aws`. Keep `~/.kube` container-local and regenerate kubeconfig
-  through the explicit connect stage.
+- The host writes credentials under `~/.aws/jayadeyemi`; the container sees
+  that directory as `/home/vscode/.aws`. Keep `~/.kube` container-local and
+  regenerate kubeconfig through the explicit connect stage.
 - Runtime MCP config, kubeconfig, Argo CD passwords, logs, reports, and shell
   environment files are local/generated material. Document where they are
   created, but do not add them to the image or tracked source.

@@ -42,7 +42,9 @@ Step-by-step procedures for deploying, managing, and tearing down the EKS Cluste
 | Spoke Account 1 | `AdministratorAccess` | Creating ACK workload IAM roles |
 | Spoke Account 2 | `AdministratorAccess` | Creating ACK workload IAM roles |
 
-> The AWS profile used in the container is `csoc`. MFA credentials are written to `~/.aws/eks-devcontainer/credentials` on the host and bind-mounted into the container as `~/.aws`.
+> The AWS profile used in the container is `badeyemi_tf`. MFA credentials are
+> written to `~/.aws/jayadeyemi/credentials` on the host and bind-mounted
+> read-only into the container as `~/.aws`.
 
 ### Terraform Backend
 
@@ -85,7 +87,7 @@ Edit `config/shared.auto.tfvars.json`. Key fields to fill in:
 ```json
 {
   "region": "us-east-1",
-  "aws_profile": "csoc",
+  "aws_profile": "badeyemi_tf",
   "csoc_account_id": "111111111111",
 
   "csoc_alias": "rds-gen3",
@@ -111,7 +113,8 @@ After MFA device is registered, run on the **HOST** before every container start
 
 ```bash
 bash scripts/mfa-session.sh <MFA_CODE>
-# Writes temporary assumed-role credentials to ~/.aws/credentials [csoc]
+# Writes temporary assumed-role credentials to
+# ~/.aws/jayadeyemi/credentials [badeyemi_tf]
 ```
 
 ---
@@ -177,8 +180,8 @@ create workstation profile files.
 ### Step 5 — Write devcontainer credentials (HOST)
 
 `mfa-session.sh` selects a role from the structured output and writes temporary
-credentials to `~/.aws/eks-devcontainer/credentials` under `[csoc]`. The
-devcontainer mounts only that directory.
+credentials to `~/.aws/jayadeyemi/credentials` under `[badeyemi_tf]`. The
+devcontainer mounts only that directory and exposes it read-only.
 
 **Option A — MFA role session (recommended):**
 ```bash
@@ -195,7 +198,8 @@ bash scripts/mfa-session.sh <MFA_CODE> --role-key platform-operator
 bash scripts/mfa-session.sh --no-mfa
 ```
 
-Both options write to `~/.aws/eks-devcontainer/credentials` `[csoc]`.
+Both options write to
+`~/.aws/jayadeyemi/credentials` `[badeyemi_tf]`.
 Run this **before** opening the devcontainer (or before rebuilding it).
 
 ### Step 6 — Open the devcontainer
@@ -447,7 +451,7 @@ Edit `argocd/spokes/<spoke>/infrastructure-values.yaml` and push. ArgoCD will re
 # On HOST — re-run before credentials expire (12h default)
 bash scripts/mfa-session.sh <MFA_CODE>          # Option A: MFA (assumed-role)
 bash scripts/mfa-session.sh --no-mfa            # Option B: admin static creds
-# Writes to ~/.aws/eks-devcontainer/credentials [csoc]
+# Writes to ~/.aws/jayadeyemi/credentials [badeyemi_tf]
 # Rebuild or reopen the devcontainer to pick up refreshed credentials
 ```
 
@@ -502,7 +506,7 @@ Error: error configuring Terraform AWS Provider: no valid credential sources fou
 aws eks update-kubeconfig \
   --name <CSOC_ALIAS>-csoc-cluster \
   --region us-east-1 \
-  --profile csoc
+  --profile badeyemi_tf
 ```
 
 ### ArgoCD Application Stuck "Unknown"
@@ -587,7 +591,8 @@ No DevContainer is required — all commands run directly on the host.
 bash scripts/mfa-session.sh <MFA_CODE>
 ```
 
-Writes MFA-assumed-role credentials to `~/.aws/credentials [csoc]`.
+Writes MFA-assumed-role credentials to
+`~/.aws/jayadeyemi/credentials [badeyemi_tf]`.
 
 ### Step 2 — Create Kind Cluster + Install Stack
 

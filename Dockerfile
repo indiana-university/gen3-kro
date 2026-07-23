@@ -10,12 +10,20 @@ ARG HELM_VERSION=3.16.1
 ARG AWS_CLI_VERSION=2.32.0
 ARG YQ_VERSION=4.44.3
 
-# Use noninteractive frontend for apt-get to avoid prompts during build
-ENV DEBIAN_FRONTEND=noninteractive
-
 # Pull binaries in a separate stage to avoid ARG expansion in --from.
 FROM ghcr.io/astral-sh/uv:${UV_VERSION} AS uvbin
 FROM mcr.microsoft.com/devcontainers/base:ubuntu-24.04
+
+# Re-declare ARGs so they are visible inside this build stage
+ARG TERRAFORM_VERSION
+ARG TERRAGRUNT_VERSION
+ARG KUBECTL_VERSION
+ARG HELM_VERSION
+ARG AWS_CLI_VERSION
+ARG YQ_VERSION
+
+# Use noninteractive frontend for apt-get to avoid prompts during build
+ENV DEBIAN_FRONTEND=noninteractive
 
 # Base dependencies
 # Includes sandbox binaries used by AI terminal runners in local/container mode.

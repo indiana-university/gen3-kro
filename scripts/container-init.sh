@@ -56,7 +56,7 @@ CRED_REPORT_FILE="${REPORT_DIR}/credential-report.txt"
 validate_credentials() {
   local creds_file="/home/vscode/.aws/credentials"
   local meta_file="/home/vscode/.aws/.session-meta"
-  local profile="${AWS_PROFILE:-csoc}"
+  local profile="${AWS_PROFILE:-badeyemi_tf}"
 
   echo "  ── Credential Security Check (most secure first) ──"
   echo ""
@@ -405,10 +405,10 @@ if [[ -n "${STAGES[setup]:-}" ]]; then
   # See validate_credentials() for full tier definitions.
   #
   # Credential mount path:
-  #   mfa-session.sh writes to ~/.aws/eks-devcontainer/ on the HOST.
+  #   mfa-session.sh writes to ~/.aws/jayadeyemi/ on the HOST.
   #   devcontainer.json bind-mounts that dir → /home/vscode/.aws/
   #   so only scoped credentials (not all of ~/.aws) are visible.
-  CSOC_PROFILE="${AWS_PROFILE:-csoc}"
+  CSOC_PROFILE="${AWS_PROFILE:-badeyemi_tf}"
   validate_credentials || true   # sets CRED_TIER, CRED_IDENTITY, etc.
 
   # ── 4. Resolve region for env file ────────────────────────────────────────
@@ -530,7 +530,7 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
   CONFIG_FILE="${REPO_DIR}/config/shared.auto.tfvars.json"
   CLUSTER_NAME=""
   CLUSTER_REGION="${AWS_REGION:-us-east-1}"
-  CLUSTER_PROFILE="${AWS_PROFILE:-csoc}"
+  CLUSTER_PROFILE="${AWS_PROFILE:-badeyemi_tf}"
 
   if [[ -f "$CONFIG_FILE" ]] && command -v jq &>/dev/null; then
     # Primary: derive from config file
@@ -542,7 +542,7 @@ if [[ -n "${STAGES[connect]:-}" ]]; then
       CLUSTER_NAME="$(jq -r '.cluster_name // empty' "$CONFIG_FILE")"
     fi
     CLUSTER_REGION="$(jq -r '.region // "us-east-1"' "$CONFIG_FILE")"
-    CLUSTER_PROFILE="${AWS_PROFILE:-$(jq -r '.aws_profile // "csoc"' "$CONFIG_FILE")}"
+    CLUSTER_PROFILE="${AWS_PROFILE:-$(jq -r '.aws_profile // "badeyemi_tf"' "$CONFIG_FILE")}"
   fi
 
   # Fallback: auto-discover CSOC cluster via aws eks list-clusters

@@ -21,13 +21,13 @@ Inputs:
 3. Create `argocd/spokes/${input:spokeName}/` using
    `argocd/spokes/spoke1/` as the current schema reference. Keep only values and
    placeholders in tracked files; do not add secrets.
-4. Render the fleet stack with `TG_SPOKE_ALIAS=${input:spokeName}` and review
+4. Render the spoke-fleet-update stack with `TG_SPOKE_ALIAS=${input:spokeName}` and review
    plans in this order:
 
 ```bash
-TG_SPOKE_ALIAS=${input:spokeName} bash terragrunt/live/aws/fleet/stack.sh plan spoke-iam
-TG_SPOKE_ALIAS=${input:spokeName} bash terragrunt/live/aws/fleet/stack.sh plan csoc-spoke-access
-TG_SPOKE_ALIAS=${input:spokeName} bash terragrunt/live/aws/fleet/stack.sh plan argocd-gitops-bootstrap
+TG_SPOKE_ALIAS=${input:spokeName} bash scripts/terragrunt-stack.sh spoke-fleet-update plan aws-spoke-access-iam
+TG_SPOKE_ALIAS=${input:spokeName} bash scripts/terragrunt-stack.sh spoke-fleet-update plan aws-csoc-to-spoke-access
+TG_SPOKE_ALIAS=${input:spokeName} bash scripts/terragrunt-stack.sh spoke-fleet-update plan gitops-argocd-bootstrap
 ```
 
 Do not apply automatically. Confirm that only the selected spoke IAM state,

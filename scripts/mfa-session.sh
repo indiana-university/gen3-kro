@@ -3,7 +3,7 @@
 # MFA Session Helper — Write operator credentials to an isolated credentials directory
 #
 # Runs on the HOST (not inside the container). Writes AWS credentials for the
-# devcontainer to ~/.aws/eks-devcontainer/credentials under [csoc].
+# devcontainer to ~/.aws/jayadeyemi/credentials under [badeyemi_tf].
 # The devcontainer mounts ONLY that directory (not all of ~/.aws), so host
 # profiles, static keys, and other credentials are never exposed.
 #
@@ -32,8 +32,8 @@
 #
 # Next Steps (after running this script):
 #   1. Open (or rebuild) the devcontainer in VS Code
-#      — ~/.aws/eks-devcontainer is bind-mounted as /home/vscode/.aws
-#      — AWS_PROFILE=csoc is set automatically via containerEnv
+#      — ~/.aws/jayadeyemi is bind-mounted read-only as /home/vscode/.aws
+#      — AWS_PROFILE=badeyemi_tf is set automatically via containerEnv
 #   2. Inside the container, verify credentials:
 #        aws sts get-caller-identity
 #   3. Review the Terragrunt plan:
@@ -91,7 +91,7 @@ ROLE_KEY="${MFA_ROLE_KEY:-${_auto_default_role}}"
 USER_KEY="${MFA_USER_KEY:-primary}"
 ROLE_ARN="${MFA_ROLE_ARN:-}"
 MFA_SERIAL="${MFA_SERIAL_ARN:-}"
-SESSION_PROFILE="${MFA_SESSION_PROFILE:-csoc}"   # matches AWS_PROFILE=csoc in devcontainer
+SESSION_PROFILE="${MFA_SESSION_PROFILE:-badeyemi_tf}"
 DURATION="${MFA_DURATION:-43200}"  # 12 hours
 NO_MFA=0
 
@@ -130,7 +130,7 @@ while [[ $# -gt 0 ]]; do
       echo "  MFA_USER_KEY         Operator user alias (default: primary)"
       echo "  MFA_ROLE_ARN         IAM role ARN to assume"
       echo "  MFA_SERIAL_ARN       MFA device serial number (ARN)"
-      echo "  MFA_SESSION_PROFILE  Target credentials profile (default: csoc)"
+      echo "  MFA_SESSION_PROFILE  Target credentials profile (default: badeyemi_tf)"
       echo "  MFA_DURATION         Session duration in seconds (default: 43200 = 12h)"
       exit 0 ;;
     *)
@@ -185,7 +185,7 @@ fi
 
 # ─── Resolve credentials directory (WSL-aware) ────────────────────────────
 # devcontainer.json mounts:
-#   source=${localEnv:USERPROFILE}/.aws/eks-devcontainer
+#   source=${localEnv:USERPROFILE}/.aws/jayadeyemi
 # On Windows/WSL that resolves to the Windows profile used by Docker Desktop.
 # When this script runs inside WSL, $HOME is the Linux home (/home/<user>), which
 # is a DIFFERENT path — Docker Desktop cannot mount it. Detect WSL and prefer
@@ -222,14 +222,14 @@ _resolve_creds_home() {
     echo "  WARNING: Running in WSL but could not resolve Windows home." >&2
     echo "    Credentials will be written to WSL home ($HOME)." >&2
     echo "    If the devcontainer cannot see credentials, copy manually:" >&2
-    echo "      cp -r ~/.aws/eks-devcontainer /mnt/c/Users/<WindowsUser>/.aws/" >&2
+    echo "      cp -r ~/.aws/jayadeyemi /mnt/c/Users/<WindowsUser>/.aws/" >&2
   fi
 
   # Native Linux / macOS — HOME is correct for Docker Desktop
   echo "${HOME}"
 }
 CREDS_HOME="$(_resolve_creds_home)"
-CREDS_DIR="${CREDS_HOME}/.aws/eks-devcontainer"
+CREDS_DIR="${CREDS_HOME}/.aws/jayadeyemi"
 mkdir -p "$CREDS_DIR"
 echo "  Credentials dir: ${CREDS_DIR}"
 
